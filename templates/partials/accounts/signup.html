@@ -1,0 +1,60 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<div class="container my-5" style="max-width: 600px;">
+  <!-- 🧾 Cabeçalho -->
+  <div class="text-center mb-4">
+    <h2 class="mb-2">Novo Cadastro de Usuário</h2>
+    <p class="text-muted">Preencha os campos abaixo para criar um novo usuário.</p>
+  </div>
+
+  <!-- 🧾 Formulário de cadastro com AJAX -->
+  <form method="POST"
+        class="ajax-form needs-validation"
+        data-url="{% url 'accounts:signup' %}"
+        novalidate>
+    {% csrf_token %}
+
+    <!-- Campo: Nome de Usuário -->
+    <div class="mb-3">
+      <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }}</label>
+      {% render_field form.username class="form-control" placeholder="Digite o nome de usuário" %}
+    </div>
+
+    <!-- Campo: E-mail -->
+    <div class="mb-3">
+      <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+      {% render_field form.email class="form-control" placeholder="email@exemplo.com" %}
+    </div>
+
+    <!-- Campo: Nome Completo -->
+    <div class="mb-3">
+      <label for="{{ form.nome_completo.id_for_label }}" class="form-label">{{ form.nome_completo.label }}</label>
+      {% render_field form.nome_completo class="form-control" placeholder="Nome completo" %}
+    </div>
+
+    <!-- Campo: Grupo -->
+    <div class="mb-3">
+      <label for="{{ form.grupo.id_for_label }}" class="form-label">{{ form.grupo.label }}</label>
+      {% render_field form.grupo class="form-select" %}
+    </div>
+
+    <!-- Campo: Senha -->
+    <div class="mb-3">
+      <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }}</label>
+      {% render_field form.password1 class="form-control" placeholder="Crie uma senha" %}
+    </div>
+
+    <!-- Campo: Confirmação de Senha -->
+    <div class="mb-4">
+      <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }}</label>
+      {% render_field form.password2 class="form-control" placeholder="Confirme a senha" %}
+    </div>
+
+    <!-- Botões de ação -->
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">← Voltar</a>
+      <button type="submit" class="btn btn-primary">Salvar</button>
+    </div>
+  </form>
+</div>

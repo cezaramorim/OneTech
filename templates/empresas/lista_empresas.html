@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Empresas</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Lista de Empresas</h1>
+        <ul>
+            {% for emp in empresas %}
+            <li>
+                {{ emp.nome_empresa }} 
+                {% if emp.nome_fantasia %}
+                    ({{ emp.nome_fantasia }})
+                {% endif %}
+                - {{ emp.cnpj }}
+                <!-- Link para editar -->
+                <a href="{% url 'editar_empresa' emp.id %}">[Editar]</a>
+            </li>
+            {% empty %}
+                <li>Nenhuma empresa cadastrada.</li>
+            {% endfor %}
+        </ul>
+        <a href="{% url 'cadastrar_empresa' %}">Cadastrar Nova Empresa</a>
+    </div>
+</body>
+</html>
+
+

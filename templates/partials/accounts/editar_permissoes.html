@@ -1,0 +1,60 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<!-- 🧭 Tela: Edição de Permissões de Usuário -->
+<div class="d-flex justify-content-center">
+  <div class="card shadow p-4 w-100" style="max-width: 720px;">
+
+    <!-- 📌 Identificador de tela para diagnóstico JS -->
+    <div id="identificador-tela" data-tela="editar-permissoes-usuario"></div>
+
+    <!-- 🧾 Título -->
+    <h2 class="text-center mb-4">
+      Permissões de {{ usuario.get_full_name|default:usuario.username }}
+    </h2>
+
+    <!-- 📋 Formulário AJAX -->
+    <form method="post"
+          class="ajax-form needs-validation"
+          data-url="{% url 'accounts:editar_permissoes' usuario.id %}"
+          novalidate>
+      {% csrf_token %}
+
+      <!-- 🛡️ Campo de múltipla seleção -->
+      <div class="mb-3">
+        <label for="permissoes" class="form-label">
+          Selecione as permissões atribuídas ao usuário:
+        </label>
+
+        <select name="permissoes"
+                id="permissoes"
+                class="form-select"
+                multiple
+                required
+                size="12">
+          {% for perm in todas_permissoes %}
+            <option value="{{ perm.id }}" {% if perm in permissoes_usuario %}selected{% endif %}>
+              {{ perm.name }} — {{ perm.codename }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <div class="form-text mt-1">
+          Pressione <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (Mac) para múltipla seleção.
+        </div>
+      </div>
+
+      <!-- 🔘 Ações -->
+      <div class="d-flex justify-content-between mt-4">
+        <button type="submit" class="btn btn-primary w-50 me-2">
+          💾 Salvar Permissões
+        </button>
+        <a href="{% url 'accounts:selecionar_usuario_permissoes' %}"
+           class="btn btn-secondary w-50 ajax-link">
+          ← Voltar
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+

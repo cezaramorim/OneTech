@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+    {% if error %}
+      <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="POST">
+        {% csrf_token %}
+        <label>Usuário:</label><br>
+        <input type="text" name="username" required><br><br>
+
+        <label>Senha:</label><br>
+        <input type="password" name="password" required><br><br>
+
+        <button type="submit">Entrar</button>
+    </form>
+    <hr>
+    <a href="{% url 'signup' %}">Criar conta</a>
+    <a href="{% url 'home' %}">Início</a>
+</body>
+</html>

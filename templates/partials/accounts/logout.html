@@ -1,0 +1,25 @@
+{% load static %}
+
+<div class="logout-confirmation-container">
+  <div class="card logout-card text-center shadow-sm p-4">
+    
+    <!-- Logo OneTech -->
+    <div class="mb-3">
+      <img src="{% static 'icons/logo_sem_fundo.png' %}" alt="Logo OneTech" class="img-fluid" style="max-height: 340px;">
+    </div>
+
+    <!-- Título -->
+    <h2 class="mb-3">Deseja realmente sair?</h2>
+
+    <!-- Formulário de logout AJAX -->
+    <form method="post" class="ajax-form" data-url="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <div class="d-flex justify-content-center gap-3">
+        <button type="submit" class="btn btn-danger">Sim, Sair</button>
+        <a href="#" class="btn btn-secondary ajax-link" data-url="{% url 'painel:home' %}">Cancelar</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+

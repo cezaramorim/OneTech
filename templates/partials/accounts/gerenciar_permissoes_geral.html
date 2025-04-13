@@ -1,0 +1,124 @@
+<div class="container py-4">
+
+  <!-- Identificador da tela para scripts -->
+  <div id="identificador-tela" data-tela="gerenciar-permissoes-geral"></div>
+
+  <div class="text-center mb-4">
+    <h2 class="text-dark dark:text-white">Gerenciar Permissões</h2>
+    <p class="text-muted dark:text-light">
+      Selecione um grupo ou usuário para visualizar e editar suas permissões.
+    </p>
+  </div>
+
+  <form method="post" action="{% url 'accounts:gerenciar_permissoes_geral' %}" class="ajax-form">
+    {% csrf_token %}
+    <input type="hidden" name="tipo" id="tipo-selecionado" value="">
+
+    <!-- SELECTs -->
+    <div class="row g-3 align-items-end mb-4">
+      <div class="col-md-6">
+        <label for="grupo" class="form-label text-dark dark:text-light">Selecionar Grupo</label>
+        <select name="grupo" id="grupo" class="form-select">
+          <option value="">-- Nenhum --</option>
+          {% for grupo in grupos %}
+            <option value="{{ grupo.id }}">{{ grupo.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="usuario" class="form-label text-dark dark:text-light">Selecionar Usuário</label>
+        <select name="usuario" id="usuario" class="form-select">
+          <option value="">-- Nenhum --</option>
+          {% for usuario in usuarios %}
+            <option value="{{ usuario.id }}">{{ usuario.get_full_name|default:usuario.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Título -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-light text-dark fw-bold text-center">
+        <span class="d-block w-100">Permissões Disponíveis</span>
+      </div>
+ 
+      <div class="card-body bg-body text-body dark:bg-dark dark:text-white">
+        {% if permissoes %}
+          {% regroup permissoes by content_type.app_label as permissoes_agrupadas %}
+          {% for grupo in permissoes_agrupadas %}
+            <div class="mb-4 border rounded p-3 bg-body dark:bg-dark text-body dark:text-white">
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input select-all-group" id="select-all-{{ forloop.counter }}">
+                <label class="form-check-label fw-bold" for="select-all-{{ forloop.counter }}">
+                  {{ grupo.grouper|title }}
+                </label>
+              </div>
+
+              <div class="row row-cols-1 row-cols-md-2 g-2 permissoes-grupo">
+                {% for permissao in grupo.list %}
+                  <div class="form-check">
+                    <input type="checkbox"
+                          class="form-check-input permissao-checkbox"
+                          name="permissoes"
+                          value="{{ permissao.id }}"
+                          id="perm_{{ permissao.id }}"
+                          {% if permissao in permissoes_selecionadas %}checked{% endif %}>
+                    <label class="form-check-label" for="perm_{{ permissao.id }}">
+                      {{ permissao.traduzida }}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center">Nenhuma permissão disponível.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary">Salvar Permissões</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('ajaxContentLoaded', () => {
+    // ✅ SELECT ALL PERMISSÕES
+    document.querySelectorAll('.select-all-group').forEach((masterCheckbox) => {
+      masterCheckbox.addEventListener('change', () => {
+        const container = masterCheckbox.closest('.mb-4');
+        const checkboxes = container.querySelectorAll('.permissao-checkbox');
+        checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+      });
+    });
+
+    // ✅ SELEÇÃO DE TIPO: grupo ou usuário
+    const selectGrupo = document.getElementById('grupo');
+    const selectUsuario = document.getElementById('usuario');
+    const tipoInput = document.getElementById('tipo-selecionado');
+
+    if (selectGrupo && selectUsuario && tipoInput) {
+      function atualizarTipoSelecionado() {
+        if (selectGrupo.value) {
+          tipoInput.value = 'grupo';
+          selectUsuario.value = '';
+        } else if (selectUsuario.value) {
+          tipoInput.value = 'usuario';
+          selectGrupo.value = '';
+        } else {
+          tipoInput.value = '';
+        }
+        console.log('🔁 tipo-selecionado =', tipoInput.value);
+      }
+
+      selectGrupo.addEventListener('change', atualizarTipoSelecionado);
+      selectUsuario.addEventListener('change', atualizarTipoSelecionado);
+    }
+  });
+</script>
+
+
+
+

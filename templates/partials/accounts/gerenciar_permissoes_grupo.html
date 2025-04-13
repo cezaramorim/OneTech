@@ -1,0 +1,82 @@
+{% load static %}
+
+<!-- 🛡️ Gerenciar permissões de um grupo específico -->
+<div class="container py-4">
+
+  <div id="identificador-tela" data-tela="gerenciar-permissoes-grupo"></div>
+
+  <div class="text-center mb-4">
+    <h2 class="mb-2">Permissões do Grupo: {{ grupo.name }}</h2>
+    <p class="text-muted">
+      Marque as permissões que esse grupo deve possuir.<br>
+      As permissões selecionadas serão herdadas automaticamente pelos usuários associados.
+    </p>
+  </div>
+
+  <form method="post" action="{% url 'accounts:gerenciar_permissoes_grupo' grupo.id %}" class="ajax-form">
+    {% csrf_token %}
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-light dark:bg-dark text-center">
+        <strong>Permissões Disponíveis</strong>
+      </div>
+
+      <div class="card-body">
+        {% if permissoes %}
+          {% regroup permissoes by content_type.app_label as grupos_permissoes %}
+
+          {% for grupo in grupos_permissoes %}
+            <div class="mb-3 border rounded p-2">
+              <div class="form-check mb-2">
+                <input type="checkbox"
+                       class="form-check-input check-mestre"
+                       data-grupo="{{ grupo.grouper }}"
+                       id="mestre_{{ grupo.grouper }}">
+                <label class="form-check-label fw-bold" for="mestre_{{ grupo.grouper }}">
+                  {{ grupo.grouper|title }}
+                </label>
+              </div>
+
+              <div class="row row-cols-1 row-cols-md-2 g-2 px-3">
+                {% for permissao in grupo.list %}
+                  <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input permissao-checkbox grupo-{{ grupo.grouper }}"
+                           name="permissoes"
+                           value="{{ permissao.id }}"
+                           id="perm_{{ permissao.id }}"
+                           {% if permissao in permissoes_grupo %}checked{% endif %}>
+                    <label class="form-check-label" for="perm_{{ permissao.id }}">
+                      {{ permissao.traduzida }}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center">Nenhuma permissão disponível.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary">Salvar Permissões</button>
+    </div>
+  </form>
+</div>
+
+<!-- 🔗 Script de seleção mestre -->
+<script>
+  document.addEventListener('ajaxContentLoaded', () => {
+    document.querySelectorAll('.check-mestre').forEach(mestre => {
+      mestre.addEventListener('change', () => {
+        const grupo = mestre.dataset.grupo;
+        const checkboxes = document.querySelectorAll('.grupo-' + grupo);
+        checkboxes.forEach(cb => cb.checked = mestre.checked);
+      });
+    });
+  });
+</script>
+
+

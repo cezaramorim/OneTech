@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Usuários</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+<div class="container">
+    <h2>Usuários Cadastrados</h2>
+    <ul>
+        {% for usuario in usuarios %}
+        <li>
+            {{ usuario.username }} ({{ usuario.email }})
+            <a href="{% url 'editar_usuario' usuario.id %}">[Editar]</a>
+        </li>
+        {% empty %}
+        <li>Nenhum usuário cadastrado.</li>
+        {% endfor %}
+    </ul>
+</div>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<!-- 🧭 Tela: Seleção de Usuários para Permissões -->
+<div class="container my-5" style="max-width: 720px;">
+
+  <!-- 📌 Identificador de tela para scripts.js -->
+  <div id="identificador-tela" data-tela="selecionar-usuario-permissoes"></div>
+
+  <!-- 🔖 Cabeçalho -->
+  <div class="mb-4 text-center">
+    <h2 class="mb-2">Gerenciar Permissões de Usuários</h2>
+    <p class="text-muted">
+      Selecione um ou mais usuários para editar ou excluir permissões.
+    </p>
+  </div>
+
+  <!-- 📋 Formulário AJAX -->
+  <form id="permissoes-form" method="POST" class="ajax-form">
+    {% csrf_token %}
+
+    <!-- 🛠️ Ações -->
+    <div class="d-flex justify-content-between gap-2 mb-3">
+      <button type="button"
+              id="btn-editar"
+              class="btn btn-outline-primary btn-sm"
+              disabled>
+        ✏️ Editar Permissões
+      </button>
+
+      <button type="submit"
+              id="btn-excluir"
+              class="btn btn-outline-danger btn-sm"
+              formaction="{% url 'accounts:excluir_usuario_multiplo' %}"
+              disabled>
+        🗑️ Excluir Permissões
+      </button>
+    </div>
+
+    <!-- 👥 Lista de Usuários -->
+    <ul class="list-group shadow-sm">
+      {% for usuario in usuarios %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div class="form-check">
+            <input type="checkbox"
+                   class="form-check-input usuario-checkbox"
+                   name="usuarios_selecionados"
+                   value="{{ usuario.id }}"
+                   id="usuario{{ usuario.id }}">
+            <label class="form-check-label ms-2" for="usuario{{ usuario.id }}">
+              {{ usuario.get_full_name|default:usuario.username }}
+            </label>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-group-item text-muted text-center">
+          Nenhum usuário encontrado.
+        </li>
+      {% endfor %}
+    </ul>
+  </form>
+</div>

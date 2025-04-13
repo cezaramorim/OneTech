@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastrar Categoria</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="{% static 'js/scripts.js' %}"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Cadastrar Nova Categoria de Empresa</h2>
+        </header>
+
+        <main>
+            <!-- Formulário de cadastro -->
+            <section id="cadastro-categoria">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit">Salvar Categoria</button>
+                </form>
+            </section>
+
+            <!-- Lista de categorias existentes (com toggle) -->
+            <section id="categorias-cadastradas">
+                <h3 id="categorias-toggle" style="cursor: pointer;">
+                    Categorias Cadastradas ▼
+                </h3>
+                <ul id="lista-categorias" style="display: none;">
+                    {% for categoria in categorias_existentes %}
+                    <li>{{ categoria.nome }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggle = document.getElementById('categorias-toggle');
+            const lista = document.getElementById('lista-categorias');
+
+            toggle.addEventListener('click', function () {
+                if (lista.style.display === 'none' || lista.style.display === '') {
+                    lista.style.display = 'block';
+                    toggle.innerHTML = 'Categorias Cadastradas ▲';
+                } else {
+                    lista.style.display = 'none';
+                    toggle.innerHTML = 'Categorias Cadastradas ▼';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
