@@ -1,3 +1,4 @@
+{% if perms.accounts.add_user %}
 {% load static %}
 {% load widget_tweaks %}
 
@@ -58,3 +59,8 @@
     </div>
   </form>
 </div>
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}

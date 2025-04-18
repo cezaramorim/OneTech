@@ -3,6 +3,10 @@ from django.http import JsonResponse
 from django.contrib import messages
 from .forms import EmpresaForm, CategoriaEmpresaForm
 from .models import Empresa, CategoriaEmpresa
+from django.contrib.auth.decorators import login_required, permission_required
+from django.utils.timezone import now
+from django.contrib.auth import get_user_model
+from accounts.utils.render import render_ajax_or_base
 
 
 # === Função auxiliar ===
@@ -95,3 +99,38 @@ def cadastrar_categoria(request):
         'categorias': categorias
     })
 
+# === Nova Empresa ===
+@login_required
+@permission_required('empresas.add_empresa', raise_exception=True)
+def cadastrar_empresa_avancado(request):
+    from .forms import EmpresaAvancadaForm  # 📌 Novo formulário
+    from .models import EmpresaAvancada     # 📌 Novo model
+
+    # Lista de vendedores para o campo select
+    vendedores = get_user_model().objects.filter(groups__name__iexact='vendedores').order_by('first_name')
+
+    # Lista de estados brasileira (mantida)
+    estados = [
+        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+    ]
+
+    # Instanciando o formulário
+    form = EmpresaAvancadaForm(request.POST or None)
+
+    # Se for POST e formulário for válido, salvar
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'redirect_url': '/empresas/lista/'})
+        messages.success(request, "Empresa cadastrada com sucesso!")
+        return redirect('empresas:lista_empresas')
+
+    # Renderização via AJAX ou base
+    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_empresa_avancado.html', {
+        'form': form,
+        'today': now(),
+        'vendedores': vendedores,
+        'estados': estados,
+    })

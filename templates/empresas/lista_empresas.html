@@ -1,3 +1,4 @@
+{% if perms.empresas.view_empresa %}
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -28,5 +29,9 @@
     </div>
 </body>
 </html>
-
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}
 

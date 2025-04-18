@@ -1,3 +1,4 @@
+{% if perms.auth.change_permission %}
 {% load static %}
 
 <!-- 🛡️ Gerenciar permissões de um grupo específico -->
@@ -78,5 +79,9 @@
     });
   });
 </script>
-
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}
 

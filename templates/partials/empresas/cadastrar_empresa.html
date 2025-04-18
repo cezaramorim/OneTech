@@ -1,3 +1,4 @@
+{% if perms.empresas.add_empresa %}
 {% load static %}
 {% load widget_tweaks %}
 
@@ -34,3 +35,8 @@
 
   </div>
 </div>
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}

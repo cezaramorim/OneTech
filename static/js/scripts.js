@@ -246,11 +246,20 @@ function initSeletorGrupoPermissoes() {
 document.addEventListener('DOMContentLoaded', () => {
   const themeToggle = document.getElementById('theme-toggle');
   const hamburgerToggle = document.getElementById('hamburger-toggle');
+  const tela = document.querySelector('#main-content')?.dataset?.tela;
 
   aplicarTemaSalvo();
   bindAjaxLinks();
   bindCheckboxActions();
   initSeletorGrupoPermissoes();
+  aplicarMascaras();
+  aplicarMascaraCEP();
+  autoPreencherEnderecoPorCEP();
+
+  // ✅ Detecta se está na tela de cadastro avançado de empresa
+  if (tela === 'cadastrar_empresa_avancado' || tela === 'empresa_avancada') {
+    initCadastroEmpresaAvancado();
+  }
 
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
@@ -301,14 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.redirect_url) {
           const mainContent = document.getElementById('main-content');
           if (mainContent && mainContent.closest('.layout')) {
-            // Está dentro do painel principal com base.html → usa AJAX
             loadAjaxContent(data.redirect_url);
           } else {
-            // Está fora (como login_full.html) → redireciona de verdade
             window.location.href = data.redirect_url;
           }
         }
-        
       } else {
         const html = await response.text();
         const mainContent = document.getElementById('main-content');
@@ -330,10 +336,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+
+
+
 // 🔄 AJAX content loaded
 document.addEventListener('ajaxContentLoaded', () => {
   bindCheckboxActions();
   initSeletorGrupoPermissoes();
+  aplicarMascaras();
+  aplicarMascaraCEP();
+  autoPreencherEnderecoPorCEP();
 });
 
 // ✅ scripts.js atualizado com logout automático funcional
@@ -374,7 +386,8 @@ window.logoutPorInatividade = function () {
   .then(response => response.json())
   .then(data => {
     if (data.redirect_url) {
-      window.location.href = data.redirect_url;
+      // ✅ Força recarregamento completo da página
+      window.location.assign(data.redirect_url);
     }
   })
   .catch(err => {
@@ -382,9 +395,172 @@ window.logoutPorInatividade = function () {
   });
 };
 
+
 ['click', 'mousemove', 'keydown', 'scroll'].forEach(evento => {
   document.addEventListener(evento, resetarTimerInatividade);
 });
 
 resetarTimerInatividade();
 
+function initCadastroEmpresaAvancado() {
+  const tipoSelect = document.getElementById('tipo_empresa');
+  const grupoPF = document.querySelectorAll('.grupo-pf');
+  const grupoPJ = document.querySelectorAll('.grupo-pj');
+
+  if (!tipoSelect) return;
+
+  function atualizarCampos() {
+    const tipo = tipoSelect.value;
+    grupoPF.forEach(el => el.classList.add('d-none'));
+    grupoPJ.forEach(el => el.classList.add('d-none'));
+
+    if (tipo === 'pf') {
+      grupoPF.forEach(el => el.classList.remove('d-none'));
+    } else if (tipo === 'pj') {
+      grupoPJ.forEach(el => el.classList.remove('d-none'));
+    }
+  }
+
+  tipoSelect.addEventListener('change', atualizarCampos);
+  atualizarCampos();
+}
+
+// 👤 Alternância de campos PF/PJ no cadastro avançado de empresa
+document.addEventListener('ajaxContentLoaded', () => {
+  const tipoSelect = document.getElementById('tipo_empresa');
+  const grupoPF = document.querySelectorAll('.grupo-pf');
+  const grupoPJ = document.querySelectorAll('.grupo-pj');
+
+  if (!tipoSelect || (!grupoPF.length && !grupoPJ.length)) return;
+
+  const atualizarCampos = () => {
+    const tipo = tipoSelect.value;
+    grupoPF.forEach(el => el.classList.add('d-none'));
+    grupoPJ.forEach(el => el.classList.add('d-none'));
+
+    if (tipo === 'pf') grupoPF.forEach(el => el.classList.remove('d-none'));
+    if (tipo === 'pj') grupoPJ.forEach(el => el.classList.remove('d-none'));
+  };
+
+  tipoSelect.addEventListener('change', atualizarCampos);
+  atualizarCampos(); // executa ao carregar
+});
+
+// ✅ Máscaras de CPF, CNPJ, ie e telefones
+function aplicarMascaras() {
+  const cpfInputs = document.querySelectorAll('.mascara-cpf');
+  const cnpjInputs = document.querySelectorAll('.mascara-cnpj');
+  const telInputs = document.querySelectorAll('.mascara-telefone');
+  const celInputs = document.querySelectorAll('.mascara-celular');
+  const ieInputs = document.querySelectorAll('.mascara-ie');
+
+  cpfInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    });
+  });
+
+  cnpjInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    });
+  });
+
+  telInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .slice(0, 14);
+    });
+  });
+
+  celInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .slice(0, 15);
+    });
+  });
+
+  ieInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/^(\d{3})(\d)/, '$1.$2')
+        .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d+)/, '$1.$2.$3.$4')
+        .slice(0, 15);
+    });
+  });
+}
+
+const cepInputs = document.querySelectorAll('.mascara-cep');
+cepInputs.forEach(input => {
+  input.addEventListener('input', () => {
+    input.value = input.value
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .slice(0, 9);
+  });
+});
+
+// ✅ Máscara de CEP e auto-preenchimento com ViaCEP
+function aplicarMascaraCEP() {
+  const cepInputs = document.querySelectorAll('.mascara-cep');
+  cepInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      input.value = input.value
+        .replace(/\D/g, '')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .slice(0, 9);
+    });
+  });
+}
+
+function autoPreencherEnderecoPorCEP() {
+  const cepInput = document.getElementById('cep');
+  if (!cepInput) return;
+
+  cepInput.addEventListener('blur', () => {
+    const cep = cepInput.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      .then(response => response.json())
+      .then(data => {
+        if (!data.erro) {
+          const map = {
+            rua: 'logradouro',
+            bairro: 'bairro',
+            cidade: 'localidade',
+            estado: 'uf'
+          };
+          for (const id in map) {
+            const field = document.getElementById(id);
+            if (field) field.value = data[map[id]] || '';
+          }
+        } else {
+          mostrarAlertaBootstrap("CEP não encontrado.", "warning");
+        }
+      })
+      .catch(() => {
+        mostrarAlertaBootstrap("Erro ao consultar o CEP.", "danger");
+      });
+  });
+}
+
+// ✅ Executa ao carregar a tela
+aplicarMascaras();

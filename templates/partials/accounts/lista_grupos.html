@@ -1,3 +1,4 @@
+{% if perms.auth.view_group %}
 {% load static %}
 
 <!-- 🆔 Identificador de contexto para diagnóstico JS -->
@@ -69,3 +70,8 @@
     </a>
   </div>
 </div>
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}

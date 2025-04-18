@@ -1,3 +1,4 @@
+{% if perms.accounts.view_user %}
 {% load static %}
 
 <div class="container py-4" style="max-width: 720px;">
@@ -63,4 +64,8 @@
     </a>
   </div>
 </div>
-
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}

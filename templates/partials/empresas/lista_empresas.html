@@ -1,3 +1,4 @@
+{% if perms.empresas.view_empresa %}
 {% load static %}
 
 <!-- 🆔 Identificador para scripts.js -->
@@ -64,4 +65,8 @@
     </a>
   </div>
 </div>
-
+{% else %}
+<div class="alert alert-danger text-center mt-5">
+  Você não tem permissão para acessar esta funcionalidade.
+</div>
+{% endif %}

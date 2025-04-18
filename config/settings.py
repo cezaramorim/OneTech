@@ -1,31 +1,26 @@
 from decouple import Config, RepositoryEnv
-import os
 from pathlib import Path
 import pymysql
 from .connection import get_db_settings
 
-# Caminho absoluto do diretório do config
+# =======================
+# Diretório Base e .env
+# =======================
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 config = Config(repository=RepositoryEnv(ENV_FILE))
 
-
 # =======================
-# PyMySQL como substituto do MySQLdb
+# Substituto do MySQLdb
 # =======================
 pymysql.install_as_MySQLdb()
-
-# =======================
-# Diretório Base
-# =======================
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 # =======================
 # Segurança e Execução
 # =======================
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', cast=bool) # ⛔ Altere para False em produção
-ALLOWED_HOSTS = []  # 🛡️ Configure domínios em produção, ex: ['projeto.com', '127.0.0.1']
+DEBUG = config('DEBUG', cast=bool)  # ⛔ Altere para False em produção
+ALLOWED_HOSTS = []  # 🛡️ Ex: ['onetech.com', '127.0.0.1']
 
 # =======================
 # Banco de Dados (MySQL)
