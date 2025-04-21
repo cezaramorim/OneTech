@@ -53,7 +53,36 @@ if (e.target && e.target.matches('input[type="checkbox"]')) {
 document.body.addEventListener('change', globalCheckboxListener);
 
 // 🔄 Carregamento AJAX
-function loadAjaxContent(url) {
+
+function loadAjaxContent(url, forceFullLoad = false) {
+  const mainContent = document.getElementById('main-content');
+
+  const headers = forceFullLoad
+    ? {}
+    : { 'X-Requested-With': 'XMLHttpRequest' };
+
+  fetch(url, { headers })
+    .then(response => response.text())
+    .then(html => {
+      if (mainContent) {
+        mainContent.innerHTML = html;
+
+        if (typeof aplicarTemaSalvo === "function") aplicarTemaSalvo();
+        if (typeof bindAjaxLinks === "function") bindAjaxLinks();
+        if (typeof bindCheckboxActions === "function") bindCheckboxActions();
+        if (typeof ajaxContentLoaded === "function") {
+          document.dispatchEvent(new Event('ajaxContentLoaded'));
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Erro ao carregar via AJAX:', error);
+    });
+}
+
+
+
+/*function loadAjaxContent(url) {
   const mainContent = document.getElementById('main-content');
 
   fetch(url, {
@@ -79,6 +108,7 @@ function loadAjaxContent(url) {
       console.error('Erro ao carregar via AJAX:', error);
     });
 }
+*/
 
 // ✅ Funções devem ser chamadas somente quando o DOM estiver pronto
 //document.addEventListener("ajaxContentLoaded", ajaxContentLoaded);
@@ -94,11 +124,6 @@ function ajaxContentLoaded() {
   if (typeof aplicarTemaSalvo === "function") aplicarTemaSalvo();
   if (typeof bindAjaxLinks === "function") bindAjaxLinks();
   if (typeof bindCheckboxActions === "function") bindCheckboxActions();
-
-  if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-    if (typeof initSelect2Campos === "function") initSelect2Campos();
-  }
-
   if (typeof aplicarMascaraCEP === "function") aplicarMascaraCEP();
   if (typeof autoPreencherEnderecoPorCEP === "function") autoPreencherEnderecoPorCEP();
 }
@@ -432,7 +457,7 @@ function resetarTimerInatividade() {
 clearTimeout(timerInatividade);
 timerInatividade = setTimeout(() => {
   window.logoutPorInatividade();
-}, 1 * 60 * 1000); // 1 minuto
+}, 5 * 60 * 5000); // 5 minutos
 }
 
 window.logoutPorInatividade = function () {
@@ -606,66 +631,56 @@ cepInput.addEventListener('blur', () => {
 // ✅ Executa ao carregar a tela
 aplicarMascaras();
 
-function initSelect2Campos() {
-  // ✅ Verifica se jQuery e Select2 estão disponíveis
-  if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') return;
+function ativarBuscaDinamicaNCM() {
+  const inputBuscaNCM = document.getElementById("busca-ncm");
+  if (!inputBuscaNCM) return;
 
-  const $selectNCM = $('.select2-ncm');
+  let timer;
+  inputBuscaNCM.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const termo = inputBuscaNCM.value.trim();
+      const posCursor = inputBuscaNCM.selectionStart;
+      const url = new URL("/produtos/ncm/", window.location.origin);
+      if (termo) {
+        url.searchParams.set("term", termo);
+      }
 
-  // Só executa se o elemento existir
-  if (!$selectNCM.length) return;
+      fetch(url.href, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+        .then(res => res.text())
+        .then(html => {
+          const wrapper = document.getElementById("ncm-tabela-wrapper");
+          if (!wrapper) return;
 
-  $selectNCM.select2({
-    theme: 'bootstrap-5',
-    ajax: {
-      url: $selectNCM.data('url'),
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ term: params.term }),
-      processResults: data => ({ results: data.results })
-    },
-    placeholder: $selectNCM.data('placeholder'),
-    minimumInputLength: 2
+          const temp = document.createElement("div");
+          temp.innerHTML = html;
+
+          const novaTabela = temp.querySelector("#ncm-tabela-wrapper");
+          if (novaTabela) {
+            // ✅ Resposta completa → atualiza só a tabela interna
+            wrapper.innerHTML = novaTabela.innerHTML;
+          } else {
+            // ✅ Resposta parcial → substitui o conteúdo diretamente
+            wrapper.innerHTML = html;
+          }
+
+          inputBuscaNCM.focus();
+          inputBuscaNCM.setSelectionRange(posCursor, posCursor);
+        })
+        .catch(err => {
+          console.error("Erro ao buscar NCM dinamicamente:", err);
+        });
+    }, 400);
   });
 }
 
-/*
-function ativarBuscaDinamicaNCM() {
-const inputBuscaNCM = document.getElementById("busca-ncm");
-if (!inputBuscaNCM) return;
 
-let timer;
-inputBuscaNCM.addEventListener("input", () => {
-  clearTimeout(timer);
-  timer = setTimeout(() => {
-    const termo = inputBuscaNCM.value.trim();
-    const posCursor = inputBuscaNCM.selectionStart;
-    const url = new URL("/produtos/ncm/", window.location.origin);
-    if (termo) {
-      url.searchParams.set("q", termo);
-    }
 
-    fetch(url.href, {
-      headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-      .then((res) => res.text())
-      .then((html) => {
-        const wrapper = document.getElementById("ncm-tabela-wrapper");
-        if (wrapper) {
-          wrapper.innerHTML = html;
-          inputBuscaNCM.focus();
-          inputBuscaNCM.setSelectionRange(posCursor, posCursor);
-        }
-      })
-      .catch((err) => {
-        console.error("Erro ao buscar NCM dinamicamente:", err);
-      });
-  }, 400);
-});
-}
-*/
 
 // 🚀 Garante execução ao carregar página normalmente
+/*
 document.addEventListener('DOMContentLoaded', () => {
   console.log("ajaxContentLoaded: tentando ativar Select2");
 
@@ -685,4 +700,17 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener("ajaxContentLoaded", () => {
   if (typeof ajaxContentLoaded === "function") ajaxContentLoaded();
 });
+*/
+/*
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof ativarBuscaDinamicaNCM === "function") {
+    ativarBuscaDinamicaNCM();
+  }
+});
+*/
 
+document.addEventListener("ajaxContentLoaded", () => {
+  if (typeof ativarBuscaDinamicaNCM === "function") {
+    ativarBuscaDinamicaNCM();
+  }
+});

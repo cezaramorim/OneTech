@@ -100,13 +100,6 @@ def ncm_autocomplete_view(request):
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
 
-
-
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
-from django.shortcuts import render
-from .models import NCM
-
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manutencao_ncm_view(request):
@@ -125,14 +118,19 @@ def manutencao_ncm_view(request):
     }
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        # ✅ Retorna o conteúdo com o <select> e a tabela juntos
-        return render(request, "partials/produtos/manutencao_ncm.html", context)
+        if termo:
+            # 🔄 Pesquisa → atualiza só a tabela
+            return render(request, "partials/produtos/tabela_ncm.html", context)
+        else:
+            # 🔁 Termo vazio → recarrega tela completa (com campo e botão)
+            return render(request, "partials/produtos/manutencao_ncm.html", context)
 
-    # ✅ Carrega via base.html com AJAX
+    # 🟦 Primeira carga padrão (não-AJAX)
     return render(request, "base.html", {
         "content_template": "partials/produtos/manutencao_ncm.html",
-        "ncm_lista": ncm_lista
+        "ncm_lista": ncm_lista,
     })
+
 
 
 def buscar_ncm_ajax(request):

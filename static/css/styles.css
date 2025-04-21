@@ -951,3 +951,37 @@ html.dark .select2-container--bootstrap-5 .select2-selection:focus {
 .select2-container--bootstrap-5 {
   width: 100% !important;
 }
+
+/* 🌙 Tabelas no tema escuro */
+html.dark table,
+html.dark .table,
+html.dark .table thead th,
+html.dark .table td {
+  background-color: #2a2d3a;
+  color: #f2f2f2;
+  border-color: #444 !important;
+}
+
+/* 🔲 Cabeçalho da tabela no tema escuro */
+html.dark .table thead th {
+  background-color: #1f212c;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* 🔳 Linhas alternadas (se quiser) */
+html.dark .table-striped tbody tr:nth-of-type(odd) {
+  background-color: #2e303d;
+}
+
+/* 🌑 Ajusta o campo de busca no tema escuro */
+html.dark .form-control {
+  background-color: #2c2c2c; /* fundo escuro sutil */
+  color: #f2f2f2; /* texto branco para leitura */
+  border: 1px solid #555; /* borda mais visível no dark */
+}
+
+/* Corrige placeholder do campo no tema escuro */
+html.dark .form-control::placeholder {
+  color: #aaa; /* tom suave no placeholder */
+}
