@@ -1,0 +1,35 @@
+
+{% load static %}
+
+<!-- ✅ Lista de Categorias de Produto - AJAX | Responsivo, claro/escuro, boas práticas -->
+<div class="container-fluid" data-page="lista-categorias">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Categorias de Produto</h2>
+    <a href="{% url 'produto:cadastrar_categoria' %}" class="btn btn-primary ajax-link">
+      <i class="bi bi-plus-lg"></i> Nova Categoria
+    </a>
+  </div>
+
+  {% if categorias %}
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for categoria in categorias %}
+            <tr>
+              <td>{{ categoria.nome }}</td>
+              <td>{{ categoria.descricao }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-warning">Nenhuma categoria cadastrada ainda.</div>
+  {% endif %}
+</div>

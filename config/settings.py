@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'accounts',
     'empresas',
     'widget_tweaks',
+    'produto',
 ]
 
 # =======================

@@ -13,5 +13,5 @@ urlpatterns = [
     path('excluir-multiplo/', views.excluir_empresa_multiplo, name='excluir_empresa_multiplo'),  # ✅ NOVO
 
     # 🔹 CATEGORIAS
-    path('categoria/cadastrar/', views.cadastrar_categoria, name='cadastrar_categoria'),
+    path('nova-avancada/categoria/', views.cadastrar_categoria_avancada, name='cadastrar_categoria_avancada'),
 ]

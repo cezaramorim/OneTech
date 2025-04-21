@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
 from accounts.utils.render import render_ajax_or_base
-
+from django.urls import reverse
 
 # === Função auxiliar ===
 
@@ -84,20 +84,26 @@ def excluir_empresa_multiplo(request):
 
 # === Categorias ===
 
-def cadastrar_categoria(request):
+@login_required
+@permission_required('empresas.add_categoriaempresa', raise_exception=True)
+def cadastrar_categoria_avancada(request):
     form = CategoriaEmpresaForm(request.POST or None)
-    categorias = CategoriaEmpresa.objects.all()
+    categorias = CategoriaEmpresa.objects.all().order_by('-id')  # ✅ Importante!
 
     if request.method == 'POST' and form.is_valid():
         form.save()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'redirect_url': '/empresas/categoria/cadastrar/'})
-        return redirect('empresas:cadastrar_categoria')
+        messages.success(request, "Categoria cadastrada com sucesso!")
+        return JsonResponse({'redirect_url': reverse('empresas:cadastrar_categoria_avancada')}) \
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' \
+            else redirect('empresas:cadastrar_categoria_avancada')
 
-    return render_ajax_or_base(request, 'partials/empresas/cadastrar_categoria.html', {
+    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_categoria.html', {
         'form': form,
-        'categorias': categorias
+        'categorias': categorias,  # ✅ Fundamental!
     })
+
+
+
 
 # === Nova Empresa ===
 @login_required

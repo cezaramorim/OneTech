@@ -1,0 +1,20 @@
+{% load static widget_tweaks %}
+
+<!-- ✅ Cadastro de Unidade de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
+<div class="container-fluid" data-page="cadastrar-unidade">
+  <h2 class="mb-4">Cadastrar Unidade de Medida</h2>
+
+  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_unidade' %}" autocomplete="off">
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <div class="col-md-4">{{ form.sigla.label_tag }} {{ form.sigla|add_class:"form-control" }}</div>
+      <div class="col-md-8">{{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}</div>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <a href="{% url 'produto:lista_unidades' %}" class="btn btn-secondary ajax-link ms-2">Cancelar</a>
+    </div>
+  </form>
+</div>

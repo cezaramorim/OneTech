@@ -1,0 +1,20 @@
+{% load static widget_tweaks %}
+
+<!-- ✅ Cadastro de Categoria de Produto - AJAX | Responsivo e padronizado -->
+<div class="container-fluid" data-page="cadastrar-categoria">
+  <h2 class="mb-4">Cadastrar Categoria</h2>
+
+  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_categoria' %}" autocomplete="off">
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <div class="col-md-6">{{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}</div>
+      <div class="col-md-6">{{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}</div>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <a href="{% url 'produto:lista_categorias' %}" class="btn btn-secondary ajax-link ms-2">Cancelar</a>
+    </div>
+  </form>
+</div>

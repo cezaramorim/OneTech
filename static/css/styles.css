@@ -889,3 +889,65 @@ html.dark .nav-tabs .nav-link.active {
   background-color: #2c2c2e;
   border-bottom: 2px solid #666;
 }
+
+/* 📋 Lista de resultados do Select2 com scroll vertical */
+.select2-container--bootstrap-5 .select2-results__options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 🧩 Dropdown com largura flexível (herda do campo) */
+.select2-container--bootstrap-5 .select2-dropdown {
+  width: auto !important;
+  min-width: 100% !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 🔹 Campo padrão */
+.select2-container--bootstrap-5 .select2-selection {
+  display: flex;
+  align-items: center;
+  height: calc(2.25rem + 2px);
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #212529;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* 🔹 Campo pequeno (sm) */
+.select2-container--bootstrap-5.select2-sm .select2-selection {
+  height: calc(1.8125rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* 🔹 Campo grande (lg) */
+.select2-container--bootstrap-5.select2-lg .select2-selection {
+  height: calc(2.875rem + 2px);
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
+}
+
+/* 🌙 Tema escuro */
+html.dark .select2-container--bootstrap-5 .select2-selection {
+  background-color: #1e1f26;
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+/* 🌙 Escuro com foco */
+html.dark .select2-container--bootstrap-5 .select2-selection:focus {
+  border-color: #666;
+  box-shadow: 0 0 0 0.2rem rgba(200, 200, 200, 0.25);
+}
+
+/* ✅ Garante largura total */
+.select2-wrapper .select2-container,
+.select2-container--bootstrap-5 {
+  width: 100% !important;
+}

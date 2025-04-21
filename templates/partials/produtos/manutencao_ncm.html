@@ -1,0 +1,28 @@
+{% load static %}
+
+<!-- ✅ Tela de manutenção de NCM - AJAX + tema escuro/claro -->
+<div class="container-fluid" data-page="manutencao-ncm">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Tabela NCM</h2>
+    <button class="btn btn-outline-primary" id="btn-importar-ncm">
+      <i class="bi bi-cloud-arrow-down"></i> Importar/Atualizar NCM
+    </button>
+  </div>
+
+  <!-- ✅ Campo de busca FORA da div substituída via AJAX -->
+  <!-- ✅ Campo de busca DINÂMICO com Select2 -->
+  <div class="mb-3">
+    <select class="form-control select2-ncm"
+            data-url="{% url 'produto:buscar_ncm_ajax' %}"
+            data-placeholder="Buscar NCM por código ou descrição"
+            style="width: 100%;">
+    </select>
+  </div>
+  
+
+  <!-- 🔄 Apenas essa área será atualizada via AJAX -->
+  <div id="ncm-tabela-wrapper">
+    {% include "partials/produtos/tabela_ncm.html" %}
+  </div>
+</div>
+

@@ -1,0 +1,46 @@
+{% load static widget_tweaks %}
+
+<!-- ✅ Formulário de Cadastro de Produto - AJAX | Padrão OneTech -->
+<div class="container-fluid" data-page="cadastrar-produto">
+  <h2 class="mb-4">Cadastrar Produto</h2>
+
+  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_produto' %}" autocomplete="off">
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <!-- Identificação -->
+      <div class="col-md-4">{{ form.codigo.label_tag }} {{ form.codigo|add_class:"form-control" }}</div>
+      <div class="col-md-8">{{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}</div>
+      <div class="col-12">{{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}</div>
+
+      <!-- Categoria e Unidade -->
+      <div class="col-md-6">{{ form.categoria.label_tag }} {{ form.categoria|add_class:"form-select" }}</div>
+      <div class="col-md-6">{{ form.unidade_medida.label_tag }} {{ form.unidade_medida|add_class:"form-select" }}</div>
+
+      <!-- Fiscais -->
+      <div class="col-md-4">{{ form.ncm.label_tag }} {{ form.ncm }}</div>
+      <div class="col-md-4">{{ form.cfop.label_tag }} {{ form.cfop|add_class:"form-control" }}</div>
+
+      <!-- Preços -->
+      <div class="col-md-4">{{ form.preco_custo.label_tag }} {{ form.preco_custo|add_class:"form-control" }}</div>
+      <div class="col-md-4">{{ form.preco_venda.label_tag }} {{ form.preco_venda|add_class:"form-control" }}</div>
+      <div class="col-md-4">{{ form.preco_medio.label_tag }} {{ form.preco_medio|add_class:"form-control" }}</div>
+
+      <!-- Estoque -->
+      <div class="col-md-4">{{ form.estoque_total.label_tag }} {{ form.estoque_total|add_class:"form-control" }}</div>
+      <div class="col-md-4">{{ form.quantidade_saidas.label_tag }} {{ form.quantidade_saidas|add_class:"form-control" }}</div>
+      <div class="col-md-4">{{ form.estoque_atual.label_tag }} {{ form.estoque_atual|add_class:"form-control" }}</div>
+
+      <!-- Outros -->
+      <div class="col-md-4">{{ form.controla_estoque.label_tag }} {{ form.controla_estoque }}</div>
+      <div class="col-md-4">{{ form.ativo.label_tag }} {{ form.ativo }}</div>
+      <div class="col-md-4">{{ form.data_cadastro.label_tag }} {{ form.data_cadastro|add_class:"form-control" }}</div>
+      <div class="col-12">{{ form.observacoes.label_tag }} {{ form.observacoes|add_class:"form-control" }}</div>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <a href="{% url 'produto:lista_produtos' %}" class="btn btn-secondary ajax-link ms-2">Cancelar</a>
+    </div>
+  </form>
+</div>

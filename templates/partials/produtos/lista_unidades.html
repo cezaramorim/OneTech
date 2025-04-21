@@ -1,0 +1,34 @@
+{% load static %}
+
+<!-- ✅ Lista de Unidades de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
+<div class="container-fluid" data-page="lista-unidades">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Unidades de Medida</h2>
+    <a href="{% url 'produto:cadastrar_unidade' %}" class="btn btn-primary ajax-link">
+      <i class="bi bi-plus-lg"></i> Nova Unidade
+    </a>
+  </div>
+
+  {% if unidades %}
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Sigla</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for unidade in unidades %}
+            <tr>
+              <td>{{ unidade.sigla }}</td>
+              <td>{{ unidade.descricao }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-warning">Nenhuma unidade cadastrada ainda.</div>
+  {% endif %}
+</div>

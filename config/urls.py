@@ -15,4 +15,7 @@ urlpatterns = [
     # 🔹 Módulo de empresas e categorias
     path('empresas/', include('empresas.urls', namespace='empresas')),
     path('login/', lambda request: redirect('accounts:login')),
+    
+    # Produtos
+    path("produtos/", include("produto.urls")),
 ]
