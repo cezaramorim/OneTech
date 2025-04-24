@@ -78,6 +78,7 @@ def cadastrar_unidade_view(request):
 # =====================
 # NCM Autocomplete (AJAX)
 # =====================
+"""
 @login_required
 def ncm_autocomplete_view(request):
     term = request.GET.get("term", "")
@@ -91,7 +92,7 @@ def ncm_autocomplete_view(request):
             results.append({"id": ncm.id, "text": f"{ncm.codigo} - {ncm.descricao}"})
 
     return JsonResponse({"results": results})
-
+"""
 
 # =====================
 # MANUTENÇÃO DE NCM
@@ -163,3 +164,25 @@ def importar_ncm_manual_view(request):
         return JsonResponse({"status": "ok", "mensagem": f"{count} códigos NCM importados com sucesso."})
     except Exception as e:
         return JsonResponse({"status": "erro", "mensagem": str(e)}, status=500)
+
+
+@require_GET
+def buscar_ncm_descricao_ajax(request):
+    """
+    View para autocomplete do campo NCM no cadastro de produto.
+    Retorna uma lista de objetos JSON com 'id' e 'text'.
+    """
+    termo = request.GET.get('term', '').strip()
+    resultados = []
+
+    if termo:
+        ncm_qs = NCM.objects.filter(
+            Q(codigo__icontains=termo) | Q(descricao__icontains=termo)
+        ).order_by("codigo")[:20]
+
+        resultados = [
+            {"id": ncm.codigo, "text": f"{ncm.codigo} - {ncm.descricao}"}
+            for ncm in ncm_qs
+        ]
+
+    return JsonResponse({"results": resultados})

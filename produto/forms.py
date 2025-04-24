@@ -2,10 +2,30 @@ from django import forms
 from django.urls import reverse_lazy
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
 
+
 class ProdutoForm(forms.ModelForm):
+    # Campo auxiliar de texto para busca dinâmica por NCM
+    ncm_descricao = forms.CharField(
+        label="NCM",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'id': 'ncm-busca-produto',
+            'placeholder': 'Buscar por código ou descrição do NCM',
+            'autocomplete': 'off',
+        })
+    )
+
     class Meta:
         model = Produto
-        fields = '__all__'
+        fields = [
+            'codigo', 'nome', 'descricao', 'categoria', 'unidade_medida',
+            'cfop', 'preco_custo', 'preco_venda', 'preco_medio',
+            'estoque_total', 'quantidade_saidas', 'estoque_atual',
+            'controla_estoque', 'ativo', 'data_cadastro',
+            'observacoes',
+            # ❌ 'ncm' removido do formulário visual
+        ]
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
@@ -27,13 +47,27 @@ class ProdutoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['ncm'].widget.attrs.update({
-            'class': 'form-select select2-ncm',
-            'data-url': reverse_lazy('produto:ncm_autocomplete'),
-            'data-placeholder': 'Buscar por código ou descrição',
-            'data-ajax--delay': '250'
-        })
-        self.fields['ncm'].queryset = NCM.objects.none()
+
+        # Exibe o NCM atual no campo auxiliar em caso de edição
+        if self.instance.pk and self.instance.ncm:
+            ncm_obj = self.instance.ncm
+            self.fields['ncm_descricao'].initial = f"{ncm_obj.codigo} - {ncm_obj.descricao}"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        termo = cleaned_data.get('ncm_descricao', '').strip()
+
+        if termo:
+            codigo = termo.split(' ')[0]  # pega o código do NCM
+            try:
+                ncm = NCM.objects.get(codigo=codigo)
+                cleaned_data['ncm'] = ncm
+            except NCM.DoesNotExist:
+                self.add_error('ncm_descricao', 'NCM não encontrado.')
+        else:
+            cleaned_data['ncm'] = None
+
+        return cleaned_data
 
 class CategoriaProdutoForm(forms.ModelForm):
     class Meta:
@@ -43,6 +77,7 @@ class CategoriaProdutoForm(forms.ModelForm):
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
 
 class UnidadeMedidaForm(forms.ModelForm):
     class Meta:

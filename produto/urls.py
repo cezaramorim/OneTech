@@ -19,7 +19,10 @@ urlpatterns = [
     # NCM
     path("ncm/", views.manutencao_ncm_view, name="manutencao_ncm"),
     path("ncm/importar/", views.importar_ncm_manual_view, name="importar_ncm_manual"),
-    path("ncm-autocomplete/", views.ncm_autocomplete_view, name="ncm_autocomplete"),
     path('buscar-ncm/', views.buscar_ncm_ajax, name='buscar_ncm_ajax'),
+    # NCM - Autocomplete para o campo do produto
+    path('ncm-autocomplete-produto/', views.buscar_ncm_descricao_ajax, name='ncm_autocomplete'),
+
+    
 ]
 

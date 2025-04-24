@@ -677,6 +677,69 @@ function ativarBuscaDinamicaNCM() {
 }
 
 
+// ✅ Autocomplete de NCM no Cadastro de Produto (cadastrar_produto.html)
+function initAutocompleteNCMProduto() {
+  const inputNCM = document.getElementById("ncm-busca-produto");
+  if (!inputNCM) return;
+
+  let timer;
+
+  inputNCM.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const termo = inputNCM.value.trim();
+      const url = new URL("/produtos/ncm-autocomplete-produto/", window.location.origin);
+      if (termo) {
+        url.searchParams.set("term", termo);
+      }
+
+      fetch(url.href)
+        .then(res => res.json())
+        .then(data => {
+          const dropdown = document.createElement("div");
+          dropdown.className = "autocomplete-ncm-list bg-white border mt-1 position-absolute shadow-sm";
+          dropdown.style.zIndex = "1000";
+          dropdown.style.maxHeight = "200px";
+          dropdown.style.overflowY = "auto";
+          dropdown.style.width = inputNCM.offsetWidth + "px";
+
+          // Remove sugestões anteriores
+          const anterior = document.querySelector(".autocomplete-ncm-list");
+          if (anterior) anterior.remove();
+
+          if (data.results.length > 0) {
+            data.results.forEach(item => {
+              const option = document.createElement("div");
+              option.className = "autocomplete-ncm-item p-2";
+              option.textContent = item.text;
+              option.style.cursor = "pointer";
+
+              option.addEventListener("click", () => {
+                inputNCM.value = item.text;
+                dropdown.remove();
+              });
+
+              dropdown.appendChild(option);
+            });
+
+            inputNCM.parentNode.appendChild(dropdown);
+          }
+        });
+    }, 300);
+  });
+
+  // Fecha a lista ao clicar fora
+  document.addEventListener("click", (e) => {
+    if (!inputNCM.contains(e.target)) {
+      const dropdown = document.querySelector(".autocomplete-ncm-list");
+      if (dropdown) dropdown.remove();
+    }
+  });
+}
+
+// ✅ Disparar após AJAX ou DOM carregado
+document.addEventListener("ajaxContentLoaded", initAutocompleteNCMProduto);
+document.addEventListener("DOMContentLoaded", initAutocompleteNCMProduto);
 
 
 // 🚀 Garante execução ao carregar página normalmente
@@ -712,5 +775,11 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("ajaxContentLoaded", () => {
   if (typeof ativarBuscaDinamicaNCM === "function") {
     ativarBuscaDinamicaNCM();
+  }
+});
+
+document.addEventListener("ajaxContentLoaded", () => {
+  if (typeof initAutocompleteNCMProduto === "function") {
+    initAutocompleteNCMProduto();
   }
 });
