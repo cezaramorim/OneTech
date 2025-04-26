@@ -24,8 +24,12 @@ class ProdutoForm(forms.ModelForm):
             'estoque_total', 'quantidade_saidas', 'estoque_atual',
             'controla_estoque', 'ativo', 'data_cadastro',
             'observacoes',
-            # ❌ 'ncm' removido do formulário visual
+            'cst', 'origem_mercadoria',
+            'unidade_comercial', 'quantidade_comercial', 'valor_unitario_comercial',
+            'fornecedor',  # Nova relação com empresa
+            # ❌ campo ncm não aparece diretamente, continua sendo setado por ncm_descricao
         ]
+                    
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
@@ -43,6 +47,14 @@ class ProdutoForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'data_cadastro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'cst': forms.TextInput(attrs={'class': 'form-control'}),
+            #'csosn': forms.TextInput(attrs={'class': 'form-control'}),
+            'origem_mercadoria': forms.Select(attrs={'class': 'form-select'}),
+            'unidade_comercial': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantidade_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
+            'valor_unitario_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+
         }
 
     def __init__(self, *args, **kwargs):
@@ -51,7 +63,8 @@ class ProdutoForm(forms.ModelForm):
         # Exibe o NCM atual no campo auxiliar em caso de edição
         if self.instance.pk and self.instance.ncm:
             ncm_obj = self.instance.ncm
-            self.fields['ncm_descricao'].initial = f"{ncm_obj.codigo} - {ncm_obj.descricao}"
+            self.fields['ncm_descricao'].initial = f"{ncm_obj.codigo} - {ncm_obj.descricao}"            
+            self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(eh_fornecedor=True, ativo=True)        
 
     def clean(self):
         cleaned_data = super().clean()

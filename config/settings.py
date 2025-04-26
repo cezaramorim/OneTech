@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'empresas',
     'widget_tweaks',
     'produto',
+    'nota_fiscal',
 ]
 
 # =======================

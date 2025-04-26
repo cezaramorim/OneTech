@@ -18,4 +18,7 @@ urlpatterns = [
     
     # Produtos
     path("produtos/", include("produto.urls")),
+    
+    # Nota Fiscal
+    path("nota-fiscal/", include("nota_fiscal.urls")),
 ]

@@ -161,23 +161,6 @@
 </div>
 {% endif %}
 
-
-          <!-- ⚙️ Permissões
-          {% if perms.auth.change_permission %}
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-permissoes">⚙️ Permissões</button>
-            </h2>
-            <div id="submenu-permissoes" class="accordion-collapse collapse">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'accounts:gerenciar_permissoes_geral' %}" class="list-group-item ajax-link">Gerenciar Permissões Gerais</a></li>
-                <li><a href="{% url 'accounts:gerenciar_permissoes_grupo_selector' %}" class="list-group-item ajax-link">Gerenciar Permissões por Grupo</a></li>
-              </ul>
-            </div>
-          </div>
-          {% endif %}  -->
-<!-- 👤 Perfil -->
-
 {% if perms.produto.view_produto %}
 <div class="accordion-item">
   <h2 class="accordion-header">
@@ -211,6 +194,20 @@
 </li>
 </ul>
 </div>
+</div>
+
+<!-- 📄 Nota Fiscal -->
+<div class="accordion-item">
+  <h2 class="accordion-header">
+    <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#submenu-nota-fiscal" type="button">
+      📄 Nota Fiscal
+    </button>
+  </h2>
+  <div id="submenu-nota-fiscal" class="accordion-collapse collapse">
+    <ul class="list-group list-group-flush">
+      <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
+    </ul>
+  </div>
 </div>
 </div>
 </nav>
@@ -253,6 +250,7 @@
 
 <!-- ✅ Seu script -->
 <script defer src="{% static 'js/scripts.js' %}"></script>
+<script defer src="{% static 'js/importar_xml.js' %}"></script>
 
 </body>
 </html>

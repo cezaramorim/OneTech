@@ -1,0 +1,22 @@
+{% load static %}
+
+<div class="container-fluid" data-page="importar-xml">
+  <h2 class="mb-4">Importar Nota Fiscal (XML)</h2>
+
+  <!-- ✅ Formulário configurado corretamente -->
+  <form id="form-importar-xml" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="xml-input" class="form-label">Arquivo XML:</label>
+      <input type="file" name="xml" id="xml-input" class="form-control" accept=".xml" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Importar</button>
+  </form>
+
+  <!-- ✅ Área para exibir o resultado -->
+  <div id="resultado-xml" class="mt-4"></div>
+</div>
+
+<!-- ✅ Carrega o script de importação XML -->
+<script defer src="{% static 'js/importar_xml.js' %}"></script>
+

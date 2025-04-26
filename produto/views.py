@@ -8,6 +8,14 @@ from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
 from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm
 from accounts.utils.render import render_ajax_or_base
 from django.views.decorators.http import require_GET
+import os
+import xml.etree.ElementTree as ET
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.views.decorators.http import require_POST
+from django.core.files.storage import default_storage
+from django.utils.text import slugify
+import xml.etree.ElementTree as ET
 
 # =====================
 # PRODUTOS
@@ -73,30 +81,6 @@ def cadastrar_unidade_view(request):
     else:
         form = UnidadeMedidaForm()
     return render_ajax_or_base(request, "partials/produtos/cadastrar_unidade.html", {"form": form})
-
-
-# =====================
-# NCM Autocomplete (AJAX)
-# =====================
-"""
-@login_required
-def ncm_autocomplete_view(request):
-    term = request.GET.get("term", "")
-    results = []
-    if term:
-        ncm_qs = NCM.objects.filter(
-            Q(codigo__icontains=term) | Q(descricao__icontains=term)
-        ).order_by("codigo")[:20]
-
-        for ncm in ncm_qs:
-            results.append({"id": ncm.id, "text": f"{ncm.codigo} - {ncm.descricao}"})
-
-    return JsonResponse({"results": results})
-"""
-
-# =====================
-# MANUTENÇÃO DE NCM
-# =====================
 
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
@@ -164,6 +148,64 @@ def importar_ncm_manual_view(request):
         return JsonResponse({"status": "ok", "mensagem": f"{count} códigos NCM importados com sucesso."})
     except Exception as e:
         return JsonResponse({"status": "erro", "mensagem": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def importar_xml_nfe_view(request):
+    """
+    View para upload e leitura de XML da NFe.
+    Retorna os dados do emitente e lista de produtos da nota.
+    """
+    xml_file = request.FILES.get("xml")
+
+    if not xml_file or not xml_file.name.endswith(".xml"):
+        return JsonResponse({"erro": "Arquivo XML inválido."}, status=400)
+
+    try:
+        # Salvamento temporário
+        nome_seguro = slugify(xml_file.name)
+        caminho = os.path.join(settings.MEDIA_ROOT, "xmls_temp", nome_seguro)
+        os.makedirs(os.path.dirname(caminho), exist_ok=True)
+
+        with default_storage.open(caminho, "wb+") as destino:
+            for chunk in xml_file.chunks():
+                destino.write(chunk)
+
+        # Parse do XML
+        tree = ET.parse(caminho)
+        root = tree.getroot()
+
+        # Emitente (fornecedor)
+        emit = root.find(".//emit")
+        fornecedor_data = {
+            "cnpj": emit.findtext("CNPJ"),
+            "razao_social": emit.findtext("xNome")
+        } if emit is not None else {}
+
+        # Produtos (múltiplos <det>)
+        produtos = []
+        for det in root.findall(".//det"):
+            prod = {
+                "codigo": det.findtext(".//cProd"),
+                "nome": det.findtext(".//xProd"),
+                "ncm": det.findtext(".//NCM"),
+                "cfop": det.findtext(".//CFOP"),
+            }
+            produtos.append(prod)
+
+        return JsonResponse({
+            "fornecedor": fornecedor_data,
+            "produtos": produtos
+        })
+
+    except Exception as e:
+        return JsonResponse({"erro": str(e)}, status=500)
+
+
+@login_required
+def importar_xml_view(request):
+    return render(request, "partials/nota_fiscal/importar_xml.html")
 
 
 @require_GET
