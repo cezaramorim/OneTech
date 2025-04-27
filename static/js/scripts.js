@@ -3,25 +3,87 @@
 (function () {
   "use strict";
 
-// ✅ OneTech - scripts.js - Aplicação do tema salvo
+  // ===============================
+  // 📄 Utilitários Gerais - Início
+  // ===============================
+
+  // Formata número para pt-BR: 1234567.89 -> 1.234.567,89
+  function formatarNumeroBR(valor) {
+    if (!valor) return '0,00';
+    try {
+      return parseFloat(valor).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch (error) {
+      console.error("Erro ao formatar número:", valor);
+      return valor;
+    }
+  }
+
+  // Formata moeda para pt-BR: 1234567.89 -> R$ 1.234.567,89
+  function formatarMoedaBR(valor) {
+    if (!valor) return 'R$ 0,00';
+    try {
+      return parseFloat(valor).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      });
+    } catch (error) {
+      console.error("Erro ao formatar moeda:", valor);
+      return valor;
+    }
+  }
+
+  // Formata data para pt-BR: 2023-08-26 -> 26/08/2023
+  function formatarDataBR(dataISO) {
+    if (!dataISO || dataISO.trim() === '') return '-';
+    try {
+      const partes = dataISO.split('T')[0].split('-');
+      if (partes.length === 3) {
+        const [ano, mes, dia] = partes;
+        return `${dia}/${mes}/${ano}`;
+      }
+      return '-';
+    } catch (error) {
+      console.error("Erro ao formatar data:", dataISO);
+      return '-';
+    }
+  }
+  
+    
+
+  // ===============================
+  // 📄 Utilitários Gerais - Final
+  // ===============================
+
+  // Expor utilitários no escopo global
+  window.formatarNumeroBR = formatarNumeroBR;
+  window.formatarMoedaBR = formatarMoedaBR;
+  window.formatarDataBR = formatarDataBR;
+
+  // ===============================
+  // 📄 Aplicação do Tema Salvo
+  // ===============================
 
   function aplicarTemaSalvo() {
-      const temaSalvo = localStorage.getItem('tema');
-      const html = document.documentElement;
-      const body = document.body;
-      const sidebar = document.querySelector('.sidebar');
-      const isEscuro = temaSalvo === 'escuro';
+    const temaSalvo = localStorage.getItem('tema');
+    const html = document.documentElement;
+    const body = document.body;
+    const sidebar = document.querySelector('.sidebar');
+    const isEscuro = temaSalvo === 'escuro';
 
-      html.classList.toggle('dark', isEscuro);
-      body.classList.toggle('dark', isEscuro);
-      if (sidebar) sidebar.classList.toggle('dark', isEscuro);
+    html.classList.toggle('dark', isEscuro);
+    body.classList.toggle('dark', isEscuro);
+    if (sidebar) sidebar.classList.toggle('dark', isEscuro);
   }
 
   if (typeof aplicarTemaSalvo === "function") {
     aplicarTemaSalvo();
   }
-// 📌 Você pode continuar definindo outras funções aqui dentro
-// como bindAjaxLinks(), loadAjaxContent(), etc.
+
+  // 📌 Aqui você pode continuar definindo outras funções globais 
+  // como: bindAjaxLinks(), loadAjaxContent(), etc.
 
 })();
 
@@ -272,6 +334,17 @@ container.appendChild(alerta);
 setTimeout(() => alerta.classList.remove("show"), 5000);
 setTimeout(() => alerta.remove(), 5500);
 }
+
+// 📢 Mensagens instantâneas - Sucesso e Erro
+
+function mostrarMensagemSucesso(texto) {
+  mostrarAlertaBootstrap(texto, 'success');
+}
+
+function mostrarMensagemErro(texto) {
+  mostrarAlertaBootstrap(texto, 'danger');
+}
+
 
 function criarContainerDeAlertas() {
 const container = document.createElement("div");
