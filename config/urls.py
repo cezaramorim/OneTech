@@ -21,4 +21,7 @@ urlpatterns = [
     
     # Nota Fiscal
     path("nota-fiscal/", include("nota_fiscal.urls")),
+    
+    # Relatórios
+    path('relatorios/', include('relatorios.urls', namespace='relatorios')),
 ]

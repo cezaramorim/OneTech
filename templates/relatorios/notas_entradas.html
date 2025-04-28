@@ -1,0 +1,14 @@
+{# templates/relatorios/notas_entradas.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <h2>Entradas de Nota Fiscal</h2>
+  <div id="notas-container">
+    {% include 'partials/relatorios/notas_entradas.html' %}
+  </div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script defer src="{% static 'js/relatorios/notas_entradas.js' %}"></script>
+{% endblock %}

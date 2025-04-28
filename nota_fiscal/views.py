@@ -1,27 +1,32 @@
+# nota_fiscal/views.py
+
 from datetime import datetime
-import os
-import json
+import os, json
 import xml.etree.ElementTree as ET
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.core.files.storage import default_storage
+from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-from django.utils.text import slugify
-from django.conf import settings
+
 from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal
 from produto.models import Produto
 from produto.models_entradas import EntradaProduto
 from empresas.models import EmpresaAvancada
-from decimal import Decimal, InvalidOperation
 
 def importar_xml_view(request):
     """Renderiza a página de upload de XML."""
     return render(request, "partials/nota_fiscal/importar_xml.html")
 
 
-@csrf_exempt
-@require_POST
+@login_required                      # ← só permite usuários logados
+@csrf_exempt                        # ← mantém isenção de CSRF (para sua API AJAX)
+@require_POST                       # ← aceita somente POST
 def importar_xml_nfe_view(request):
     """
     Processa upload de XML da NFe e retorna JSON com TODOS os campos
@@ -178,101 +183,81 @@ def importar_xml_nfe_view(request):
         return JsonResponse({"erro": str(e)}, status=400)
 
 
-from decimal import Decimal, InvalidOperation
-
+@login_required
 @csrf_exempt
 @require_POST
 def salvar_importacao_view(request):
-    """Salva no banco os dados completos da NFe importada, usando EmpresaAvancada como fornecedor."""
+    """
+    Salva no banco os dados completos da NFe importada,
+    usando EmpresaAvancada como fornecedor e atribuindo
+    ao usuário logado (created_by).
+    """
     try:
-        import json
-        from datetime import datetime
-        from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal
-        from produto.models import Produto
-        from produto.models_entradas import EntradaProduto
-        from empresas.models import EmpresaAvancada
-
-        # ————— Conversão de data: ISO (YYYY-MM-DD) ou BR (DD/MM/YYYY) → date
+        # ————— Funções auxiliares —————
         def converter_data_para_date(data_str):
             if not data_str:
                 return None
-            # tenta ISO primeiro
-            try:
-                return datetime.fromisoformat(data_str).date()
-            except ValueError:
-                pass
-            # tenta BR
-            try:
-                return datetime.strptime(data_str, "%d/%m/%Y").date()
-            except ValueError:
-                return None
-
-        # ————— Conversão de valor (BR ou US) → Decimal(2 casas)
-        def converter_valor_br(valor):
-            """
-            Recebe:
-              - "1.234.567,89" → Decimal('1234567.89')
-              - "180.25000000" → Decimal('180.25')
-              - números → Decimal(...)
-            """
-            if valor is None:
-                return Decimal('0.00')
-            s = str(valor).strip()
-            if s.startswith("R$"):
-                s = s.replace("R$", "").strip()
-            # se tiver vírgula, é BR: remove ponto-milhar e troca vírgula
-            if ',' in s:
-                s = s.replace('.', '').replace(',', '.')
-            # agora s ex: "1234567.89" ou "180.25000000"
-            try:
-                dec = Decimal(s)
-            except InvalidOperation:
-                filtered = ''.join(c for c in s if c.isdigit() or c in '.-')
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
                 try:
-                    dec = Decimal(filtered)
-                except InvalidOperation:
-                    return Decimal('0.00')
-            return dec.quantize(Decimal('0.01'))
+                    # ISO ou BR
+                    return datetime.fromisoformat(data_str).date() if "T" in data_str else datetime.strptime(data_str, fmt).date()
+                except Exception:
+                    continue
+            return None
 
-        dados = json.loads(request.body.decode("utf-8"))
+        def converter_valor_br(valor):
+            if not valor:
+                return Decimal("0.0")
+            try:
+                v = Decimal(str(valor).strip())
+                if v > Decimal('99999999.9999999999'):
+                    return Decimal('99999999.9999999999')
+                return v
+            except InvalidOperation:
+                return Decimal("0.0")
 
-        nota_data       = dados.get("nota", {})
-        fornecedor_data = dados.get("fornecedor", {})
-        produtos_data   = dados.get("produtos", [])
-        totais_data     = dados.get("totais", {})
-        transporte_data = dados.get("transporte", {})
-        duplicatas_data = dados.get("duplicatas", [])
-        info_adicional  = dados.get("info_adicional", "")
-        chave_acesso    = dados.get("chave_acesso", "").strip()
 
-        # === 1. Fornecedor ===
-        fornecedor = None
-        if fornecedor_data.get("cnpj"):
-            fornecedor, _ = EmpresaAvancada.objects.get_or_create(
-                cnpj=fornecedor_data["cnpj"],
+        # ————— Carrega JSON da requisição —————
+        payload = json.loads(request.body.decode("utf-8"))
+        nota_data       = payload.get("nota", {})
+        fornecedor_data = payload.get("fornecedor", {})
+        produtos_data   = payload.get("produtos", [])
+        totais_data     = payload.get("totais", {})
+        transporte_data = payload.get("transporte", {})
+        duplicatas_data = payload.get("duplicatas", [])
+        info_adicional  = payload.get("info_adicional", "")
+        chave_acesso    = payload.get("chave_acesso", "").strip()
+
+        # 1) Fornecedor Avançada
+        emp_avancada = None
+        cnpj = fornecedor_data.get("cnpj")
+        if cnpj:
+            emp_avancada, _ = EmpresaAvancada.objects.get_or_create(
+                cnpj=cnpj,
                 defaults={
-                    "razao_social": fornecedor_data.get("razao_social", ""),
+                    "razao_social":  fornecedor_data.get("razao_social", ""),
                     "nome_fantasia": fornecedor_data.get("nome_fantasia", ""),
-                    "logradouro": fornecedor_data.get("logradouro", ""),
-                    "numero": fornecedor_data.get("numero", ""),
-                    "bairro": fornecedor_data.get("bairro", ""),
-                    "cidade": fornecedor_data.get("municipio", ""),
-                    "uf": fornecedor_data.get("uf", ""),
-                    "cep": fornecedor_data.get("cep", ""),
-                    "telefone": fornecedor_data.get("telefone", ""),
-                    "status_empresa": "Ativa",
+                    "logradouro":    fornecedor_data.get("logradouro", ""),
+                    "numero":        fornecedor_data.get("numero", ""),
+                    "bairro":        fornecedor_data.get("bairro", ""),
+                    "cidade":        fornecedor_data.get("municipio", ""),
+                    "uf":            fornecedor_data.get("uf", ""),
+                    "cep":           fornecedor_data.get("cep", ""),
+                    "telefone":      fornecedor_data.get("telefone", ""),
+                    "status_empresa":"Ativa",
                 }
             )
 
-        # === 2. Nota Fiscal (evita duplicata) ===
+        # 2) Evita duplicata
         if NotaFiscal.objects.filter(chave_acesso=chave_acesso).exists():
             return JsonResponse(
                 {"erro": f"Nota fiscal já importada (Chave: {chave_acesso})!"},
                 status=400
             )
 
+        # 3) Cria NotaFiscal
         nota_fiscal = NotaFiscal.objects.create(
-            fornecedor=fornecedor,
+            fornecedor=emp_avancada,
             numero=nota_data.get("numero_nota", ""),
             natureza_operacao=nota_data.get("natureza_operacao", ""),
             data_emissao=converter_data_para_date(nota_data.get("data_emissao")),
@@ -285,9 +270,10 @@ def salvar_importacao_view(request):
             valor_total_cofins=  converter_valor_br(totais_data.get("valor_total_cofins")),
             valor_total_desconto=converter_valor_br(totais_data.get("valor_total_desconto")),
             informacoes_adicionais=info_adicional,
+            created_by=request.user,           # <-- atribui o usuário logado
         )
 
-        # === 3. Transporte ===
+        # 4) Transporte
         TransporteNotaFiscal.objects.create(
             nota_fiscal=nota_fiscal,
             modalidade_frete=transporte_data.get("modalidade_frete"),
@@ -302,7 +288,7 @@ def salvar_importacao_view(request):
             peso_bruto=converter_valor_br(transporte_data.get("peso_bruto")),
         )
 
-        # === 4. Duplicatas ===
+        # 5) Duplicatas
         for dup in duplicatas_data:
             DuplicataNotaFiscal.objects.create(
                 nota_fiscal=nota_fiscal,
@@ -311,9 +297,10 @@ def salvar_importacao_view(request):
                 vencimento=converter_data_para_date(dup.get("vencimento")),
             )
 
-        # === 5. Produtos e Entradas ===
+        # 6) Produtos e Entradas
+        # 6) Produtos e Entradas
         for p in produtos_data:
-            qtd = converter_valor_br(p.get("quantidade"))
+            qtd  = converter_valor_br(p.get("quantidade"))
             vuni = converter_valor_br(p.get("valor_unitario"))
             vtot = converter_valor_br(p.get("valor_total"))
             impostos = p.get("impostos", {})
@@ -329,15 +316,15 @@ def salvar_importacao_view(request):
                     cfop=p.get("cfop") or "",
                     unidade_comercial=p.get("unidade") or "",
                     codigo_produto_fornecedor=p.get("codigo"),
-                    preco_custo=vuni,
-                    preco_venda=vuni,
-                    preco_medio=vuni,
+                    preco_custo=vuni,     # ⚡ agora usando valor convertido
+                    preco_venda=vuni,     # ⚡ agora usando valor convertido
+                    preco_medio=vuni,     # ⚡ agora usando valor convertido
                     ativo=True,
                 )
 
             EntradaProduto.objects.create(
                 produto=produto_obj,
-                fornecedor=fornecedor,
+                fornecedor=emp_avancada,
                 quantidade=qtd,
                 preco_unitario=vuni,
                 preco_total=vtot,

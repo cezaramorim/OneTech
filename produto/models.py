@@ -36,13 +36,13 @@ class Produto(models.Model):
     ncm = models.ForeignKey(NCM, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos')
     cfop = models.CharField(max_length=10, blank=True, null=True)
 
-    preco_custo = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    preco_venda = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    preco_medio = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    preco_custo = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    preco_venda = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    preco_medio = models.DecimalField(max_digits=18, decimal_places=10, default=0)
 
-    estoque_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    quantidade_saidas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    estoque_atual = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    estoque_total = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    quantidade_saidas = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    estoque_atual = models.DecimalField(max_digits=18, decimal_places=10, default=0)
 
     controla_estoque = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
@@ -65,10 +65,10 @@ class Produto(models.Model):
 
     
     # 💰 Impostos destacados na nota
-    icms = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    ipi = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    pis = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    cofins = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    icms = models.DecimalField(max_digits=18, decimal_places=10, blank=True, null=True)
+    ipi = models.DecimalField(max_digits=18, decimal_places=10, blank=True, null=True)
+    pis = models.DecimalField(max_digits=18, decimal_places=10, blank=True, null=True)
+    cofins = models.DecimalField(max_digits=18, decimal_places=10, blank=True, null=True)
 
     # 📦 Dados comerciais da nota
     unidade_comercial = models.CharField(max_length=10, blank=True, null=True, help_text="Unidade usada na nota (ex: UN, KG)")

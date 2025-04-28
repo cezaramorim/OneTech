@@ -1,0 +1,54 @@
+{# templates/partials/relatorios/notas_entradas.html #}
+<div class="container py-4" data-page="notas-entradas">
+  <!-- Formulário de filtros atualizado corretamente -->
+  <form id="filtro-notas" class="row g-3 mb-4">
+    <div class="col-md-3">
+      <label>Fornecedor</label>
+      <input type="text" name="fornecedor" class="form-control" placeholder="Fornecedor">
+    </div>
+    <div class="col-md-2">
+      <label>Emissão De</label>
+      <input type="date" name="emissao_de" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <label>Emissão Até</label>
+      <input type="date" name="emissao_ate" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <label>Entrada De</label>
+      <input type="date" name="entrada_de" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <label>Entrada Até</label>
+      <input type="date" name="entrada_ate" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label>Produto</label>
+      <input type="text" name="produto" class="form-control" placeholder="Produto">
+    </div>
+    <div class="col-md-2 align-self-end">
+      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+    </div>
+  </form>
+
+  <table class="table table-striped" id="notas-entradas-table">
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="check-todos"></th>
+        <th>Número</th>
+        <th>Fornecedor</th>
+        <th>Emissão</th>
+        <th>Entrada</th>
+        <th>Valor Total</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {# ficará vazio; o JS preenche aqui #}
+    </tbody>
+  </table>
+
+  <button id="btn-excluir-selecionados" class="btn btn-danger mt-2">
+    Excluir selecionados
+  </button>
+</div>

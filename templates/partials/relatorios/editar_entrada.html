@@ -1,0 +1,43 @@
+<div class="container-fluid p-4">
+    <h4>Editar Entrada - Nota {{ nota.numero }}</h4>
+    <form id="form-editar-entrada" method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {{ field.errors }}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        <button type="button" class="btn btn-secondary btn-cancelar">Cancelar</button>
+      </div>
+    </form>
+  </div>
+  
+  <script>
+    // Submissão AJAX do form de edição
+    $(document).on('submit', '#form-editar-entrada', function(e) {
+      e.preventDefault();
+      const url = "{% url 'relatorios:editar_entrada' nota.id %}";
+      $.post(url, $(this).serialize())
+       .done(function(resp) {
+         mostrarMensagemSucesso(resp.mensagem);
+         loadAjaxContent("{% url 'relatorios:notas_entradas' %}");
+       })
+       .fail(function(xhr) {
+         mostrarMensagemErro('Erro: ' + JSON.stringify(xhr.responseJSON.erros));
+       });
+    });
+  
+    // Botão cancelar volta pra lista
+    $(document).on('click', '.btn-cancelar', function() {
+      loadAjaxContent("{% url 'relatorios:notas_entradas' %}");
+    });
+  </script>
+  
+  

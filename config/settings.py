@@ -42,13 +42,40 @@ INSTALLED_APPS = [
     'django_extensions',
 
     # Apps do projeto
+    'rest_framework',
+    'django_filters',
     'painel',
     'accounts',
     'empresas',
     'widget_tweaks',
     'produto',
     'nota_fiscal',
+    'relatorios',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # opcional: paginação
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 25,
+    
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+        
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAG_SIZE': 20,
+    
+}
 
 # =======================
 # Middleware
