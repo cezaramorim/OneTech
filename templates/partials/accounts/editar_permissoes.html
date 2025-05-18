@@ -1,63 +1,65 @@
-{% if perms.auth.change_permission %}
 {% load static %}
-{% load widget_tweaks %}
+{% load widget_tweaks custom_tags %}
 
-<!-- 🧭 Tela: Edição de Permissões de Usuário -->
-<div class="d-flex justify-content-center">
-  <div class="card shadow p-4 w-100" style="max-width: 720px;">
+{% if perms.auth.change_permission %}
+<main id="main-content" class="container-fluid py-4" data-page="editar_permissoes">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens" class="mb-3"></div>
 
-    <!-- 📌 Identificador de tela para diagnóstico JS -->
-    <div id="identificador-tela" data-tela="editar-permissoes-usuario"></div>
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
 
-    <!-- 🧾 Título -->
-    <h2 class="text-center mb-4">
-      Permissões de {{ usuario.get_full_name|default:usuario.username }}
-    </h2>
+      <div class="text-center mb-4">
+        <h2 class="text-dark dark:text-white">
+          Permissões de {{ usuario.get_full_name|default:usuario.username }}
+        </h2>
+        <p class="text-muted dark:text-light">
+          Selecione ou remova as permissões atribuídas a este usuário.
+        </p>
+      </div>
 
-    <!-- 📋 Formulário AJAX -->
-    <form method="post"
-          class="ajax-form needs-validation"
-          data-url="{% url 'accounts:editar_permissoes' usuario.id %}"
-          novalidate>
-      {% csrf_token %}
+      <div class="card shadow-sm p-4">
 
-      <!-- 🛡️ Campo de múltipla seleção -->
-      <div class="mb-3">
-        <label for="permissoes" class="form-label">
-          Selecione as permissões atribuídas ao usuário:
-        </label>
+        <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_permissoes' usuario.id %}">
+          {% csrf_token %}
 
-        <select name="permissoes"
-                id="permissoes"
-                class="form-select"
-                multiple
-                required
-                size="12">
-          {% for perm in todas_permissoes %}
-            <option value="{{ perm.id }}" {% if perm in permissoes_usuario %}selected{% endif %}>
-              {{ perm.name }} — {{ perm.codename }}
-            </option>
+          <!-- 🔐 Permissões agrupadas -->
+          {% for app_label, permissoes in permissoes_agrupadas.items %}
+          <div class="card mb-3">
+            <div class="card-header fw-bold bg-secondary text-white">
+              {% with nomes_apps_traduzidos|get_item:app_label as nome_app %}
+                {{ nome_app|default:app_label|capfirst }}
+              {% endwith %}
+            </div>
+            <div class="card-body row">
+              {% for p in permissoes %}
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="permissoes"
+                         id="perm-{{ p.id }}" value="{{ p.id }}"
+                         {% if p in permissoes_usuario %}checked{% endif %}>
+                  <label class="form-check-label" for="perm-{{ p.id }}">
+                    {{ p.traduzida }}
+                  </label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
           {% endfor %}
-        </select>
 
-        <div class="form-text mt-1">
-          Pressione <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (Mac) para múltipla seleção.
-        </div>
-      </div>
+          <!-- ✅ Botões -->
+          <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'accounts:selecionar_usuario_permissoes' %}" class="btn btn-outline-secondary w-50 ajax-link">← Voltar</a>
+            <button type="submit" class="btn btn-primary w-50 ms-2">💾 Salvar Permissões</button>
+          </div>
+        </form>
 
-      <!-- 🔘 Ações -->
-      <div class="d-flex justify-content-between mt-4">
-        <button type="submit" class="btn btn-primary w-50 me-2">
-          💾 Salvar Permissões
-        </button>
-        <a href="{% url 'accounts:selecionar_usuario_permissoes' %}"
-           class="btn btn-secondary w-50 ajax-link">
-          ← Voltar
-        </a>
       </div>
-    </form>
+    </div>
   </div>
-</div>
+</main>
+
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

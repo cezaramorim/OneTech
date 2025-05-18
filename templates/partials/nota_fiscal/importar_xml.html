@@ -1,22 +1,36 @@
 {% load static %}
 
-<div class="container-fluid" data-page="importar-xml">
-  <h2 class="mb-4">Importar Nota Fiscal (XML)</h2>
+<main id="main-content" class="container-fluid py-4" data-page="importar-xml">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens"></div>
 
-  <!-- ✅ Formulário configurado corretamente -->
-  <form id="form-importar-xml" method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <div class="mb-3">
-      <label for="xml-input" class="form-label">Arquivo XML:</label>
-      <input type="file" name="xml" id="xml-input" class="form-control" accept=".xml" required>
+  <!-- 🆔 Identificador de tela para JS -->
+  <div id="identificador-tela" data-tela="importar-xml">
+    <div class="card shadow-sm mx-auto" style="max-width: 1200px;">
+      <div class="card-body">
+        <h2 class="mb-4 text-center">Importar Nota Fiscal (XML)</h2>
+
+        <!-- ✅ Formulário configurado corretamente -->
+        <form id="form-importar-xml" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="xml-input" class="form-label">Arquivo XML:</label>
+            <input type="file" name="xml" id="xml-input" class="form-control" accept=".xml" required>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary">Importar</button>
+          </div>
+        </form>
+
+        <!-- ✅ Área para exibir o resultado -->
+        <div id="resultado-xml" class="mt-4"></div>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary">Importar</button>
-  </form>
+  </div>
+</main>
 
-  <!-- ✅ Área para exibir o resultado -->
-  <div id="resultado-xml" class="mt-4"></div>
-</div>
-
-<!-- ✅ Carrega o script de importação XML -->
-<script defer src="{% static 'js/importar_xml.js' %}"></script>
-
+<!-- 🔁 Scripts -->
+<script>
+  const URL_IMPORTAR_XML = "{% url 'nota_fiscal:importar_xml_nfe' %}";
+</script>
+<script defer src="{% static 'js/importar_xml.js' %}?V=3"></script>

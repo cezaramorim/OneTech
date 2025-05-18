@@ -1,69 +1,73 @@
 {% if perms.accounts.view_user %}
 {% load static %}
 
-<div class="container py-4" style="max-width: 720px;">
+<main id="main-content" class="container-fluid py-4" data-page="lista_usuarios">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens"></div>
 
-  <!-- 🆔 Identificador para scripts.js -->
-  <div id="identificador-tela" data-tela="lista-usuarios"></div>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
 
-  <!-- 🔖 Título -->
-  <div class="text-center mb-4">
-    <h2 class="mb-2">Lista de Usuários</h2>
-    <p class="text-muted">Selecione um ou mais usuários para editar ou excluir.</p>
-  </div>
+      <!-- 🔹 Título -->
+      <h2 class="mb-1 text-center">Lista de Usuários</h2>
+      <p class="text-center text-muted mb-4">Selecione um ou mais usuários para editar ou excluir.</p>
 
-  {% if usuarios %}
-    <!-- 📋 Formulário de ações -->
-    <form id="usuarios-form" method="POST" class="ajax-form">
-      {% csrf_token %}
+      <div class="card shadow-sm p-4">
 
-      <!-- 🛠️ Botões -->
-      <div class="d-flex justify-content-between gap-2 mb-3">
-        <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
-          ✏️ Editar
-        </button>
-        <button type="submit"
-                formaction="{% url 'accounts:excluir_usuario_multiplo' %}"
-                class="btn btn-outline-danger btn-sm"
-                id="btn-excluir"
-                disabled>
-          🗑️ Excluir
-        </button>
-      </div>
+        {% if usuarios %}
+          <form id="usuarios-form" method="POST" class="ajax-form">
+            {% csrf_token %}
 
-      <!-- 👥 Lista de Usuários -->
-      <ul class="list-group shadow-sm">
-        {% for usuario in usuarios %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="form-check">
-              <input type="checkbox"
-                     class="form-check-input usuario-checkbox"
-                     name="usuarios_selecionados"
-                     value="{{ usuario.id }}"
-                     id="usuario{{ usuario.id }}">
-              <label class="form-check-label ms-2" for="usuario{{ usuario.id }}">
-                <strong>{{ usuario.nome_completo|default:usuario.username }}</strong><br>
-                <small class="text-muted">{{ usuario.email }}</small>
-              </label>
+            <!-- 🛠️ Botões -->
+            <div class="d-flex justify-content-between gap-2 mb-3">
+              <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
+                ✏️ Editar
+              </button>
+              <button type="submit"
+                      formaction="{% url 'accounts:excluir_usuario_multiplo' %}"
+                      class="btn btn-outline-danger btn-sm"
+                      id="btn-excluir"
+                      disabled>
+                🗑️ Excluir
+              </button>
             </div>
-          </li>
-        {% endfor %}
-      </ul>
-    </form>
-  {% else %}
-    <!-- ℹ️ Alerta de lista vazia -->
-    <div class="alert alert-info mt-3 text-center">
-      Nenhum usuário cadastrado.
-    </div>
-  {% endif %}
 
-  <!-- ➕ Botão novo usuário -->
-  <div class="text-end mt-4">
-    <a href="{% url 'accounts:signup' %}" class="btn btn-success ajax-link">
-      ➕ Novo Usuário
-    </a>
+            <!-- 👥 Lista de Usuários -->
+            <ul class="list-group shadow-sm">
+              {% for usuario in usuarios %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div class="form-check">
+                    <input type="checkbox"
+                          class="form-check-input usuario-checkbox"
+                          name="usuarios_selecionados"
+                          value="{{ usuario.id }}"
+                          id="usuario{{ usuario.id }}">
+                    <label class="form-check-label ms-2" for="usuario{{ usuario.id }}">
+                      <strong>{{ usuario.nome_completo|default:usuario.username }}</strong><br>
+                      <small class="text-muted">{{ usuario.email }}</small>
+                    </label>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </form>
+        {% else %}
+          <div class="alert alert-info mt-3 text-center">
+            Nenhum usuário cadastrado.
+          </div>
+        {% endif %}
+
+        <!-- ➕ Botão novo usuário -->
+        <div class="text-end mt-4">
+          <a href="{% url 'accounts:criar_usuario' %}" class="btn btn-success ajax-link">
+            ➕ Novo Usuário
+          </a>
+        </div>
+
+      </div>
+    </div>
   </div>
-</div>
+</main>
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

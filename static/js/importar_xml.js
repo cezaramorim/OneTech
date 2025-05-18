@@ -1,235 +1,197 @@
-/* jshint esversion: 11 */
-
-(function () {
-  "use strict";
-
-  // Utilitários de formatação
-  function formatarDataBR(dataISO) {
-    if (!dataISO || typeof dataISO !== 'string') return '-';
-    try {
-      const parts = (dataISO.split('T')[0] || dataISO).split('-');
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    } catch {
-      return '-';
-    }
-  }
-
-  function formatarNumeroBR(valor) {
-    if (!valor) return '0,00';
-    return parseFloat(valor).toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  }
-
-  function formatarMoedaBR(valor) {
-    if (!valor) return 'R$ 0,00';
-    return parseFloat(valor).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    });
-  }
-
-  // Expõe globalmente (para uso no template)
-  window.formatarDataBR   = formatarDataBR;
-  window.formatarNumeroBR = formatarNumeroBR;
-  window.formatarMoedaBR  = formatarMoedaBR;
-})();
-
-document.addEventListener("DOMContentLoaded", initImportarXML);
-document.addEventListener("ajaxContentLoaded", initImportarXML);
+// 🌐 Variável global usada para armazenar dados importados
+let dadosImportados = null;
 
 function initImportarXML() {
-  const form     = document.getElementById("form-importar-xml");
-  const input    = document.getElementById("xml-input");
-  const resultado= document.getElementById("resultado-xml");
-  if (!form || !input || !resultado) return;
+  const form = document.getElementById("form-importar-xml");
+  const input = document.getElementById("xml-input");
+  const resultadoWrapper = document.getElementById("resultado-xml");
 
-  let dadosImportados = null;
+  if (!form || !input || !resultadoWrapper) return;
 
-  form.addEventListener("submit", e => {
+  form.addEventListener("submit", function (e) {
     e.preventDefault();
-    const arquivo = input.files[0];
-    if (!arquivo || !arquivo.name.toLowerCase().endsWith(".xml")) {
-      mostrarMensagemErro("Por favor, selecione um arquivo XML válido.");
+
+    const file = input.files[0];
+    if (!file) {
+      mostrarMensagemErro("Selecione um arquivo XML.");
       return;
     }
 
-    const fd = new FormData();
-    fd.append("xml", arquivo);
-    fd.append("csrfmiddlewaretoken", getCSRFToken());
+    const formData = new FormData();
+    formData.append("xml", file);
 
-    fetch("/nota-fiscal/importar/upload/", {
+    fetch("/nota-fiscal/importar/processar/", {
       method: "POST",
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      body: fd
+      body: formData,
+      headers: { "X-CSRFToken": getCSRFToken() }
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.erro) {
-        mostrarMensagemErro(data.erro);
-        return;
-      }
-      dadosImportados = data;
-      montarResultadoNaTela(data);
-      mostrarMensagemSucesso("Arquivo XML importado com sucesso!");
-    })
-    .catch(() => {
-      mostrarMensagemErro("Erro inesperado ao importar XML.");
-    });
+      .then(res => res.json())
+      .then(data => {
+        if (data.erro) {
+          mostrarMensagemErro(data.erro);
+          return;
+        }
+
+        dadosImportados = data;
+        console.log("📦 Dados Importados:", JSON.stringify(dadosImportados, null, 2));
+        exibirDadosImportados(data);
+      })
+      .catch(() => mostrarMensagemErro("Erro ao processar o XML."));
   });
 
-  function montarResultadoNaTela(data) {
-    const { nota, fornecedor, produtos, totais, transporte, duplicatas, info_adicional, chave_acesso } = data;
-
+  function exibirDadosImportados(data) {
     let html = `
-      <div class="mb-3">
-        <button id="botao-salvar-importacao" class="btn btn-success me-2">Salvar Importação</button>
-        <button id="botao-descartar-importacao" class="btn btn-danger">Descartar</button>
+      <div class="card mt-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Nota Fiscal ${data.nota.numero_nota}</h5>
+            <div>
+              <button class="btn btn-success btn-sm me-2" onclick="salvarImportacaoNoBanco()">Salvar Importação</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="descartarImportacao()">Descartar</button>
+            </div>
+          </div>
+
+          <p><strong>Data Emissão:</strong> ${formatarDataBR(data.nota.data_emissao)} &nbsp;&nbsp;
+             <strong>Data Saída:</strong> ${formatarDataBR(data.nota.data_saida)}</p>
+          <p><strong>Natureza:</strong> ${data.nota.natureza_operacao}</p>
+          <p><strong>Chave de Acesso:</strong> ${data.chave_acesso}</p>
+
+          <hr>
+          <h6>Fornecedor</h6>
+          <p><strong>CNPJ:</strong> ${data.fornecedor.cnpj}</p>
+          <p><strong>Razão Social:</strong> ${data.fornecedor.razao_social}</p>
+          <p><strong>Nome Fantasia:</strong> ${data.fornecedor.nome_fantasia || "—"}</p>
+          <p><strong>Endereço:</strong> ${data.fornecedor.logradouro}, ${data.fornecedor.numero}, ${data.fornecedor.bairro} — ${data.fornecedor.municipio}/${data.fornecedor.uf} — CEP ${data.fornecedor.cep}</p>
+          <p><strong>Telefone:</strong> ${data.fornecedor.telefone || "—"}</p>
+
+          <hr>
+          <h6>Produtos</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th>Código</th><th>Nome</th><th>NCM</th><th>CFOP</th>
+                  <th>Unid.</th><th>Qtd</th><th>Vlr Unit.</th><th>Vlr Total</th>
+                  <th>ICMS (R$)</th><th>PIS (R$)</th><th>COFINS (R$)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.produtos.map(p => `
+                  <tr>
+                    <td>${p.codigo}</td>
+                    <td>${p.nome}</td>
+                    <td>${p.ncm}</td>
+                    <td>${p.cfop}</td>
+                    <td>${p.unidade}</td>
+                    <td>${p.quantidade}</td>
+                    <td>${formatarMoedaBR(p.valor_unitario)}</td>
+                    <td>${formatarMoedaBR(p.valor_total)}</td>
+                    <td>${formatarMoedaBR(p.impostos.icms_valor)}</td>
+                    <td>${formatarMoedaBR(p.impostos.pis_valor)}</td>
+                    <td>${formatarMoedaBR(p.impostos.cofins_valor)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+
+          <hr>
+          <h6>Totais</h6>
+          <p><strong>Total Produtos:</strong> ${formatarMoedaBR(data.totais.valor_total_produtos)}<br>
+             <strong>Total Nota:</strong> ${formatarMoedaBR(data.totais.valor_total_nota)}<br>
+             <strong>ICMS:</strong> ${formatarMoedaBR(data.totais.valor_total_icms)} |
+             <strong>PIS:</strong> ${formatarMoedaBR(data.totais.valor_total_pis)} |
+             <strong>COFINS:</strong> ${formatarMoedaBR(data.totais.valor_total_cofins)} |
+             <strong>Descontos:</strong> ${formatarMoedaBR(data.totais.valor_total_desconto)}</p>
+
+          <hr>
+          <h6>Duplicatas</h6>
+          <ul>
+            ${data.duplicatas.map(d => `
+              <li>Nº ${d.numero} - ${formatarMoedaBR(d.valor)} - Vencimento: ${formatarDataBR(d.vencimento)}</li>
+            `).join("")}
+          </ul>
+
+          <hr>
+          <h6>Transporte</h6>
+          <p><strong>Transportadora:</strong> ${data.transporte.transportadora_nome || "—"}<br>
+             <strong>CNPJ:</strong> ${data.transporte.transportadora_cnpj || "—"}<br>
+             <strong>Placa:</strong> ${data.transporte.veiculo_placa || "—"} (${data.transporte.veiculo_uf || "--"})<br>
+             <strong>Frete:</strong> ${data.transporte.modalidade_frete || "—"}, RNTC: ${data.transporte.veiculo_rntc || "—"}<br>
+             <strong>Volumes:</strong> ${data.transporte.quantidade_volumes || 0} × ${data.transporte.especie_volumes || "—"}<br>
+             <strong>Peso Líquido:</strong> ${formatarMoedaBR(data.transporte.peso_liquido)} |
+             <strong>Peso Bruto:</strong> ${formatarMoedaBR(data.transporte.peso_bruto)}</p>
+
+          <hr>
+          <h6>Informações Adicionais</h6>
+          <p>${data.info_adicional || "—"}</p>
+        </div>
       </div>
-
-      <h5>Nota Fiscal</h5>
-      <ul class="list-group mb-4">
-        <li class="list-group-item"><strong>Número:</strong> ${nota.numero_nota}</li>
-        <li class="list-group-item"><strong>Data Emissão:</strong> ${formatarDataBR(nota.data_emissao)}</li>
-        <li class="list-group-item"><strong>Data Saída:</strong> ${formatarDataBR(nota.data_saida)}</li>
-        <li class="list-group-item"><strong>Natureza:</strong> ${nota.natureza_operacao}</li>
-        <li class="list-group-item"><strong>Chave de Acesso:</strong> ${chave_acesso}</li>
-      </ul>
-
-      <h5>Fornecedor</h5>
-      <ul class="list-group mb-4">
-        <li class="list-group-item"><strong>CNPJ:</strong> ${fornecedor.cnpj}</li>
-        <li class="list-group-item"><strong>Razão Social:</strong> ${fornecedor.razao_social}</li>
-        <li class="list-group-item"><strong>Nome Fantasia:</strong> ${fornecedor.nome_fantasia}</li>
-        <li class="list-group-item"><strong>Endereço:</strong>
-            ${fornecedor.logradouro}, ${fornecedor.numero} – ${fornecedor.bairro} –
-            ${fornecedor.municipio}/${fornecedor.uf} – CEP ${fornecedor.cep}
-        </li>
-        <li class="list-group-item"><strong>Telefone:</strong> ${fornecedor.telefone}</li>
-      </ul>
-
-      <h5>Produtos</h5>
-      <div class="table-responsive mb-4">
-        <table class="table table-bordered table-striped table-sm">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nome</th>
-              <th>NCM</th>
-              <th>CFOP</th>
-              <th>Unid.</th>
-              <th>Qtd</th>
-              <th>Vlr Unit.</th>
-              <th>Vlr Total</th>
-              <th>ICMS (R$)</th>
-              <th>ICMS (%)</th>
-              <th>PIS (R$)</th>
-              <th>PIS (%)</th>
-              <th>COFINS (R$)</th>
-              <th>COFINS (%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${produtos.map(p => `
-              <tr>
-                <td>${p.codigo}</td>
-                <td>${p.nome}</td>
-                <td>${p.ncm}</td>
-                <td>${p.cfop}</td>
-                <td>${p.unidade}</td>
-                <td>${formatarNumeroBR(p.quantidade)}</td>
-                <td>${formatarMoedaBR(p.valor_unitario)}</td>
-                <td>${formatarMoedaBR(p.valor_total)}</td>
-                <td>${formatarMoedaBR(p.impostos.icms_valor)}</td>
-                <td>${formatarNumeroBR(p.impostos.icms_aliquota)}</td>
-                <td>${formatarMoedaBR(p.impostos.pis_valor)}</td>
-                <td>${formatarNumeroBR(p.impostos.pis_aliquota)}</td>
-                <td>${formatarMoedaBR(p.impostos.cofins_valor)}</td>
-                <td>${formatarNumeroBR(p.impostos.cofins_aliquota)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-
-      <h5>Totais</h5>
-      <ul class="list-group mb-4">
-        <li class="list-group-item"><strong>Total Produtos:</strong> ${formatarMoedaBR(totais.valor_total_produtos)}</li>
-        <li class="list-group-item"><strong>Total Nota:</strong> ${formatarMoedaBR(totais.valor_total_nota)}</li>
-        <li class="list-group-item"><strong>Total ICMS:</strong> ${formatarMoedaBR(totais.valor_total_icms)}</li>
-        <li class="list-group-item"><strong>Total PIS:</strong> ${formatarMoedaBR(totais.valor_total_pis)}</li>
-        <li class="list-group-item"><strong>Total COFINS:</strong> ${formatarMoedaBR(totais.valor_total_cofins)}</li>
-        <li class="list-group-item"><strong>Desconto:</strong> ${formatarMoedaBR(totais.valor_total_desconto)}</li>
-      </ul>
-
-      <h5>Transporte</h5>
-      <ul class="list-group mb-4">
-        <li class="list-group-item"><strong>Frete:</strong> ${transporte.modalidade_frete}</li>
-        <li class="list-group-item"><strong>Transportadora:</strong> ${transporte.transportadora_nome} (${transporte.transportadora_cnpj})</li>
-        <li class="list-group-item"><strong>Volumes:</strong> ${transporte.quantidade_volumes} x ${transporte.especie_volumes}</li>
-        <li class="list-group-item"><strong>Peso Líquido:</strong> ${transporte.peso_liquido}</li>
-        <li class="list-group-item"><strong>Peso Bruto:</strong> ${transporte.peso_bruto}</li>
-        <li class="list-group-item"><strong>Veículo:</strong> ${transporte.veiculo_placa}/${transporte.veiculo_uf} RNTC ${transporte.veiculo_rntc}</li>
-      </ul>
-
-      <h5>Duplicatas</h5>
-      <ul class="list-group mb-4">
-        ${duplicatas.map(d => `
-          <li class="list-group-item">
-            <strong>${d.numero}</strong> – Venc: ${formatarDataBR(d.vencimento)} – Valor: ${formatarMoedaBR(d.valor)}
-          </li>
-        `).join('')}
-      </ul>
-
-      <h5>Info Adicional</h5>
-      <p>${info_adicional}</p>
     `;
+    resultadoWrapper.innerHTML = html;
+  }
+}
 
-    resultado.innerHTML = html;
-    document.getElementById("botao-salvar-importacao")
-            .addEventListener("click", salvarImportacaoNoBanco);
-    document.getElementById("botao-descartar-importacao")
-            .addEventListener("click", descartarImportacao);
+// ✅ Salvar no banco
+function salvarImportacaoNoBanco() {
+  if (!dadosImportados) {
+    mostrarMensagemErro("Nenhuma importação para salvar.");
+    return;
   }
 
-  function salvarImportacaoNoBanco() {
-    if (!dadosImportados) {
-      mostrarMensagemErro("Nenhuma importação para salvar.");
-      return;
-    }
-    fetch("/nota-fiscal/importar/salvar/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCSRFToken()
-      },
-      body: JSON.stringify(dadosImportados)
-    })
+  console.log("🔁 Enviando para /nota-fiscal/importar/salvar/");
+  console.log("📦 Dados:", JSON.stringify(dadosImportados, null, 2));
+
+  fetch('/nota-fiscal/importar/salvar/', {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken()
+    },
+    body: JSON.stringify(dadosImportados)
+  })
     .then(async res => {
       const data = await res.json();
       if (res.ok) {
-        mostrarMensagemSucesso(data.mensagem || "Dados salvos com sucesso!");
+        mostrarMensagemSucesso(data.mensagem || "Importação salva com sucesso!");
         setTimeout(() => window.location.reload(), 2000);
       } else {
         mostrarMensagemErro(data.erro);
       }
     })
     .catch(() => mostrarMensagemErro("Erro ao salvar importação."));
-  }
+}
 
-  function descartarImportacao() {
-    if (confirm("Descartar importação?")) {
-      document.getElementById("resultado-xml").innerHTML = "";
-      dadosImportados = null;
-      input.value = "";
-      mostrarMensagemSucesso("Importação descartada.");
-    }
+// ✅ Descartar importação
+function descartarImportacao() {
+  if (confirm("Descartar importação?")) {
+    document.getElementById("resultado-xml").innerHTML = "";
+    dadosImportados = null;
+    document.getElementById("xml-input").value = "";
+    mostrarMensagemSucesso("Importação descartada.");
   }
 }
 
-// CSRF helper
+// 🔐 CSRF token
 function getCSRFToken() {
   const m = document.cookie.match(/csrftoken=([^;]+)/);
   return m ? m[1] : "";
+}
+
+// ✅ Inicializar quando carregar a página
+document.addEventListener("DOMContentLoaded", initImportarXML);
+
+// 🧩 Formatadores auxiliares
+function formatarMoedaBR(valor) {
+  if (!valor || valor === "0") return "R$ 0,00";
+  return parseFloat(valor).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function formatarDataBR(data) {
+  if (!data) return "—";
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
 }

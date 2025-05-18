@@ -1,3 +1,7 @@
+html:not(.theme-ready) body {
+  visibility: hidden;
+}
+
 /* ============================
    RESET E CONFIGURAÇÃO BASE
 =============================== */
@@ -13,7 +17,7 @@ body {
   font-size: 16px;
   color: #333;
   background-color: #f8f9fa;
-  transition: background 0.3s, color 0.3s;
+  /*transition: background 0.3s, color 0.3s;*/
 }
 
 html.dark,
@@ -22,9 +26,16 @@ body.dark {
   color: #f2f2f2;
 }
 
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
 .layout {
   display: flex;
+  flex-direction: row;
   min-height: 100vh;
+  align-items: stretch;
 }
 
 /* ============================
@@ -53,13 +64,15 @@ a:hover {
 =============================== */
 .sidebar {
   width: 250px;
+  flex-shrink: 0;              /* 🚫 impede que a sidebar encolha */
   background-color: #fff;
   border-right: 1px solid #ddd;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease-in-out;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
 
 html.dark .sidebar,
 body.dark .sidebar {
@@ -152,7 +165,7 @@ form {
   box-shadow: 0 0 6px rgba(0,0,0,0.05);
   margin-top: 15px;
   width: 100%;
-  max-width: 100%;
+  /*max-width: 100%;*/
 }
 
 html.dark form,
@@ -581,13 +594,6 @@ body {
   background: none; /* Remove conflitos visuais */
 }
 
-/* 🔍 Remove qualquer cor de fundo no contêiner que cobre a imagem */
-#main-content {
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-}
-
 /* Logo no topo esquerdo */
 .logo-top-left {
   position: absolute;
@@ -604,12 +610,6 @@ body {
   background-color: rgba(0, 0, 0, 0.6); /* fundo escuro translúcido */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   padding: 2rem;
-}
-
-#main-content {
-  background: transparent !important;
-  box-shadow: none;
-  border-radius: 0;
 }
 
 /* 🎯 Botões de submenus em "Configurações" */
@@ -778,12 +778,6 @@ html.dark .logout-link:hover {
   box-shadow: none;
 }
 
-/* Força o fundo transparente no tema escuro */
-html.dark #main-content.bg-light {
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
 .welcome-bar {
   padding: 12px 16px;
   border-bottom: 1px dashed #ccc;
@@ -802,13 +796,6 @@ body {
   z-index: 0;
 }
 
-#main-content {
-  position: relative;
-  z-index: 0;
-  background: transparent !important;
-}
-
-
 /* ✅ Fundo na tela de login */
 body[data-tela="login"]::before {
   content: '';
@@ -826,22 +813,49 @@ body[data-tela="login"]::before {
   filter: blur(1px);
 }
 
-/* Garante que os elementos aceitem ::before */
+/* ============================
+   MAIN CONTENT ESTABILIZADO
+=============================== */
+#main-content {
+  flex-grow: 1;
+  padding: 20px;
+  position: relative;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  transition: none !important;
+  min-height: 100%; /* ✅ garante altura mínima para evitar movimentos */
+}
+
+/* Conteúdo interno carregado via AJAX */
+#main-content > div {
+  max-width: 1200px;
+  margin: 0 auto; /* garante centralização */
+}
+
+/* 🌓 Suporte ao modo escuro */
+html.dark #main-content.bg-light {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 🖼️ Logo central na tela inicial */
 #main-content[data-tela="home"]::before {
   content: '';
   position: absolute;
   top: 50%;
-  left: calc(50% + 125px); /* Compensa a sidebar */
+  left: calc(50% + 125px);
   transform: translate(-50%, -50%);
   width: 80vw;
   height: 80vh;
-  background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;
+  /*background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;*/
   background-size: contain;
-  opacity: 0.50;
+  opacity: 0.5;
   z-index: -1;
   pointer-events: none;
   filter: blur(1px);
 }
+
 
 /* 🌅 Tela de fundo da página inicial */
 #welcome-screen.home-background {
@@ -851,7 +865,7 @@ body[data-tela="login"]::before {
   left: 50%;
   transform: translate(-50%, -50%);
   width: 80vw;
-  height: 80vh;
+  height: 80vh;  
   background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;
   background-size: contain;
   opacity: 0.50;
@@ -1061,4 +1075,114 @@ html.dark #resultado-xml {
 
 html.dark #resultado-xml h5 {
   color: #66b2ff;
+}
+
+/* ============================
+   LAYOUT FLEX PRINCIPAL
+=============================== */
+.layout.d-flex {
+  display: flex;
+  flex-direction: row;         /* layout horizontal */
+  min-height: 100vh;           /* altura total da tela */
+  align-items: stretch;
+  width: 100%;                 /* garante largura total */
+  overflow-x: hidden;          /* impede deslocamento lateral */
+}
+
+/* 🟢 Mensagens instantâneas flutuantes no topo direito */
+#mensagens {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none; /* permite clicar em elementos atrás */
+}
+
+#mensagens .alert {
+  position: relative;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem 0.75rem 2.8rem;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  line-height: 1.4;
+  word-break: break-word;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  background-repeat: no-repeat;
+  background-position: 0.8rem center;
+  background-size: 22px 22px;
+  border-radius: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  pointer-events: auto; /* reativa clique no botão fechar */
+}
+
+/* 🟥 Erro */
+#mensagens .alert-danger,
+#mensagens .alert-error {
+  background-image: url('/static/icons/img_erro.png');
+  background-color: #ca323f;
+  color: #fff;
+  border-color: #a52828;
+}
+
+/* 🟩 Sucesso */
+#mensagens .alert-success {
+  background-image: url('/static/icons/img_sucesso.png');
+  background-color: #bce5cc;
+  color: #1e4634;
+  border-color: #97d5b4;
+}
+
+/* ⚠️ Warning/Info */
+#mensagens .alert-warning i,
+#mensagens .alert-info i {
+  margin-right: 0.5rem;
+}
+
+#mensagens .btn-close {
+  margin-left: auto;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+}
+
+
+/* Evita que o input aumente ou empurre conteúdo ao receber foco */
+input.form-control:focus {
+  box-shadow: none !important;
+  border-color: #6c757d !important;  /* ou a cor atual */
+  outline: none !important;
+  padding: 0.375rem 0.75rem !important; /* igual ao estado normal */
+  transition: none !important;
+}
+
+#filtro-notas-form input.form-control {
+  padding: 0.375rem 0.75rem;
+  height: auto;
+  transition: none;
+  box-shadow: none !important;
+}
+
+#main-content .card {
+  margin-top: 0 !important;
+  margin-bottom: 24px !important;
+}
+
+.container-fluid.py-4 {
+  margin-top: 0 !important;
+}
+
+/* ✅ Impede redimensionamento ou pulo do campo de busca por foco ou input */
+#busca-nota {
+  transition: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: 38px !important;
+  line-height: 1.5;
+  padding: 0.375rem 0.75rem;
 }

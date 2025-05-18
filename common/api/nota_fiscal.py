@@ -2,9 +2,11 @@
 from rest_framework import viewsets, filters
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from .serializers import NotaFiscalSerializer
+
+# Correção de caminhos absolutos após migração
+from common.serializers.nota_fiscal import NotaFiscalSerializer
+from common.filters.nota_fiscal import NotaFiscalFilter
 from nota_fiscal.models import NotaFiscal
-from .filters import NotaFiscalFilter
 
 class NotaFiscalViewSet(viewsets.ReadOnlyModelViewSet):
     """

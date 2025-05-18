@@ -15,13 +15,14 @@ urlpatterns = [
     path('edit-profile/', views.edit_profile_view, name='edit_profile'),
 
     # === USUÁRIOS ===
+    path('usuarios/novo/', views.criar_usuario, name='criar_usuario'),
     path('usuarios/', views.lista_usuarios, name='lista_usuarios'),    
     path('usuarios/<int:usuario_id>/editar/', views.editar_usuario, name='editar_usuario'),
     path('usuarios/excluir-multiplos/', views.excluir_usuario_multiplo, name='excluir_usuario_multiplo'),
 
     # === PERMISSÕES GERAIS ===
     path('permissoes/', views.selecionar_usuario_permissoes_view, name='selecionar_usuario_permissoes'),
-    path('permissoes/editar/<int:usuario_id>/', views.editar_permissoes_view, name='editar_permissoes'),
+    path('permissoes/editar/<int:usuario_id>/', views.editar_permissoes, name='editar_permissoes'),
     path('permissoes/gerenciar/', views.gerenciar_permissoes_geral, name='gerenciar_permissoes_geral'),
 
     # === PERMISSÕES POR GRUPO ===
@@ -37,7 +38,7 @@ urlpatterns = [
     path('grupos/excluir/<int:grupo_id>/', views.confirmar_exclusao_grupo, name='confirmar_exclusao_grupo'),
     path('grupos/excluir/<int:grupo_id>/confirmar/', views.excluir_grupo, name='excluir_grupo'),
     path('grupos/excluir/', views.excluir_grupo_multiplo, name='excluir_grupo_multiplo'),
-    
+        
 ]
 
 

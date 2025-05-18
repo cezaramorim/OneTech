@@ -3,6 +3,9 @@ from django.urls import reverse_lazy
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
 
 
+from django import forms
+from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
+
 class ProdutoForm(forms.ModelForm):
     # Campo auxiliar de texto para busca dinâmica por NCM
     ncm_descricao = forms.CharField(
@@ -16,6 +19,16 @@ class ProdutoForm(forms.ModelForm):
         })
     )
 
+    # Campo data com formatação brasileira
+    data_cadastro = forms.DateField(
+        required=False,
+        input_formats=["%d/%m/%Y"],
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'dd/mm/aaaa'
+        })
+    )
+
     class Meta:
         model = Produto
         fields = [
@@ -26,10 +39,9 @@ class ProdutoForm(forms.ModelForm):
             'observacoes',
             'cst', 'origem_mercadoria',
             'unidade_comercial', 'quantidade_comercial', 'valor_unitario_comercial',
-            'fornecedor',  # Nova relação com empresa
-            # ❌ campo ncm não aparece diretamente, continua sendo setado por ncm_descricao
+            'fornecedor',
+            'ncm',
         ]
-                    
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
@@ -45,33 +57,36 @@ class ProdutoForm(forms.ModelForm):
             'estoque_atual': forms.NumberInput(attrs={'class': 'form-control'}),
             'controla_estoque': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'data_cadastro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'cst': forms.TextInput(attrs={'class': 'form-control'}),
-            #'csosn': forms.TextInput(attrs={'class': 'form-control'}),
             'origem_mercadoria': forms.Select(attrs={'class': 'form-select'}),
             'unidade_comercial': forms.TextInput(attrs={'class': 'form-control'}),
             'quantidade_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
             'valor_unitario_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
-
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Exibe o NCM atual no campo auxiliar em caso de edição
+        # ✅ Exibe o NCM no campo auxiliar
         if self.instance.pk and self.instance.ncm:
             ncm_obj = self.instance.ncm
-            self.fields['ncm_descricao'].initial = f"{ncm_obj.codigo} - {ncm_obj.descricao}"            
-            self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(eh_fornecedor=True, ativo=True)        
+            self.fields['ncm_descricao'].initial = f"{ncm_obj.codigo} - {ncm_obj.descricao}"
+
+        # ✅ Exibe a data formatada dd/mm/yyyy
+        if self.instance.pk and self.instance.data_cadastro:
+            self.fields['data_cadastro'].initial = self.instance.data_cadastro.strftime('%d/%m/%Y')
+
+        # ✅ Corrige filtro do fornecedor
+        self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(tipo_empresa__in=["Fornecedor", "Ambos"], status_empresa=True)
 
     def clean(self):
         cleaned_data = super().clean()
         termo = cleaned_data.get('ncm_descricao', '').strip()
 
         if termo:
-            codigo = termo.split(' ')[0]  # pega o código do NCM
+            codigo = termo.split(' ')[0]
             try:
                 ncm = NCM.objects.get(codigo=codigo)
                 cleaned_data['ncm'] = ncm

@@ -1,0 +1,54 @@
+{% load static %}
+
+<!-- ✅ Editar Produto - Compatível com AJAX, Bootstrap, tema escuro/claro -->
+<main id="main-content" data-tela="editar_produto" class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">✏️ Editar Produto</h2>
+    <a href="{% url 'produto:lista_produtos' %}" class="btn btn-secondary ajax-link">
+      ← Voltar para Lista
+    </a>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <div class="card shadow-sm rounded-4">
+        <div class="card-body">
+          <!-- ✅ Formulário AJAX -->
+          <form id="form-editar-produto" method="post" class="ajax-form">
+            {% csrf_token %}
+
+            <!-- ✅ Campos do formulário -->
+            <div class="row g-3">
+              {% for field in form.visible_fields %}
+                <div class="col-md-{{ field.field.widget.attrs.cols|default:12 }}">
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- ✅ Ações -->
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'produto:lista_produtos' %}" class="btn btn-outline-secondary ajax-link">
+                ← Cancelar
+              </a>
+              <button type="submit" class="btn btn-success">
+                💾 Salvar Alterações
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+

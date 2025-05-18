@@ -1,0 +1,77 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<main id="main-content" class="container-fluid py-4" data-page="entradas-nota">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens"></div>
+
+  <div id="identificador-tela" data-tela="entradas-nota">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-10">
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
+
+            <!-- 🔍 Campo de busca dinâmica -->
+            <form id="filtro-notas-form" class="row g-3 mb-3 justify-content-center align-items-center" method="get">
+              <div class="col-md-6">
+                <input type="text" id="busca-nota" name="termo" class="form-control"
+                       placeholder="Buscar por número ou fornecedor." autocomplete="off"
+                       value="{{ request.GET.termo }}">
+              </div>
+              <div class="col-auto">
+                <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary">Limpar</a>
+              </div>
+            </form>
+
+            <!-- 🔘 Botões principais -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <button id="btn-editar-nota" class="btn btn-primary me-2" disabled>Editar</button>
+                <button id="btn-excluir-nota" class="btn btn-danger" disabled>Excluir</button>
+              </div>
+              <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-outline-success">+ Importar Nova Nota</a>
+            </div>
+
+            <!-- 📋 Tabela de notas fiscais com formulário para seleção -->
+            <form id="form-notas" method="post">
+              {% csrf_token %}
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle tabela-dark-claro">
+                  <thead class="table-light dark-mode">
+                    <tr>
+                      <th><input type="checkbox" id="check-todos-nota"></th>
+                      <th><a href="#" class="ordenar-coluna" data-campo="numero">Número</a></th>
+                      <th><a href="#" class="ordenar-coluna" data-campo="fornecedor__razao_social">Fornecedor</a></th>
+                      <th><a href="#" class="ordenar-coluna" data-campo="data_emissao">Data Emissão</a></th>
+                      <th>Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabela-notas">
+                    {% for nota in notas %}
+                      <tr>
+                        <td><input type="checkbox" class="checkbox-nota" value="{{ nota.id }}"></td>
+                        <td>{{ nota.numero }}</td>
+                        <td>{{ nota.fornecedor.razao_social }}</td>
+                        <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
+                        <td>R$ {{ nota.valor_total_nota|floatformat:2 }}</td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="5" class="text-center">Nenhuma nota encontrada.</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </form>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+

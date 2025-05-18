@@ -1,22 +1,11 @@
 # relatorios/urls.py
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-
-from relatorios.api import NotaFiscalViewSet
-from relatorios.views import notas_entradas_view, editar_entrada_view
+from django.urls import path
+from relatorios.views import api_nota_detalhada, relatorio_nota_fiscal_view
 
 app_name = 'relatorios'
 
-# === Configura DRF router para /api/v1/notas-entradas/ ===
-router = DefaultRouter()
-router.register(r'notas-entradas', NotaFiscalViewSet, basename='notas-entradas')
-
 urlpatterns = [
-    # página completa e partial
-    path('', notas_entradas_view, name='notas_entradas'),
-    path('entradas/<int:pk>/editar/', editar_entrada_view, name='editar_entrada'),
-
-    # endpoints REST em /api/v1/...
-    path('api/v1/', include(router.urls)),
+    path("api/v1/notas-entradas/<int:pk>/", api_nota_detalhada, name="api_nota_detalhada"),
+    path("nota-fiscal/", relatorio_nota_fiscal_view, name="relatorio_nota_fiscal"),
 ]

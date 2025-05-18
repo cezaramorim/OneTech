@@ -2,36 +2,42 @@
 {% load static %}
 {% load widget_tweaks %}
 
-<div class="d-flex justify-content-center">
-  <div class="card shadow p-4 w-100" style="max-width: 500px;">
+<main id="main-content" class="container-fluid py-4" data-page="cadastrar_grupo">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens" class="mb-3"></div>
 
-    <!-- Título -->
-    <h2 class="text-center mb-4">Cadastrar Novo Grupo</h2>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="text-center mb-4">
+        <h2 class="titulo-formulario">Cadastrar Novo Grupo</h2>
+        <p class="text-muted dark:text-light">Crie um novo grupo para definir permissões personalizadas.</p>
+      </div>
 
-    <!-- Formulário AJAX -->
-    <form method="post" class="ajax-form" data-url="{% url 'accounts:cadastrar_grupo' %}">
-      {% csrf_token %}
+      <div class="card shadow-sm p-4">
+        <form method="post" class="ajax-form" data-url="{% url 'accounts:cadastrar_grupo' %}">
+          {% csrf_token %}
 
-      <!-- Campo nome do grupo -->
-      <div class="mb-3">
-        <label for="{{ form.name.id_for_label }}" class="form-label">Nome do Grupo:</label>
-        {{ form.name|add_class:"form-control" }}
-        {% if form.name.errors %}
-          <div class="text-danger small mt-1">
-            {{ form.name.errors|join:", " }}
+          <!-- 🏷️ Nome do grupo -->
+          <div class="mb-3">
+            <label for="{{ form.name.id_for_label }}" class="form-label">Nome do Grupo</label>
+            {{ form.name|add_class:"form-control" }}
+            {% if form.name.errors %}
+              <div class="text-danger small mt-1">
+                {{ form.name.errors|join:", " }}
+              </div>
+            {% endif %}
           </div>
-        {% endif %}
-      </div>
 
-      <!-- Botões -->
-      <div class="d-flex justify-content-between mt-4">
-        <button type="submit" class="btn btn-primary w-50 me-2">Salvar</button>
-        <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">← Voltar</a>
+          <!-- ✅ Botões -->
+          <div class="d-flex justify-content-between mt-4">
+            <button type="submit" class="btn btn-success w-50 me-2">💾 Salvar</button>
+            <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">← Voltar</a>
+          </div>
+        </form>
       </div>
-    </form>
-
+    </div>
   </div>
-</div>
+</main>
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

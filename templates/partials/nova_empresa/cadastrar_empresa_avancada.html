@@ -1,0 +1,127 @@
+{% load static %}
+
+<main id="main-content" class="container-fluid py-4" data-page="empresa_avancada">
+  <div id="identificador-tela" data-tela="empresa_avancada"></div>
+
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens"></div>
+
+  <div class="row justify-content-center">
+    <div class="card shadow-sm mx-auto" style="max-width: 1200px;">
+      <div class="card shadow-sm">
+        <div class="card-body">
+
+          <!-- 🔹 Título -->
+          <h2 class="mb-1 text-center">Cadastro Avançado de Empresa</h2>
+          <p class="text-center text-muted mb-4">Preencha os campos abaixo para registrar uma nova empresa.</p>
+
+          <form method="post" id="form-empresa-avancada" class="ajax-form" data-url="{% url 'empresas:cadastrar_empresa_avancada' %} "autocomplete="off">
+            {% csrf_token %}
+
+            <!-- Abas -->
+            <ul class="nav nav-tabs mb-3" id="empresaTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="identificacao-tab" data-bs-toggle="tab" data-bs-target="#identificacao" type="button" role="tab">Identificação</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="endereco-tab" data-bs-toggle="tab" data-bs-target="#endereco" type="button" role="tab">Endereço</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contato-tab" data-bs-toggle="tab" data-bs-target="#contato" type="button" role="tab">Contato</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro" type="button" role="tab">Financeiro</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="comercial-tab" data-bs-toggle="tab" data-bs-target="#comercial" type="button" role="tab">Comercial</button>
+              </li>
+            </ul>
+
+            <!-- Conteúdo das Abas -->
+            <div class="tab-content" id="empresaTabsContent">
+              <!-- Identificação -->
+              <div class="tab-pane fade show active p-3" id="identificacao" role="tabpanel">
+                <div class="mb-3">
+                  <label for="id_tipo_empresa" class="form-label">Tipo de Empresa</label>
+                  <select name="tipo_empresa" id="id_tipo_empresa" class="form-select" required>
+                    <option value="">Selecione</option>
+                    <option value="pj">Pessoa Jurídica</option>
+                    <option value="pf">Pessoa Física</option>
+                  </select>
+                </div>
+
+                <!-- Pessoa Jurídica -->
+                <div id="campos-pj" class="d-none">
+                  <div class="mb-3"><label for="id_cnpj">CNPJ</label><input type="text" name="cnpj" id="id_cnpj" class="form-control"></div>
+                  <div class="mb-3"><label for="id_razao_social">Razão Social</label><input type="text" name="razao_social" id="id_razao_social" class="form-control"></div>
+                  <div class="mb-3"><label for="id_nome_fantasia">Nome Fantasia</label><input type="text" name="nome_fantasia" id="id_nome_fantasia" class="form-control"></div>
+                  <!-- Adicione outros campos PJ aqui -->
+                </div>
+
+                <!-- Pessoa Física -->
+                <div id="campos-pf" class="d-none">
+                  <div class="mb-3"><label for="id_cpf">CPF</label><input type="text" name="cpf" id="id_cpf" class="form-control"></div>
+                  <div class="mb-3"><label for="id_nome_completo">Nome Completo</label><input type="text" name="nome_completo" id="id_nome_completo" class="form-control"></div>
+                  <!-- Adicione outros campos PF aqui -->
+                </div>
+
+
+                <div class="mb-3"><label class="form-label">CNAE Principal</label><input type="text" name="cnae_principal" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">CNAE Secundário</label><input type="text" name="cnae_secundario" class="form-control"></div>
+                <div class="mb-3">{{ form.categoria.label_tag }} {{ form.categoria }}</div>
+                <div class="mb-3">{{ form.status_empresa.label_tag }} {{ form.status_empresa }}</div>
+                <div class="mb-3"><label class="form-label">Data de Abertura</label><input type="date" name="data_abertura" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">Data de Cadastro</label><input type="date" name="data_cadastro" class="form-control" value="{{ today|date:'Y-m-d' }}"></div>
+              </div>
+
+              <!-- Endereço -->
+              <div class="tab-pane fade p-3" id="endereco" role="tabpanel">
+                <div class="mb-3">{{ form.cep.label_tag }} {{ form.cep }}</div>
+                <div class="mb-3">{{ form.logradouro.label_tag }} {{ form.logradouro }}</div>
+                <div class="mb-3">{{ form.numero.label_tag }} {{ form.numero }}</div>
+                <div class="mb-3">{{ form.complemento.label_tag }} {{ form.complemento }}</div>
+                <div class="mb-3">{{ form.bairro.label_tag }} {{ form.bairro }}</div>
+                <div class="mb-3">{{ form.cidade.label_tag }} {{ form.cidade }}</div>
+                <div class="mb-3">{{ form.uf.label_tag }} {{ form.uf }}</div>
+              </div>
+
+              <!-- Contato -->
+              <div class="tab-pane fade p-3" id="contato" role="tabpanel">
+                <div class="mb-3">{{ form.telefone.label_tag }} {{ form.telefone }}</div>
+                <div class="mb-3">{{ form.celular.label_tag }} {{ form.celular }}</div>
+                <div class="mb-3">{{ form.whatsapp.label_tag }} {{ form.whatsapp }}</div>
+                <div class="mb-3">{{ form.email.label_tag }} {{ form.email }}</div>
+                <div class="mb-3">{{ form.site.label_tag }} {{ form.site }}</div>
+              </div>
+
+              <!-- Financeiro -->
+              <div class="tab-pane fade p-3" id="financeiro" role="tabpanel">
+                <div class="mb-3">{{ form.contato_financeiro_nome.label_tag }} {{ form.contato_financeiro_nome }}</div>
+                <div class="mb-3">{{ form.contato_financeiro_email.label_tag }} {{ form.contato_financeiro_email }}</div>
+                <div class="mb-3">{{ form.contato_financeiro_telefone.label_tag }} {{ form.contato_financeiro_telefone }}</div>
+                <div class="mb-3">{{ form.contato_financeiro_celular.label_tag }} {{ form.contato_financeiro_celular }}</div>
+              </div>
+
+              <!-- Comercial -->
+              <div class="tab-pane fade p-3" id="comercial" role="tabpanel">
+                <div class="mb-3">{{ form.contato_comercial_nome.label_tag }} {{ form.contato_comercial_nome }}</div>
+                <div class="mb-3">{{ form.contato_comercial_email.label_tag }} {{ form.contato_comercial_email }}</div>
+                <div class="mb-3">{{ form.contato_comercial_telefone.label_tag }} {{ form.contato_comercial_telefone }}</div>
+                <div class="mb-3">{{ form.contato_comercial_celular.label_tag }} {{ form.contato_comercial_celular }}</div>
+                <div class="mb-3">{{ form.vendedor.label_tag }} {{ form.vendedor }}</div>
+                <div class="mb-3">{{ form.condicao_pagamento.label_tag }} {{ form.condicao_pagamento }}</div>
+                <div class="mb-3">{{ form.comissao.label_tag }} {{ form.comissao }}</div>
+                <div class="mb-3">{{ form.observacoes.label_tag }} {{ form.observacoes }}</div>
+              </div>
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary mt-3">Salvar Empresa</button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</main>

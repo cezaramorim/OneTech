@@ -1,76 +1,88 @@
 {% if perms.auth.view_group %}
 {% load static %}
 
-<!-- 🆔 Identificador de contexto para diagnóstico JS -->
-<div id="identificador-tela" data-tela="lista-grupos"></div>
+<main id="main-content" class="container-fluid py-4" data-page="lista_grupos">
 
-<div class="container py-4">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens" class="mb-3"></div>
 
-  <!-- 🔖 Título -->
-  <div class="text-center mb-4">
-    <h2 class="mb-2">Lista de Grupos</h2>
-    <p class="text-muted">Gerencie grupos de usuários e visualize suas permissões atribuídas.</p>
-  </div>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
 
-  {% if grupos %}
-  <form id="grupos-form" method="POST" class="ajax-form">
-    {% csrf_token %}
-
-    <!-- 🛠️ Botões de ação -->
-    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-      <div class="d-flex flex-wrap gap-2">
-        <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
-          ✏️ Editar
-        </button>
-
-        <button type="submit"
-                formaction="{% url 'accounts:excluir_grupo_multiplo' %}"
-                class="btn btn-outline-danger btn-sm"
-                id="btn-excluir"
-                disabled>
-          🗑️ Excluir
-        </button>
-
-        <!-- 🔍 Ver permissões (modo leitura) -->
-        <button type="button" id="btn-ver-permissoes" class="btn btn-outline-info btn-sm" disabled>
-          🔍 Ver Permissões
-        </button>
+      <!-- 🏷️ Título -->
+      <div class="text-center mb-4">
+        <h2 class="titulo-formulario">Lista de Grupos</h2>
+        <p class="text-muted dark:text-light">Gerencie os grupos e visualize permissões atribuídas.</p>
       </div>
-    </div>
 
-    <!-- 📋 Lista de Grupos -->
-    <ul class="list-group shadow-sm">
-      {% for grupo in grupos %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div class="form-check">
-          <input type="checkbox"
-                 class="form-check-input grupo-checkbox"
-                 name="grupos_selecionados"
-                 value="{{ grupo.id }}"
-                 id="grupo{{ grupo.id }}">
-          <label class="form-check-label ms-2" for="grupo{{ grupo.id }}">
-            <strong>{{ grupo.name }}</strong>
-          </label>
+      {% if grupos %}
+      <!-- 📋 Formulário com lista de grupos e ações -->
+      <form id="grupos-form" method="POST" class="ajax-form">
+        {% csrf_token %}
+
+        <!-- 🛠️ Ações principais -->
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+          <div class="d-flex flex-wrap gap-2">
+            <!-- ✏️ Editar -->
+            <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
+              ✏️ Editar
+            </button>
+
+            <!-- 🗑️ Excluir -->
+            <button type="submit"
+                    formaction="{% url 'accounts:excluir_grupo_multiplo' %}"
+                    class="btn btn-outline-danger btn-sm"
+                    id="btn-excluir"
+                    disabled>
+              🗑️ Excluir
+            </button>
+
+            <!-- 🔍 Ver Permissões -->
+            <button type="button" id="btn-ver-permissoes" class="btn btn-outline-info btn-sm" disabled>
+              🔍 Ver Permissões
+            </button>
+          </div>
         </div>
-      </li>
-      {% endfor %}
-    </ul>
-  </form>
 
-  {% else %}
-  <div class="alert alert-info mt-3 text-center">
-    Nenhum grupo cadastrado.
-  </div>
-  {% endif %}
+        <!-- 📦 Lista de Grupos -->
+        <ul class="list-group shadow-sm">
+          {% for grupo in grupos %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="form-check">
+              <input type="checkbox"
+                     class="form-check-input grupo-checkbox"
+                     name="grupos_selecionados"
+                     value="{{ grupo.id }}"
+                     id="grupo{{ grupo.id }}">
+              <label class="form-check-label ms-2" for="grupo{{ grupo.id }}">
+                <strong>{{ grupo.name }}</strong>
+              </label>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </form>
 
-  <!-- ➕ Botão novo grupo -->
-  <div class="text-end mt-4">
-    <a href="{% url 'accounts:cadastrar_grupo' %}" class="btn btn-success ajax-link">
-      ➕ Novo Grupo
-    </a>
+      {% else %}
+      <!-- ℹ️ Nenhum grupo disponível -->
+      <div class="alert alert-info mt-3 text-center">
+        Nenhum grupo cadastrado.
+      </div>
+      {% endif %}
+
+      <!-- ➕ Botão Novo Grupo -->
+      <div class="text-end mt-4">
+        <a href="{% url 'accounts:cadastrar_grupo' %}" class="btn btn-success ajax-link">
+          ➕ Novo Grupo
+        </a>
+      </div>
+
+    </div>
   </div>
-</div>
+</main>
+
 {% else %}
+<!-- 🔒 Sem permissão -->
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.
 </div>

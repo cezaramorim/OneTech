@@ -1,35 +1,54 @@
-
 {% load static %}
+{% load static widget_tweaks %}
 
-<!-- ✅ Lista de Categorias de Produto - AJAX | Responsivo, claro/escuro, boas práticas -->
-<div class="container-fluid" data-page="lista-categorias">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">Categorias de Produto</h2>
-    <a href="{% url 'produto:cadastrar_categoria' %}" class="btn btn-primary ajax-link">
-      <i class="bi bi-plus-lg"></i> Nova Categoria
-    </a>
-  </div>
+<main id="main-content" data-page="lista_categorias" class="container-fluid">
+  {% include 'partials/mensagens.html' %}
+  <div id="identificador-tela" data-tela="lista_categorias"></div>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">📂 Categorias de Produto</h2>
+        <a href="{% url 'produto:cadastrar_categoria' %}" class="btn btn-primary ajax-link">
+          <i class="bi bi-plus-lg"></i> Nova Categoria
+        </a>
+      </div>
 
-  {% if categorias %}
-    <div class="table-responsive">
-      <table class="table table-hover table-bordered align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Nome</th>
-            <th>Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for categoria in categorias %}
-            <tr>
-              <td>{{ categoria.nome }}</td>
-              <td>{{ categoria.descricao }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% if categorias %}
+        <!-- 🛠️ Ações principais -->
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+          <div class="d-flex gap-2">
+            <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>✏️ Editar</button>
+            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
+          </div>
+        </div>
+
+        <!-- ✅ Tabela de categorias -->
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th><input type="checkbox" id="select-all-categorias"></th>
+                <th>Nome</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for categoria in categorias %}
+                <tr>
+                  <td>
+                    <input type="checkbox" class="check-categoria" value="{{ categoria.id }}">
+                  </td>
+                  <td>{{ categoria.nome }}</td>
+                  <td>{{ categoria.descricao }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">Nenhuma categoria cadastrada ainda.</div>
+      {% endif %}
     </div>
-  {% else %}
-    <div class="alert alert-warning">Nenhuma categoria cadastrada ainda.</div>
-  {% endif %}
-</div>
+  </div>
+</main>
+

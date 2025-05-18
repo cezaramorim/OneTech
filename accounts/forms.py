@@ -34,7 +34,8 @@ class SignUpForm(UserCreationForm):
             }),
             'email': forms.EmailInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'E-mail'
+                'placeholder': 'E-mail',
+                'autocomplete': 'off'
             }),
         }
 
@@ -73,7 +74,8 @@ class EditUserForm(UserChangeForm):
         required=False,
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Digite a nova senha'
+            'placeholder': 'Digite a nova senha',
+            'autocomplete': 'off'
         })
     )
 
@@ -82,7 +84,8 @@ class EditUserForm(UserChangeForm):
         required=False,
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Confirme a nova senha'
+            'placeholder': 'Confirme a nova senha',
+            'autocomplete': 'off'
         })
     )
 
@@ -99,11 +102,13 @@ class EditUserForm(UserChangeForm):
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'E-mail'
+                'placeholder': 'E-mail',
+                'autocomplete': 'off'
             }),
             'nome_completo': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Nome Completo'
+                'placeholder': 'Nome Completo',
+                'autocomplete': 'off'
             }),
         }
 

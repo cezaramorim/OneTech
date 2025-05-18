@@ -1,27 +1,58 @@
 # nota_fiscal/views.py
 
+import os
+import json
 from datetime import datetime
-import os, json
-import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
-
+import xml.etree.ElementTree as ET
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.files.storage import default_storage
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-
-from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal
-from produto.models import Produto
+from django.contrib.auth.decorators import user_passes_test
+from django.utils import timezone
+from django.db.models import Q
+# 📦 Models
+from produto.models import NCM
 from produto.models_entradas import EntradaProduto
 from empresas.models import EmpresaAvancada
+from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal, ItemNotaFiscal
+from produto.models import Produto
 
+# 📝 Formulários
+from .forms import NotaFiscalForm
+
+# 🔄 Serializers & Filtros (agora centralizados em `common`)
+from common.serializers.nota_fiscal import NotaFiscalSerializer
+from common.filters.nota_fiscal import NotaFiscalFilter
+
+# 🛠️ Utilitários de formatação
+from common.utils.formatters import (
+    formatar_moeda_br,
+    formatar_data_iso_para_br,
+    converter_valor_br,
+    converter_data_para_date,
+    formatar_dados_para_br
+)
+
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+
+@login_required
 def importar_xml_view(request):
-    """Renderiza a página de upload de XML."""
-    return render(request, "partials/nota_fiscal/importar_xml.html")
+    """Renderiza a página de upload de XML com suporte a AJAX e carregamento completo."""
+    partial = "partials/nota_fiscal/importar_xml.html"
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return render(request, partial)
+    return render(request, "base.html", {
+        "content_template": partial,
+        "data_page": "importar_xml"
+    })
 
 
 @login_required                      # ← só permite usuários logados
@@ -188,18 +219,22 @@ def importar_xml_nfe_view(request):
 @require_POST
 def salvar_importacao_view(request):
     """
-    Salva no banco os dados completos da NFe importada,
-    usando EmpresaAvancada como fornecedor e atribuindo
-    ao usuário logado (created_by).
+    Salva no banco os dados completos da NFe importada.
+    - Cria ou vincula o fornecedor.
+    - Cria a nota fiscal com transporte e duplicatas.
+    - Cria Produto no catálogo e EntradaProduto.
+    - ✅ Cria também os registros de ItemNotaFiscal.
     """
+    from produto.models_entradas import EntradaProduto
     try:
-        # ————— Funções auxiliares —————
+        import traceback
+        from decimal import Decimal, InvalidOperation
+
         def converter_data_para_date(data_str):
             if not data_str:
                 return None
             for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
                 try:
-                    # ISO ou BR
                     return datetime.fromisoformat(data_str).date() if "T" in data_str else datetime.strptime(data_str, fmt).date()
                 except Exception:
                     continue
@@ -209,16 +244,17 @@ def salvar_importacao_view(request):
             if not valor:
                 return Decimal("0.0")
             try:
-                v = Decimal(str(valor).strip())
+                v = Decimal(str(valor).strip().replace(",", "."))
                 if v > Decimal('99999999.9999999999'):
                     return Decimal('99999999.9999999999')
                 return v
             except InvalidOperation:
+                print("❌ Erro ao converter valor:", valor)
                 return Decimal("0.0")
 
-
-        # ————— Carrega JSON da requisição —————
         payload = json.loads(request.body.decode("utf-8"))
+        print("📦 Dados recebidos:", json.dumps(payload, indent=2, ensure_ascii=False))
+
         nota_data       = payload.get("nota", {})
         fornecedor_data = payload.get("fornecedor", {})
         produtos_data   = payload.get("produtos", [])
@@ -228,25 +264,26 @@ def salvar_importacao_view(request):
         info_adicional  = payload.get("info_adicional", "")
         chave_acesso    = payload.get("chave_acesso", "").strip()
 
-        # 1) Fornecedor Avançada
-        emp_avancada = None
+        # 1) Fornecedor (emitente)
         cnpj = fornecedor_data.get("cnpj")
-        if cnpj:
-            emp_avancada, _ = EmpresaAvancada.objects.get_or_create(
-                cnpj=cnpj,
-                defaults={
-                    "razao_social":  fornecedor_data.get("razao_social", ""),
-                    "nome_fantasia": fornecedor_data.get("nome_fantasia", ""),
-                    "logradouro":    fornecedor_data.get("logradouro", ""),
-                    "numero":        fornecedor_data.get("numero", ""),
-                    "bairro":        fornecedor_data.get("bairro", ""),
-                    "cidade":        fornecedor_data.get("municipio", ""),
-                    "uf":            fornecedor_data.get("uf", ""),
-                    "cep":           fornecedor_data.get("cep", ""),
-                    "telefone":      fornecedor_data.get("telefone", ""),
-                    "status_empresa":"Ativa",
-                }
-            )
+        if not cnpj:
+            return JsonResponse({"erro": "CNPJ do fornecedor não foi informado."}, status=400)
+
+        emp_avancada, _ = EmpresaAvancada.objects.get_or_create(
+            cnpj=cnpj,
+            defaults={
+                "razao_social":  fornecedor_data.get("razao_social", ""),
+                "nome_fantasia": fornecedor_data.get("nome_fantasia", ""),
+                "logradouro":    fornecedor_data.get("logradouro", ""),
+                "numero":        fornecedor_data.get("numero", ""),
+                "bairro":        fornecedor_data.get("bairro", ""),
+                "cidade":        fornecedor_data.get("municipio", ""),
+                "uf":            fornecedor_data.get("uf", ""),
+                "cep":           fornecedor_data.get("cep", ""),
+                "telefone":      fornecedor_data.get("telefone", ""),
+                "status_empresa": "Ativa",
+            }
+        )
 
         # 2) Evita duplicata
         if NotaFiscal.objects.filter(chave_acesso=chave_acesso).exists():
@@ -255,41 +292,43 @@ def salvar_importacao_view(request):
                 status=400
             )
 
-        # 3) Cria NotaFiscal
+        # 3) Cria Nota Fiscal
         nota_fiscal = NotaFiscal.objects.create(
             fornecedor=emp_avancada,
             numero=nota_data.get("numero_nota", ""),
             natureza_operacao=nota_data.get("natureza_operacao", ""),
             data_emissao=converter_data_para_date(nota_data.get("data_emissao")),
-            data_saida=  converter_data_para_date(nota_data.get("data_saida")),
+            data_saida=converter_data_para_date(nota_data.get("data_saida")),
             chave_acesso=chave_acesso,
             valor_total_produtos=converter_valor_br(totais_data.get("valor_total_produtos")),
-            valor_total_nota=    converter_valor_br(totais_data.get("valor_total_nota")),
-            valor_total_icms=    converter_valor_br(totais_data.get("valor_total_icms")),
-            valor_total_pis=     converter_valor_br(totais_data.get("valor_total_pis")),
-            valor_total_cofins=  converter_valor_br(totais_data.get("valor_total_cofins")),
+            valor_total_nota=converter_valor_br(totais_data.get("valor_total_nota")),
+            valor_total_icms=converter_valor_br(totais_data.get("valor_total_icms")),
+            valor_total_pis=converter_valor_br(totais_data.get("valor_total_pis")),
+            valor_total_cofins=converter_valor_br(totais_data.get("valor_total_cofins")),
             valor_total_desconto=converter_valor_br(totais_data.get("valor_total_desconto")),
             informacoes_adicionais=info_adicional,
-            created_by=request.user,           # <-- atribui o usuário logado
+            created_by=request.user,
         )
 
         # 4) Transporte
-        TransporteNotaFiscal.objects.create(
-            nota_fiscal=nota_fiscal,
-            modalidade_frete=transporte_data.get("modalidade_frete"),
-            transportadora_nome=transporte_data.get("transportadora_nome"),
-            transportadora_cnpj=transporte_data.get("transportadora_cnpj"),
-            placa_veiculo=transporte_data.get("veiculo_placa"),
-            uf_veiculo=transporte_data.get("veiculo_uf"),
-            rntc=transporte_data.get("veiculo_rntc"),
-            quantidade_volumes=int(transporte_data.get("quantidade_volumes") or 0),
-            especie_volumes=transporte_data.get("especie_volumes"),
-            peso_liquido=converter_valor_br(transporte_data.get("peso_liquido")),
-            peso_bruto=converter_valor_br(transporte_data.get("peso_bruto")),
-        )
+        if transporte_data:
+            TransporteNotaFiscal.objects.create(
+                nota_fiscal=nota_fiscal,
+                modalidade_frete=transporte_data.get("modalidade_frete"),
+                transportadora_nome=transporte_data.get("transportadora_nome"),
+                transportadora_cnpj=transporte_data.get("transportadora_cnpj"),
+                placa_veiculo=transporte_data.get("veiculo_placa"),
+                uf_veiculo=transporte_data.get("veiculo_uf"),
+                rntc=transporte_data.get("veiculo_rntc"),
+                quantidade_volumes=int(transporte_data.get("quantidade_volumes") or 0),
+                especie_volumes=transporte_data.get("especie_volumes"),
+                peso_liquido=converter_valor_br(transporte_data.get("peso_liquido")),
+                peso_bruto=converter_valor_br(transporte_data.get("peso_bruto")),
+            )
 
         # 5) Duplicatas
         for dup in duplicatas_data:
+            if not dup.get("numero"): continue
             DuplicataNotaFiscal.objects.create(
                 nota_fiscal=nota_fiscal,
                 numero=dup.get("numero", ""),
@@ -297,31 +336,63 @@ def salvar_importacao_view(request):
                 vencimento=converter_data_para_date(dup.get("vencimento")),
             )
 
-        # 6) Produtos e Entradas
-        # 6) Produtos e Entradas
+
+        # 6) Produtos e Itens da Nota — com agrupamento por código
+        produtos_agrupados = {}
+
         for p in produtos_data:
-            qtd  = converter_valor_br(p.get("quantidade"))
+            codigo = (p.get("codigo") or "").strip()
+            nome = p.get("nome", "").strip()
+            if not codigo or not nome:
+                print("❌ Produto inválido:", p)
+                continue
+
+            if codigo not in produtos_agrupados:
+                produtos_agrupados[codigo] = p.copy()
+            else:
+                # Agrupa somando quantidade e valor_total
+                produtos_agrupados[codigo]["quantidade"] = str(
+                    Decimal(produtos_agrupados[codigo].get("quantidade", "0")) + Decimal(p.get("quantidade", "0"))
+                )
+                produtos_agrupados[codigo]["valor_total"] = str(
+                    Decimal(produtos_agrupados[codigo].get("valor_total", "0")) + Decimal(p.get("valor_total", "0"))
+                )
+
+        # 🔁 Agora salva os itens agrupados
+        for p in produtos_agrupados.values():
+            codigo = (p.get("codigo") or "").strip()
+            nome = p.get("nome", "").strip()
+            if not codigo or not nome:
+                continue
+
+            qtd = converter_valor_br(p.get("quantidade"))
             vuni = converter_valor_br(p.get("valor_unitario"))
             vtot = converter_valor_br(p.get("valor_total"))
             impostos = p.get("impostos", {})
 
-            produto_obj = Produto.objects.filter(
-                codigo_produto_fornecedor=p.get("codigo")
-            ).first()
-            if not produto_obj:
-                produto_obj = Produto.objects.create(
-                    codigo=f"AUTO-{p.get('codigo')}",
-                    nome=p.get("nome") or "",
-                    descricao=p.get("nome") or "",
-                    cfop=p.get("cfop") or "",
-                    unidade_comercial=p.get("unidade") or "",
-                    codigo_produto_fornecedor=p.get("codigo"),
-                    preco_custo=vuni,     # ⚡ agora usando valor convertido
-                    preco_venda=vuni,     # ⚡ agora usando valor convertido
-                    preco_medio=vuni,     # ⚡ agora usando valor convertido
-                    ativo=True,
-                )
+            # Cria ou atualiza Produto (catálogo)
+            produto_obj, _ = Produto.objects.update_or_create(
+                codigo=f"AUTO-{codigo}",
+                defaults={
+                    "nome": nome,
+                    "descricao": nome,
+                    "cfop": p.get("cfop") or "",
+                    "unidade_comercial": p.get("unidade") or "",
+                    "codigo_produto_fornecedor": codigo,
+                    "preco_custo": vuni,
+                    "preco_venda": vuni,
+                    "preco_medio": vuni,
+                    "estoque_total": qtd,
+                    "quantidade_saidas": Decimal("0.0"),
+                    "estoque_atual": qtd,
+                    "controla_estoque": True,
+                    "ativo": True,
+                    "data_cadastro": timezone.now().date(),
+                    "fornecedor": emp_avancada
+                }
+            )
 
+            # Cria EntradaProduto (estoque)
             EntradaProduto.objects.create(
                 produto=produto_obj,
                 fornecedor=emp_avancada,
@@ -337,7 +408,136 @@ def salvar_importacao_view(request):
                 cofins_aliquota=converter_valor_br(impostos.get("cofins_aliquota")),
             )
 
+            # Cria ItemNotaFiscal
+            ItemNotaFiscal.objects.create(
+                nota_fiscal=nota_fiscal,
+                produto=produto_obj,
+                codigo=codigo,
+                descricao=nome,
+                ncm=p.get("ncm", ""),
+                cfop=p.get("cfop", ""),
+                unidade=p.get("unidade", ""),
+                quantidade=qtd,
+                valor_unitario=vuni,
+                valor_total=vtot,
+                icms=converter_valor_br(impostos.get("icms_valor")),
+                ipi=Decimal("0.0"),  # ajuste se necessário
+                desconto=Decimal("0.0"),  # ajuste se necessário
+            )
+
+        
+        
+       
         return JsonResponse({"mensagem": "Importação salva com sucesso."})
 
     except Exception as e:
-        return JsonResponse({"erro": str(e)}, status=500)
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
+
+
+# nota_fiscal/views.py
+@login_required
+def editar_entrada_view(request, pk):
+    """
+    Exibe o formulário de edição de nota fiscal (entrada),
+    com as abas de dados, produtos, transporte e duplicatas.
+    """
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    produtos = EntradaProduto.objects.filter(numero_nota=nota.numero)
+    transporte = TransporteNotaFiscal.objects.filter(nota_fiscal=nota).first()
+    duplicatas = DuplicataNotaFiscal.objects.filter(nota_fiscal=nota)
+
+    form = NotaFiscalForm(instance=nota)
+
+    context = {
+        'form': form,
+        'nota': nota,
+        'produtos': produtos,
+        'transporte': transporte,
+        'duplicatas': duplicatas,
+    }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'partials/nota_fiscal/editar_entrada.html', context)
+    return render(request, 'base.html', {
+        'content_template': 'partials/nota_fiscal/editar_entrada.html',
+        **context,
+    })
+
+# nota_fiscal/views.py (adicionar ao final do arquivo)
+
+from django.contrib.auth.decorators import user_passes_test
+
+# nota_fiscal/views.py
+from django.db.models import Q
+
+@login_required
+def entradas_nota_view(request):
+    """
+    Lista notas fiscais com suporte a AJAX, filtro por termo (número ou razão social)
+    e ordenação dinâmica por campos (número, fornecedor, data de emissão).
+    """
+    termo = request.GET.get("termo", "").strip()
+    ordenar_por = request.GET.get("ordenar", "data_emissao")
+    ordem = request.GET.get("ordem", "desc")
+
+    # 🔍 Base da consulta
+    notas = NotaFiscal.objects.select_related("fornecedor", "created_by")
+
+    # 🔎 Filtro por termo
+    if termo:
+        notas = notas.filter(
+            Q(numero__icontains=termo) |
+            Q(fornecedor__razao_social__icontains=termo)
+        )
+
+    # ↕️ Ordenação dinâmica segura
+    campos_validos = ["numero", "fornecedor__razao_social", "data_emissao"]
+    if ordenar_por in campos_validos:
+        if ordem == "desc":
+            ordenar_por = "-" + ordenar_por
+        notas = notas.order_by(ordenar_por)
+    else:
+        notas = notas.order_by("-data_emissao")
+
+    context = {"notas": notas}
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return render(request, "partials/nota_fiscal/entradas_nota.html", context)
+
+    return render(request, "base.html", {
+        "content_template": "partials/nota_fiscal/entradas_nota.html",
+        **context,
+    })
+
+@login_required
+@require_POST
+def excluir_entrada_view(request, pk):
+    """
+    Exclui uma nota fiscal e todos os dados vinculados a ela:
+    transporte, duplicatas, itens da nota, entradas de estoque e produtos vinculados.
+    """
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+
+    try:
+        # Exclui itens da nota
+        ItemNotaFiscal.objects.filter(nota_fiscal=nota).delete()
+
+        # Exclui entradas de estoque
+        EntradaProduto.objects.filter(numero_nota=nota.numero).delete()
+
+        # Exclui produtos vinculados diretamente à nota
+        Produto.objects.filter(nota_fiscal=nota).delete()
+
+        # Exclui transporte e duplicatas
+        TransporteNotaFiscal.objects.filter(nota_fiscal=nota).delete()
+        DuplicataNotaFiscal.objects.filter(nota_fiscal=nota).delete()
+
+        # Por fim, exclui a nota
+        nota.delete()
+
+        return JsonResponse({"mensagem": "Nota fiscal e dados relacionados excluídos com sucesso."})
+
+    except Exception as e:
+        return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)

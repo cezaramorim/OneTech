@@ -16,6 +16,10 @@ from django.views.decorators.http import require_POST
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
 import xml.etree.ElementTree as ET
+import json
+from common.utils import formatters
+
+valor = formatters.formatar_numero_br("1234.56")
 
 # =====================
 # PRODUTOS
@@ -38,15 +42,110 @@ def cadastrar_produto_view(request):
         form = ProdutoForm()
     return render_ajax_or_base(request, "partials/produtos/cadastrar_produto.html", {"form": form})
 
+@login_required
+def editar_produto_view(request, pk):
+    """
+    View para editar um produto existente via AJAX ou GET normal.
+    """
+    produto = get_object_or_404(Produto, pk=pk)
 
-# =====================
-# CATEGORIAS
-# =====================
+    if request.method == "POST":
+        form = ProdutoForm(request.POST, instance=produto)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({
+                "sucesso": True,
+                "mensagem": "Produto atualizado com sucesso.",
+                "redirect_url": "/produtos/"
+            })
+        return JsonResponse({"sucesso": False, "erros": form.errors}, status=400)
+
+    form = ProdutoForm(instance=produto)
+    context = {
+        "form": form,
+        "produto": produto,
+    }
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return render(request, "partials/produtos/editar_produto.html", context)
+
+    # Se não for AJAX, renderiza com base.html e content_template
+    context["content_template"] = "partials/produtos/editar_produto.html"
+    context["data_page"] = "editar_produto"
+    return render(request, "base.html", context)
+
+
+@require_POST
+@login_required
+def excluir_produtos_view(request):
+    if not request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"erro": "Requisição inválida."}, status=400)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        ids = data.get("ids", [])
+        if not ids:
+            return JsonResponse({"erro": "Nenhum produto selecionado."}, status=400)
+
+        Produto.objects.filter(id__in=ids).delete()
+        return JsonResponse({"sucesso": True, "mensagem": "Produtos excluídos com sucesso."})
+
+    except Exception as e:
+        return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)
+
+
+# ======================
+# CATEGORIAS DE PRODUTOS
+# ======================
 @login_required
 def lista_categorias_view(request):
     categorias = CategoriaProduto.objects.all()
-    return render_ajax_or_base(request, "partials/produtos/lista_categorias.html", {"categorias": categorias})
+    return render_ajax_or_base(
+        request,
+        "partials/produtos/lista_categorias.html",
+        {
+            "categorias": categorias,
+            "data_tela": "lista_categorias",  # ✅ Adicionado aqui
+            "data_page": "lista_categorias",
+        }
+    )
+    
+@login_required
+def editar_categoria_view(request, pk):
+    categoria = get_object_or_404(CategoriaProduto, pk=pk)
+    if request.method == "POST":
+        form = CategoriaProdutoForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"success": True, "message": "Categoria atualizada com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
+    else:
+        form = CategoriaProdutoForm(instance=categoria)
 
+    context = {"form": form, "categoria": categoria,}
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return render(request, "partials/produtos/editar_categoria.html", context)
+
+    return render(request, "base.html", {
+        "content_template": "partials/produtos/lista_categorias.html",
+        **context,
+    })
+
+@require_POST
+@login_required
+def excluir_categorias_view(request):
+    """
+    Exclui múltiplas categorias de produto via AJAX.
+    """
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        try:
+            body = json.loads(request.body)
+            ids = body.get("ids", [])
+            CategoriaProduto.objects.filter(id__in=ids).delete()
+            return JsonResponse({"sucesso": True, "mensagem": "Categorias excluídas com sucesso."})
+        except Exception as e:
+            return JsonResponse({"erro": f"Erro ao excluir categorias: {str(e)}"}, status=500)
+    return JsonResponse({"erro": "Requisição inválida."}, status=400)
 
 @login_required
 def cadastrar_categoria_view(request):
@@ -54,11 +153,37 @@ def cadastrar_categoria_view(request):
         form = CategoriaProdutoForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Categoria cadastrada com sucesso.")
-            return redirect(reverse("produto:lista_categorias"))
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({
+                    "sucesso": True,
+                    "mensagem": "Categoria cadastrada com sucesso.",
+                    "redirect_url": reverse("produto:lista_categorias")
+                })
+            else:
+                messages.success(request, "Categoria cadastrada com sucesso.")
+                return redirect("produto:lista_categorias")
+        else:
+            # Tratamento de erro para AJAX
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                erros = []
+                for field, msgs in form.errors.items():
+                    for msg in msgs:
+                        label = form.fields[field].label
+                        erros.append(f"{label}: {msg}")
+                return JsonResponse({
+                    "sucesso": False,
+                    "mensagem": "Erro ao salvar categoria:<br>" + "<br>".join(erros)
+                }, status=400)
+
     else:
         form = CategoriaProdutoForm()
-    return render_ajax_or_base(request, "partials/produtos/cadastrar_categoria.html", {"form": form})
+
+    return render_ajax_or_base(
+        request,
+        "partials/produtos/cadastrar_categoria.html",
+        {"form": form, "data_tela": "cadastrar_categoria"}
+    )
+
 
 
 # =====================

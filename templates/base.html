@@ -2,283 +2,275 @@
 <!DOCTYPE html>
 
 <html lang="pt-br">
+
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>OneTech - Painel</title>
-<link rel="shortcut icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>OneTech - Painel</title>
+  <link rel="shortcut icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
 
-<!-- 🚀 Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-<script defer="" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- 🌙 Aplica o tema escuro antes do CSS para evitar piscar -->
+  <script>
+    const tema = localStorage.getItem("tema");
+    if (tema === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    document.documentElement.classList.add("theme-ready");
+  </script>
 
-<!-- Select2 CSS (depois do Bootstrap) -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+  <!-- 🚀 Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script defer="" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- 🎨 Estilo Customizado -->
-<link href="{% static 'css/styles.css' %}" rel="stylesheet"/>
+  <!-- Select2 CSS (depois do Bootstrap) -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  
+  <!-- 🎨 Estilo Customizado -->
+  <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+
 </head>
 <body class="{% if request.user.is_authenticated %}logged-in{% endif %}" id="page-body">
-<!-- 🌙 Aplicar tema escuro salvo no localStorage -->
-<script>
-    (() => {
-      const tema = localStorage.getItem('tema');
-      if (tema === 'escuro') {
-        document.documentElement.classList.add('dark');
-        document.body.classList.add('dark');
-      }
-    })();
-  </script>
+  {% include 'partials/mensagens.html' %}
+  
 <div class="layout d-flex">
-<!-- ✅ Alertas do Django -->
-    {% if messages %}
-      <div class="position-fixed top-0 start-50 translate-middle-x mt-3 z-3" id="alert-container" style="width: 90%; max-width: 600px;">
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-            {{ message }}
-            <button aria-label="Fechar" class="btn-close" data-bs-dismiss="alert" type="button"></button>
-</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <!-- 📚 Menu lateral com permissões -->
-<aside class="sidebar p-3">
-<div class="d-flex justify-content-between align-items-center mb-3">
-<!--<a href="{% url 'painel:home' %}" class="logo text-primary fs-4 ajax-link">OneTech</a>-->
-<a class="logo d-inline-block ajax-link" href="{% url 'painel:home' %}">
-<img alt="OneTech" class="img-fluid" src="{% static 'icons/logo_sidbar.png' %}" style="max-height: 70px;"/>
-</a>
-<div>
-<button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Tema">🌙</button>
-<button class="btn btn-sm btn-outline-secondary d-md-none" id="hamburger-toggle" title="Menu">☰</button>
-</div>
-</div>
-<nav>
-<div class="accordion" id="menuAccordion">
-<!-- ⚙️ Configurações -->
-          {% if perms.accounts.view_user or perms.auth.view_group %}
-          <div class="accordion-item">
-<h2 class="accordion-header">
-<button class="accordion-button collapsed" data-bs-target="#submenu-configuracoes" data-bs-toggle="collapse" type="button">
-                ⚙️ Configurações
-              </button>
-</h2>
-<div class="accordion-collapse collapse" id="submenu-configuracoes">
-<div class="accordion-body p-0">
-<ul class="list-group list-group-flush">
-<!-- 👤 Usuários -->
-                  {% if perms.accounts.view_user %}
-                  <li class="list-group-item ms-3">
-<button aria-expanded="false" class="btn w-100 text-start p-0" data-bs-target="#config-usuarios" data-bs-toggle="collapse">
-                      👤 Usuários
-                    </button>
-<ul class="collapse list-group list-group-flush mt-2 ms-3" id="config-usuarios">
-                      {% if perms.accounts.add_user %}
-                        <li><a class="list-group-item ajax-link" href="{% url 'accounts:signup' %}">Novo</a></li>
-                      {% endif %}
-                      <li><a class="list-group-item ajax-link" href="{% url 'accounts:lista_usuarios' %}">Lista</a></li>
-                      {% if perms.accounts.change_permission %}
-                        <li><a class="list-group-item ajax-link" href="{% url 'accounts:selecionar_usuario_permissoes' %}">Permissões</a></li>
-                      {% endif %}
-                    </ul>
-</li>
-                  {% endif %}
-          
-                  <!-- 🛡️ Grupos -->
-                  {% if perms.auth.view_group %}
-                  <li class="list-group-item ms-3">
-<button aria-expanded="false" class="btn w-100 text-start p-0" data-bs-target="#config-grupos" data-bs-toggle="collapse">
-                      🛡️ Grupos
-                    </button>
-<ul class="collapse list-group list-group-flush mt-2 ms-3" id="config-grupos">
-                      {% if perms.auth.add_group %}
-                        <li><a class="list-group-item ajax-link" href="{% url 'accounts:cadastrar_grupo' %}">Novo</a></li>
-                      {% endif %}
-                      <li><a class="list-group-item ajax-link" href="{% url 'accounts:lista_grupos' %}">Lista</a></li>
-</ul>
-</li>
-                  {% endif %}
-          
-                  <!-- 🔐 Permissões -->
-                  {% if perms.auth.change_permission %}
-                  <li class="list-group-item ms-3">
-<button aria-expanded="false" class="btn w-100 text-start p-0" data-bs-target="#config-permissoes" data-bs-toggle="collapse">
-                      🔐 Permissões
-                    </button>
-<ul class="collapse list-group list-group-flush mt-2 ms-3" id="config-permissoes">
-<li><a class="list-group-item ajax-link" href="{% url 'accounts:gerenciar_permissoes_geral' %}">Gerenciar</a></li>
-<li><a class="list-group-item ajax-link" href="{% url 'accounts:gerenciar_permissoes_grupo_selector' %}">Por Grupo</a></li>
-</ul>
-</li>
-                  {% endif %}
-          
-                </ul>
-</div>
-</div>
-</div>
-          {% endif %}
-
-         <!-- 🏢 Empresas -->
-{% if perms.empresas.view_empresa %}
-<div class="accordion-item">
-<h2 class="accordion-header">
-<button class="accordion-button collapsed" data-bs-target="#submenu-empresas" data-bs-toggle="collapse" type="button">
-      🏢 Empresas
-    </button>
-</h2>
-<div class="accordion-collapse collapse" id="submenu-empresas">
-<ul class="list-group list-group-flush">
-
-      {% if perms.empresas.add_empresa %}
-        <!-- ✅ Cadastro Avançado -->
-<li>
-<a class="list-group-item ajax-link" href="{% url 'empresas:cadastrar_empresa_avancado' %}">
-            Cadastrar Empresa Avançada
-          </a>
-</li>
-<!-- ✅ Cadastro Simples -->
-<li>
-<a class="list-group-item ajax-link" href="{% url 'empresas:cadastrar_empresa' %}">
-            Cadastrar Empresa
-          </a>
-</li>
-      {% endif %}
-
-      <!-- 📋 Lista de Empresas -->
-<li>
-<a class="list-group-item ajax-link" href="{% url 'empresas:lista_empresas' %}">
-          Lista de Empresas
-        </a>
-</li>
-
-      {% if perms.empresas.add_categoria %}
-        <!-- 🗂️ Categorias -->
-<li><a class="list-group-item ajax-link" href="{% url 'empresas:cadastrar_categoria_avancada' %}">Categorias</a></li>
-      {% endif %}
-
-    </ul>
-</div>
-</div>
-{% endif %}
-
-{% if perms.produto.view_produto %}
-<div class="accordion-item">
-  <h2 class="accordion-header">
-    <button class="accordion-button collapsed" data-bs-target="#submenu-produtos" data-bs-toggle="collapse" type="button">
-      📦 Produtos
-    </button>
-  </h2>
-  <div class="accordion-collapse collapse" id="submenu-produtos">
-    <ul class="list-group list-group-flush">
-      <li><a class="list-group-item ajax-link" href="{% url 'produto:lista_produtos' %}">Listar Produtos</a></li>
-      <li><a class="list-group-item ajax-link" href="{% url 'produto:lista_categorias' %}">Categorias de Produto</a></li>
-      <li><a class="list-group-item ajax-link" href="{% url 'produto:lista_unidades' %}">Unidades de Medida</a></li>
-      <li><a class="list-group-item ajax-link" href="{% url 'produto:manutencao_ncm' %}">NCM</a></li> <!-- ✅ Adicionado -->
-    </ul>
-  </div>
-</div>
-{% endif %}
-
-<div class="accordion-item">
-<h2 class="accordion-header">
-<button class="accordion-button collapsed" data-bs-target="#submenu-perfil" data-bs-toggle="collapse" type="button">👤 Perfil</button>
-</h2>
-<div class="accordion-collapse collapse" id="submenu-perfil">
-<ul class="list-group list-group-flush">
-<li><a class="list-group-item ajax-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a></li>
-<li>
-<form action="{% url 'accounts:logout' %}" class="px-3 py-1" method="post">
-                    {% csrf_token %}
-                    <button class="w-100 text-start bg-transparent border-0 logout-link" type="submit">Sair</button>
-</form>
-</li>
-</ul>
-</div>
-</div>
-
-<!-- 📄 Nota Fiscal -->
-<div class="accordion-item">
-  <h2 class="accordion-header">
-    <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#submenu-nota-fiscal" type="button">
-      📄 Nota Fiscal
-    </button>
-  </h2>
-  <div id="submenu-nota-fiscal" class="accordion-collapse collapse">
-    <ul class="list-group list-group-flush">
-      <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
-    </ul>
-  </div>
-</div>
-
-<!-- 📊 Relatórios -->
-<div class="accordion-item">
-  <h2 class="accordion-header">
-    <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#submenu-relatorios" type="button">
-      📊 Relatórios
-    </button>
-  </h2>
-  <div id="submenu-relatorios" class="accordion-collapse collapse">
-    <ul class="list-group list-group-flush">
-      <li>
-        <a href="{% url 'relatorios:notas_entradas' %}" class="list-group-item ajax-link">
-          Entradas de Nota
-        </a>
-      </li>
-      <!-- futuros submenus aqui -->
-    </ul>
-  </div>
-</div>
-
-
-</div>
-</nav>
-</aside>
-<!-- 🧾 Conteúdo Principal -->
-<main class="content flex-grow-1 bg-light" data-tela="{% if '/accounts/grupos/' in request.path and '/ver-permissoes/' in request.path %}
-                   visualizar-permissoes-grupo
-                 {% elif '/accounts/grupos/' in request.path and '/permissoes/' in request.path %}
-                   gerenciar-permissoes-grupo
-                 {% elif '/accounts/permissoes/por-grupo/' in request.path %}
-                   gerenciar-permissoes-grupo-selector
-                 {% elif '/accounts/grupos/' in request.path %}
-                   lista-grupos
-                 {% elif '/empresas/nova-avancada/' in request.path %}
-                   empresa_avancada
-                 {% else %}
-                   {{ request.resolver_match.url_name }}
-                 {% endif %}" id="main-content" role="main">
-                 
-  {% if content_template %}
-    {% include content_template %}
-  {% else %}
-    <div class="col-12 col-md-10 col-lg-8 mx-auto">
-<div class="welcome-bar mb-4">
-        Olá, <strong>{{ request.user.get_full_name }}</strong>, bem-vindo(a) ao OneTech!
-      </div>
-</div>
-<div class="home-background"></div>
+  <!-- ✅ Alertas do Django -->
+  <div class="position-fixed top-0 start-50 translate-middle-x mt-3 z-3" id="alert-container"
+     style="width: 90%; max-width: 600px;">
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+    {% endfor %}
   {% endif %}
-</main>
 </div>
 
-<!-- 🔌 JavaScript Global -->
-<!-- ✅ jQuery SEM defer -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-<!-- ✅ Select2 COM defer -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
+  <!-- 📚 Menu lateral -->
+  <aside class="sidebar p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a href="{% url 'painel:home' %}" class="logo d-inline-block ajax-link">
+        <img src="{% static 'icons/logo_sidbar.png' %}" alt="OneTech" class="img-fluid" style="max-height: 70px;">
+      </a>
+      <div>
+        <button id="theme-toggle" class="btn btn-sm btn-outline-secondary" title="Tema">🌙</button>
+        <button id="hamburger-toggle" class="btn btn-sm btn-outline-secondary d-md-none" title="Menu">☰</button>
+      </div>
+    </div>
 
-<!-- Scripts globais -->
-<script defer src="{% static 'js/scripts.js' %}"></script>
+    <nav>
+      <div class="accordion" id="menuAccordion">
+    
+        <!-- ⚙️ Configurações -->
+        {% if perms.accounts.view_user or perms.auth.view_group %}
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-configuracoes">
+              ⚙️ Configurações
+            </button>
+          </h2>
+          <div id="submenu-configuracoes" class="accordion-collapse collapse">
+            <div class="accordion-body p-0">
+              <ul class="list-group list-group-flush">
+    
+                {% if perms.accounts.view_user %}
+                <!-- 👤 Usuários -->
+                <li class="list-group-item ms-3">
+                  <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-usuarios" aria-expanded="false">
+                    👤 Usuários
+                  </button>
+                  <ul id="config-usuarios" class="collapse list-group list-group-flush mt-2 ms-3">
+                    {% if perms.accounts.add_user %}
+                    <li><a href="{% url 'accounts:criar_usuario' %}" class="list-group-item ajax-link">Novo</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'accounts:lista_usuarios' %}" class="list-group-item ajax-link">Lista</a></li>
+                    {% if perms.accounts.change_permission %}
+                    <li><a href="{% url 'accounts:selecionar_usuario_permissoes' %}" class="list-group-item ajax-link">Permissões</a></li>
+                    {% endif %}
+                  </ul>
+                </li>
+                {% endif %}
+    
+                {% if perms.auth.view_group %}
+                <!-- 🛡️ Grupos -->
+                <li class="list-group-item ms-3">
+                  <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-grupos" aria-expanded="false">
+                    🛡️ Grupos
+                  </button>
+                  <ul id="config-grupos" class="collapse list-group list-group-flush mt-2 ms-3">
+                    {% if perms.auth.add_group %}
+                    <li><a href="{% url 'accounts:cadastrar_grupo' %}" class="list-group-item ajax-link">Novo</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'accounts:lista_grupos' %}" class="list-group-item ajax-link">Lista</a></li>
+                  </ul>
+                </li>
+                {% endif %}
+    
+                {% if perms.auth.change_permission %}
+                <!-- 🔐 Permissões -->
+                <li class="list-group-item ms-3">
+                  <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-permissoes" aria-expanded="false">
+                    🔐 Permissões
+                  </button>
+                  <ul id="config-permissoes" class="collapse list-group list-group-flush mt-2 ms-3">
+                    <li><a href="{% url 'accounts:gerenciar_permissoes_geral' %}" class="list-group-item ajax-link">Gerenciar</a></li>
+                    <li><a href="{% url 'accounts:gerenciar_permissoes_grupo_selector' %}" class="list-group-item ajax-link">Por Grupo</a></li>
+                  </ul>
+                </li>
+                {% endif %}
+    
+              </ul>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+    
+        <!-- 🏢 Empresas -->
+        {% if perms.empresas.view_empresaavancada %}
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-empresas">
+              🏢 Empresas
+            </button>
+          </h2>
+          <div id="submenu-empresas" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              {% if perms.empresas.add_empresaavancada %}
+              <li><a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="list-group-item ajax-link">Cadastrar Empresa</a></li>              
+              {% endif %}
+              <li><a href="{% url 'empresas:lista_empresas_avancadas' %}" class="list-group-item ajax-link">Lista de Empresas</a></li>
+              {% if perms.empresas.add_categoriaempresa %}
+              <li><a href="{% url 'empresas:cadastrar_categoria_avancada' %}" class="list-group-item ajax-link">Categorias</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        {% endif %}
 
-<!-- Scripts específicos da página -->
-<script defer src="{% static 'js/importar_xml.js' %}"></script>
+    
+        <!-- 📦 Produtos -->
+        {% if perms.produto.view_produto %}
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-produtos">
+              📦 Produtos
+            </button>
+          </h2>
+          <div id="submenu-produtos" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              <li><a href="{% url 'produto:cadastrar_produto' %}" class="list-group-item ajax-link">Cadadtro Produtos</a></li>
+              <li><a href="{% url 'produto:lista_produtos' %}" class="list-group-item ajax-link">Listar Produtos</a></li>
+              <li><a href="{% url 'produto:lista_categorias' %}" class="list-group-item ajax-link">Categorias de Produto</a></li>
+              <li><a href="{% url 'produto:lista_unidades' %}" class="list-group-item ajax-link">Unidades de Medida</a></li>
+              <li><a href="{% url 'produto:manutencao_ncm' %}" class="list-group-item ajax-link">NCM</a></li>
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+    
+        <!-- 📄 Nota Fiscal -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-nota-fiscal">
+              📄 Nota Fiscal
+            </button>
+          </h2>
+          <div id="submenu-nota-fiscal" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
+              <li><a href="{% url 'nota_fiscal:entradas_nota' %}" class="list-group-item ajax-link">Entradas de Nota</a></li>
+            </ul>
+          </div>
+        </div>
+    
+        <!-- 📊 Relatórios -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-relatorios">
+              📊 Relatórios
+            </button>
+          </h2>
+          <div id="submenu-relatorios" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              <li><a href="{% url 'relatorios:api_nota_detalhada' pk=1 %}" class="list-group-item ajax-link">Nota Fiscal</a></li>
+            </ul>
+          </div>
+        </div>
+    
+        <!-- 👤 Perfil -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-perfil">
+              👤 Perfil
+            </button>
+          </h2>
+          <div id="submenu-perfil" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              <li><a href="{% url 'accounts:edit_profile' %}" class="list-group-item ajax-link">Editar Perfil</a></li>
+              <li>
+                <form method="post" action="{% url 'accounts:logout' %}" class="px-3 py-1">
+                  {% csrf_token %}
+                  <button type="submit" class="w-100 text-start bg-transparent border-0 logout-link">Sair</button>
+                </form>
+              </li>
+            </ul>
+          </div>
+        </div>
+    
+      </div> <!-- fecha .accordion -->
+    </nav>
+    
+  </aside>
+
+  
+
+  <!-- 🧾 Conteúdo Principal -->
+  <main id="main-content"
+        class="content flex-grow-1 bg-light"
+        role="main"
+        data-page="{{ data_page|default:data_tela }}"
+        data-tela="{{ data_tela }}">
+     
+    {% if content_template %}
+      {% include content_template %}
+    {% else %}
+      <!-- ✅ Tela de boas-vindas -->
+      <div class="container-fluid py-5 d-flex flex-column align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card shadow-lg border-0 p-4 text-center" style="max-width: 720px; width: 100%;">
+          <h2>Olá, <strong>{{ request.user.get_full_name }}</strong></h2>
+          <p>Bem-vindo(a) ao OneTech.</p>
+        </div>
+      </div>
+
+      <!-- 🌅 Imagem de fundo -->
+      <div id="welcome-screen" class="home-background"></div>
+    {% endif %}
+  </main>
+</div> <!-- fecha .layout.d-flex -->
 
 
-{% block extra_js %}
-<script defer src="{% static 'js/relatorios/notas_entradas.js' %}"></script>
-{% endblock %}
+ 
+
+  <!-- 🔌 JavaScript Global -->
+  <!-- ✅ jQuery SEM defer -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+  <!-- ✅ Select2 COM defer -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
+
+  <!-- Scripts globais -->
+  <script defer src="{% static 'js/scripts.js' %}"></script>
+
+  {% block extra_js %}
+  <script defer src="{% static 'js/relatorios/notas_entradas.js' %}"></script>
+  {% endblock %}
+
+  <!-- Scripts específicos da página -->
+  <script defer src="{% static 'js/importar_xml.js' %}"></script>
 </body>
+
 </html>

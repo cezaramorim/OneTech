@@ -1,74 +1,88 @@
-{% if perms.accounts.change_user %}
 {% load static %}
+{% load custom_tags %}
+{% if perms.accounts.change_user %}
 
-<!-- ✏️ Formulário de edição de usuário -->
-<div class="container py-4" style="max-width: 720px;">
-  <div class="card shadow-lg border-0 p-4">
-    <h2 class="text-center mb-4">Editar Usuário</h2>
+<main id="main-content" class="container-fluid py-4" data-page="editar_usuario">
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens"></div>
 
-    <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_usuario' usuario.id %}">
-      {% csrf_token %}
+  <div class="row justify-content-center">
+    <div class="col-md-6">
 
-      <!-- Nome de Usuário (Login) - texto com estilo consistente -->
-      <div class="mb-3">
-        <label class="form-label fw-bold">Nome de Usuário (Login):</label>
-        <div class="form-control-plaintext dark-plaintext rounded px-3 py-2">
-          {{ usuario.username }}
-        </div>
-      </div>    
+      <!-- ✏️ Título -->
+      <h2 class="text-center mb-1">Editar Usuário</h2>
+      <p class="text-center text-muted mb-4">Atualize os dados do usuário ou redefina sua senha.</p>
 
-      <!-- Nome Completo -->
-      <div class="form-group mb-3">
-        <label for="nome_completo">Nome Completo:</label>
-        {{ form.nome_completo }}
+      <div class="card shadow-sm p-4">
+
+        <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_usuario' usuario.id %}">
+          {% csrf_token %}
+
+          <!-- 👤 Nome de Usuário -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nome de Usuário (Login):</label>
+            <div class="form-control-plaintext dark-plaintext rounded px-3 py-2">
+              {{ usuario.username }}
+            </div>
+          </div>
+
+          <!-- 🔤 Nome Completo -->
+          <div class="mb-3">
+            <label for="nome_completo">Nome Completo:</label>
+            {{ form.nome_completo }}
+          </div>
+
+          <!-- 📧 E-mail -->
+          <div class="mb-3">
+            <label for="email">E-mail:</label>
+            {{ form.email }}
+          </div>
+
+          <!-- 👥 Grupo -->
+          <div class="mb-3">
+            <label for="grupo">Grupo:</label>
+            <select name="grupo" id="grupo" class="form-select">
+              <option value="">---------</option>
+              {% for grupo in grupos %}
+                <option value="{{ grupo.id }}" {% if usuario.groups.first.id == grupo.id %}selected{% endif %}>
+                  {{ grupo.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <hr>
+
+          <!-- 🔐 Senha -->
+          <h5 class="mb-3">Alterar Senha <small class="text-muted">(opcional)</small></h5>
+
+          <div class="mb-3">
+            <label for="nova_senha">Nova Senha:</label>
+            <input type="password" name="nova_senha" id="nova_senha" class="form-control" placeholder="Digite a nova senha">
+          </div>
+
+          <div class="mb-4">
+            <label for="confirmar_senha">Confirme a Nova Senha:</label>
+            <input type="password" name="confirmar_senha" id="confirmar_senha" class="form-control" placeholder="Confirme a nova senha">
+          </div>
+
+          <!-- Botões -->
+          <div class="d-flex justify-content-between gap-2">
+            <button type="submit" class="btn btn-primary">
+              💾 Salvar Alterações
+            </button>
+            <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">
+              ← Voltar
+            </a>
+          </div>
+
+        </form>
+
       </div>
-
-      <!-- Email -->
-      <div class="form-group mb-3">
-        <label for="email">E-mail:</label>
-        {{ form.email }}
-      </div>
-
-      <!-- Grupo (selecionado e editável) -->
-      <div class="form-group mb-4">
-        <label for="grupo">Grupo:</label>
-        <select name="grupo" id="grupo" class="form-select">
-          <option value="">---------</option>
-          {% for grupo in grupos %}
-            <option value="{{ grupo.id }}" {% if usuario.groups.first.id == grupo.id %}selected{% endif %}>
-              {{ grupo.name }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <hr>
-
-      <!-- 🔐 Senha -->
-      <h5>Alterar Senha <small class="text-muted">(opcional)</small></h5>
-
-      <div class="form-group mb-3">
-        <label for="nova_senha">Nova Senha:</label>
-        <input type="password" name="nova_senha" id="nova_senha" class="form-control" placeholder="Digite a nova senha">
-      </div>
-
-      <div class="form-group mb-4">
-        <label for="confirmar_senha">Confirme a Nova Senha:</label>
-        <input type="password" name="confirmar_senha" id="confirmar_senha" class="form-control" placeholder="Confirme a nova senha">
-      </div>
-
-      <!-- Botões -->
-      <div class="d-flex justify-content-between gap-3">
-        <button type="submit" class="btn btn-primary">
-          💾 Salvar Alterações
-        </button>
-        <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">
-          ← Voltar
-        </a>        
-      </div>
-    </form>
+    </div>
   </div>
-</div>
+</main>
+
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

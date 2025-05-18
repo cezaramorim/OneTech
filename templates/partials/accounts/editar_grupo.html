@@ -2,32 +2,53 @@
 {% load static %}
 {% load widget_tweaks %}
 
-<div class="d-flex justify-content-center">
-  <div class="card shadow p-4 w-100" style="max-width: 500px;">
+<main id="main-content" class="container-fluid py-4" data-page="editar_grupo">
 
-    <!-- Título -->
-    <h2 class="text-center mb-4">Editar Grupo</h2>
+  <!-- 🔔 Mensagens instantâneas -->
+  <div id="mensagens" class="mb-3"></div>
 
-    <!-- Formulário AJAX -->
-    <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_grupo' grupo.id %}">
-      {% csrf_token %}
+  <div class="row justify-content-center">
+    <div class="col-md-6">
 
-      <!-- Campo nome -->
-      <div class="mb-3">
-        <label for="nome" class="form-label">Nome do Grupo:</label>
-        <input type="text" name="nome" id="nome" class="form-control" value="{{ grupo.name }}" required>
+      <!-- 🏷️ Título da página -->
+      <div class="text-center mb-4">
+        <h2 class="titulo-formulario">Editar Grupo</h2>
+        <p class="text-muted dark:text-light">Atualize o nome do grupo abaixo.</p>
       </div>
 
-      <!-- Ações -->
-      <div class="d-flex justify-content-between mt-4">
-        <button type="submit" class="btn btn-success w-50 me-2">Salvar</button>
-        <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">← Cancelar</a>
-      </div>
-    </form>
+      <!-- 📄 Formulário de edição de grupo -->
+      <form method="post" class="ajax-form shadow-sm card p-4" data-url="{% url 'accounts:editar_grupo' grupo.id %}">
+        {% csrf_token %}
 
+        <!-- 📝 Campo: nome do grupo -->
+        <div class="mb-3">
+          <label for="nome" class="form-label">Nome do Grupo:</label>
+          <input type="text"
+                 name="nome"
+                 id="nome"
+                 class="form-control"
+                 value="{{ grupo.name }}"
+                 required>
+        </div>
+
+        <!-- ✅ Botões de ação -->
+        <div class="d-flex justify-content-between mt-4">
+          <!-- 💾 Salvar -->
+          <button type="submit" class="btn btn-success w-50 me-2">Salvar</button>
+
+          <!-- ❌ Cancelar -->
+          <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">
+            ← Cancelar
+          </a>
+        </div>
+      </form>
+
+    </div>
   </div>
-</div>
+</main>
+
 {% else %}
+<!-- 🔒 Acesso negado -->
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.
 </div>

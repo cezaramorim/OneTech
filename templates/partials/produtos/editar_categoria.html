@@ -1,0 +1,35 @@
+{% load static widget_tweaks %}
+
+<main id="main-content" data-tela="editar_categoria" data-page="lista_categorias" class="container-fluid">
+  {% include 'partials/mensagens.html' %}
+
+  <div class="card shadow-sm rounded-4">
+    <div class="card-body">
+      <h2 class="mb-4">✏️ Editar Categoria</h2>
+
+      <form method="post" class="ajax-form" data-url="{% url 'produto:editar_categoria' categoria.id %}" autocomplete="off">
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.nome.label_tag }}
+            {{ form.nome|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            {{ form.descricao.label_tag }}
+            {{ form.descricao|add_class:"form-control" }}
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'produto:lista_categorias' %}" class="btn btn-secondary ajax-link">
+            ← Voltar
+          </a>
+          <button type="submit" class="btn btn-success">
+            💾 Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>

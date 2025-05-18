@@ -103,7 +103,7 @@ class EmpresaAvancadaForm(forms.ModelForm):
             'data_cadastro': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
 
             'cep': forms.TextInput(attrs={'class': 'form-control mascara-cep', 'id': 'cep'}),
-            'logradouro': forms.TextInput(attrs={'class': 'form-control', 'id': 'logradouro'}),
+            'logradouro': forms.TextInput(attrs={'class': 'form-control','id': 'logradouro'}),
             'numero': forms.TextInput(attrs={'class': 'form-control'}),
             'complemento': forms.TextInput(attrs={'class': 'form-control'}),
             'bairro': forms.TextInput(attrs={'class': 'form-control', 'id': 'bairro'}),
@@ -137,3 +137,46 @@ class EmpresaAvancadaForm(forms.ModelForm):
             'cliente': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'fornecedor': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        tipo = None
+
+        # Detecta o tipo da empresa enviado via POST
+        if 'tipo_empresa' in self.data:
+            tipo = self.data.get('tipo_empresa')
+        elif self.initial.get('tipo_empresa'):
+            tipo = self.initial.get('tipo_empresa')
+
+        # Define campos obrigatórios com base no tipo
+        if tipo == 'pj':
+            obrigatorios = [
+                'tipo_empresa',
+                'razao_social',
+                'cnpj',
+                'cep',
+                'logradouro',
+                'numero',
+                'bairro',
+                'cidade',
+                'uf',
+            ]
+        elif tipo == 'pf':
+            obrigatorios = [
+                'tipo_empresa',
+                'nome_completo',
+                'cpf',
+                'cep',
+                'logradouro',
+                'numero',
+                'bairro',
+                'cidade',
+                'uf',
+            ]
+        else:
+            obrigatorios = ['tipo_empresa']  # valor indefinido ainda
+
+        for field in obrigatorios:
+            if field in self.fields:
+                self.fields[field].required = True

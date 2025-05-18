@@ -1,0 +1,100 @@
+{% if perms.auth.add_user %}
+{% load static %}
+{% load widget_tweaks %}
+
+<main id="main-content" class="container-fluid py-4" data-page="criar_usuario">
+    <!-- 🔔 Mensagens instantâneas (novo padrão escalável) -->
+    <div id="mensagens"></div>
+  
+    <!-- 🔔 Mensagens instantâneas-->
+  {% include 'partials/mensagens.html' %}
+    
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+
+      <!-- 🔹 Título -->
+      <h2 class="mb-1 text-center">Novo Cadastro de Usuário</h2>
+      <p class="text-center text-muted mb-4">Preencha os campos abaixo para criar um novo usuário.</p>
+
+      <!-- 🧾 Card de formulário -->
+      <div class="card shadow-sm p-4">
+
+        <form id="form-criar-usuario" method="post" novalidate class="card p-4 shadow-sm ajax-form" data-url="{% url 'accounts:criar_usuario' %}" autocomplete="off">
+          {% csrf_token %}
+
+          <!-- 🔤 Nome completo -->
+          <div class="mb-3">
+            {{ form.nome_completo.label_tag }}
+            {{ form.nome_completo }}
+            {% if form.nome_completo.errors %}
+              <div class="text-danger small">{{ form.nome_completo.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- 👤 Usuário -->
+          <div class="mb-3">
+            {{ form.username.label_tag }}
+            {{ form.username }}
+            {% if form.username.errors %}
+              <div class="text-danger small">{{ form.username.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- 📧 E-mail -->
+          <div class="mb-3">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% if form.email.errors %}
+              <div class="text-danger small">{{ form.email.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- 🔐 Senha -->
+          <div class="mb-3">
+            {{ form.password1.label_tag }}
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+              <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- 🔐 Confirmação -->
+          <div class="mb-3">
+            {{ form.password2.label_tag }}
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+              <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- 👥 Grupo -->
+          <div class="mb-3">
+            {{ form.grupo.label_tag }}
+            {{ form.grupo }}
+            {% if form.grupo.errors %}
+              <div class="text-danger small">{{ form.grupo.errors.0 }}</div>
+            {% endif %}
+            <small class="form-text text-muted">O grupo define as permissões herdadas automaticamente.</small>
+          </div>
+
+          <!-- 🔘 Botões -->
+          <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary">
+              <i class="bi bi-arrow-left-circle"></i> Voltar
+            </a>
+
+            <a href="{% url 'accounts:gerenciar_permissoes_geral' %}" class="btn btn-outline-primary">
+              <i class="bi bi-shield-lock"></i> Incluir Permissões
+            </a>
+
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-circle"></i> Salvar
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+{% endif %}

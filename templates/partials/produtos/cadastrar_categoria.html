@@ -1,20 +1,37 @@
+{% load static %}
 {% load static widget_tweaks %}
 
-<!-- ✅ Cadastro de Categoria de Produto - AJAX | Responsivo e padronizado -->
-<div class="container-fluid" data-page="cadastrar-categoria">
-  <h2 class="mb-4">Cadastrar Categoria</h2>
+<!-- ✅ Cadastro de Categoria de Produto - AJAX | Estrutura com main, card e mensagens -->
+<main id="main-content" data-tela="cadastrar_categoria" class="container-fluid">
+  {% include 'partials/mensagens.html' %}
 
-  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_categoria' %}" autocomplete="off">
-    {% csrf_token %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm rounded-4">
+        <div class="card-body">
+          <h2 class="mb-4">📁 Cadastrar Categoria</h2>
 
-    <div class="row g-3">
-      <div class="col-md-6">{{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}</div>
-      <div class="col-md-6">{{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}</div>
+          <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_categoria' %}" autocomplete="off">
+            {% csrf_token %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                {{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}
+              </div>
+              <div class="col-md-6">
+                {{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'produto:lista_categorias' %}" class="btn btn-secondary ajax-link">
+                ← Cancelar
+              </a>
+              <button type="submit" class="btn btn-success">💾 Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
-
-    <div class="mt-4">
-      <button type="submit" class="btn btn-success">Salvar</button>
-      <a href="{% url 'produto:lista_categorias' %}" class="btn btn-secondary ajax-link ms-2">Cancelar</a>
-    </div>
-  </form>
-</div>
+  </div>
+</main>

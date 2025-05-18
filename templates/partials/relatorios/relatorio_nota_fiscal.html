@@ -1,0 +1,95 @@
+<!-- templates/partials/relatorios/relatorio_nota_fiscal.html -->
+<div id="identificador-tela" class="container-fluid py-4" data-tela="relatorio-notas">
+    <h2 class="mb-4">Relatório de Notas Fiscais</h2>
+  
+    <!-- 🔍 Filtros -->
+    <form id="form-filtro-nota" class="row g-3 mb-4">
+      <div class="col-md-3">
+        <label>Fornecedor</label>
+        <input type="text" name="fornecedor" class="form-control" placeholder="Fornecedor">
+      </div>
+      <div class="col-md-2">
+        <label>Emissão De</label>
+        <input type="date" name="data_emissao_after" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label>Emissão Até</label>
+        <input type="date" name="data_emissao_before" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label>Entrada De</label>
+        <input type="date" name="data_entrada_after" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label>Entrada Até</label>
+        <input type="date" name="data_entrada_before" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label>Produto</label>
+        <input type="text" name="produto" class="form-control" placeholder="Produto">
+      </div>
+      <div class="col-md-2 align-self-end">
+        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+      </div>
+    </form>
+  
+    <!-- 📊 Tabela -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Número</th>
+            <th>Fornecedor</th>
+            <th>Data Emissão</th>
+            <th>Data Entrada</th>
+            <th>Valor Total</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-notas-fiscais">
+          <tr><td colspan="5" class="text-center text-muted">Use os filtros acima e clique em "Filtrar".</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script>
+    function initRelatorioNotas() {
+      const form = document.getElementById("form-filtro-nota");
+      const tabela = document.getElementById("tabela-notas-fiscais");
+    
+      if (!form || !tabela) return;
+    
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const dados = new FormData(form);
+        const params = new URLSearchParams(dados);
+        fetch(`/nota-fiscal/api/v1/notas-entradas/?${params.toString()}`, {
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        })
+          .then(res => res.json())
+          .then(data => {
+            tabela.innerHTML = "";
+            if (data.length === 0) {
+              tabela.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Nenhum resultado encontrado.</td></tr>`;
+              return;
+            }
+    
+            for (const nota of data) {
+              const linha = document.createElement("tr");
+              linha.innerHTML = `
+                <td>${nota.numero || "-"}</td>
+                <td>${nota.fornecedor?.razao_social || "-"}</td>
+                <td>${nota.data_emissao || "-"}</td>
+                <td>${nota.data_entrada || "-"}</td>
+                <td>R$ ${parseFloat(nota.valor_total_nota).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+              `;
+              tabela.appendChild(linha);
+            }
+          })
+          .catch(() => {
+            tabela.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Erro ao carregar os dados.</td></tr>`;
+          });
+      });
+    }
+    </script>
+    

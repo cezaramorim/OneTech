@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from empresas.models import EmpresaAvancada
 from django.utils import timezone
+from django.apps import apps
 
 class NotaFiscal(models.Model):
     # ... campos existentes ...
@@ -31,12 +32,12 @@ class NotaFiscal(models.Model):
     data_emissao = models.DateField(null=True, blank=True)
     data_saida = models.DateField(null=True, blank=True)
     chave_acesso = models.CharField(max_length=50, unique=True)
-    valor_total_produtos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    valor_total_nota = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    valor_total_icms = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    valor_total_pis = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    valor_total_cofins = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    valor_total_desconto = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    valor_total_produtos = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total_nota = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total_icms = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total_pis = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total_cofins = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total_desconto = models.DecimalField(max_digits=18, decimal_places=10, default=0)
     informacoes_adicionais = models.TextField(blank=True, null=True)
 
     # → Campo para guardar quem criou/importou a nota
@@ -90,8 +91,65 @@ class DuplicataNotaFiscal(models.Model):
         related_name="duplicatas"
     )
     numero = models.CharField(max_length=20)
-    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    valor = models.DecimalField(max_digits=18, decimal_places=10)
     vencimento = models.DateField()
 
     def __str__(self):
         return f"Duplicata {self.numero} da Nota {self.nota_fiscal.numero}"
+    
+class ItemNotaFiscal(models.Model):
+    nota_fiscal = models.ForeignKey(
+        'NotaFiscal',
+        on_delete=models.CASCADE,
+        related_name='itens'
+    )
+    produto = models.ForeignKey(
+        'produto.produto',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='itens_nota'
+    )
+    codigo = models.CharField(max_length=50)
+    descricao = models.CharField(max_length=255)
+    ncm = models.CharField(max_length=10, blank=True, null=True)
+    cfop = models.CharField(max_length=10, blank=True, null=True)
+    unidade = models.CharField(max_length=10, blank=True, null=True)
+    quantidade = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_unitario = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    valor_total = models.DecimalField(max_digits=18, decimal_places=10, default=0)
+    icms = models.DecimalField(max_digits=10, decimal_places=10, blank=True, null=True)
+    ipi = models.DecimalField(max_digits=10, decimal_places=10, blank=True, null=True)
+    desconto = models.DecimalField(max_digits=18, decimal_places=10, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descricao} (Nota {self.nota_fiscal.numero})"
+
+class EntradaProduto(models.Model):
+    produto = models.ForeignKey('produto.Produto', on_delete=models.CASCADE)
+    fornecedor = models.ForeignKey(
+        EmpresaAvancada, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    nota_fiscal = models.ForeignKey(  # ← ESSA LINHA ADICIONADA
+        'NotaFiscal',
+        on_delete=models.CASCADE,
+        related_name='entradas_estoque',
+        null=True, blank=True
+    )
+    quantidade = models.DecimalField(max_digits=15, decimal_places=6, default=0)
+    preco_unitario = models.DecimalField(max_digits=15, decimal_places=6, default=0)
+    preco_total = models.DecimalField(max_digits=15, decimal_places=6, default=0)
+    numero_nota = models.CharField(max_length=50, blank=True, null=True)
+
+    icms_valor = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+    icms_aliquota = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+    pis_valor = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+    pis_aliquota = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+    cofins_valor = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+    cofins_aliquota = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.produto} - {self.quantidade}"
+
+

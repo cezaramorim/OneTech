@@ -110,6 +110,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'painel.context_processors.definir_data_tela',
             ],
         },
     },
@@ -164,3 +165,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True      # Expira ao fechar o navegador
 SESSION_COOKIE_AGE = 300                    # Expira após 5 minutos (300 segundos) de inatividade
 SESSION_SAVE_EVERY_REQUEST = True           # Renova a sessão a cada requisição ativa
 
+# =======================
+# Internacionalização de Traduções (i18n)
+# =======================
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',  # onde os arquivos .po e .mo ficarão salvos
+]

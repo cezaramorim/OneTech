@@ -20,8 +20,9 @@ urlpatterns = [
     path("produtos/", include("produto.urls")),
     
     # Nota Fiscal
-    path("nota-fiscal/", include("nota_fiscal.urls")),
+    path('nota-fiscal/', include('nota_fiscal.urls', namespace='nota_fiscal')),
     
     # Relatórios
     path('relatorios/', include('relatorios.urls', namespace='relatorios')),
+        
 ]
