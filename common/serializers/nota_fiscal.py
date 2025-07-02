@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal
-from nota_fiscal.models import EntradaProduto
+from produto.models_entradas import EntradaProduto
 
 
 class NotaFiscalSerializer(serializers.ModelSerializer):

@@ -20,7 +20,8 @@ pymysql.install_as_MySQLdb()
 # =======================
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', cast=bool)  # ⛔ Altere para False em produção
-ALLOWED_HOSTS = []  # 🛡️ Ex: ['onetech.com', '127.0.0.1']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=lambda v: [s.strip() for s in v.split(',')])
+#ALLOWED_HOSTS = []  # 🛡️ Ex: ['onetech.com', '127.0.0.1']
 
 # =======================
 # Banco de Dados (MySQL)
@@ -56,7 +57,7 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -70,11 +71,7 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
-    ],
-        
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAG_SIZE': 20,
-    
+    ],    
 }
 
 # =======================
@@ -88,6 +85,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 # =======================

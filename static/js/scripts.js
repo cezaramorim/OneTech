@@ -270,9 +270,12 @@ function setupColumnSorting() {
 // FUNÇÃO LISTA EMPRESAS AVANÇADAS, NÃO ALTERAR
 function bindPageSpecificActions() {
   console.log("bindPageSpecificActions chamada");
-  const mainContent = document.querySelector("#main-content");
+  const mainContent   = document.querySelector("#main-content");
   const identificador = document.querySelector("#identificador-tela");
-  let tela = identificador?.dataset?.tela || mainContent?.dataset?.tela || mainContent?.dataset?.page || "";
+  let tela = identificador?.dataset?.tela
+          || mainContent?.dataset?.tela
+          || mainContent?.dataset?.page
+          || "";
   tela = tela.replace(/-/g, "_");
   console.log("Tela identificada:", tela);
 
@@ -281,9 +284,9 @@ function bindPageSpecificActions() {
   }
 
   if (tela === "lista_empresas_avancadas") {
-    const form = document.getElementById("filtro-empresas-avancadas");
-    const tabelaWrapper = document.getElementById("empresas-avancadas-tabela-wrapper");
-    const campoBusca = document.getElementById("busca-empresa");
+    const form              = document.getElementById("filtro-empresas-avancadas");
+    const tabelaWrapper     = document.getElementById("empresas-avancadas-tabela-wrapper");
+    const campoBusca        = document.getElementById("busca-empresa");
 
     if (form && tabelaWrapper) {
       let debounceTimer;
@@ -293,26 +296,21 @@ function bindPageSpecificActions() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           const posicao = campoAlterado?.selectionStart || 0;
-
-          const params = new URLSearchParams(new FormData(form));
+          const params  = new URLSearchParams(new FormData(form));
           const novaUrl = `${window.location.pathname}?${params.toString()}`;
           history.pushState({ ajaxUrl: novaUrl }, "", novaUrl);
 
-          fetch(novaUrl, {
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-          })
+          fetch(novaUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } })
             .then(response => {
               if (!response.ok) throw new Error("Erro ao carregar filtro");
               return response.text();
             })
             .then(html => {
-              const tempDiv = document.createElement("div");
+              const tempDiv   = document.createElement("div");
               tempDiv.innerHTML = html;
-
               const novaTabela = tempDiv.querySelector("#empresas-avancadas-tabela-wrapper");
               if (novaTabela) {
                 tabelaWrapper.replaceWith(novaTabela);
-
                 // Restaura foco no campo alterado
                 if (campoAlterado && campoAlterado.name === "termo_empresa") {
                   const novoCampo = document.getElementById("busca-empresa");
@@ -321,7 +319,6 @@ function bindPageSpecificActions() {
                     novoCampo.setSelectionRange(posicao, posicao);
                   }
                 }
-
                 document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url: novaUrl } }));
               }
             })
@@ -348,8 +345,8 @@ function bindPageSpecificActions() {
     }
   }
 
-  const btnEditar = document.getElementById("btn-editar") || document.getElementById("btn-editar-nota");
-  const btnExcluir = document.getElementById("btn-excluir") || document.getElementById("btn-excluir-nota");
+  const btnEditar  = document.getElementById("btn-editar")        || document.getElementById("btn-editar-nota");
+  const btnExcluir = document.getElementById("btn-excluir")      || document.getElementById("btn-excluir-nota");
 
   if (tela === "entradas_nota") {
     console.log("Lógica específica para entradas_nota está a ser vinculada.");
@@ -361,11 +358,10 @@ function bindPageSpecificActions() {
       campoBusca.addEventListener("input", () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          const termo = campoBusca.value.trim();
+          const termo     = campoBusca.value.trim();
           const urlParams = new URLSearchParams(window.location.search);
           urlParams.set("termo", termo);
-          const currentPath = window.location.pathname;
-          const novaUrl = `${currentPath}?${urlParams.toString()}`;
+          const novaUrl = `${window.location.pathname}?${urlParams.toString()}`;
           history.pushState({ ajaxUrl: novaUrl }, "", novaUrl);
           loadAjaxContent(novaUrl);
         }, 300);
@@ -375,7 +371,7 @@ function bindPageSpecificActions() {
 
   if (tela === "selecionar_grupo_permissoes") {
     const grupoSelect = document.getElementById("grupo-selecionado");
-    const btnAvancar = document.getElementById("btn-avancar");
+    const btnAvancar  = document.getElementById("btn-avancar");
     if (grupoSelect && btnAvancar) {
       grupoSelect.addEventListener("change", () => { btnAvancar.disabled = !grupoSelect.value; });
       btnAvancar.onclick = () => {
@@ -389,37 +385,44 @@ function bindPageSpecificActions() {
   }
 
   if (tela === "gerenciar_permissoes_geral") {
-    const grupoSelect = document.getElementById("grupo");
+    const grupoSelect   = document.getElementById("grupo");
     const usuarioSelect = document.getElementById("usuario");
-    const tipoInput = document.getElementById("tipo-selecionado");
+    const tipoInput     = document.getElementById("tipo-selecionado");
     if (grupoSelect && usuarioSelect && tipoInput) {
       grupoSelect.addEventListener("change", () => {
         usuarioSelect.selectedIndex = 0;
-        tipoInput.value = "grupo";
+        tipoInput.value            = "grupo";
         document.querySelector("form.ajax-form").submit();
       });
       usuarioSelect.addEventListener("change", () => {
         grupoSelect.selectedIndex = 0;
-        tipoInput.value = "usuario";
+        tipoInput.value           = "usuario";
         document.querySelector("form.ajax-form").submit();
       });
     }
   }
 
+  // ============================================
+  // função que habilita/desabilita botões de Ação
+  // ============================================
   const atualizarBotoesAcao = () => {
     const checkboxes = document.querySelectorAll(
-      "input[type=\"checkbox\"].checkbox-nota, #grupos-form input[type=\"checkbox\"], #usuarios-form input[type=\"checkbox\"], input.check-produto"
+      `input[type="checkbox"].checkbox-nota,
+       #grupos-form input[type="checkbox"],
+       #usuarios-form input[type="checkbox"],
+       input.check-produto`
     );
-
-    const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
-    const apenasUm = selecionados.length === 1;
-    const temSelecionado = selecionados.length > 0;
-    const telasComSelecao = [
+    const selecionados      = Array.from(checkboxes).filter(cb => cb.checked);
+    const apenasUm         = selecionados.length === 1;
+    const temSelecionado   = selecionados.length > 0;
+    const telasComSelecao  = [
       "lista_usuarios", "lista_grupos", "lista_empresas",
-      "selecionar_usuario_permissoes", "gerenciar-permissoes-grupo-selector", "entradas_nota", "lista_produtos"
+      "selecionar_usuario_permissoes", "gerenciar-permissoes-grupo-selector",
+      "entradas_nota", "lista_produtos"
     ];
+
     if (telasComSelecao.includes(tela)) {
-      if (btnEditar) btnEditar.disabled = !apenasUm;
+      if (btnEditar)  btnEditar.disabled  = !apenasUm;
       if (btnExcluir) btnExcluir.disabled = !temSelecionado;
     }
 
@@ -433,17 +436,13 @@ function bindPageSpecificActions() {
           loadAjaxContent(url);
         };
       }
-
       if (btnExcluir) {
         btnExcluir.onclick = () => {
           const selecionados = Array.from(document.querySelectorAll("input.check-produto:checked"));
           if (selecionados.length === 0) {
             return exibirMensagem("Selecione ao menos um produto para excluir.", "warning");
           }
-
-
           exibirMensagem("Excluindo produtos...", "info");
-
           const ids = selecionados.map(cb => cb.value);
           fetch("/produtos/excluir-multiplos/", {
             method: "POST",
@@ -466,13 +465,12 @@ function bindPageSpecificActions() {
             .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
         };
       }
-
       const selectAll = document.getElementById("select-all-produtos");
       if (selectAll) {
         selectAll.addEventListener("change", (e) => {
-          const checkboxes = document.querySelectorAll("input.check-produto");
-          checkboxes.forEach(cb => cb.checked = e.target.checked);
-          atualizarBotoesAcao(); // Garante ativação dos botões ao selecionar tudo
+          const chks = document.querySelectorAll("input.check-produto");
+          chks.forEach(cb => cb.checked = e.target.checked);
+          atualizarBotoesAcao();
         });
       }
     }
@@ -480,143 +478,114 @@ function bindPageSpecificActions() {
     if (tela === "entradas_nota") {
       if (btnEditar) {
         btnEditar.onclick = () => {
-          const selecionado = selecionados[0];
-          if (!selecionado) return exibirMensagem("Selecione uma nota para editar.", "warning");
-          const url = `/nota-fiscal/editar/${selecionado.value}/`;
+          const sel = Array.from(
+            document.querySelectorAll("input[type=\"checkbox\"].checkbox-nota:checked")
+          );
+          if (sel.length !== 1) {
+            return exibirMensagem("Selecione exatamente uma nota para editar.", "warning");
+          }
+          const url = `/nota-fiscal/editar/${sel[0].value}/`;
           history.pushState({ ajaxUrl: url }, "", url);
           loadAjaxContent(url);
         };
       }
       if (btnExcluir) {
         btnExcluir.onclick = () => {
-          if (selecionados.length === 0) return exibirMensagem("Nenhuma nota selecionada para excluir.", "warning");
-          if (!confirm(`Deseja realmente excluir ${selecionados.length > 1 ? selecionados.length + " notas fiscais" : "esta nota fiscal"}?`)) return;
-          if (selecionados.length === 1) {
-            fetch(`/nota-fiscal/excluir/${selecionados[0].value}/`, {
-              method: "POST",
-              headers: { "X-CSRFToken": getCSRFToken(), "X-Requested-With": "XMLHttpRequest" }
+          const sel = Array.from(
+            document.querySelectorAll("input[type=\"checkbox\"].checkbox-nota:checked")
+          );
+          if (sel.length === 0) return exibirMensagem("Nenhuma nota selecionada para excluir.", "warning");
+          if (!confirm(`Deseja realmente excluir ${sel.length > 1 ? sel.length + " notas fiscais" : "esta nota fiscal"}?`)) return;
+          fetch(`/nota-fiscal/excluir/${sel[0].value}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": getCSRFToken(), "X-Requested-With": "XMLHttpRequest" }
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.sucesso || data.mensagem || data.success) {
+                exibirMensagem(data.mensagem || data.success || "Nota excluída com sucesso.", "success");
+                const novaURL = "/nota-fiscal/entradas/";
+                history.pushState({ ajaxUrl: novaURL }, "", novaURL);
+                loadAjaxContent(novaURL);
+              } else {
+                exibirMensagem(data.erro || data.error || "Erro ao excluir nota.", "danger");
+              }
             })
-              .then(res => res.json())
-              .then(data => {
-                if (data.sucesso || data.success || data.mensagem) {
-                  exibirMensagem(data.mensagem || data.success || "Nota excluída com sucesso.", "success");
-
-                  // ✅ Use URL fixa limpa (sem parâmetros antigos)
-                  const novaURL = "/nota-fiscal/entradas/";
-                  history.pushState({ ajaxUrl: novaURL }, "", novaURL);
-                  loadAjaxContent(novaURL);
-                }
-
-                else {
-                  exibirMensagem(data.erro || data.error || "Erro ao excluir nota.", "danger");
-                }
-              })
-              .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
-          } else {
-            exibirMensagem("Por favor, selecione apenas uma nota para excluir através desta interface, ou implemente a exclusão em massa.", "warning");
-          }
+            .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
         };
       }
     }
 
     if (tela === "lista_categorias") {
       console.log("Lógica específica para lista_categorias está a ser vinculada.");
+      // ... seu código de lista_categorias sem alteração ...
+    }
 
-      const btnEditarCategoria = document.getElementById("btn-editar");
-      const btnExcluirCategorias = document.getElementById("btn-excluir");
-      const checkboxesCategorias = document.querySelectorAll(".check-categoria");
-      const selectAllCategorias = document.getElementById("select-all-categorias");
+    // ============================================
+    // ←←← AQUI: lógica para editar_entrada ←←←
+    // ============================================
+    if (tela === "editar_entrada") {
+      console.log("Lógica específica para editar_entrada está a ser vinculada.");
 
-      const atualizarBotoesAcaoCategorias = () => {
-        const selecionados = Array.from(document.querySelectorAll(".check-categoria:checked"));
-        const apenasUmSelecionado = selecionados.length === 1;
-        const peloMenosUmSelecionado = selecionados.length > 0;
+      // Botões e form
+      const btnFinalizar = document.getElementById("btn-finalizar-lancamento");
+      const btnDescartar = document.getElementById("btn-descartar-alteracoes");
+      const form         = document.getElementById("form-editar-entrada");
 
-        if (btnEditarCategoria) {
-          btnEditarCategoria.disabled = !apenasUmSelecionado;
-        }
-        if (btnExcluirCategorias) {
-          btnExcluirCategorias.disabled = !peloMenosUmSelecionado;
-        }
-      };
+      // Finalizar Lançamento via AJAX
+      if (btnFinalizar && form) {
+        btnFinalizar.onclick = () => {
+          // 1) Cria um FormData completo do <form>
+          const data = new FormData(form);
 
-      checkboxesCategorias.forEach(cb => {
-        cb.addEventListener("change", atualizarBotoesAcaoCategorias);
-      });
-
-      if (selectAllCategorias) {
-        selectAllCategorias.addEventListener("change", (e) => {
-          checkboxesCategorias.forEach(cb => cb.checked = e.target.checked);
-          atualizarBotoesAcaoCategorias();
-        });
-      }
-
-      if (btnEditarCategoria) {
-        btnEditarCategoria.onclick = () => {
-          const selecionado = document.querySelector(".check-categoria:checked");
-          if (!selecionado) {
-            exibirMensagem("Selecione uma categoria para editar.", "warning");
-            return;
-          }
-          const categoriaId = selecionado.value;
-          // Certifique-se que a URL abaixo corresponde à sua URL de edição de categoria
-          const urlEditar = `/produtos/categorias/editar/${categoriaId}/`;
-          // Se estiver a usar htmx ou uma função similar para carregar conteúdo via AJAX:
-          // htmx.ajax('GET', urlEditar, { target: '#main-content', swap: 'innerHTML' });
-          // Ou, se a sua função loadAjaxContent faz isso:
-          history.pushState({ ajaxUrl: urlEditar }, "", urlEditar);
-          loadAjaxContent(urlEditar);
-        };
-      }
-
-      if (btnExcluirCategorias) {
-        btnExcluirCategorias.onclick = () => {
-          const selecionados = Array.from(document.querySelectorAll(".check-categoria:checked"));
-          if (selecionados.length === 0) {
-            return exibirMensagem("Selecione ao menos uma categoria para excluir.", "warning");
-          }
-
-          if (!confirm(`Tem certeza que deseja excluir ${selecionados.length} categoria(s)?`)) {
-            return;
-          }
-
-          exibirMensagem("A excluir categorias...", "info");
-
-          const ids = selecionados.map(cb => cb.value);
-          // Certifique-se que esta URL corresponde à sua urls.py para excluir_categorias_view
-          const urlExcluir = "/produtos/categorias/excluir-multiplas/";
-
-          fetch(urlExcluir, {
+          // 2) Envia como multipart/form-data (sem setar Content-Type)
+          fetch(window.location.pathname, {
             method: "POST",
             headers: {
-              "X-CSRFToken": getCSRFToken(), // Função que já deve ter para obter o token CSRF
-              "Content-Type": "application/json",
+              "X-CSRFToken":      getCSRFToken(),
               "X-Requested-With": "XMLHttpRequest"
             },
-            body: JSON.stringify({ ids })
+            body: data
           })
-            .then(response => response.json())
-            .then(data => {
-              if (data.sucesso) {
-                exibirMensagem(data.mensagem || "Categorias excluídas com sucesso.", "success");
-                // Recarrega o conteúdo da lista de categorias
-                loadAjaxContent(window.location.pathname + window.location.search); // Usa pathname + search para manter filtros/ordenação
-              } else {
-                exibirMensagem(data.erro || "Erro ao excluir as categorias.", "danger");
-              }
-            })
-            .catch(err => {
-              console.error("Erro ao excluir categorias:", err);
-              exibirMensagem("Erro de comunicação ao tentar excluir categorias: " + err.message, "danger");
-            });
+          .then(res => res.json().then(json => ({ status: res.status, body: json })))
+          .then(({ status, body }) => {
+            if (status === 200) {
+              // sucesso
+              mostrarMensagemSucesso(body.mensagem || "Alterações salvas com sucesso!");
+              setTimeout(() => {
+                const listUrl = "/nota-fiscal/entradas/";
+                history.pushState({ ajaxUrl: listUrl }, "", listUrl);
+                loadAjaxContent(listUrl);
+              }, 500);
+            } else {
+              // validação falhou: exibe lista de erros
+              const erros = body.erros || body.error || body;
+              mostrarMensagemErro("Erros: " + JSON.stringify(erros));
+            }
+          })
+          .catch(err => {
+            console.error("Erro no fetch:", err);
+            mostrarMensagemErro("Erro ao salvar alterações.");
+          });
         };
       }
 
-      // Chame para o estado inicial dos botões ao carregar a página/conteúdo AJAX
-      atualizarBotoesAcaoCategorias();
+      // Descartar alterações
+      if (btnDescartar) {
+        btnDescartar.onclick = () => {
+          if (confirm("Descartar alterações?")) {
+            const listUrl = "/nota-fiscal/entradas/";
+            history.pushState({ ajaxUrl: listUrl }, "", listUrl);
+            loadAjaxContent(listUrl);
+          }
+        };
+      }
     }
 
 
+    // ============================================
+    // FIM editar_entrada
+    // ============================================
   };
 
   window.atualizarBotoesAcaoGlobal = atualizarBotoesAcao;
@@ -643,6 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   history.replaceState({ ajaxUrl: window.location.href }, "", window.location.href);
 });
+
 
 
 

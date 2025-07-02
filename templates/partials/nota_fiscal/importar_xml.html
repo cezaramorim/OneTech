@@ -1,36 +1,62 @@
 {% load static %}
 
 <main id="main-content" class="container-fluid py-4" data-page="importar-xml">
-  <!-- 🔔 Mensagens instantâneas -->
   <div id="mensagens"></div>
-
-  <!-- 🆔 Identificador de tela para JS -->
   <div id="identificador-tela" data-tela="importar-xml">
     <div class="card shadow-sm mx-auto" style="max-width: 1200px;">
       <div class="card-body">
         <h2 class="mb-4 text-center">Importar Nota Fiscal (XML)</h2>
-
-        <!-- ✅ Formulário configurado corretamente -->
         <form id="form-importar-xml" method="post" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="mb-3">
-            <label for="xml-input" class="form-label">Arquivo XML:</label>
-            <input type="file" name="xml" id="xml-input" class="form-control" accept=".xml" required>
+            <label for="id_xml" class="form-label">Arquivo XML:</label>
+            <input type="file" name="xml" id="id_xml" class="form-control" accept=".xml" required>
           </div>
           <div class="text-end">
             <button type="submit" class="btn btn-primary">Importar</button>
           </div>
         </form>
-
-        <!-- ✅ Área para exibir o resultado -->
-        <div id="resultado-xml" class="mt-4"></div>
+        <div id="preview-nota" class="mt-4"></div>
       </div>
     </div>
   </div>
 </main>
 
-<!-- 🔁 Scripts -->
-<script>
-  const URL_IMPORTAR_XML = "{% url 'nota_fiscal:importar_xml_nfe' %}";
+<!-- Modal de Revisão de Categorias -->
+<div class="modal fade" id="revisaoCategoriasModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Categorias dos Novos Produtos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-revisao-categorias">
+          <div id="revisao-lista" class="row g-3"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-categorias">Confirmar e Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Injeção de JSON de categorias (causa parse seguro) -->
+<script id="categorias-disponiveis-data" type="application/json">
+  {{ categorias_disponiveis_json|default:'[]'|safe }}
 </script>
-<script defer src="{% static 'js/importar_xml.js' %}?V=3"></script>
+<script>
+  (function() {
+    const el = document.getElementById('categorias-disponiveis-data');
+    try {
+      window.CATEGORIAS_DISPONIVEIS = el ? JSON.parse(el.textContent.trim() || '[]') : [];
+    } catch (e) {
+      console.warn('JSON categorias inválido, usando lista vazia.', e);
+      window.CATEGORIAS_DISPONIVEIS = [];
+    }
+  })();
+</script>
+
+<script defer src="{% static 'js/importar_xml.js' %}"></script>

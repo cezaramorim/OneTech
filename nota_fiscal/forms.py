@@ -1,37 +1,69 @@
 # nota_fiscal/forms.py
 
 from django import forms
-from nota_fiscal.models import NotaFiscal
-from .models import NotaFiscal
+from django.forms import inlineformset_factory
+from .models import NotaFiscal, ItemNotaFiscal, DuplicataNotaFiscal, TransporteNotaFiscal
 
 class NotaFiscalForm(forms.ModelForm):
-    """
-    Formulário para edição e exibição de dados da Nota Fiscal.
-    Utiliza campos formatados para datas e números, com controle de precisão.
-    """
     class Meta:
         model = NotaFiscal
         fields = [
-            'numero',
-            'fornecedor',
-            'data_emissao',
-            'data_saida',
-            'valor_total_produtos',
-            'valor_total_nota',
-            'valor_total_icms',
-            'valor_total_pis',
-            'valor_total_cofins',
-            'valor_total_desconto',
-            'informacoes_adicionais',
+            'numero', 'data_emissao', 'data_saida', 'natureza_operacao',
+            'valor_total_nota', 'informacoes_adicionais'
         ]
+        labels = {
+            'numero': 'Nota Fiscal',
+        }
         widgets = {
             'data_emissao': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'data_saida': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
-
-            'valor_total_produtos': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
-            'valor_total_nota': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
-            'valor_total_icms': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
-            'valor_total_pis': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
-            'valor_total_cofins': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
-            'valor_total_desconto': forms.NumberInput(attrs={'step': '0.000001', 'min': '0'}),
+            'informacoes_adicionais': forms.Textarea(attrs={'rows': 3}),
         }
+
+class ItemNotaFiscalForm(forms.ModelForm):
+    class Meta:
+        model = ItemNotaFiscal
+        fields = ['produto', 'codigo', 'descricao', 'ncm', 'cfop', 'unidade', 'quantidade', 'valor_unitario', 'valor_total', 'desconto']
+
+class DuplicataNotaFiscalForm(forms.ModelForm):
+    class Meta:
+        model = DuplicataNotaFiscal
+        fields = ['numero', 'vencimento', 'valor']
+        widgets = {
+            'vencimento': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
+
+class TransporteNotaFiscalForm(forms.ModelForm):
+    class Meta:
+        model = TransporteNotaFiscal
+        fields = ['modalidade_frete', 'transportadora_nome', 'transportadora_cnpj', 'placa_veiculo', 'uf_veiculo', 'quantidade_volumes', 'peso_liquido', 'peso_bruto']
+
+
+# Formsets para editar os modelos relacionados na mesma página da Nota Fiscal
+ItemNotaFiscalFormSet = inlineformset_factory(
+    NotaFiscal, 
+    ItemNotaFiscal, 
+    form=ItemNotaFiscalForm, 
+    extra=1,  # Permite adicionar novas linhas
+    can_delete=True, # Permite remover itens
+    fk_name='nota_fiscal'
+)
+
+DuplicataNotaFiscalFormSet = inlineformset_factory(
+    NotaFiscal, 
+    DuplicataNotaFiscal, 
+    form=DuplicataNotaFiscalForm, 
+    extra=1, 
+    can_delete=True,
+    fk_name='nota_fiscal'
+)
+
+# Transporte geralmente é um por nota, então não permitimos adicionar/remover, apenas editar.
+TransporteNotaFiscalFormSet = inlineformset_factory(
+    NotaFiscal, 
+    TransporteNotaFiscal, 
+    form=TransporteNotaFiscalForm, 
+    extra=0, 
+    can_delete=False,
+    fk_name='nota_fiscal'
+)

@@ -4,9 +4,10 @@ from produto.models import Produto
 from empresas.models import EmpresaAvancada
 
 class EntradaProduto(models.Model):
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="entradas")
-    fornecedor = models.ForeignKey(EmpresaAvancada, on_delete=models.SET_NULL, null=True, blank=True, related_name="entradas_fornecedor")
-    quantidade = models.DecimalField(max_digits=18, decimal_places=10)
+    nota_fiscal = models.ForeignKey('nota_fiscal.NotaFiscal', on_delete=models.CASCADE, related_name='entradas_produto', null=True, blank=True)
+    item_nota_fiscal = models.ForeignKey('nota_fiscal.ItemNotaFiscal', on_delete=models.CASCADE, related_name='entradas_produto', null=True, blank=True)
+    fornecedor = models.ForeignKey('empresas.EmpresaAvancada', on_delete=models.CASCADE, related_name='entradas_produto', null=True, blank=True)
+    quantidade = models.DecimalField(max_digits=15, decimal_places=6)
     preco_unitario = models.DecimalField(max_digits=18, decimal_places=10)
     preco_total = models.DecimalField(max_digits=18, decimal_places=10)
     numero_nota = models.CharField(max_length=50)
@@ -20,12 +21,12 @@ class EntradaProduto(models.Model):
     cofins_aliquota = models.DecimalField(max_digits=18, decimal_places=10, default=0)
 
     def __str__(self):
-        return f"Entrada {self.produto.nome} - {self.quantidade} unid."
+        return f"Entrada {self.item_nota_fiscal.produto.nome} - {self.quantidade} unid."
 
     def save(self, *args, **kwargs):
         # Atualiza o estoque e custo médio do Produto
         if not self.pk:  # Se é uma entrada nova
-            produto = self.produto
+            produto = self.item_nota_fiscal.produto
             estoque_antigo = produto.estoque_total
             custo_antigo = produto.preco_custo
 

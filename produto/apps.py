@@ -7,3 +7,4 @@ class ProdutoConfig(AppConfig):
     def ready(self):
         # 🔁 Importa models adicionais ao inicializar o app
         import produto.models_entradas
+        import produto.models_fiscais

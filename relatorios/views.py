@@ -11,7 +11,7 @@ from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFi
 from relatorios.forms import NotaFiscalForm
 from common.serializers.nota_fiscal import NotaFiscalSerializer
 from decimal import Decimal
-from nota_fiscal.models import EntradaProduto
+from produto.models_entradas import EntradaProduto
 
 from common.utils import formatters
 

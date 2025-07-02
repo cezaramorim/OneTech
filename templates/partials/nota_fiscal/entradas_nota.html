@@ -1,77 +1,104 @@
-{% load static %}
-{% load widget_tweaks %}
+{% load widget_tweaks nota_fiscal_filters %}
 
 <main id="main-content" class="container-fluid py-4" data-page="entradas-nota">
-  <!-- 🔔 Mensagens instantâneas -->
-  <div id="mensagens"></div>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
 
-  <div id="identificador-tela" data-tela="entradas-nota">
-    <div class="row justify-content-center">
-      <div class="col-12 col-lg-10">
-
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
-
-            <!-- 🔍 Campo de busca dinâmica -->
-            <form id="filtro-notas-form" class="row g-3 mb-3 justify-content-center align-items-center" method="get">
-              <div class="col-md-6">
-                <input type="text" id="busca-nota" name="termo" class="form-control"
-                       placeholder="Buscar por número ou fornecedor." autocomplete="off"
-                       value="{{ request.GET.termo }}">
-              </div>
-              <div class="col-auto">
-                <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary">Limpar</a>
-              </div>
-            </form>
-
-            <!-- 🔘 Botões principais -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <div>
-                <button id="btn-editar-nota" class="btn btn-primary me-2" disabled>Editar</button>
-                <button id="btn-excluir-nota" class="btn btn-danger" disabled>Excluir</button>
-              </div>
-              <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-outline-success">+ Importar Nova Nota</a>
-            </div>
-
-            <!-- 📋 Tabela de notas fiscais com formulário para seleção -->
-            <form id="form-notas" method="post">
-              {% csrf_token %}
-              <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle tabela-dark-claro">
-                  <thead class="table-light dark-mode">
-                    <tr>
-                      <th><input type="checkbox" id="check-todos-nota"></th>
-                      <th><a href="#" class="ordenar-coluna" data-campo="numero">Número</a></th>
-                      <th><a href="#" class="ordenar-coluna" data-campo="fornecedor__razao_social">Fornecedor</a></th>
-                      <th><a href="#" class="ordenar-coluna" data-campo="data_emissao">Data Emissão</a></th>
-                      <th>Valor Total</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tabela-notas">
-                    {% for nota in notas %}
-                      <tr>
-                        <td><input type="checkbox" class="checkbox-nota" value="{{ nota.id }}"></td>
-                        <td>{{ nota.numero }}</td>
-                        <td>{{ nota.fornecedor.razao_social }}</td>
-                        <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
-                        <td>R$ {{ nota.valor_total_nota|floatformat:2 }}</td>
-                      </tr>
-                    {% empty %}
-                      <tr>
-                        <td colspan="5" class="text-center">Nenhuma nota encontrada.</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </form>
-
-          </div>
+      <form id="filtro-notas-form" class="row g-3 mb-4 justify-content-center" method="get">
+        <div class="col-md-8">
+          <input type="text" name="termo" class="form-control" placeholder="Buscar por Número ou Fornecedor..." value="{{ termo }}">
         </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Buscar</button>
+          <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+      </form>
 
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <a id="btn-editar-nota" href="#" class="btn btn-info me-2 disabled" role="button" aria-disabled="true">Editar</a>
+          <button id="btn-excluir-nota" class="btn btn-danger" disabled>Excluir</button>
+        </div>
+        <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-success">+ Importar Nova Nota</a>
       </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle" id="tabela-notas-redimensionavel">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" id="check-todos-nota"></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'numero' %}-numero{% else %}numero{% endif %}">Número</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'emitente__razao_social' %}-emitente__razao_social{% else %}emitente__razao_social{% endif %}">Fornecedor</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'data_emissao' %}-data_emissao{% else %}data_emissao{% endif %}">Emissão</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'created_at' %}-created_at{% else %}created_at{% endif %}">Lançamento</a></th>
+              <th>Valor Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for nota in entradas %}
+              <tr>
+                <td><input type="checkbox" class="checkbox-nota" value="{{ nota.id }}"></td>
+                <td>{{ nota.numero }}</td>
+                <td>{{ nota.emitente.razao_social|default:nota.emitente.nome|truncatechars:35 }}</td>
+                <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
+                <td>{{ nota.created_at|date:"d/m/Y" }}</td>
+                <td>{{ nota.valor_total_nota|br_currency }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-4">Nenhuma nota fiscal encontrada.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 </main>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnEditar = document.getElementById('btn-editar-nota');
+    const checkboxes = document.querySelectorAll('.checkbox-nota');
+    const checkTodos = document.getElementById('check-todos-nota');
+
+    function atualizarBotaoEditar() {
+        const selecionados = document.querySelectorAll('.checkbox-nota:checked');
+        if (selecionados.length === 1) {
+            const notaId = selecionados[0].value;
+            const url = `{% url 'nota_fiscal:editar_nota' 0 %}`.replace('0', notaId);
+            btnEditar.href = url;
+            btnEditar.classList.remove('disabled');
+            btnEditar.setAttribute('aria-disabled', 'false');
+        } else {
+            btnEditar.href = '#';
+            btnEditar.classList.add('disabled');
+            btnEditar.setAttribute('aria-disabled', 'true');
+        }
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', atualizarBotaoEditar));
+
+    checkTodos.addEventListener('change', function() {
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        atualizarBotaoEditar();
+    });
+
+    atualizarBotaoEditar(); // Garante o estado inicial correto
+
+    // Ativar redimensionamento de colunas
+    // Verifica se jQuery e colResizable estão carregados
+    if (typeof jQuery !== 'undefined' && typeof jQuery().colResizable !== 'undefined') {
+        jQuery("#tabela-notas-redimensionavel").colResizable({
+            liveDrag:true,
+            gripInnerHtml:"<div class='grip'></div>", 
+            draggingClass:"dragging", 
+            resizeMode:'flex'
+        });
+    } else {
+        console.warn("colResizable ou jQuery não carregado. Redimensionamento de colunas desativado.");
+    }
+});
+</script>

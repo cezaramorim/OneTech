@@ -1,0 +1,192 @@
+{% load widget_tweaks nota_fiscal_filters %}
+
+<div class="container-fluid py-4">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Editar Nota Fiscal: {{ nota.numero }}</h4>
+                <div>
+                    <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-secondary">Descartar</a>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                {# Exibição de erros gerais do formulário principal #}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <ul class="nav nav-tabs" id="notaTab" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados da Nota</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">Produtos</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="duplicatas-tab" data-bs-toggle="tab" data-bs-target="#duplicatas" type="button" role="tab">Duplicatas</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="transporte-tab" data-bs-toggle="tab" data-bs-target="#transporte" type="button" role="tab">Transporte</button></li>
+                </ul>
+
+                <div class="tab-content pt-3" id="notaTabContent">
+                    <div class="tab-pane fade show active" id="dados" role="tabpanel">
+                        <div class="row g-3">
+                            {% for field in form %}
+                                <div class="col-md-4">
+                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                    {{ field|add_class:"form-control" }}
+                                    {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="produtos" role="tabpanel">
+                        {# Exibição de erros gerais do formset de itens #}
+                        {% if item_formset.non_form_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {% for error in item_formset.non_form_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {{ item_formset.management_form }}
+                        <div class="row g-2 mb-2 fw-bold">
+                            <div class="col-md-3">Produto</div>
+                            <div class="col-md-2">Código</div>
+                            <div class="col-md-3">Descrição</div>
+                            <div class="col-md-1">Qtd.</div>
+                            <div class="col-md-2">Vlr. Unit.</div>
+                            <div class="col-md-1"></div>
+                        </div>
+                        <div id="item-form-list">
+                            {% for form in item_formset %}
+                                <div class="row g-2 mb-2 item-form align-items-center">
+                                    {{ form.id }}
+                                    <div class="col-md-3">{{ form.produto|add_class:"form-select form-select-sm" }}</div>
+                                    <div class="col-md-2">{{ form.codigo|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-3">{{ form.descricao|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-1">{{ form.quantidade|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-2">{{ form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
+                                    {% if form.errors %}
+                                        <div class="col-12 text-danger small">{{ form.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="add-item-form" class="btn btn-outline-success btn-sm mt-2">Adicionar Produto</button>
+                        <div id="empty-item-form" style="display:none;">
+                            <div class="row g-2 mb-2 item-form align-items-center">
+                                <div class="col-md-3">{{ item_formset.empty_form.produto|add_class:"form-select form-select-sm" }}</div>
+                                <div class="col-md-2">{{ item_formset.empty_form.codigo|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-3">{{ item_formset.empty_form.descricao|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-1">{{ item_formset.empty_form.quantidade|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-2">{{ item_formset.empty_form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="duplicatas" role="tabpanel">
+                        {# Exibição de erros gerais do formset de duplicatas #}
+                        {% if duplicata_formset.non_form_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {% for error in duplicata_formset.non_form_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {{ duplicata_formset.management_form }}
+                        <div class="row g-2 mb-2 fw-bold">
+                            <div class="col-md-4">Número</div>
+                            <div class="col-md-4">Vencimento</div>
+                            <div class="col-md-3">Valor</div>
+                            <div class="col-md-1"></div>
+                        </div>
+                        <div id="duplicata-form-list">
+                             {% for form in duplicata_formset %}
+                                <div class="row g-2 mb-2 duplicata-form align-items-center">
+                                    {{ form.id }}
+                                    <div class="col-md-4">{{ form.numero|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-4">{{ form.vencimento|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-3">
+                                        <input type="number" step="0.01" class="form-control form-control-sm" name="{{ form.valor.name }}" id="{{ form.valor.id_for_label }}" value="{{ form.valor.value|floatformat:2|replace:",|." }}">
+                                    </div>
+                                    <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
+                                    {% if form.errors %}
+                                        <div class="col-12 text-danger small">{{ form.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="add-duplicata-form" class="btn btn-outline-success btn-sm mt-2">Adicionar Duplicata</button>
+                        <div id="empty-duplicata-form" style="display:none;">
+                             <div class="row g-2 mb-2 duplicata-form align-items-center">
+                                <div class="col-md-4">{{ duplicata_formset.empty_form.numero|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-4">{{ duplicata_formset.empty_form.vencimento|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" class="form-control form-control-sm" name="{{ duplicata_formset.empty_form.valor.name }}" id="{{ duplicata_formset.empty_form.valor.id_for_label }}" value="{{ duplicata_formset.empty_form.valor.value|floatformat:2|replace:",|." }}">
+                                </div>
+                                <div class="col-md-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="transporte" role="tabpanel">
+                        {# Exibição de erros gerais do formset de transporte #}
+                        {% if transporte_formset.non_form_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {% for error in transporte_formset.non_form_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {{ transporte_formset.management_form }}
+                        {% for form in transporte_formset %}
+                            <div class="row g-3">
+                                {{ form.id }}
+                                {% for field in form %}
+                                    {% if field.name != 'id' %}
+                                    <div class="col-md-4">
+                                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                        {{ field|add_class:"form-control" }}
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if form.errors %}
+                                    <div class="col-12 text-danger small">{{ form.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function setupFormset(prefix) {
+        const addButton = document.getElementById(`add-${prefix}-form`);
+        const formList = document.getElementById(`${prefix}-form-list`);
+        const emptyFormTemplate = document.getElementById(`empty-${prefix}-form`);
+        if (!addButton || !formList || !emptyFormTemplate) return;
+        
+        const emptyForm = emptyFormTemplate.innerHTML;
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+
+        addButton.addEventListener('click', function() {
+            let formNum = parseInt(totalFormsInput.value);
+            let newForm = emptyForm.replace(/__prefix__/g, formNum);
+            formList.insertAdjacentHTML('beforeend', newForm);
+            totalFormsInput.value = formNum + 1;
+        });
+    }
+
+    setupFormset('item');
+    setupFormset('duplicata');
+});
+</script>

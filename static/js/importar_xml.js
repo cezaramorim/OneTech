@@ -1,197 +1,302 @@
-// 🌐 Variável global usada para armazenar dados importados
-let dadosImportados = null;
+// static/js/importar_xml.js
 
-function initImportarXML() {
-  const form = document.getElementById("form-importar-xml");
-  const input = document.getElementById("xml-input");
-  const resultadoWrapper = document.getElementById("resultado-xml");
+// Variável global para armazenar os dados recebidos da API do backend.
+let dadosNotaFiscal = null;
+// Lista de categorias, que será preenchida a partir do template.
+let todasCategorias = [];
 
-  if (!form || !input || !resultadoWrapper) return;
+// --- Funções Auxiliares ---
 
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
+function mostrarLoading(message = "Carregando...") {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (loadingMessage) loadingMessage.textContent = message;
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+}
 
-    const file = input.files[0];
-    if (!file) {
-      mostrarMensagemErro("Selecione um arquivo XML.");
-      return;
+function ocultarLoading() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+}
+
+function formatarMoedaBr(valor) {
+    const num = parseFloat(valor);
+    return isNaN(num) ? 'R$ 0,00' : num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarDataHora(datetimeStr) {
+    if (!datetimeStr) return 'N/A';
+    try {
+        const date = new Date(datetimeStr);
+        return isNaN(date.getTime()) ? datetimeStr : date.toLocaleString('pt-BR');
+    } catch (e) {
+        return datetimeStr;
+    }
+}
+
+function mostrarMensagem(icon, title, text) {
+    Swal.fire({ icon, title, text, confirmButtonText: 'Ok' });
+}
+
+// --- Funções Principais do Fluxo de Importação ---
+
+/**
+ * 1. Envia o arquivo XML para o backend.
+ * O backend processa o XML e retorna um JSON estruturado.
+ */
+async function handleFileUpload() {
+    const inputFile = document.getElementById("id_xml");
+    const arquivo = inputFile.files[0];
+    if (!arquivo) {
+        return mostrarMensagem('error', 'Erro', 'Selecione um arquivo XML para importar.');
+    }
+    if (!arquivo.name.toLowerCase().endsWith('.xml')) {
+        return mostrarMensagem('error', 'Erro', 'O arquivo selecionado não é um XML válido.');
     }
 
+    mostrarLoading("Processando XML...");
     const formData = new FormData();
-    formData.append("xml", file);
+    formData.append("xml", arquivo);
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
-    fetch("/nota-fiscal/importar/processar/", {
-      method: "POST",
-      body: formData,
-      headers: { "X-CSRFToken": getCSRFToken() }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.erro) {
-          mostrarMensagemErro(data.erro);
-          return;
+    try {
+        const response = await fetch("/nota-fiscal/api/importar-xml-nfe/", {
+            method: "POST",
+            body: formData,
+            headers: { "X-CSRFToken": csrfToken }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.erro || `Erro HTTP: ${response.status}`);
         }
 
-        dadosImportados = data;
-        console.log("📦 Dados Importados:", JSON.stringify(dadosImportados, null, 2));
-        exibirDadosImportados(data);
-      })
-      .catch(() => mostrarMensagemErro("Erro ao processar o XML."));
-  });
+        // Armazena os dados recebidos do backend na variável global.
+        dadosNotaFiscal = data;
+        console.log("Dados recebidos do backend:", dadosNotaFiscal);
 
-  function exibirDadosImportados(data) {
-    let html = `
-      <div class="card mt-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Nota Fiscal ${data.nota.numero_nota}</h5>
-            <div>
-              <button class="btn btn-success btn-sm me-2" onclick="salvarImportacaoNoBanco()">Salvar Importação</button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="descartarImportacao()">Descartar</button>
+        // Exibe os dados na tela para o usuário revisar.
+        exibirPreview(dadosNotaFiscal);
+
+    } catch (err) {
+        console.error("Erro no upload do XML:", err);
+        mostrarMensagem('error', 'Erro no Upload', err.message);
+    } finally {
+        ocultarLoading();
+    }
+}
+
+/**
+ * 2. Renderiza o preview da Nota Fiscal na tela com os dados do backend.
+ */
+function exibirPreview(dados) {
+    const previewDiv = document.getElementById("preview-nota");
+    if (!previewDiv) return;
+
+    const { emit, dest, produtos, chave_acesso, numero, natureza_operacao, data_emissao, data_saida, valor_total, informacoes_adicionais } = dados;
+
+    previewDiv.innerHTML = `
+        <div class="card mb-3"><div class="card-header bg-primary text-white"><h5 class="mb-0">Dados Gerais</h5></div>
+            <div class="card-body">
+                <p><strong>Chave:</strong> ${chave_acesso || 'N/A'}</p>
+                <p><strong>Número:</strong> ${numero || 'N/A'}</p>
+                <p><strong>Natureza:</strong> ${natureza_operacao || 'N/A'}</p>
+                <p><strong>Emissão:</strong> ${formatarDataHora(data_emissao)}</p>
+                <p><strong>Saída/Entrada:</strong> ${formatarDataHora(data_saida)}</p>
+                <p><strong>Valor Total:</strong> ${formatarMoedaBr(valor_total)}</p>
+                <p><strong>Info Adicionais:</strong> ${informacoes_adicionais || 'N/A'}</p>
             </div>
-          </div>
-
-          <p><strong>Data Emissão:</strong> ${formatarDataBR(data.nota.data_emissao)} &nbsp;&nbsp;
-             <strong>Data Saída:</strong> ${formatarDataBR(data.nota.data_saida)}</p>
-          <p><strong>Natureza:</strong> ${data.nota.natureza_operacao}</p>
-          <p><strong>Chave de Acesso:</strong> ${data.chave_acesso}</p>
-
-          <hr>
-          <h6>Fornecedor</h6>
-          <p><strong>CNPJ:</strong> ${data.fornecedor.cnpj}</p>
-          <p><strong>Razão Social:</strong> ${data.fornecedor.razao_social}</p>
-          <p><strong>Nome Fantasia:</strong> ${data.fornecedor.nome_fantasia || "—"}</p>
-          <p><strong>Endereço:</strong> ${data.fornecedor.logradouro}, ${data.fornecedor.numero}, ${data.fornecedor.bairro} — ${data.fornecedor.municipio}/${data.fornecedor.uf} — CEP ${data.fornecedor.cep}</p>
-          <p><strong>Telefone:</strong> ${data.fornecedor.telefone || "—"}</p>
-
-          <hr>
-          <h6>Produtos</h6>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered table-striped">
-              <thead>
-                <tr>
-                  <th>Código</th><th>Nome</th><th>NCM</th><th>CFOP</th>
-                  <th>Unid.</th><th>Qtd</th><th>Vlr Unit.</th><th>Vlr Total</th>
-                  <th>ICMS (R$)</th><th>PIS (R$)</th><th>COFINS (R$)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.produtos.map(p => `
-                  <tr>
-                    <td>${p.codigo}</td>
-                    <td>${p.nome}</td>
-                    <td>${p.ncm}</td>
-                    <td>${p.cfop}</td>
-                    <td>${p.unidade}</td>
-                    <td>${p.quantidade}</td>
-                    <td>${formatarMoedaBR(p.valor_unitario)}</td>
-                    <td>${formatarMoedaBR(p.valor_total)}</td>
-                    <td>${formatarMoedaBR(p.impostos.icms_valor)}</td>
-                    <td>${formatarMoedaBR(p.impostos.pis_valor)}</td>
-                    <td>${formatarMoedaBR(p.impostos.cofins_valor)}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
-
-          <hr>
-          <h6>Totais</h6>
-          <p><strong>Total Produtos:</strong> ${formatarMoedaBR(data.totais.valor_total_produtos)}<br>
-             <strong>Total Nota:</strong> ${formatarMoedaBR(data.totais.valor_total_nota)}<br>
-             <strong>ICMS:</strong> ${formatarMoedaBR(data.totais.valor_total_icms)} |
-             <strong>PIS:</strong> ${formatarMoedaBR(data.totais.valor_total_pis)} |
-             <strong>COFINS:</strong> ${formatarMoedaBR(data.totais.valor_total_cofins)} |
-             <strong>Descontos:</strong> ${formatarMoedaBR(data.totais.valor_total_desconto)}</p>
-
-          <hr>
-          <h6>Duplicatas</h6>
-          <ul>
-            ${data.duplicatas.map(d => `
-              <li>Nº ${d.numero} - ${formatarMoedaBR(d.valor)} - Vencimento: ${formatarDataBR(d.vencimento)}</li>
-            `).join("")}
-          </ul>
-
-          <hr>
-          <h6>Transporte</h6>
-          <p><strong>Transportadora:</strong> ${data.transporte.transportadora_nome || "—"}<br>
-             <strong>CNPJ:</strong> ${data.transporte.transportadora_cnpj || "—"}<br>
-             <strong>Placa:</strong> ${data.transporte.veiculo_placa || "—"} (${data.transporte.veiculo_uf || "--"})<br>
-             <strong>Frete:</strong> ${data.transporte.modalidade_frete || "—"}, RNTC: ${data.transporte.veiculo_rntc || "—"}<br>
-             <strong>Volumes:</strong> ${data.transporte.quantidade_volumes || 0} × ${data.transporte.especie_volumes || "—"}<br>
-             <strong>Peso Líquido:</strong> ${formatarMoedaBR(data.transporte.peso_liquido)} |
-             <strong>Peso Bruto:</strong> ${formatarMoedaBR(data.transporte.peso_bruto)}</p>
-
-          <hr>
-          <h6>Informações Adicionais</h6>
-          <p>${data.info_adicional || "—"}</p>
         </div>
-      </div>
+        <div class="card mb-3"><div class="card-header bg-info text-white"><h5 class="mb-0">Emitente</h5></div>
+            <div class="card-body">
+                <p><strong>Razão Social:</strong> ${emit.xNome || 'N/A'}</p>
+                <p><strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p>
+            </div>
+        </div>
+        <div class="card mb-3"><div class="card-header bg-secondary text-white"><h5 class="mb-0">Destinatário</h5></div>
+            <div class="card-body">
+                <p><strong>Nome:</strong> ${dest.xNome || 'N/A'}</p>
+                <p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p>
+            </div>
+        </div>
+        <div class="card mb-3"><div class="card-header bg-warning text-dark"><h5 class="mb-0">Produtos</h5></div>
+            <div class="card-body"><div class="table-responsive">
+                <table class="table table-striped table-bordered table-sm">
+                    <thead><tr><th>Cód.</th><th>Nome</th><th>NCM</th><th>CFOP</th><th>Qtd</th><th>Vlr. Unit.</th><th>Vlr. Total</th><th>Status</th></tr></thead>
+                    <tbody>
+                        ${produtos.map(p => `
+                            <tr>
+                                <td>${p.codigo.replace('AUTO-', '')}</td>
+                                <td>${p.nome}</td>
+                                <td>${p.ncm}</td>
+                                <td>${p.cfop}</td>
+                                <td>${parseFloat(p.quantidade || '0').toLocaleString('pt-BR')}</td>
+                                <td>${formatarMoedaBr(p.valor_unitario)}</td>
+                                <td>${formatarMoedaBr(p.valor_total)}</td>
+                                <td>${p.novo ? '<span class="badge bg-danger">Novo</span>' : '<span class="badge bg-success">Existente</span>'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+        <div class="d-grid gap-2">
+            <button id="confirmarImportacaoBtn" class="btn btn-success btn-lg">Confirmar e Salvar Importação</button>
+        </div>
     `;
-    resultadoWrapper.innerHTML = html;
-  }
+
+    document.getElementById('confirmarImportacaoBtn').addEventListener('click', abrirModalRevisaoCategorias);
 }
 
-// ✅ Salvar no banco
-function salvarImportacaoNoBanco() {
-  if (!dadosImportados) {
-    mostrarMensagemErro("Nenhuma importação para salvar.");
-    return;
-  }
+/**
+ * 3. Abre o modal para o usuário selecionar a categoria dos produtos novos.
+ */
+function abrirModalRevisaoCategorias() {
+    if (!dadosNotaFiscal || !Array.isArray(dadosNotaFiscal.produtos)) {
+        return mostrarMensagem('error', 'Erro', 'Dados da nota não encontrados.');
+    }
 
-  console.log("🔁 Enviando para /nota-fiscal/importar/salvar/");
-  console.log("📦 Dados:", JSON.stringify(dadosImportados, null, 2));
+    const produtosNovos = dadosNotaFiscal.produtos.filter(p => p.novo);
 
-  fetch('/nota-fiscal/importar/salvar/', {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCSRFToken()
-    },
-    body: JSON.stringify(dadosImportados)
-  })
-    .then(async res => {
-      const data = await res.json();
-      if (res.ok) {
-        mostrarMensagemSucesso(data.mensagem || "Importação salva com sucesso!");
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        mostrarMensagemErro(data.erro);
-      }
-    })
-    .catch(() => mostrarMensagemErro("Erro ao salvar importação."));
+    if (produtosNovos.length === 0) {
+        Swal.fire({
+            title: 'Nenhum produto novo!',
+            text: 'Todos os produtos já existem no sistema. Deseja prosseguir com a importação?',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, importar!',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (result.isConfirmed) {
+                salvarImportacao();
+            }
+        });
+        return;
+    }
+
+    const listaDiv = document.getElementById("revisao-lista");
+    listaDiv.innerHTML = produtosNovos.map((p, idx) => `
+        <div class="row align-items-center mb-2">
+            <div class="col-md-5"><strong>${p.nome}</strong></div>
+            <div class="col-md-7">
+                <select class="form-select form-select-sm categoria-select" required data-product-code="${p.codigo}">
+                    <option value="" disabled selected>Selecione a categoria...</option>
+                    ${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join("")}
+                </select>
+            </div>
+        </div>
+    `).join('');
+
+    new bootstrap.Modal(document.getElementById("revisaoCategoriasModal")).show();
 }
 
-// ✅ Descartar importação
-function descartarImportacao() {
-  if (confirm("Descartar importação?")) {
-    document.getElementById("resultado-xml").innerHTML = "";
-    dadosImportados = null;
-    document.getElementById("xml-input").value = "";
-    mostrarMensagemSucesso("Importação descartada.");
-  }
+/**
+ * 4. Confirma as categorias selecionadas e avança para salvar.
+ */
+function confirmarRevisaoCategorias() {
+    let valido = true;
+    const selects = document.querySelectorAll('#revisaoCategoriasModal .categoria-select');
+
+    selects.forEach(select => {
+        const productCode = select.dataset.productCode;
+        const selectedCategoryId = select.value;
+        const produto = dadosNotaFiscal.produtos.find(p => p.codigo === productCode);
+
+        if (!selectedCategoryId) {
+            valido = false;
+            select.classList.add("is-invalid");
+        } else {
+            select.classList.remove("is-invalid");
+            if (produto) {
+                produto.categoria_id = Number(selectedCategoryId);
+            }
+        }
+    });
+
+    if (!valido) {
+        return mostrarMensagem('error', 'Erro de Validação', 'Por favor, selecione uma categoria para todos os produtos novos.');
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById("revisaoCategoriasModal")).hide();
+    salvarImportacao();
 }
 
-// 🔐 CSRF token
-function getCSRFToken() {
-  const m = document.cookie.match(/csrftoken=([^;]+)/);
-  return m ? m[1] : "";
+/**
+ * 5. Envia os dados da nota (com as categorias) para o backend para salvamento final.
+ */
+async function salvarImportacao() {
+    if (!dadosNotaFiscal) {
+        return mostrarMensagem('error', 'Erro', 'Não há dados da nota para salvar.');
+    }
+
+    mostrarLoading("Salvando importação no sistema...");
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    try {
+        // A URL agora aponta para a nova view unificada.
+        const response = await fetch("/nota-fiscal/api/processar-importacao-xml/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            // Envia o objeto 'dadosNotaFiscal' completo.
+            // O backend terá acesso a todos os dados do XML mais as 'categoria_id' adicionadas.
+            body: JSON.stringify(dadosNotaFiscal)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.erro || `Erro HTTP ${response.status}`);
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: data.mensagem || "Importação concluída com sucesso.",
+            confirmButtonText: 'Ok'
+        }).then(() => {
+            // Redireciona para a página de listagem de notas.
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            } else {
+                window.location.reload(); // Fallback
+            }
+        });
+
+    } catch (err) {
+        console.error("Falha ao salvar a nota:", err);
+        mostrarMensagem('error', 'Erro ao Salvar', err.message);
+    } finally {
+        ocultarLoading();
+    }
 }
 
-// ✅ Inicializar quando carregar a página
-document.addEventListener("DOMContentLoaded", initImportarXML);
+/**
+ * Função de inicialização que adiciona os event listeners.
+ */
+function init() {
+    // Tenta carregar as categorias do objeto global injetado pelo Django.
+    todasCategorias = window.CATEGORIAS_DISPONIVEIS || [];
+    if (todasCategorias.length === 0) {
+        console.warn("A lista de categorias de produtos não foi encontrada. O seletor de categorias ficará vazio.");
+    }
 
-// 🧩 Formatadores auxiliares
-function formatarMoedaBR(valor) {
-  if (!valor || valor === "0") return "R$ 0,00";
-  return parseFloat(valor).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
+    const formXml = document.getElementById("form-importar-xml");
+    if (formXml) {
+        formXml.addEventListener("submit", e => {
+            e.preventDefault();
+            handleFileUpload();
+        });
+    }
+
+    const btnConfirmarCategorias = document.getElementById("btn-confirmar-categorias");
+    if (btnConfirmarCategorias) {
+        btnConfirmarCategorias.addEventListener("click", confirmarRevisaoCategorias);
+    }
 }
 
-function formatarDataBR(data) {
-  if (!data) return "—";
-  const [ano, mes, dia] = data.split("-");
-  return `${dia}/${mes}/${ano}`;
-}
+// Inicia o script quando o DOM estiver pronto.
+document.addEventListener("DOMContentLoaded", init);

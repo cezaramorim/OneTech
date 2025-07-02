@@ -18,6 +18,7 @@ from django.utils.text import slugify
 import xml.etree.ElementTree as ET
 import json
 from common.utils import formatters
+from .models import CategoriaProduto
 
 valor = formatters.formatar_numero_br("1234.56")
 
@@ -183,6 +184,14 @@ def cadastrar_categoria_view(request):
         "partials/produtos/cadastrar_categoria.html",
         {"form": form, "data_tela": "cadastrar_categoria"}
     )
+
+def categoria_list_api(request):
+    """
+    Retorna todas as categorias como JSON: [{id: <int>, nome: <str>}, ...]
+    """
+    qs = CategoriaProduto.objects.order_by('nome').values('id', 'nome')
+    # safe=False porque estamos retornando uma lista, não um dict
+    return JsonResponse(list(qs), safe=False)
 
 
 

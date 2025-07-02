@@ -37,8 +37,6 @@ class ProdutoForm(forms.ModelForm):
             'estoque_total', 'quantidade_saidas', 'estoque_atual',
             'controla_estoque', 'ativo', 'data_cadastro',
             'observacoes',
-            'cst', 'origem_mercadoria',
-            'unidade_comercial', 'quantidade_comercial', 'valor_unitario_comercial',
             'fornecedor',
             'ncm',
         ]
@@ -58,11 +56,6 @@ class ProdutoForm(forms.ModelForm):
             'controla_estoque': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'cst': forms.TextInput(attrs={'class': 'form-control'}),
-            'origem_mercadoria': forms.Select(attrs={'class': 'form-select'}),
-            'unidade_comercial': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantidade_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
-            'valor_unitario_comercial': forms.NumberInput(attrs={'class': 'form-control'}),
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
         }
 

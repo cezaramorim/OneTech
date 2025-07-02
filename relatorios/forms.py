@@ -6,7 +6,7 @@ class NotaFiscalForm(forms.ModelForm):
         model = NotaFiscal
         fields = [
             'numero',
-            'fornecedor',
+            'emitente',
             'data_emissao',
             'data_saida',
             'valor_total_produtos',

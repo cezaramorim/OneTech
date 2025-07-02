@@ -21,6 +21,12 @@ urlpatterns = [
     
     # Nota Fiscal
     path('nota-fiscal/', include('nota_fiscal.urls', namespace='nota_fiscal')),
+   
+   # expõe seus ViewSets do common em /api/v1/
+    path('api/v1/', include('common.api.urls')),
+ 
+    # <-- monta todas as rotas de API do nota_fiscal
+   # path('api/', include('nota_fiscal.api.urls')),
     
     # Relatórios
     path('relatorios/', include('relatorios.urls', namespace='relatorios')),

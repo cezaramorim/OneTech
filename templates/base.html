@@ -181,6 +181,7 @@
           <div id="submenu-nota-fiscal" class="accordion-collapse collapse">
             <ul class="list-group list-group-flush">
               <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
+              <li><a href="{% url 'nota_fiscal:lancar_nota_manual' %}" class="list-group-item ajax-link">Lançar Nota Manual</a></li>
               <li><a href="{% url 'nota_fiscal:entradas_nota' %}" class="list-group-item ajax-link">Entradas de Nota</a></li>
             </ul>
           </div>
@@ -262,6 +263,12 @@
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
 
+  <!-- SweetAlert2 para mensagens -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- colResizable para redimensionar colunas de tabela -->
+  <script src="https://cdn.jsdelivr.net/npm/colresizable@1.6.0/colResizable-1.6.min.js"></script>
+
   <!-- Scripts globais -->
   <script defer src="{% static 'js/scripts.js' %}"></script>
 
@@ -269,8 +276,6 @@
   <script defer src="{% static 'js/relatorios/notas_entradas.js' %}"></script>
   {% endblock %}
 
-  <!-- Scripts específicos da página -->
-  <script defer src="{% static 'js/importar_xml.js' %}"></script>
 </body>
 
 </html>

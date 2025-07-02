@@ -1,151 +1,326 @@
 {% load static %}
-<div class="container-fluid py-4">
-  <h2 class="mb-4">Editar Entrada - Nota {{ nota.numero }}</h2>
+{% load widget_tweaks %}
 
-  <form id="form-editar-entrada" method="post">
-    {% csrf_token %}
+<main id="main-content" class="container-fluid py-4" data-page="editar-entrada">
+  <!-- container de alerts via JS -->
+  <div id="mensagens"></div>
 
-    <!-- Abas -->
-    <ul class="nav nav-tabs" id="tab-editar-entrada" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados da Nota</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">Produtos</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="transporte-tab" data-bs-toggle="tab" data-bs-target="#transporte" type="button" role="tab">Transporte</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="pagamentos-tab" data-bs-toggle="tab" data-bs-target="#pagamentos" type="button" role="tab">Pagamentos</button>
-      </li>
-    </ul>
+  <!-- identifica a view pro scripts.js -->
+  <div id="identificador-tela" data-tela="editar_entrada">
+    <div class="card shadow-sm mx-auto" style="max-width: 1200px;">
+      <div class="card-body">
+        <h2 class="mb-4 text-center">Editar Entrada – Nota {{ nota.numero }}</h2>
 
-    <!-- Conteúdo das abas -->
-    <div class="tab-content pt-3" id="tabContent-editar-entrada">
-      
-      <!-- Dados da Nota -->
-      <div class="tab-pane fade show active" id="dados" role="tabpanel">
-        <div class="row g-3">
-          {% for field in form %}
-            <div class="col-md-6">
-              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}
-                <div class="invalid-feedback d-block">
-                  {{ field.errors }}
-                </div>
-              {% endif %}
+        <form
+          id="form-editar-entrada"
+          action="{% url 'nota_fiscal:editar_entrada' nota.pk %}"
+          method="post"
+          class="ajax-form"
+        >
+          {% csrf_token %}
+
+          <!-- Abas de navegação -->
+          <ul class="nav nav-tabs" id="tab-editar-entrada" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="dados-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#dados"
+                type="button"
+                role="tab"
+              >
+                Dados da Nota
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="produtos-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#produtos"
+                type="button"
+                role="tab"
+              >
+                Produtos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="transporte-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#transporte"
+                type="button"
+                role="tab"
+              >
+                Transporte
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="pagamentos-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#pagamentos"
+                type="button"
+                role="tab"
+              >
+                Pagamentos
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content pt-3" id="tabContent-editar-entrada">
+            <!-- ABA DADOS DA NOTA -->
+            <div class="tab-pane fade show active" id="dados" role="tabpanel">
+              <div class="row g-3">
+                {% for field in form %}
+                  <div class="col-md-6">
+                    <label for="{{ field.id_for_label }}" class="form-label">
+                      {{ field.label }}
+                    </label>
+                    {% render_field field class="form-control" %}
+                    {% if field.errors %}
+                      <div class="invalid-feedback d-block">
+                        {{ field.errors }}
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
             </div>
-          {% endfor %}
-        </div>
-      </div>
 
-      <!-- Produtos -->
-      <div class="tab-pane fade" id="produtos" role="tabpanel">
-        <div class="table-responsive">
-          <table class="table table-bordered table-hover" id="tabela-produtos">
-            <thead class="table-light">
-              <tr>
-                <th>Código</th>
-                <th>Descrição</th>
-                <th>NCM</th>
-                <th>CFOP</th>
-                <th>Quantidade</th>
-                <th>Unidade</th>
-                <th>Valor Unitário</th>
-                <th>Valor Total</th>
-                <th>ICMS (%)</th>
-                <th>IPI (%)</th>
-                <th>Desconto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in produtos %}
-              <tr>
-                <td>{{ item.produto.codigo }}</td>
-                <td>{{ item.produto.nome }}</td>
-                <td>{{ item.produto.ncm }}</td>
-                <td><input type="text" class="form-control" value="{{ item.produto.cfop }}" readonly></td>
-                
-                <td><input type="number" name="quantidade_{{ forloop.counter }}" class="form-control"
-                          value="{{ item.quantidade|floatformat:2|cut:',' }}" step="0.01" min="0"></td>
-                
-                <td><input type="text" class="form-control" value="{{ item.produto.unidade_comercial }}" readonly></td>
-                
-                <td><input type="number" name="valor_unitario_{{ forloop.counter }}" class="form-control"
-                          value="{{ item.produto.preco_custo|floatformat:4|cut:',' }}" step="0.0001" min="0"></td>
-                
-                <td><input type="number" class="form-control-plaintext" readonly
-                          value="{{ item.produto.preco_custo|floatformat:2|cut:',' }}" step="0.01"></td>
-                
-                <td><input type="number" name="icms_{{ forloop.counter }}" class="form-control"
-                          value="{{ item.icms_aliquota|default_if_none:'0.00'|floatformat:2|cut:',' }}" step="0.01" min="0"></td>
-                
-                <td><input type="number" name="ipi_{{ forloop.counter }}" class="form-control"
-                          value="{{ item.ipi_aliquota|default_if_none:'0.00'|floatformat:2|cut:',' }}" step="0.01" min="0"></td>
-                
-                <td><input type="number" name="desconto_{{ forloop.counter }}" class="form-control"
-                          value="{{ item.desconto|default_if_none:'0.00'|floatformat:2|cut:',' }}" step="0.01" min="0"></td>
-              </tr>
-              {% endfor %}
-            </tbody>
+            <!-- ABA PRODUTOS -->
+            {# Aba “Produtos” do formulário de edição de entrada #}
+            <div class="tab-pane fade" id="produtos" role="tabpanel">
+              <div class="table-responsive">
+                <table class="table table-striped" id="tabela-produtos">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Código</th>
+                      <th>Nome</th>
+                      <th>NCM</th>
+                      <th>Qtd</th>
+                      <th>Vlr Unit.</th>
+                      <th>Vlr Total</th>
+                      <th>ICMS %</th>
+                      <th>IPI %</th>
+                      <th>PIS %</th>
+                      <th>COFINS %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in produtos %}                      
+                      <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.codigo }}</td>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.ncm }}</td>
 
-          </table>
-        </div>
-      </div>
+                        {# Quantidade: permite 2 casas decimais, não usa formatação BR #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="quantidade_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            value="{{ item.quantidade|floatformat:'2' }}"
+                          />
+                        </td>
 
-      <!-- Transporte -->
-      <div class="tab-pane fade" id="transporte" role="tabpanel">
-        <div class="row g-3">
-          {% if transporte %}
-            <div class="col-md-4">
-              <label class="form-label">Transportadora</label>
-              <input type="text" class="form-control" value="{{ transporte.transportadora_nome }}" readonly>
+                        {# Valor Unitário: até 4 casas decimais #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="valor_unitario_{{ forloop.counter }}"
+                            step="0.0001"
+                            min="0"
+                            value="{{ item.preco_unitario|floatformat:'4' }}"
+                          />
+                        </td>
+
+                        {# Valor Total: calculado no back-end, somente leitura #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control-plaintext"
+                            readonly
+                            name="valor_total_produto_{{ forloop.counter }}"
+                            step="0.01"
+                            value="{{ item.preco_total|floatformat:'2' }}"
+                          />
+                        </td>
+
+                        {# Alíquota ICMS: padrão 0 se vazio #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="icms_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            value="{{ item.icms_aliquota|default:0|floatformat:'2' }}"
+                          />
+                        </td>
+
+                        {# Alíquota IPI: padrão 0 se vazio #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="ipi_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            value="{{ item.ipi_aliquota|default:0|floatformat:'2' }}"
+                          />
+                        </td>
+
+                        {# Alíquota PIS: padrão 0 se vazio #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="pis_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            value="{{ item.item_nota_fiscal.pis|default:0|floatformat:'2' }}"
+                          />
+                        </td>
+
+                        {# Alíquota COFINS: padrão 0 se vazio #}
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="cofins_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            value="{{ item.item_nota_fiscal.cofins|default:0|floatformat:'2' }}"
+                          />
+                        </td>
+                      </tr>                      
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">CNPJ</label>
-              <input type="text" class="form-control" value="{{ transporte.transportadora_cnpj }}" readonly>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Placa</label>
-              <input type="text" class="form-control" value="{{ transporte.placa_veiculo }}" readonly>
-            </div>
-          {% else %}
-            <p class="text-muted px-3">Nenhuma informação de transporte disponível.</p>
-          {% endif %}
-        </div>
-      </div>
 
-      <!-- Pagamentos -->
-      <div class="tab-pane fade" id="pagamentos" role="tabpanel">
-        <div class="table-responsive">
-          <table class="table table-bordered table-hover" id="tabela-duplicatas">
-            <thead class="table-light">
-              <tr>
-                <th>Número</th>
-                <th>Vencimento</th>
-                <th>Valor (R$)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for duplicata in duplicatas %}
-              <tr>
-                <td><input type="text" name="duplicata_numero_{{ forloop.counter }}" class="form-control" value="{{ duplicata.numero }}"></td>
-                <td><input type="date" name="duplicata_vencimento_{{ forloop.counter }}" class="form-control" value="{{ duplicata.vencimento|date:'Y-m-d' }}"></td>
-                <td><input type="number" name="duplicata_valor_{{ forloop.counter }}" class="form-control" value="{{ duplicata.valor|floatformat:2|cut:',' }}" step="0.01" min="0"></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+
+            <!-- ABA TRANSPORTE -->
+            <div class="tab-pane fade" id="transporte" role="tabpanel">
+              <div class="row g-3">
+                {% if transporte %}
+                  <div class="col-md-4">
+                    <label class="form-label">Transportadora</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      readonly
+                      name="transportadora_nome"
+                      value="{{ transporte.transportadora_nome }}"
+                    />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">CNPJ</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      readonly
+                      name="transportadora_cnpj"
+                      value="{{ transporte.transportadora_cnpj }}"
+                    />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Placa</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      readonly
+                      name="placa_veiculo"
+                      value="{{ transporte.placa_veiculo }}"
+                    />
+                  </div>
+                {% else %}
+                  <p class="text-muted px-3">
+                    Nenhuma informação de transporte disponível.
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- ABA PAGAMENTOS / DUPLICATAS -->
+            <div class="tab-pane fade" id="pagamentos" role="tabpanel">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="tabela-duplicatas">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Número</th>
+                      <th>Vencimento</th>
+                      <th>Valor (R$)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for dup in duplicatas %}
+                      <tr>
+                        <td>
+                          <input
+                            type="text"
+                            class="form-control"
+                            name="duplicata_numero_{{ forloop.counter }}"
+                            value="{{ dup.numero }}"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            class="form-control"
+                            name="duplicata_vencimento_{{ forloop.counter }}"
+                            value="{{ dup.vencimento|date:'Y-m-d' }}"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="duplicata_valor_{{ forloop.counter }}"
+                            step="0.01"
+                            min="0"
+                            inputmode="decimal"
+                            pattern="[0-9]+([\.][0-9]{1,2})?"
+                            value="{{ dup.valor|floatformat:'2' }}"
+                          />
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div> {# fim das abas #}
+
+          <!-- Botões finais -->
+          <div class="mt-4 text-end">
+            <button
+              type="button"
+              id="btn-finalizar-lancamento"
+              class="btn btn-success me-2"
+            >
+              Finalizar Lançamento
+            </button>
+            <button
+              type="button"
+              id="btn-descartar-alteracoes"
+              class="btn btn-danger"
+            >
+              Descartar Alterações
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-
-    <!-- Botões -->
-    <div class="mt-4 text-end">
-      <button type="button" class="btn btn-success me-2" id="btn-finalizar-lancamento">Finalizar Lançamento</button>
-      <button type="button" class="btn btn-danger" id="btn-descartar-alteracoes">Descartar Alterações</button>
-    </div>
-  </form>
-</div>
+  </div>
+</main>
