@@ -225,7 +225,7 @@ function confirmarRevisaoCategorias() {
 /**
  * 5. Envia os dados da nota (com as categorias) para o backend para salvamento final.
  */
-async function salvarImportacao() {
+async function salvarImportacao(forceUpdate = false) {
     if (!dadosNotaFiscal) {
         return mostrarMensagem('error', 'Erro', 'Não há dados da nota para salvar.');
     }
@@ -233,36 +233,66 @@ async function salvarImportacao() {
     mostrarLoading("Salvando importação no sistema...");
     const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
+    // Prepara o payload, adicionando force_update se necessário
+    const payload = { ...dadosNotaFiscal };
+    if (forceUpdate) {
+        payload.force_update = true;
+    }
+
     try {
-        // A URL agora aponta para a nova view unificada.
         const response = await fetch("/nota-fiscal/api/processar-importacao-xml/", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRFToken": csrfToken
             },
-            // Envia o objeto 'dadosNotaFiscal' completo.
-            // O backend terá acesso a todos os dados do XML mais as 'categoria_id' adicionadas.
-            body: JSON.stringify(dadosNotaFiscal)
+            body: JSON.stringify(payload) // Usa o payload modificado
         });
 
         const data = await response.json();
 
+        // Lida com o cenário de nota duplicada
+        if (response.ok && data.nota_existente && !forceUpdate) {
+            ocultarLoading(); // Oculta o loading antes de mostrar a confirmação
+            Swal.fire({
+                icon: 'warning',
+                title: 'Nota Fiscal Já Importada!',
+                text: data.mensagem + ' Deseja substituir/atualizar os dados existentes?',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, atualizar!',
+                cancelButtonText: 'Não, cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    mostrarLoading("Atualizando dados existentes...");
+                    salvarImportacao(true); // Chama a si mesma com forceUpdate = true
+                } else {
+                    // Usuário cancelou a atualização
+                    mostrarMensagem('info', 'Operação Cancelada', 'A importação foi cancelada pelo usuário.').then(() => {
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        }
+                    });
+                }
+            });
+            return; // Sai daqui, pois estamos aguardando a confirmação do usuário ou uma nova chamada
+        }
+
+        // Lida com erros reais do backend (ex: 400, 500)
         if (!response.ok) {
             throw new Error(data.erro || `Erro HTTP ${response.status}`);
         }
 
+        // Caso de sucesso (nova importação ou atualização forçada)
         Swal.fire({
             icon: 'success',
             title: 'Sucesso!',
             text: data.mensagem || "Importação concluída com sucesso.",
             confirmButtonText: 'Ok'
         }).then(() => {
-            // Redireciona para a página de listagem de notas.
             if (data.redirect_url) {
                 window.location.href = data.redirect_url;
             } else {
-                window.location.reload(); // Fallback
+                window.location.reload();
             }
         });
 

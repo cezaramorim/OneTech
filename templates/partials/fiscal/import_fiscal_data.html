@@ -1,0 +1,40 @@
+{% load static %}
+
+<div class="container-fluid py-4">
+    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+        <div class="card-body">
+            <h2 class="mb-4 text-center">Importar Dados Fiscais (Excel)</h2>
+            <p class="text-muted text-center">Selecione o tipo de dado e faça o upload do arquivo Excel.</p>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="import_type" class="form-label">Tipo de Dados para Importar:</label>
+                    <select class="form-select" id="import_type" name="import_type" required>
+                        <option value="">Selecione...</option>
+                        <option value="cfop">CFOPs</option>
+                        <option value="natureza_operacao">Naturezas de Operação</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="excel_file" class="form-label">Arquivo Excel (.xlsx ou .xls):</label>
+                    <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx, .xls" required>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <button type="submit" class="btn btn-success">Importar</button>
+                    <a href="{% url 'fiscal:cfop_list' %}" class="btn btn-secondary">Voltar</a>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <h3 class="mb-3 text-center">Baixar Modelo de Planilha</h3>
+            <div class="d-grid gap-2">
+                <a href="{% url 'fiscal:download_fiscal_template' %}?type=cfop" class="btn btn-outline-primary">Baixar Modelo CFOP</a>
+                <a href="{% url 'fiscal:download_fiscal_template' %}?type=natureza_operacao" class="btn btn-outline-primary">Baixar Modelo Natureza de Operação</a>
+            </div>
+        </div>
+    </div>
+</div>

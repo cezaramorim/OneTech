@@ -30,5 +30,8 @@ urlpatterns = [
     
     # Relatórios
     path('relatorios/', include('relatorios.urls', namespace='relatorios')),
+
+    # Fiscal
+    path('fiscal/', include('fiscal.urls', namespace='fiscal')),
         
 ]

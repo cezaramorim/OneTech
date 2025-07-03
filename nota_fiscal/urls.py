@@ -3,14 +3,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import (
-    importar_xml_view,
-    importar_xml_nfe_view,
-    processar_importacao_xml_view,
-    entradas_nota_view,
-    lancar_nota_manual_view,
-    editar_nota_view, # Importa a nova view de edição
-)
+from .views import importar_xml_view
+from .views import importar_xml_nfe_view
+from .views import processar_importacao_xml_view
+from .views import entradas_nota_view
+from .views import lancar_nota_manual_view
+from .views import editar_nota_view # Importa a nova view de edição
 
 from common.api.nota_fiscal import NotaFiscalViewSet
 

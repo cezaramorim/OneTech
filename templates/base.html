@@ -186,6 +186,22 @@
             </ul>
           </div>
         </div>
+
+        <!-- 🧾 Fiscal -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-fiscal">
+              🧾 Fiscal
+            </button>
+          </h2>
+          <div id="submenu-fiscal" class="accordion-collapse collapse">
+            <ul class="list-group list-group-flush">
+              <li><a href="{% url 'fiscal:cfop_list' %}" class="list-group-item ajax-link">CFOPs</a></li>
+              <li><a href="{% url 'fiscal:natureza_operacao_list' %}" class="list-group-item ajax-link">Naturezas de Operação</a></li>
+              <li><a href="{% url 'fiscal:import_fiscal_data' %}" class="list-group-item ajax-link">Importar Dados Fiscais</a></li>
+            </ul>
+          </div>
+        </div>
     
         <!-- 📊 Relatórios -->
         <div class="accordion-item">
@@ -271,6 +287,7 @@
 
   <!-- Scripts globais -->
   <script defer src="{% static 'js/scripts.js' %}"></script>
+  <script defer src="{% static 'js/fiscal_list.js' %}"></script>
 
   {% block extra_js %}
   <script defer src="{% static 'js/relatorios/notas_entradas.js' %}"></script>

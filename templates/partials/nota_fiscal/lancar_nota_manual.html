@@ -1,5 +1,4 @@
 {% load static %}
-{% load widget_tweaks %}
 
 <main id="main-content" class="container-fluid py-4" data-page="lancar-nota-manual">
   <!-- container de alerts via JS -->
@@ -9,56 +8,145 @@
     <div class="card-body">
       <h2 class="mb-4 text-center">Lançar Nota Fiscal Manualmente</h2>
 
-      <form id="form-lancar-nota" action="{% url 'nota_fiscal:lancar_nota_manual' %}" method="post" class="ajax-form">
+      <form id="form-lancar-nota" class="ajax-form">
         {% csrf_token %}
 
         <!-- Dados da Nota Fiscal (Cabeçalho) -->
         <fieldset class="mb-4 p-3 border rounded">
           <legend class="float-none w-auto px-2">Dados da Nota Fiscal</legend>
           <div class="row g-3">
-            {% for field in form %}
-              <div class="col-md-6">
-                <label for="{{ field.id_for_label }}" class="form-label">
-                  {{ field.label }}
-                </label>
-                {% render_field field class="form-control" %}
-                {% if field.errors %}
-                  <div class="invalid-feedback d-block">
-                    {{ field.errors }}
-                  </div>
-                {% endif %}
-              </div>
-            {% endfor %}
+            <div class="col-md-6">
+              <label for="id_chave_acesso" class="form-label">Chave de Acesso</label>
+              <input type="text" id="id_chave_acesso" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label for="id_numero" class="form-label">Número da Nota</label>
+              <input type="text" id="id_numero" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label for="id_natureza_operacao" class="form-label">Natureza da Operação</label>
+              <input type="text" id="id_natureza_operacao" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label for="id_data_emissao" class="form-label">Data de Emissão</label>
+              <input type="datetime-local" id="id_data_emissao" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label for="id_data_saida" class="form-label">Data de Saída/Entrada</label>
+              <input type="datetime-local" id="id_data_saida" class="form-control">
+            </div>
+            <div class="col-md-12">
+              <label for="id_informacoes_adicionais" class="form-label">Informações Adicionais</label>
+              <textarea id="id_informacoes_adicionais" class="form-control" rows="3"></textarea>
+            </div>
           </div>
         </fieldset>
 
-        <!-- Itens da Nota Fiscal (Formset) -->
+        <!-- Dados do Emitente -->
+        <fieldset class="mb-4 p-3 border rounded">
+          <legend class="float-none w-auto px-2">Dados do Emitente</legend>
+          <div class="mb-3 text-end">
+            <button type="button" class="btn btn-primary btn-sm" id="btn_selecionar_emitente">Selecionar Emitente</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="id_emit_cnpj" class="form-label">CNPJ</label>
+              <input type="text" id="id_emit_cnpj" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_xNome" class="form-label">Razão Social</label>
+              <input type="text" id="id_emit_xNome" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_xFant" class="form-label">Nome Fantasia</label>
+              <input type="text" id="id_emit_xFant" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_ie" class="form-label">Inscrição Estadual</label>
+              <input type="text" id="id_emit_ie" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_logradouro" class="form-label">Logradouro</label>
+              <input type="text" id="id_emit_logradouro" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_numero" class="form-label">Número</label>
+              <input type="text" id="id_emit_numero" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_bairro" class="form-label">Bairro</label>
+              <input type="text" id="id_emit_bairro" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_cidade" class="form-label">Cidade</label>
+              <input type="text" id="id_emit_cidade" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_uf" class="form-label">UF</label>
+              <input type="text" id="id_emit_uf" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_emit_cep" class="form-label">CEP</label>
+              <input type="text" id="id_emit_cep" class="form-control">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Dados do Destinatário -->
+        <fieldset class="mb-4 p-3 border rounded">
+          <legend class="float-none w-auto px-2">Dados do Destinatário</legend>
+          <div class="mb-3 text-end">
+            <button type="button" class="btn btn-primary btn-sm" id="btn_selecionar_destinatario">Selecionar Destinatário</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="id_dest_cnpj" class="form-label">CNPJ</label>
+              <input type="text" id="id_dest_cnpj" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_cpf" class="form-label">CPF</label>
+              <input type="text" id="id_dest_cpf" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_xNome" class="form-label">Nome / Razão Social</label>
+              <input type="text" id="id_dest_xNome" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_ie" class="form-label">Inscrição Estadual</label>
+              <input type="text" id="id_dest_ie" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_logradouro" class="form-label">Logradouro</label>
+              <input type="text" id="id_dest_logradouro" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_numero" class="form-label">Número</label>
+              <input type="text" id="id_dest_numero" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_bairro" class="form-label">Bairro</label>
+              <input type="text" id="id_dest_bairro" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_cidade" class="form-label">Cidade</label>
+              <input type="text" id="id_dest_cidade" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_uf" class="form-label">UF</label>
+              <input type="text" id="id_dest_uf" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label for="id_dest_cep" class="form-label">CEP</label>
+              <input type="text" id="id_dest_cep" class="form-control">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Itens da Nota Fiscal -->
         <fieldset class="mb-4 p-3 border rounded">
           <legend class="float-none w-auto px-2">Itens da Nota Fiscal</legend>
-          <div id="formset-container">
-            {{ formset.management_form }}
-            {% for item_form in formset %}
-              <div class="item-formset row g-3 mb-3 p-3 border rounded bg-light">
-                {% for field in item_form %}
-                  <div class="col-md-4">
-                    <label for="{{ field.id_for_label }}" class="form-label">
-                      {{ field.label }}
-                    </label>
-                    {% render_field field class="form-control" %}
-                    {% if field.errors %}
-                      <div class="invalid-feedback d-block">
-                        {{ field.errors }}
-                      </div>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-                <div class="col-md-12 text-end">
-                  <button type="button" class="btn btn-danger btn-sm remove-item-formset">Remover Item</button>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-          <button type="button" id="add-item-formset" class="btn btn-info btn-sm mt-3">Adicionar Item</button>
+          <div id="itens-container"></div>
+          <button type="button" id="add-item-produto" class="btn btn-info btn-sm mt-3">Adicionar Item</button>
         </fieldset>
 
         <!-- Botões de Ação -->
@@ -71,46 +159,57 @@
   </div>
 </main>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const formsetContainer = document.getElementById('formset-container');
-    const addItemButton = document.getElementById('add-item-formset');
-    const totalForms = document.querySelector('#id_itens-TOTAL_FORMS');
+<!-- Modais de Seleção de Empresa -->
+<!-- Modal Emitente -->
+<div class="modal fade" id="modalSelecionarEmitente" tabindex="-1" aria-labelledby="modalSelecionarEmitenteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content modal-selecao-empresa" data-bs-theme="dark">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSelecionarEmitenteLabel">Selecionar Emitente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <input type="text" class="form-control" id="search_emitente_input" placeholder="Buscar por CNPJ, CPF ou Nome...">
+        </div>
+        <div id="emitente_search_results" class="list-group"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="select_emitente_btn" disabled>Selecionar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    addItemButton.addEventListener('click', function() {
-      const currentForms = document.querySelectorAll('.item-formset').length;
-      const newForm = formsetContainer.children[0].cloneNode(true); // Clone the first form
+<!-- Modal Destinatário -->
+<div class="modal fade" id="modalSelecionarDestinatario" tabindex="-1" aria-labelledby="modalSelecionarDestinatarioLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content modal-selecao-empresa" data-bs-theme="dark">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSelecionarDestinatarioLabel">Selecionar Destinatário</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <input type="text" class="form-control" id="search_destinatario_input" placeholder="Buscar por CNPJ, CPF ou Nome...">
+        </div>
+        <div id="destinatario_search_results" class="list-group"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="select_destinatario_btn" disabled>Selecionar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-      newForm.querySelectorAll('input, select, textarea').forEach(input => {
-        const name = input.name.replace(/itens-(\d+)-/, `itens-${currentForms}-`);
-        const id = input.id.replace(/id_itens-(\d+)-/, `id_itens-${currentForms}-`);
-        input.name = name;
-        input.id = id;
-        input.value = ''; // Clear values for new form
-      });
-
-      formsetContainer.appendChild(newForm);
-      totalForms.value = parseInt(totalForms.value) + 1;
-    });
-
-    formsetContainer.addEventListener('click', function(event) {
-      if (event.target.classList.contains('remove-item-formset')) {
-        if (document.querySelectorAll('.item-formset').length > 1) {
-          event.target.closest('.item-formset').remove();
-          totalForms.value = parseInt(totalForms.value) - 1;
-          // Re-index forms after removal (optional, but good practice)
-          document.querySelectorAll('.item-formset').forEach((form, index) => {
-            form.querySelectorAll('input, select, textarea').forEach(input => {
-              const name = input.name.replace(/itens-(\d+)-/, `itens-${index}-`);
-              const id = input.id.replace(/id_itens-(\d+)-/, `id_itens-${index}-`);
-              input.name = name;
-              input.id = id;
-            });
-          });
-        } else {
-          alert("Você precisa ter pelo menos um item na nota fiscal.");
-        }
-      }
-    });
-  });
+<!-- Injeção de JSON de categorias (causa parse seguro) -->
+<script id="categorias-disponiveis-data" type="application/json">
+  {{ categorias_disponiveis_json|default:'[]'|safe }}
 </script>
+
+<!-- Injeção de JSON de empresas (causa parse seguro) -->
+<script id="empresas-disponiveis-data" type="application/json">
+  {{ empresas_disponiveis_json|default:'[]'|safe }}
+</script>
+
+<script defer src="{% static 'js/lancar_nota_manual.js' %}"></script>

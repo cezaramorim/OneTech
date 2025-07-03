@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'produto',
     'nota_fiscal',
     'relatorios',
+    'fiscal',
 ]
 
 REST_FRAMEWORK = {

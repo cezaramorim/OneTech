@@ -200,11 +200,29 @@ def processar_importacao_xml_view(request):
     try:
         payload = json.loads(request.body.decode('utf-8'))
         chave = payload.get('chave_acesso')
+        force_update = payload.get('force_update', False) # Novo parâmetro
+        mensagem_sucesso = "Nota Fiscal importada e processada com sucesso!" # Inicializa a variável
 
         if not chave:
             return JsonResponse({'erro': 'Chave de acesso não encontrada no payload.'}, status=400)
-        if NotaFiscal.objects.filter(chave_acesso=chave).exists():
-            return JsonResponse({'erro': f'Esta nota fiscal (chave {chave}) já foi importada anteriormente.'}, status=409)
+        
+        # Verifica se a nota fiscal já existe
+        nota_existente = NotaFiscal.objects.filter(chave_acesso=chave).first()
+
+        if nota_existente:
+            if not force_update:
+                # Se a nota existe e não é para forçar atualização, retorna alerta para o frontend
+                return JsonResponse({
+                    'mensagem': f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?',
+                    'nota_existente': True,
+                    'nota_id': nota_existente.pk,
+                    'redirect_url': reverse('nota_fiscal:entradas_nota')
+                }, status=200) # Retorna 200 OK com flag para o frontend
+            else:
+                # Se force_update é True, exclui a nota existente e seus relacionados
+                print(f"--- Excluindo nota fiscal existente (ID: {nota_existente.pk}) para atualização ---")
+                nota_existente.delete() # CASCADE delete cuidará dos itens, transportes, duplicatas e entradas
+                mensagem_sucesso = "Todos os dados da importação foram atualizados!"
 
         # 1. Processar e salvar Emitente e Destinatário
         emit_data = payload.get('emit', {})
@@ -234,10 +252,10 @@ def processar_importacao_xml_view(request):
         for prod_data_raw in payload.get('produtos', []):
             codigo_item = prod_data_raw.get('codigo', '').replace('AUTO-', '')
             
-            quantidade_atual = Decimal(prod_data_raw.get('quantidade', '0'))
-            valor_total_atual = Decimal(prod_data_raw.get('valor_total', '0'))
-            desconto_atual = Decimal(prod_data_raw.get('desconto', '0'))
-            valor_unitario_atual = Decimal(prod_data_raw.get('valor_unitario', '0'))
+            quantidade_atual = Decimal(prod_data_raw.get('qCom', '0')) # Use qCom do XML
+            valor_total_atual = Decimal(prod_data_raw.get('vProd', '0')) # Use vProd do XML
+            desconto_atual = Decimal(prod_data_raw.get('vDesc', '0')) # Use vDesc do XML
+            valor_unitario_atual = Decimal(prod_data_raw.get('vUnCom', '0')) # Use vUnCom do XML
 
             if codigo_item not in produtos_agrupados:
                 produtos_agrupados[codigo_item] = {
@@ -269,7 +287,7 @@ def processar_importacao_xml_view(request):
                 aggregated_valor_unitario = total_valor_x_quantidade / total_quantidade_para_media
             else:
                 # Se a quantidade total for zero, usa o valor unitário do primeiro item (ou zero)
-                aggregated_valor_unitario = Decimal(aggregated_data['first_prod_data'].get('valor_unitario', '0'))
+                aggregated_valor_unitario = Decimal(aggregated_data['first_prod_data'].get('vUnCom', '0')) # Use vUnCom do XML
 
             prod_data_for_item_creation = aggregated_data['first_prod_data']
             produto = _get_or_create_produto(prod_data_for_item_creation, emitente)
@@ -279,10 +297,10 @@ def processar_importacao_xml_view(request):
                 codigo=codigo_item,
                 defaults={
                     'produto': produto,
-                    'descricao': prod_data_for_item_creation.get('nome', ''),
-                    'ncm': prod_data_for_item_creation.get('ncm', ''),
-                    'cfop': prod_data_for_item_creation.get('cfop', ''),
-                    'unidade': prod_data_for_item_creation.get('unidade', ''),
+                    'descricao': produto.nome, # Usa o nome do produto do banco de dados
+                    'ncm': prod_data_for_item_creation.get('NCM', ''),
+                    'cfop': prod_data_for_item_creation.get('CFOP', ''),
+                    'unidade': prod_data_for_item_creation.get('uCom', ''),
                     'quantidade': aggregated_data['quantidade_total'],
                     'valor_unitario': aggregated_valor_unitario, # Usa a média ponderada calculada
                     'valor_total': aggregated_data['valor_total_item'],
@@ -315,7 +333,7 @@ def processar_importacao_xml_view(request):
 
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
         return JsonResponse({
-            'mensagem': 'Nota Fiscal importada e processada com sucesso!',
+            'mensagem': mensagem_sucesso,
             'nota_id': nf.pk,
             'redirect_url': reverse('nota_fiscal:entradas_nota')
         }, status=201)
@@ -372,8 +390,8 @@ def _get_or_create_produto(data, fornecedor):
     defaults = {
         'nome': data.get('nome', ''),
         'descricao': data.get('nome', ''),
-        'preco_custo': converter_valor_br(data.get('valor_unitario', '0')),
-        'preco_venda': converter_valor_br(data.get('valor_unitario', '0')), # Ajustar conforme regra de negócio
+        'preco_custo': Decimal(data.get('valor_unitario', '0')),
+        'preco_venda': Decimal(data.get('valor_unitario', '0')), # Ajustar conforme regra de negócio
         'fornecedor': fornecedor,
         'categoria': categoria,
         'controla_estoque': True,
@@ -399,8 +417,8 @@ def _create_transporte(nf, data):
         transportadora_nome=(data.get('transporta') or {}).get('xNome', ''),
         transportadora_cnpj=(data.get('transporta') or {}).get('CNPJ', ''),
         quantidade_volumes=int(vol.get('qVol', 0) or 0),
-        peso_liquido=converter_valor_br(vol.get('pesoL', '0')),
-        peso_bruto=converter_valor_br(vol.get('pesoB', '0')),
+        peso_liquido=Decimal(vol.get('pesoL', '0')),
+        peso_bruto=Decimal(vol.get('pesoB', '0')),
     )
     print("Dados de transporte salvos.")
 
@@ -413,7 +431,7 @@ def _create_duplicatas(nf, duplicatas_data):
         DuplicataNotaFiscal.objects.create(
             nota_fiscal=nf,
             numero=dup_data.get('nDup', ''),
-            valor=converter_valor_br(dup_data.get('vDup', '0')),
+            valor=Decimal(dup_data.get('vDup', '0')),
             vencimento=_parse_datetime(dup_data.get('dVenc'), date_only=True)
         )
     print(f"{len(duplicatas_data)} duplicata(s) salva(s).")
@@ -476,7 +494,14 @@ def lancar_nota_manual_view(request):
     """
     Renderiza a página para lançamento manual de notas fiscais.
     """
+    categorias = list(CategoriaProduto.objects.order_by("nome").values("id", "nome"))
+    empresas = list(EmpresaAvancada.objects.all().values(
+        'id', 'cnpj', 'cpf', 'razao_social', 'nome_fantasia', 'nome',
+        'logradouro', 'numero', 'bairro', 'cidade', 'uf', 'cep', 'ie'
+    ))
     context = {
+        'categorias_disponiveis_json': json.dumps(categorias, ensure_ascii=False),
+        'empresas_disponiveis_json': json.dumps(empresas, ensure_ascii=False),
         'content_template': 'partials/nota_fiscal/lancar_nota_manual.html',
         'data_page': 'lancar_nota_manual',
     }
