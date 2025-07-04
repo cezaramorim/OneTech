@@ -2,7 +2,7 @@ import io
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 
 from .models import Cfop, NaturezaOperacao
-from .forms import CfopForm, NaturezaOperacaoForm
+from .forms import CfopForm, NaturezaOperacaoForm, UploadExcelForm
 
 # Certifique-se de ter o openpyxl instalado: pip install openpyxl
 import openpyxl
@@ -23,7 +23,8 @@ def cfop_list(request):
     ordenacao = request.GET.get('ordenacao', 'codigo') # Padrão: ordenar por código
     termo_busca = request.GET.get('busca', '').strip()
 
-    # Garante que a ordenação seja válida para evitar erros
+    # Valida o campo de ordenação para prevenir injeção de SQL ou erros inesperados.
+    # Se o campo não for válido, a ordenação padrão é usada.
     valid_sort_fields = ['codigo', 'descricao', 'categoria']
     if ordenacao.startswith('-'):
         field = ordenacao[1:]
@@ -36,6 +37,7 @@ def cfop_list(request):
     cfops = Cfop.objects.all()
 
     if termo_busca:
+        # Aplica filtro de busca usando Q objects para buscar em múltiplos campos.
         cfops = cfops.filter(
             Q(codigo__icontains=termo_busca) |
             Q(descricao__icontains=termo_busca) |
@@ -98,7 +100,8 @@ def natureza_operacao_list(request):
     ordenacao = request.GET.get('ordenacao', 'descricao') # Padrão: ordenar por descrição
     termo_busca = request.GET.get('busca', '').strip()
 
-    # Garante que a ordenação seja válida para evitar erros
+    # Valida o campo de ordenação para prevenir injeção de SQL ou erros inesperados.
+    # Se o campo não for válido, a ordenação padrão é usada.
     valid_sort_fields = ['codigo', 'descricao', 'observacoes']
     if ordenacao.startswith('-'):
         field = ordenacao[1:]
@@ -111,6 +114,7 @@ def natureza_operacao_list(request):
     naturezas = NaturezaOperacao.objects.all()
 
     if termo_busca:
+        # Aplica filtro de busca usando Q objects para buscar em múltiplos campos.
         naturezas = naturezas.filter(
             Q(codigo__icontains=termo_busca) |
             Q(descricao__icontains=termo_busca) |
@@ -168,78 +172,56 @@ def natureza_operacao_update(request, pk):
 
 # --- Views para Importação de Excel ---
 
+from .utils import import_cfop_from_excel, import_natureza_operacao_from_excel
+
 @login_required
+@permission_required('fiscal.add_cfop', raise_exception=True)
 def import_fiscal_data_view(request):
+    """
+    View para importar dados fiscais (CFOPs ou Naturezas de Operação) a partir de um arquivo Excel.
+
+    Requer que o usuário esteja autenticado e tenha a permissão 'fiscal.add_cfop'.
+
+    GET: Exibe o formulário de upload.
+    POST: Processa o arquivo Excel enviado, importa os dados e redireciona para a lista correspondente.
+    """
     if request.method == 'POST':
-        excel_file = request.FILES.get('excel_file')
-        import_type = request.POST.get('import_type') # 'cfop' ou 'natureza_operacao'
+        form = UploadExcelForm(request.POST, request.FILES)
+        if form.is_valid():
+            excel_file = form.cleaned_data['excel_file']
+            import_type = form.cleaned_data['import_type']
 
-        if not excel_file:
-            messages.error(request, 'Nenhum arquivo Excel foi enviado.')
-            return redirect('fiscal:import_fiscal_data')
-
-        if not excel_file.name.endswith(('.xlsx', '.xls')):
-            messages.error(request, 'Formato de arquivo inválido. Por favor, envie um arquivo .xlsx ou .xls.')
-            return redirect('fiscal:import_fiscal_data')
-
-        try:
-            workbook = openpyxl.load_workbook(excel_file)
-            sheet = workbook.active
-            
-            # Pular o cabeçalho (primeira linha)
-            rows = list(sheet.iter_rows(min_row=2, values_only=True))
-            
             if import_type == 'cfop':
-                with transaction.atomic():
-                    for row_idx, row in enumerate(rows, start=2):
-                        try:
-                            codigo = str(row[0]).strip() if row[0] is not None else None
-                            descricao = str(row[1]).strip() if row[1] is not None else None
-                            categoria = str(row[2]).strip() if row[2] is not None else ''
-
-                            if not codigo or not descricao:
-                                messages.warning(request, f'Linha {row_idx}: Código ou Descrição do CFOP vazios. Ignorando linha.')
-                                continue
-
-                            Cfop.objects.update_or_create(
-                                codigo=codigo,
-                                defaults={'descricao': descricao, 'categoria': categoria}
-                            )
-                        except Exception as e:
-                            messages.error(request, f'Erro ao processar CFOP na linha {row_idx}: {e}')
-                            # Continua para a próxima linha, mas registra o erro
-                messages.success(request, 'Importação de CFOPs concluída com sucesso!')
-                return redirect('fiscal:cfop_list')
-
+                result = import_cfop_from_excel(excel_file)
+                redirect_url = 'fiscal:cfop_list'
             elif import_type == 'natureza_operacao':
-                with transaction.atomic():
-                    for row_idx, row in enumerate(rows, start=2):
-                        try:
-                            codigo = str(row[0]).strip() if row[0] is not None else None
-                            descricao = str(row[1]).strip() if row[1] is not None else None
-                            observacoes = str(row[2]).strip() if row[2] is not None else ''
-
-                            if not descricao:
-                                messages.warning(request, f'Linha {row_idx}: Descrição da Natureza de Operação vazia. Ignorando linha.')
-                                continue
-
-                            NaturezaOperacao.objects.update_or_create(
-                                descricao=descricao,
-                                defaults={'codigo': codigo, 'observacoes': observacoes}
-                            )
-                        except Exception as e:
-                            messages.error(request, f'Erro ao processar Natureza de Operação na linha {row_idx}: {e}')
-                            # Continua para a próxima linha, mas registra o erro
-                messages.success(request, 'Importação de Naturezas de Operação concluída com sucesso!')
-                return redirect('fiscal:natureza_operacao_list')
-
+                result = import_natureza_operacao_from_excel(excel_file)
+                redirect_url = 'fiscal:natureza_operacao_list'
+            
+            if result["success"]:
+                messages.success(request, result["message"])
             else:
-                messages.error(request, 'Tipo de importação inválido.')
+                messages.error(request, result["message"])
+            
+            return redirect(redirect_url)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"Erro no campo {field}: {error}")
+            # Se o formulário não for válido, renderiza a página com os erros
+            context = {
+                'form': form,
+                'content_template': 'partials/fiscal/import_fiscal_data.html',
+                'data_page': 'import_fiscal_data',
+                'title': 'Importar Dados Fiscais (Excel)',
+            }
+            return render(request, 'base.html', context)
 
-        except Exception as e:
-            messages.error(request, f'Erro ao ler o arquivo Excel: {e}')
+    else:
+        form = UploadExcelForm()
 
     context = {
+        'form': form,
         'content_template': 'partials/fiscal/import_fiscal_data.html',
         'data_page': 'import_fiscal_data',
         'title': 'Importar Dados Fiscais (Excel)',
@@ -282,7 +264,12 @@ def download_fiscal_template_view(request):
 @require_POST
 @csrf_exempt # Temporário para testes, remover em produção e usar CSRF token
 def delete_fiscal_items(request):
+    """
+    View para exclusão de itens fiscais (CFOPs ou Naturezas de Operação) via requisição AJAX.
+    Espera um JSON com 'ids' (lista de IDs a serem excluídos) e 'item_type' ('cfop' ou 'natureza_operacao').
+    """
     try:
+        # Carrega os dados JSON da requisição.
         data = json.loads(request.body)
         ids = data.get('ids', [])
         item_type = data.get('item_type') # 'cfop' ou 'natureza_operacao'
@@ -291,6 +278,7 @@ def delete_fiscal_items(request):
             return JsonResponse({'success': False, 'error': 'Nenhum ID fornecido para exclusão.'}, status=400)
 
         with transaction.atomic():
+            # Realiza a exclusão com base no tipo de item.
             if item_type == 'cfop':
                 deleted_count, _ = Cfop.objects.filter(pk__in=ids).delete()
                 model_name = "CFOP"
@@ -305,4 +293,5 @@ def delete_fiscal_items(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Requisição inválida.'}, status=400)
     except Exception as e:
+        # Captura exceções gerais e retorna uma resposta de erro.
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

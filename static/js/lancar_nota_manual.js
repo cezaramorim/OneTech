@@ -3,6 +3,100 @@
 let todasCategorias = [];
 let todasEmpresas = [];
 
+// Função utilitária para debounce
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
+// Função para configurar o autocompletar para um campo de input
+function setupAutocomplete(inputId, apiUrl, displayField, valueField) {
+    const inputElement = document.getElementById(inputId);
+    if (!inputElement) return;
+
+    let currentDropdown = null; // Para controlar o dropdown atual
+
+    const fetchData = async (searchTerm) => {
+        if (searchTerm.length < 2) { // Começa a buscar após 2 caracteres
+            if (currentDropdown) currentDropdown.remove();
+            return;
+        }
+        try {
+            const response = await fetch(`${apiUrl}?search=${searchTerm}`);
+            if (!response.ok) throw new Error('Erro ao buscar dados da API');
+            const data = await response.json();
+            displaySuggestions(data, inputElement, displayField, valueField);
+        } catch (error) {
+            console.error('Erro no autocompletar:', error);
+            if (currentDropdown) currentDropdown.remove();
+        }
+    };
+
+    const debouncedFetchData = debounce(fetchData, 300);
+
+    inputElement.addEventListener('input', (event) => {
+        debouncedFetchData(event.target.value);
+    });
+
+    inputElement.addEventListener('focus', (event) => {
+        debouncedFetchData(event.target.value);
+    });
+
+    inputElement.addEventListener('blur', () => {
+        // Pequeno atraso para permitir o clique na sugestão antes de fechar
+        setTimeout(() => {
+            if (currentDropdown) currentDropdown.remove();
+        }, 150);
+    });
+
+    const displaySuggestions = (suggestions, inputEl, displayFld, valueFld) => {
+        if (currentDropdown) currentDropdown.remove();
+
+        if (suggestions.length === 0) return;
+
+        currentDropdown = document.createElement('div');
+        currentDropdown.className = 'autocomplete-dropdown list-group';
+        currentDropdown.style.position = 'absolute';
+        currentDropdown.style.zIndex = '1000';
+        currentDropdown.style.width = inputEl.offsetWidth + 'px';
+        currentDropdown.style.maxHeight = '200px';
+        currentDropdown.style.overflowY = 'auto';
+        currentDropdown.style.backgroundColor = '#fff';
+        currentDropdown.style.border = '1px solid #ced4da';
+        currentDropdown.style.borderRadius = '.25rem';
+        currentDropdown.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.15)';
+
+        suggestions.forEach(item => {
+            const suggestionItem = document.createElement('button');
+            suggestionItem.type = 'button';
+            suggestionItem.className = 'list-group-item list-group-item-action';
+            suggestionItem.textContent = item[displayFld];
+            suggestionItem.addEventListener('mousedown', (e) => { // Usar mousedown para evitar blur antes do click
+                e.preventDefault(); // Previne o blur do input
+                inputEl.value = item[valueFld];
+                if (displayFld !== valueFld) {
+                    // Se houver um campo de descrição separado, preencher também
+                    // Isso exigiria um mapeamento mais complexo ou um campo oculto
+                    // Por enquanto, apenas o campo principal é preenchido.
+                }
+                currentDropdown.remove();
+                currentDropdown = null;
+            });
+            currentDropdown.appendChild(suggestionItem);
+        });
+
+        // Posiciona o dropdown abaixo do input
+        inputEl.parentNode.style.position = 'relative'; // Garante que o pai seja posicionado
+        inputEl.parentNode.appendChild(currentDropdown);
+        currentDropdown.style.top = inputEl.offsetTop + inputEl.offsetHeight + 'px';
+        currentDropdown.style.left = inputEl.offsetLeft + 'px';
+    };
+}
+
 function mostrarLoading(message = "Carregando...") {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingMessage = document.getElementById('loadingMessage');
@@ -82,6 +176,9 @@ function adicionarItemProduto() {
         </div>
     `;
     container.insertAdjacentHTML('beforeend', newItemHtml);
+
+    // Configura autocompletar para o CFOP do novo item
+    setupAutocomplete(`item-${index}-cfop`, '/api/fiscal/cfops/', 'codigo', 'codigo');
 }
 
 // Funções para gerenciar a busca e seleção de empresas via modal
@@ -434,4 +531,7 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         salvarNotaFiscal();
     });
+
+    // Configura autocompletar para Natureza de Operação
+    setupAutocomplete('id_natureza_operacao', '/api/fiscal/naturezas-operacao/', 'descricao', 'descricao');
 });
