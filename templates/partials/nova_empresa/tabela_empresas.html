@@ -7,6 +7,8 @@
         <th>Razão Social</th>
         <th>CNPJ</th>
         <th>Tipo</th>
+        <th>Regime Tributário</th>
+        <th>Contribuinte ICMS</th>
         <th>Categoria</th>
         <th>Status</th>
         <th>Ações</th>
@@ -16,14 +18,16 @@
       {% for empresa in empresas %}
       <tr>
         <td>{{ empresa.id }}</td>
-        <td>{{ empresa.razao_social }}</td>
-        <td>{{ empresa.cnpj }}</td>
-        <td>{{ empresa.get_tipo_display }}</td>
+        <td>{{ empresa.razao_social|default:empresa.nome }}</td>
+        <td>{{ empresa.cnpj|default:empresa.cpf }}</td>
+        <td>{{ empresa.get_tipo_empresa_display }}</td>
+        <td>{{ empresa.get_regime_tributario_display|default:"—" }}</td>
+        <td>{% if empresa.contribuinte_icms %}Sim{% else %}Não{% endif %}</td>
         <td>{{ empresa.categoria.nome|default:"—" }}</td>
         <td>
           <div class="form-check form-switch">
             <input class="form-check-input toggle-status-empresa" type="checkbox"
-                   data-id="{{ empresa.id }}" {% if empresa.ativo %}checked{% endif %} disabled>
+                   data-id="{{ empresa.id }}" {% if empresa.status_empresa == 'ativa' %}checked{% endif %} disabled>
           </div>
         </td>
         <td>
@@ -34,7 +38,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="7" class="text-center text-muted">Nenhuma empresa encontrada.</td>
+        <td colspan="9" class="text-center text-muted">Nenhuma empresa encontrada.</td>
       </tr>
       {% endfor %}
     </tbody>

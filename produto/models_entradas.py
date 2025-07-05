@@ -24,21 +24,4 @@ class EntradaProduto(models.Model):
         return f"Entrada {self.item_nota_fiscal.produto.nome} - {self.quantidade} unid."
 
     def save(self, *args, **kwargs):
-        # Atualiza o estoque e custo médio do Produto
-        if not self.pk:  # Se é uma entrada nova
-            produto = self.item_nota_fiscal.produto
-            estoque_antigo = produto.estoque_total
-            custo_antigo = produto.preco_custo
-
-            estoque_novo = estoque_antigo + self.quantidade
-
-            if estoque_novo > 0:
-                custo_medio = ((estoque_antigo * custo_antigo) + (self.quantidade * self.preco_unitario)) / estoque_novo
-            else:
-                custo_medio = self.preco_unitario  # Se estoque era 0
-
-            produto.estoque_total = estoque_novo
-            produto.preco_custo = custo_medio
-            produto.save()
-
         super().save(*args, **kwargs)

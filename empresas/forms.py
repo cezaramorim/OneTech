@@ -136,6 +136,11 @@ class EmpresaAvancadaForm(forms.ModelForm):
 
             'cliente': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'fornecedor': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+
+            # Novos campos fiscais
+            'regime_tributario': forms.Select(attrs={'class': 'form-select'}),
+            'contribuinte_icms': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'inscricao_municipal': forms.TextInput(attrs={'class': 'form-control'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -143,9 +148,14 @@ class EmpresaAvancadaForm(forms.ModelForm):
 
         tipo = None
 
-        # Detecta o tipo da empresa enviado via POST
+        # Detecta o tipo da empresa enviado via POST ou da instância existente
         if 'tipo_empresa' in self.data:
             tipo = self.data.get('tipo_empresa')
+        elif self.instance and self.instance.pk:
+            if self.instance.cnpj:
+                tipo = 'pj'
+            elif self.instance.cpf:
+                tipo = 'pf'
         elif self.initial.get('tipo_empresa'):
             tipo = self.initial.get('tipo_empresa')
 
@@ -165,7 +175,7 @@ class EmpresaAvancadaForm(forms.ModelForm):
         elif tipo == 'pf':
             obrigatorios = [
                 'tipo_empresa',
-                'nome_completo',
+                'nome', # Alterado de nome_completo para nome
                 'cpf',
                 'cep',
                 'logradouro',

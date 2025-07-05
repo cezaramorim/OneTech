@@ -17,10 +17,6 @@
       <div class="col-md-6">{{ form.categoria.label_tag }} {{ form.categoria|add_class:"form-select" }}</div>
       <div class="col-md-6">{{ form.unidade_medida.label_tag }} {{ form.unidade_medida|add_class:"form-select" }}</div>
 
-      <!-- Fiscais -->
-      <div class="col-md-8">{{ form.ncm_descricao.label_tag }} {{ form.ncm_descricao|add_class:"form-control" }}</div>
-      <div class="col-md-4">{{ form.cfop.label_tag }} {{ form.cfop|add_class:"form-control" }}</div>
-
       <!-- Preços -->
       <div class="col-md-4">{{ form.preco_custo.label_tag }} {{ form.preco_custo|add_class:"form-control" }}</div>
       <div class="col-md-4">{{ form.preco_venda.label_tag }} {{ form.preco_venda|add_class:"form-control" }}</div>
@@ -38,9 +34,83 @@
       <div class="col-12">{{ form.observacoes.label_tag }} {{ form.observacoes|add_class:"form-control" }}</div>
     </div>
 
+    <!-- Detalhes Fiscais do Produto -->
+    <fieldset class="mb-4 p-3 border rounded mt-4">
+      <legend class="float-none w-auto px-2">Detalhes Fiscais</legend>
+      {{ formset.management_form }}
+      {% for form_fiscal in formset %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.cst_icms.id_for_label }}" class="form-label">CST ICMS</label>
+            {{ form_fiscal.cst_icms|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.origem_mercadoria.id_for_label }}" class="form-label">Origem Mercadoria</label>
+            {{ form_fiscal.origem_mercadoria|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form_fiscal.aliquota_icms_interna.id_for_label }}" class="form-label">Alíquota ICMS Interna (%)</label>
+            {{ form_fiscal.aliquota_icms_interna|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form_fiscal.aliquota_icms_interestadual.id_for_label }}" class="form-label">Alíquota ICMS Interestadual (%)</label>
+            {{ form_fiscal.aliquota_icms_interestadual|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form_fiscal.reducao_base_icms.id_for_label }}" class="form-label">Redução Base ICMS (%)</label>
+            {{ form_fiscal.reducao_base_icms|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.cst_ipi.id_for_label }}" class="form-label">CST IPI</label>
+            {{ form_fiscal.cst_ipi|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.aliquota_ipi.id_for_label }}" class="form-label">Alíquota IPI (%)</label>
+            {{ form_fiscal.aliquota_ipi|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.cst_pis.id_for_label }}" class="form-label">CST PIS</label>
+            {{ form_fiscal.cst_pis|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.aliquota_pis.id_for_label }}" class="form-label">Alíquota PIS (%)</label>
+            {{ form_fiscal.aliquota_pis|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.cst_cofins.id_for_label }}" class="form-label">CST COFINS</label>
+            {{ form_fiscal.cst_cofins|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.aliquota_cofins.id_for_label }}" class="form-label">Alíquota COFINS (%)</label>
+            {{ form_fiscal.aliquota_cofins|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.cest.id_for_label }}" class="form-label">CEST</label>
+            {{ form_fiscal.cest|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form_fiscal.ncm.id_for_label }}" class="form-label">NCM</label>
+            {{ form_fiscal.ncm|add_class:"form-control" }}
+          </div>
+          {{ form_fiscal.id }}
+          {{ form_fiscal.DELETE }}
+        </div>
+      {% endfor %}
+    </fieldset>
+
     <div class="mt-4">
       <button type="submit" class="btn btn-success">Salvar</button>
       <a href="{% url 'produto:lista_produtos' %}" class="btn btn-secondary ajax-link ms-2">Cancelar</a>
     </div>
   </form>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Configura o autocompletar para o campo NCM
+    const ncmInput = document.getElementById('id_ncm');
+    if (ncmInput) {
+      setupAutocomplete(ncmInput.id, '/api/fiscal/ncms/', 'codigo', 'codigo');
+    }
+  });
+</script>

@@ -165,6 +165,8 @@ def atualizar_status_empresa_avancada(request, pk):
     except Exception:
         return JsonResponse({'sucesso': False, 'mensagem': 'Erro ao atualizar o status.'})
 
+from django.forms.models import model_to_dict
+
 @login_required
 def editar_empresa_avancada_view(request, pk):
     empresa = get_object_or_404(EmpresaAvancada, pk=pk)
@@ -175,13 +177,16 @@ def editar_empresa_avancada_view(request, pk):
             form.save()
             messages.success(request, 'Empresa atualizada com sucesso.')
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_empresas')})
-            return redirect('empresas:lista_empresas')
+                return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
+            return redirect('empresas:lista_empresas_avancadas')
     else:
         form = EmpresaAvancadaForm(instance=empresa)
 
+    # Converte a instância do modelo para um dicionário JSON serializável
+    empresa_data = model_to_dict(empresa)
+
     template = 'partials/nova_empresa/cadastrar_empresa_avancada.html'
-    context = {'form': form, 'empresa': empresa}
+    context = {'form': form, 'empresa': empresa_data} # Passa o dicionário
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return render(request, template, context)

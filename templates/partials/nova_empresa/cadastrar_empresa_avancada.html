@@ -35,6 +35,9 @@
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="comercial-tab" data-bs-toggle="tab" data-bs-target="#comercial" type="button" role="tab">Comercial</button>
               </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="fiscal-tab" data-bs-toggle="tab" data-bs-target="#fiscal" type="button" role="tab">Fiscal</button>
+              </li>
             </ul>
 
             <!-- Conteúdo das Abas -->
@@ -43,35 +46,32 @@
               <div class="tab-pane fade show active p-3" id="identificacao" role="tabpanel">
                 <div class="mb-3">
                   <label for="id_tipo_empresa" class="form-label">Tipo de Empresa</label>
-                  <select name="tipo_empresa" id="id_tipo_empresa" class="form-select" required>
-                    <option value="">Selecione</option>
-                    <option value="pj">Pessoa Jurídica</option>
-                    <option value="pf">Pessoa Física</option>
-                  </select>
+                  {{ form.tipo_empresa }}
                 </div>
 
                 <!-- Pessoa Jurídica -->
                 <div id="campos-pj" class="d-none">
-                  <div class="mb-3"><label for="id_cnpj">CNPJ</label><input type="text" name="cnpj" id="id_cnpj" class="form-control"></div>
-                  <div class="mb-3"><label for="id_razao_social">Razão Social</label><input type="text" name="razao_social" id="id_razao_social" class="form-control"></div>
-                  <div class="mb-3"><label for="id_nome_fantasia">Nome Fantasia</label><input type="text" name="nome_fantasia" id="id_nome_fantasia" class="form-control"></div>
-                  <!-- Adicione outros campos PJ aqui -->
+                  <div class="mb-3"><label for="id_cnpj">CNPJ</label>{{ form.cnpj }}</div>
+                  <div class="mb-3"><label for="id_razao_social">Razão Social</label>{{ form.razao_social }}</div>
+                  <div class="mb-3"><label for="id_nome_fantasia">Nome Fantasia</label>{{ form.nome_fantasia }}</div>
+                  <div class="mb-3">{{ form.cnae_principal.label_tag }} {{ form.cnae_principal }}</div>
+                  <div class="mb-3">{{ form.cnae_secundario.label_tag }} {{ form.cnae_secundario }}</div>
+                  <div class="mb-3">{{ form.data_abertura.label_tag }} {{ form.data_abertura }}</div>
                 </div>
 
                 <!-- Pessoa Física -->
                 <div id="campos-pf" class="d-none">
-                  <div class="mb-3"><label for="id_cpf">CPF</label><input type="text" name="cpf" id="id_cpf" class="form-control"></div>
-                  <div class="mb-3"><label for="id_nome_completo">Nome Completo</label><input type="text" name="nome_completo" id="id_nome_completo" class="form-control"></div>
-                  <!-- Adicione outros campos PF aqui -->
+                  <div class="mb-3"><label for="id_cpf">CPF</label>{{ form.cpf }}</div>
+                  <div class="mb-3"><label for="id_nome">Nome Completo</label>{{ form.nome }}</div>
+                  <div class="mb-3"><label for="id_rg">RG</label>{{ form.rg }}</div>
+                  <div class="mb-3"><label for="id_profissao">Profissão</label>{{ form.profissao }}</div>
                 </div>
 
-
-                <div class="mb-3"><label class="form-label">CNAE Principal</label><input type="text" name="cnae_principal" class="form-control"></div>
-                <div class="mb-3"><label class="form-label">CNAE Secundário</label><input type="text" name="cnae_secundario" class="form-control"></div>
                 <div class="mb-3">{{ form.categoria.label_tag }} {{ form.categoria }}</div>
                 <div class="mb-3">{{ form.status_empresa.label_tag }} {{ form.status_empresa }}</div>
-                <div class="mb-3"><label class="form-label">Data de Abertura</label><input type="date" name="data_abertura" class="form-control"></div>
-                <div class="mb-3"><label class="form-label">Data de Cadastro</label><input type="date" name="data_cadastro" class="form-control" value="{{ today|date:'Y-m-d' }}"></div>
+                <div class="mb-3">{{ form.data_cadastro.label_tag }} {{ form.data_cadastro }}</div>
+                <div class="mb-3">{{ form.cliente.label_tag }} {{ form.cliente }}</div>
+                <div class="mb-3">{{ form.fornecedor.label_tag }} {{ form.fornecedor }}</div>
               </div>
 
               <!-- Endereço -->
@@ -113,6 +113,14 @@
                 <div class="mb-3">{{ form.comissao.label_tag }} {{ form.comissao }}</div>
                 <div class="mb-3">{{ form.observacoes.label_tag }} {{ form.observacoes }}</div>
               </div>
+
+              <!-- Fiscal -->
+              <div class="tab-pane fade p-3" id="fiscal" role="tabpanel">
+                <div class="mb-3">{{ form.ie.label_tag }} {{ form.ie }}</div>
+                <div class="mb-3">{{ form.regime_tributario.label_tag }} {{ form.regime_tributario }}</div>
+                <div class="mb-3">{{ form.contribuinte_icms.label_tag }} {{ form.contribuinte_icms }}</div>
+                <div class="mb-3">{{ form.inscricao_municipal.label_tag }} {{ form.inscricao_municipal }}</div>
+              </div>
             </div>
 
             <div class="text-end">
@@ -125,3 +133,12 @@
     </div>
   </div>
 </main>
+
+<!-- Injeção de dados da empresa para JS (apenas em modo de edição) -->
+{% if empresa %}
+<script id="empresa-data" type="application/json">
+  {{ empresa|json_script:"empresa-data" }}
+</script>
+{% endif %}
+
+<script defer src="{% static 'js/empresa_avancada_form.js' %}"></script>

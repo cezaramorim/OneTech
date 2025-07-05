@@ -45,6 +45,9 @@ class Empresa(models.Model):
 
 # === Empresa Avançada ===
 class EmpresaAvancada(models.Model):
+    """Modelo para armazenar informações detalhadas de empresas (Pessoa Jurídica e Física).
+    Inclui dados cadastrais, de contato e fiscais para uso em diversas operações do sistema.
+    """
     tipo_empresa = models.CharField(max_length=10, choices=[('pj', 'Pessoa Jurídica'), ('pf', 'Pessoa Física')])
 
     # Pessoa Jurídica
@@ -52,6 +55,30 @@ class EmpresaAvancada(models.Model):
     nome_fantasia = models.CharField(max_length=255, blank=True, null=True)
     cnpj = models.CharField(max_length=20, blank=True, null=True)
     ie = models.CharField("Inscrição Estadual", max_length=20, blank=True, null=True)
+
+    # Dados Fiscais
+    regime_tributario = models.CharField(
+        max_length=2, 
+        choices=[
+            ('SN', 'Simples Nacional'),
+            ('LP', 'Lucro Presumido'),
+            ('LR', 'Lucro Real'),
+        ],
+        blank=True, null=True,
+        verbose_name="Regime Tributário",
+        help_text="Regime tributário da empresa para fins fiscais."
+    )
+    contribuinte_icms = models.BooleanField(
+        default=False,
+        verbose_name="Contribuinte ICMS",
+        help_text="Indica se a empresa é contribuinte do ICMS."
+    )
+    inscricao_municipal = models.CharField(
+        max_length=20, 
+        blank=True, null=True,
+        verbose_name="Inscrição Municipal",
+        help_text="Inscrição Municipal da empresa (para serviços)."
+    )
 
     # Pessoa Física
     nome = models.CharField(max_length=255, blank=True, null=True)

@@ -5,6 +5,9 @@ from django.utils import timezone
 from django.apps import apps # Não é estritamente necessário para este arquivo, mas não atrapalha
 
 class NotaFiscal(models.Model):
+    """Modelo para armazenar informações de Notas Fiscais, tanto de entrada quanto de saída.
+    Inclui dados do cabeçalho, totais de impostos e status de comunicação com a SEFAZ (futuro).
+    """
     # Campos de controle/auditoria
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -46,6 +49,117 @@ class NotaFiscal(models.Model):
         null=True,
         blank=True,
     )
+
+    # Novos campos para detalhes da NF-e
+    tipo_operacao = models.CharField(
+        max_length=1,
+        choices=[('0', 'Entrada'), ('1', 'Saída')],
+        blank=True, null=True,
+        verbose_name="Tipo de Operação"
+    )
+    finalidade_emissao = models.CharField(
+        max_length=1,
+        choices=[
+            ('1', 'NF-e normal'),
+            ('2', 'NF-e complementar'),
+            ('3', 'NF-e de ajuste'),
+            ('4', 'Devolução de mercadoria'),
+        ],
+        blank=True, null=True,
+        verbose_name="Finalidade da Emissão"
+    )
+    modelo_documento = models.CharField(
+        max_length=2,
+        choices=[('55', 'NF-e'), ('65', 'NFC-e')],
+        blank=True, null=True,
+        verbose_name="Modelo do Documento Fiscal"
+    )
+    serie = models.CharField(max_length=5, blank=True, null=True, verbose_name="Série da NF")
+    ambiente = models.CharField(
+        max_length=1,
+        choices=[('1', 'Produção'), ('2', 'Homologação')],
+        blank=True, null=True,
+        verbose_name="Ambiente de Emissão"
+    )
+    protocolo_autorizacao = models.CharField(max_length=15, blank=True, null=True, verbose_name="Protocolo de Autorização")
+    data_autorizacao = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora Autorização")
+    status_sefaz = models.CharField(max_length=50, blank=True, null=True, verbose_name="Status SEFAZ")
+    motivo_status_sefaz = models.TextField(blank=True, null=True, verbose_name="Motivo Status SEFAZ")
+    id_servico_terceiro = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Serviço Terceiro")
+
+    # Novos campos para detalhes da NF-e
+    tipo_operacao = models.CharField(
+        max_length=1,
+        choices=[('0', 'Entrada'), ('1', 'Saída')],
+        blank=True, null=True,
+        verbose_name="Tipo de Operação"
+    )
+    finalidade_emissao = models.CharField(
+        max_length=1,
+        choices=[
+            ('1', 'NF-e normal'),
+            ('2', 'NF-e complementar'),
+            ('3', 'NF-e de ajuste'),
+            ('4', 'Devolução de mercadoria'),
+        ],
+        blank=True, null=True,
+        verbose_name="Finalidade da Emissão"
+    )
+    modelo_documento = models.CharField(
+        max_length=2,
+        choices=[('55', 'NF-e'), ('65', 'NFC-e')],
+        blank=True, null=True,
+        verbose_name="Modelo do Documento Fiscal"
+    )
+    serie = models.CharField(max_length=5, blank=True, null=True, verbose_name="Série da NF")
+    ambiente = models.CharField(
+        max_length=1,
+        choices=[('1', 'Produção'), ('2', 'Homologação')],
+        blank=True, null=True,
+        verbose_name="Ambiente de Emissão"
+    )
+    protocolo_autorizacao = models.CharField(max_length=15, blank=True, null=True, verbose_name="Protocolo de Autorização")
+    data_autorizacao = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora Autorização")
+    status_sefaz = models.CharField(max_length=50, blank=True, null=True, verbose_name="Status SEFAZ")
+    motivo_status_sefaz = models.TextField(blank=True, null=True, verbose_name="Motivo Status SEFAZ")
+    id_servico_terceiro = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Serviço Terceiro")
+
+    # Novos campos para detalhes da NF-e
+    tipo_operacao = models.CharField(
+        max_length=1,
+        choices=[('0', 'Entrada'), ('1', 'Saída')],
+        blank=True, null=True,
+        verbose_name="Tipo de Operação"
+    )
+    finalidade_emissao = models.CharField(
+        max_length=1,
+        choices=[
+            ('1', 'NF-e normal'),
+            ('2', 'NF-e complementar'),
+            ('3', 'NF-e de ajuste'),
+            ('4', 'Devolução de mercadoria'),
+        ],
+        blank=True, null=True,
+        verbose_name="Finalidade da Emissão"
+    )
+    modelo_documento = models.CharField(
+        max_length=2,
+        choices=[('55', 'NF-e'), ('65', 'NFC-e')],
+        blank=True, null=True,
+        verbose_name="Modelo do Documento Fiscal"
+    )
+    serie = models.CharField(max_length=5, blank=True, null=True, verbose_name="Série da NF")
+    ambiente = models.CharField(
+        max_length=1,
+        choices=[('1', 'Produção'), ('2', 'Homologação')],
+        blank=True, null=True,
+        verbose_name="Ambiente de Emissão"
+    )
+    protocolo_autorizacao = models.CharField(max_length=15, blank=True, null=True, verbose_name="Protocolo de Autorização")
+    data_autorizacao = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora Autorização")
+    status_sefaz = models.CharField(max_length=50, blank=True, null=True, verbose_name="Status SEFAZ")
+    motivo_status_sefaz = models.TextField(blank=True, null=True, verbose_name="Motivo Status SEFAZ")
+    id_servico_terceiro = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Serviço Terceiro")
 
     # Valores totais da Nota Fiscal (decimal_places ajustados para 4)
     valor_total_produtos = models.DecimalField(max_digits=15, decimal_places=4, default=0, verbose_name="Valor Total dos Produtos")
@@ -128,6 +242,9 @@ class DuplicataNotaFiscal(models.Model):
         return f"Duplicata {self.numero} da Nota {self.nota_fiscal.numero}"
     
 class ItemNotaFiscal(models.Model):
+    """Modelo para armazenar os itens de uma Nota Fiscal, incluindo seus detalhes fiscais.
+    Estes campos refletem os valores e classificações fiscais aplicados a cada item na NF.
+    """
     nota_fiscal = models.ForeignKey(
         'NotaFiscal',
         on_delete=models.CASCADE,
@@ -149,17 +266,26 @@ class ItemNotaFiscal(models.Model):
     quantidade = models.DecimalField(max_digits=15, decimal_places=6, default=0, verbose_name="Quantidade")
     valor_unitario = models.DecimalField(max_digits=15, decimal_places=6, default=0, verbose_name="Valor Unitário")
     valor_total = models.DecimalField(max_digits=15, decimal_places=6, default=0, verbose_name="Valor Total")
-    icms = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor ICMS")
-    ipi = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor IPI")
-    pis = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor PIS")
-    cofins = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor COFINS")
     desconto = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True, verbose_name="Valor Desconto")
 
-    class Meta:
-        verbose_name = "Item da Nota Fiscal"
-        verbose_name_plural = "Itens da Nota Fiscal"
-        unique_together = ('nota_fiscal', 'codigo') # Garante que não há itens com o mesmo código para a mesma NF
+    # Campos de impostos detalhados por item
+    base_calculo_icms = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo ICMS")
+    aliquota_icms = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota ICMS (%)")
+    valor_icms_desonerado = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor ICMS Desonerado")
+    motivo_desoneracao_icms = models.CharField(max_length=2, blank=True, null=True, verbose_name="Motivo Desoneração ICMS")
+    cst_icms_aplicado = models.CharField(max_length=5, blank=True, null=True, verbose_name="CST/CSOSN ICMS Aplicado")
 
-    def __str__(self):
-        return f"{self.codigo} - {self.descricao} (Nota {self.nota_fiscal.numero})"
+    base_calculo_ipi = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo IPI")
+    aliquota_ipi = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota IPI (%)")
+    cst_ipi_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST IPI Aplicado")
+
+    base_calculo_pis = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo PIS")
+    aliquota_pis = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota PIS (%)")
+    cst_pis_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST PIS Aplicado")
+
+    base_calculo_cofins = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo COFINS")
+    aliquota_cofins = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota COFINS (%)")
+    cst_cofins_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST COFINS Aplicado")
+
+    informacoes_adicionais_item = models.TextField(blank=True, null=True, verbose_name="Informações Adicionais do Item")
 

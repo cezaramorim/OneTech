@@ -199,6 +199,17 @@
               <li><a href="{% url 'fiscal:cfop_list' %}" class="list-group-item ajax-link">CFOPs</a></li>
               <li><a href="{% url 'fiscal:natureza_operacao_list' %}" class="list-group-item ajax-link">Naturezas de Operação</a></li>
               <li><a href="{% url 'fiscal:import_fiscal_data' %}" class="list-group-item ajax-link">Importar Dados Fiscais</a></li>
+              
+              <!-- Novo Submenu de Configurações Fiscais -->
+              <li class="list-group-item ms-3">
+                <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#submenu-config-fiscal" aria-expanded="false">
+                  ⚙️ Configurações Fiscais
+                </button>
+                <ul id="submenu-config-fiscal" class="collapse list-group list-group-flush mt-2 ms-3">
+                  <li><a href="#" class="list-group-item ajax-link">Regras Tributárias (Futuro)</a></li>
+                  <li><a href="#" class="list-group-item ajax-link">Status NF-e (Futuro)</a></li>
+                </ul>
+              </li>
             </ul>
           </div>
         </div>

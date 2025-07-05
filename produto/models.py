@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 from django.utils.timezone import now
 from empresas.models import EmpresaAvancada
 from .models_fiscais import DetalhesFiscaisProduto
@@ -39,9 +40,8 @@ class Produto(models.Model):
 
     # 📂 Classificações
     categoria = models.ForeignKey(CategoriaProduto, on_delete=models.SET_NULL, null=True, related_name='produtos')
-    unidade_medida = models.ForeignKey(UnidadeMedida, on_delete=models.SET_NULL, null=True, related_name='produtos')
-    ncm = models.ForeignKey(NCM, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos')
-    cfop = models.CharField(max_length=10, blank=True, null=True)
+    unidade_medida_interna = models.ForeignKey(UnidadeMedida, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos', help_text="Unidade de medida para controle interno de estoque.")
+    
     TIPOS_PRODUTO = [
         ('Produto', 'Produto'),
         ('Insumo', 'Insumo'),
@@ -97,9 +97,32 @@ class Produto(models.Model):
 def calcular_estoque_atual(self):
     return self.estoque_total - self.quantidade_saidas
 
+    
+
 def save(self, *args, **kwargs):
     self.estoque_atual = self.calcular_estoque_atual()
     super().save(*args, **kwargs)
 
 def __str__(self):
     return f"{self.codigo} - {self.nome}"
+
+
+# 🔄 Fator de Conversão de Unidades por Fornecedor
+class FatorConversaoFornecedor(models.Model):
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="fatores_conversao")
+    fornecedor = models.ForeignKey(EmpresaAvancada, on_delete=models.CASCADE, related_name="fatores_conversao")
+    unidade_fornecedor = models.CharField(max_length=10, help_text="Unidade de medida usada pelo fornecedor (ex: CX, FARDO)")
+    fator_conversao = models.DecimalField(
+        max_digits=18, 
+        decimal_places=10, 
+        default=1,
+        help_text="Quantas unidades internas correspondem a uma unidade do fornecedor. Ex: Se a unidade do fornecedor é 'CX' com 12 itens, o fator é 12."
+    )
+
+    class Meta:
+        unique_together = ('produto', 'fornecedor', 'unidade_fornecedor')
+        verbose_name = "Fator de Conversão por Fornecedor"
+        verbose_name_plural = "Fatores de Conversão por Fornecedor"
+
+    def __str__(self):
+        return f"{self.produto.nome} ({self.fornecedor.nome_fantasia}): 1 {self.unidade_fornecedor} = {self.fator_conversao} unidades internas"

@@ -49,7 +49,9 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        print(f"Attempting to authenticate user: {username} with password: {password}")
         user = authenticate(request, username=username, password=password)
+        print(f"Authentication result for {username}: {user} (type: {type(user)})")
 
         if user:
             login(request, user)

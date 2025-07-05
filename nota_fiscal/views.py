@@ -22,9 +22,10 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
-from common.utils.formatters import converter_valor_br, converter_data_para_date
+from common.utils.formatters import converter_valor_br, converter_data_para_date, CustomDecimalEncoder
+from fiscal.calculos import aplicar_impostos_na_nota
 from empresas.models import EmpresaAvancada
-from produto.models import CategoriaProduto, Produto
+from produto.models import CategoriaProduto, Produto, UnidadeMedida, FatorConversaoFornecedor, DetalhesFiscaisProduto, NCM
 from .models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal, ItemNotaFiscal
 from produto.models_entradas import EntradaProduto
 from .forms import (
@@ -131,10 +132,13 @@ def importar_xml_nfe_view(request):
         for det_item in det_list:
             prod = det_item.get('prod', {})
             codigo_importado = prod.get('cProd', '')
-            codigo_sistema = f"AUTO-{codigo_importado}"
+
+            # Busca o produto existente para verificar o estoque e se é novo
+            produto_existente = Produto.objects.filter(codigo=codigo_importado).first()
+            estoque_atual = produto_existente.estoque_atual if produto_existente else 0
             
             produtos_lista.append({
-                'codigo': codigo_sistema,
+                'codigo': codigo_importado,
                 'nome': prod.get('xProd', ''),
                 'ncm': prod.get('NCM', ''),
                 'cfop': prod.get('CFOP', ''),
@@ -143,9 +147,11 @@ def importar_xml_nfe_view(request):
                 'valor_unitario': Decimal(prod.get('vUnCom', '0')),
                 'valor_total': Decimal(prod.get('vProd', '0')),
                 'desconto': Decimal(prod.get('vDesc', '0')),
-                'novo': not Produto.objects.filter(codigo=codigo_sistema).exists(),
+                'novo': not produto_existente,
                 'categoria_id': None, # Será preenchido pelo usuário no frontend
-                'imposto_detalhes': det_item.get('imposto', {}) # Passa os impostos do item
+                'imposto_detalhes': det_item.get('imposto', {}), # Passa os impostos do item
+                'estoque_atual': estoque_atual,
+                'cest': prod.get('CEST', ''), # Adiciona o CEST do XML
             })
 
         # Monta o JSON de resposta para o frontend
@@ -157,6 +163,11 @@ def importar_xml_nfe_view(request):
             'data_emissao': ide.get('dhEmi', ''),
             'data_saida': ide.get('dhSaiEnt', ''),
             'valor_total': total.get('vNF', '0'),
+            'valor_total_produtos': total.get('vProd', '0'),
+            'valor_total_icms': total.get('vICMS', '0'),
+            'valor_total_pis': total.get('vPIS', '0'),
+            'valor_total_cofins': total.get('vCOFINS', '0'),
+            'valor_total_desconto': total.get('vDesc', '0'),
             'informacoes_adicionais': infAdic.get('infCpl', ''),
             'emit': {
                 'CNPJ': emit.get('CNPJ', ''),
@@ -178,7 +189,7 @@ def importar_xml_nfe_view(request):
         }
         
         print("--- Parsing de XML concluído com sucesso ---")
-        return JsonResponse(response_data)
+        return JsonResponse(response_data, encoder=CustomDecimalEncoder)
 
     except Exception as e:
         print(f"Erro em importar_xml_nfe_view: {e}")
@@ -242,20 +253,28 @@ def processar_importacao_xml_view(request):
             natureza_operacao=payload.get('natureza_operacao', ''),
             informacoes_adicionais=payload.get('informacoes_adicionais', ''),
             valor_total_nota=Decimal(payload.get('valor_total', '0')),
+            valor_total_produtos=Decimal(payload.get('valor_total_produtos', '0')),
+            valor_total_icms=Decimal(payload.get('valor_total_icms', '0')),
+            valor_total_pis=Decimal(payload.get('valor_total_pis', '0')),
+            valor_total_cofins=Decimal(payload.get('valor_total_cofins', '0')),
+            valor_total_desconto=Decimal(payload.get('valor_total_desconto', '0')),
             emitente=emitente,
             destinatario=destinatario,
         )
+
+        # Aplica os cálculos de impostos aos itens da nota fiscal
+        aplicar_impostos_na_nota(nf)
 
         # 3. Processar Produtos e Itens da Nota
         # Agrupar produtos por código para somar quantidades e valores, e calcular média ponderada do valor unitário
         produtos_agrupados = {}
         for prod_data_raw in payload.get('produtos', []):
-            codigo_item = prod_data_raw.get('codigo', '').replace('AUTO-', '')
+            codigo_item = prod_data_raw.get('codigo', '')
             
-            quantidade_atual = Decimal(prod_data_raw.get('qCom', '0')) # Use qCom do XML
-            valor_total_atual = Decimal(prod_data_raw.get('vProd', '0')) # Use vProd do XML
-            desconto_atual = Decimal(prod_data_raw.get('vDesc', '0')) # Use vDesc do XML
-            valor_unitario_atual = Decimal(prod_data_raw.get('vUnCom', '0')) # Use vUnCom do XML
+            quantidade_atual = Decimal(prod_data_raw.get('quantidade', '0'))
+            valor_total_atual = Decimal(prod_data_raw.get('valor_total', '0'))
+            desconto_atual = Decimal(prod_data_raw.get('desconto', '0'))
+            valor_unitario_atual = Decimal(prod_data_raw.get('valor_unitario', '0'))
 
             if codigo_item not in produtos_agrupados:
                 produtos_agrupados[codigo_item] = {
@@ -290,21 +309,80 @@ def processar_importacao_xml_view(request):
                 aggregated_valor_unitario = Decimal(aggregated_data['first_prod_data'].get('vUnCom', '0')) # Use vUnCom do XML
 
             prod_data_for_item_creation = aggregated_data['first_prod_data']
-            produto = _get_or_create_produto(prod_data_for_item_creation, emitente)
             
+            # Extrair detalhes de impostos ANTES de criar/atualizar o produto e detalhes fiscais
+            imposto_detalhes = prod_data_for_item_creation.get('imposto_detalhes', {})
+            
+            produto = _get_or_create_produto(prod_data_for_item_creation, emitente)
+
+            # Cria ou atualiza os DetalhesFiscaisProduto
+            _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data_for_item_creation)
+
+            # --- Lógica de Conversão de Unidade e Quantidade ---
+            quantidade_xml = aggregated_data['quantidade_total']
+            unidade_xml = prod_data_for_item_creation.get('unidade', '')
+            quantidade_convertida = quantidade_xml
+
+            # Tenta encontrar um fator de conversão específico para este produto e fornecedor
+            fator_conversao_obj = FatorConversaoFornecedor.objects.filter(
+                produto=produto,
+                fornecedor=emitente,
+                unidade_fornecedor=unidade_xml
+            ).first()
+
+            if fator_conversao_obj:
+                quantidade_convertida = quantidade_xml * fator_conversao_obj.fator_conversao
+                print(f"Conversão aplicada: {quantidade_xml} {unidade_xml} = {quantidade_convertida} {produto.unidade_medida_interna.sigla}")
+            else:
+                print(f"Nenhum fator de conversão encontrado para {produto.nome} ({unidade_xml}) de {emitente.nome_fantasia}. Usando quantidade original.")
+            # --- Fim da Lógica de Conversão ---
+            
+            # ICMS
+            icms_data = {}
+            for key, value in imposto_detalhes.get('ICMS', {}).items():
+                if isinstance(value, dict): # Pode ser ICMS00, ICMS40, etc.
+                    icms_data = value
+                    break
+            
+            # IPI
+            ipi_data = imposto_detalhes.get('IPI', {}).get('IPITrib', {}) or imposto_detalhes.get('IPI', {}).get('IPINT', {})
+
+            # PIS
+            pis_data = imposto_detalhes.get('PIS', {}).get('PISAliq', {}) or imposto_detalhes.get('PIS', {}).get('PISQtde', {}) or imposto_detalhes.get('PIS', {}).get('PISNT', {}) or imposto_detalhes.get('PIS', {}).get('PISOutr', {})
+
+            # COFINS
+            cofins_data = imposto_detalhes.get('COFINS', {}).get('COFINSAliq', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSQtde', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSNT', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSOutr', {})
+
             item_nota, created = ItemNotaFiscal.objects.update_or_create(
                 nota_fiscal=nf,
                 codigo=codigo_item,
                 defaults={
                     'produto': produto,
                     'descricao': produto.nome, # Usa o nome do produto do banco de dados
-                    'ncm': prod_data_for_item_creation.get('NCM', ''),
-                    'cfop': prod_data_for_item_creation.get('CFOP', ''),
                     'unidade': prod_data_for_item_creation.get('uCom', ''),
-                    'quantidade': aggregated_data['quantidade_total'],
-                    'valor_unitario': aggregated_valor_unitario, # Usa a média ponderada calculada
+                    'quantidade': quantidade_convertida, # Usa a quantidade convertida
+                    'valor_unitario': aggregated_valor_unitario,
                     'valor_total': aggregated_data['valor_total_item'],
                     'desconto': aggregated_data['desconto_total'],
+
+                    # Campos de impostos detalhados por item
+                    'base_calculo_icms': Decimal(icms_data.get('vBC', '0')),
+                    'aliquota_icms': Decimal(icms_data.get('pICMS', '0')),
+                    'valor_icms_desonerado': Decimal(icms_data.get('vICMSDeson', '0')),
+                    'motivo_desoneracao_icms': icms_data.get('motDesICMS', ''),
+                    'cst_icms_aplicado': icms_data.get('CST', '') or icms_data.get('CSOSN', ''),
+
+                    'base_calculo_ipi': Decimal(ipi_data.get('vBC', '0')),
+                    'aliquota_ipi': Decimal(ipi_data.get('pIPI', '0')),
+                    'cst_ipi_aplicado': ipi_data.get('CST', ''),
+
+                    'base_calculo_pis': Decimal(pis_data.get('vBC', '0')),
+                    'aliquota_pis': Decimal(pis_data.get('pPIS', '0')),
+                    'cst_pis_aplicado': pis_data.get('CST', ''),
+
+                    'base_calculo_cofins': Decimal(cofins_data.get('vBC', '0')),
+                    'aliquota_cofins': Decimal(cofins_data.get('pCOFINS', '0')),
+                    'cst_cofins_aplicado': cofins_data.get('CST', ''),
                 }
             )
             
@@ -382,28 +460,103 @@ def _get_or_create_empresa(data, tipo):
     return empresa
 
 def _get_or_create_produto(data, fornecedor):
-    """Cria ou atualiza um Produto a partir dos dados do XML."""
-    codigo_sistema = data.get('codigo')
+    """Cria ou atualiza um Produto a partir dos dados do XML, preservando campos existentes como categoria.
+    """
+    print(f"--- Debug: _get_or_create_produto para dados: {data} ---")
+    codigo_produto = data.get('codigo')
     categoria_id = data.get('categoria_id')
     categoria = get_object_or_404(CategoriaProduto, pk=categoria_id) if categoria_id else None
 
+    # Obtém ou cria a UnidadeMedida interna com base na unidade do XML
+    unidade_xml = data.get('unidade', '')
+    unidade_interna_obj, created_unidade = UnidadeMedida.objects.get_or_create(
+        sigla=unidade_xml,
+        defaults={'descricao': f'Unidade {unidade_xml}'}
+    )
+
+    produto, created = Produto.objects.get_or_create(
+        codigo=codigo_produto,
+        defaults={
+            'nome': data.get('nome', ''), # Usar nome do XML para nome
+            'descricao': data.get('nome', ''), # Usar nome do XML para descrição
+            'preco_custo': Decimal(data.get('vUnCom', '0')),
+            'preco_venda': Decimal(data.get('vUnCom', '0')), # Ajustar conforme regra de negócio
+            'preco_medio': Decimal(data.get('vUnCom', '0')),
+            'fornecedor': fornecedor,
+            'unidade_medida_interna': unidade_interna_obj,
+            'controla_estoque': True,
+            'ativo': True,
+            'categoria': categoria, # A categoria só será definida se o produto for novo
+        }
+    )
+
+    if not created: # Se o produto já existia, atualiza apenas os campos permitidos
+        # Atualiza campos que devem ser sobrescritos pelo XML
+        produto.nome = data.get('nome', '')
+        produto.descricao = data.get('nome', '')
+        produto.preco_custo = Decimal(data.get('vUnCom', produto.preco_custo))
+        produto.preco_venda = Decimal(data.get('vUnCom', produto.preco_venda))
+        produto.preco_medio = Decimal(data.get('vUnCom', produto.preco_medio))
+        produto.fornecedor = fornecedor
+        produto.unidade_medida_interna = unidade_interna_obj
+        
+        # Preserva a categoria se já existir e não for nula no payload
+        if produto.categoria is None and categoria is not None:
+            produto.categoria = categoria
+
+        produto.save(update_fields=['nome', 'descricao', 'preco_custo', 'preco_venda', 'preco_medio', 'fornecedor', 'unidade_medida_interna', 'categoria'])
+
+    return produto
+
+def _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data_for_item_creation):
+    """Cria ou atualiza os DetalhesFiscaisProduto para um produto."""
+
+    # Extrair dados fiscais
+    icms_data = {}
+    for key, value in imposto_detalhes.get('ICMS', {}).items():
+        if isinstance(value, dict): # Pode ser ICMS00, ICMS40, etc.
+            icms_data = value
+            break
+    
+    ipi_data = imposto_detalhes.get('IPI', {}).get('IPITrib', {}) or imposto_detalhes.get('IPI', {}).get('IPINT', {})
+    pis_data = imposto_detalhes.get('PIS', {}).get('PISAliq', {}) or imposto_detalhes.get('PIS', {}).get('PISQtde', {}) or imposto_detalhes.get('PIS', {}).get('PISNT', {}) or imposto_detalhes.get('PIS', {}).get('PISOutr', {})
+    cofins_data = imposto_detalhes.get('COFINS', {}).get('COFINSAliq', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSQtde', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSNT', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSOutr', {})
+
+    # Tenta obter o NCM existente ou cria um novo
+    ncm_codigo = prod_data_for_item_creation.get('ncm', '')
+    ncm_obj = None
+    if ncm_codigo:
+        ncm_obj, created_ncm = NCM.objects.get_or_create(
+            codigo=ncm_codigo,
+            defaults={'descricao': f'NCM {ncm_codigo}'}
+        )
+
     defaults = {
-        'nome': data.get('nome', ''),
-        'descricao': data.get('nome', ''),
-        'preco_custo': Decimal(data.get('valor_unitario', '0')),
-        'preco_venda': Decimal(data.get('valor_unitario', '0')), # Ajustar conforme regra de negócio
-        'fornecedor': fornecedor,
-        'categoria': categoria,
-        'controla_estoque': True,
-        'ativo': True,
+        'cst_icms': icms_data.get('CST', '') or icms_data.get('CSOSN', ''),
+        'origem_mercadoria': icms_data.get('orig', ''),
+        'aliquota_icms_interna': Decimal(icms_data.get('pICMS', '0')),
+        'reducao_base_icms': Decimal(icms_data.get('pRedBC', '0')),
+        'cst_ipi': ipi_data.get('CST', ''),
+        'aliquota_ipi': Decimal(ipi_data.get('pIPI', '0')),
+        'cst_pis': pis_data.get('CST', ''),
+        'aliquota_pis': Decimal(pis_data.get('pPIS', '0')),
+        'cst_cofins': cofins_data.get('CST', ''),
+        'aliquota_cofins': Decimal(cofins_data.get('pCOFINS', '0')),
+        'cest': prod_data_for_item_creation.get('cest', ''), # CEST do XML
+        'ncm': ncm_obj, # NCM do XML
+        'cfop': prod_data_for_item_creation.get('cfop', ''), # CFOP do XML
+        'unidade_comercial': prod_data_for_item_creation.get('unidade', ''),
+        'quantidade_comercial': Decimal(prod_data_for_item_creation.get('quantidade', '0')),
+        'valor_unitario_comercial': Decimal(prod_data_for_item_creation.get('valor_unitario', '0')),
+        'codigo_produto_fornecedor': prod_data_for_item_creation.get('codigo', ''),
     }
 
-    produto, created = Produto.objects.update_or_create(
-        codigo=codigo_sistema,
+    detalhes_fiscais, created = DetalhesFiscaisProduto.objects.update_or_create(
+        produto=produto,
         defaults=defaults
     )
-    print(f"Produto {'criado' if created else 'atualizado'}: {produto.nome}")
-    return produto
+    return detalhes_fiscais
+    return detalhes_fiscais
 
 def _create_transporte(nf, data):
     """Cria o registro de TransporteNotaFiscal."""

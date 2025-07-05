@@ -34,6 +34,17 @@ function formatarDataHora(datetimeStr) {
     }
 }
 
+function formatarData(dateStr) {
+    if (!dateStr) return 'N/A';
+    try {
+        const date = new Date(dateStr);
+        // Formata apenas a data (DD/MM/YYYY)
+        return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('pt-BR');
+    } catch (e) {
+        return dateStr;
+    }
+}
+
 function mostrarMensagem(icon, title, text) {
     Swal.fire({ icon, title, text, confirmButtonText: 'Ok' });
 }
@@ -97,40 +108,33 @@ function exibirPreview(dados) {
     const { emit, dest, produtos, chave_acesso, numero, natureza_operacao, data_emissao, data_saida, valor_total, informacoes_adicionais } = dados;
 
     previewDiv.innerHTML = `
-        <div class="card mb-3"><div class="card-header bg-primary text-white"><h5 class="mb-0">Dados Gerais</h5></div>
+        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Dados Gerais</h5></div>
             <div class="card-body">
-                <p><strong>Chave:</strong> ${chave_acesso || 'N/A'}</p>
-                <p><strong>Número:</strong> ${numero || 'N/A'}</p>
+                <p><strong>Emitente:</strong> ${emit.xNome || 'N/A'}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p>
+                <p><strong>Nota Fiscal:</strong> ${numero || 'N/A'}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Chave:</strong> ${chave_acesso || 'N/A'}</p>
                 <p><strong>Natureza:</strong> ${natureza_operacao || 'N/A'}</p>
-                <p><strong>Emissão:</strong> ${formatarDataHora(data_emissao)}</p>
-                <p><strong>Saída/Entrada:</strong> ${formatarDataHora(data_saida)}</p>
+                <p><strong>Emissão:</strong> ${formatarDataHora(data_emissao)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Saída/Entrada:</strong> ${formatarDataHora(data_saida)}</p>
                 <p><strong>Valor Total:</strong> ${formatarMoedaBr(valor_total)}</p>
-                <p><strong>Info Adicionais:</strong> ${informacoes_adicionais || 'N/A'}</p>
+                <p><strong>Dados Adicionais:</strong> ${informacoes_adicionais || 'N/A'}</p>
             </div>
         </div>
-        <div class="card mb-3"><div class="card-header bg-info text-white"><h5 class="mb-0">Emitente</h5></div>
-            <div class="card-body">
-                <p><strong>Razão Social:</strong> ${emit.xNome || 'N/A'}</p>
-                <p><strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p>
-            </div>
-        </div>
-        <div class="card mb-3"><div class="card-header bg-secondary text-white"><h5 class="mb-0">Destinatário</h5></div>
+        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Destinatário</h5></div>
             <div class="card-body">
                 <p><strong>Nome:</strong> ${dest.xNome || 'N/A'}</p>
                 <p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p>
             </div>
         </div>
-        <div class="card mb-3"><div class="card-header bg-warning text-dark"><h5 class="mb-0">Produtos</h5></div>
+        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Produtos</h5></div>
             <div class="card-body"><div class="table-responsive">
                 <table class="table table-striped table-bordered table-sm">
-                    <thead><tr><th>Cód.</th><th>Nome</th><th>NCM</th><th>CFOP</th><th>Qtd</th><th>Vlr. Unit.</th><th>Vlr. Total</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Cód. Fornecedor</th><th>Nome</th><th>UN</th><th>NCM</th><th>Qtd</th><th>Vlr. Unit.</th><th>Vlr. Total</th><th>Status</th></tr></thead>
                     <tbody>
                         ${produtos.map(p => `
                             <tr>
-                                <td>${p.codigo.replace('AUTO-', '')}</td>
+                                <td>${p.codigo}</td>
                                 <td>${p.nome}</td>
+                                <td>${p.unidade}</td>
                                 <td>${p.ncm}</td>
-                                <td>${p.cfop}</td>
                                 <td>${parseFloat(p.quantidade || '0').toLocaleString('pt-BR')}</td>
                                 <td>${formatarMoedaBr(p.valor_unitario)}</td>
                                 <td>${formatarMoedaBr(p.valor_total)}</td>
@@ -140,6 +144,34 @@ function exibirPreview(dados) {
                     </tbody>
                 </table>
             </div></div>
+        </div>
+        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Transporte</h5></div>
+            <div class="card-body">
+                <p><strong>Modalidade do Frete:</strong> ${dados.transporte.modFrete || 'N/A'}</p>
+                <p><strong>Transportadora:</strong> ${(dados.transporte.transporta && dados.transporte.transporta.xNome) || 'N/A'}</p>
+                <p><strong>CNPJ Transportadora:</strong> ${(dados.transporte.transporta && dados.transporte.transporta.CNPJ) || 'N/A'}</p>
+                <p><strong>Quantidade Volumes:</strong> ${(dados.transporte.vol && dados.transporte.vol.qVol) || 'N/A'}</p>
+                <p><strong>Peso Líquido:</strong> ${(dados.transporte.vol && dados.transporte.vol.pesoL) || 'N/A'}</p>
+                <p><strong>Peso Bruto:</strong> ${(dados.transporte.vol && dados.transporte.vol.pesoB) || 'N/A'}</p>
+            </div>
+        </div>
+        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Duplicatas</h5></div>
+            <div class="card-body">
+                ${(dados.cobranca && dados.cobranca.dup && dados.cobranca.dup.length > 0) ? `
+                    <table class="table table-striped table-bordered table-sm">
+                        <thead><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
+                        <tbody>
+                            ${dados.cobranca.dup.map(dup => `
+                                <tr>
+                                    <td>${dup.nDup || 'N/A'}</td>
+                                    <td>${formatarData(dup.dVenc)}</td>
+                                    <td>${formatarMoedaBr(dup.vDup)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p>Nenhuma duplicata encontrada.</p>'}
+            </div>
         </div>
         <div class="d-grid gap-2">
             <button id="confirmarImportacaoBtn" class="btn btn-success btn-lg">Confirmar e Salvar Importação</button>

@@ -1,5 +1,13 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from django.core.serializers.json import DjangoJSONEncoder
+
+class CustomDecimalEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            # Converte Decimal para string para evitar perda de precisão
+            return str(obj)
+        return super().default(obj)
 
 # ✅ Conversão segura de valores numéricos no padrão BR para Decimal
 def converter_valor_br(valor):

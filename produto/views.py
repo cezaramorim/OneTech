@@ -1,26 +1,26 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+import json
+from django.db.models import Q
 from django.contrib import messages
 from django.urls import reverse
+from django.forms import inlineformset_factory
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
-from django.db.models import Q
-from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
-from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm
+from django.views.decorators.http import require_POST, require_GET
+from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm, DetalhesFiscaisProdutoForm
+from .models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFiscaisProduto
 from accounts.utils.render import render_ajax_or_base
-from django.views.decorators.http import require_GET
-import os
-import xml.etree.ElementTree as ET
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from django.views.decorators.http import require_POST
-from django.core.files.storage import default_storage
-from django.utils.text import slugify
-import xml.etree.ElementTree as ET
-import json
-from common.utils import formatters
-from .models import CategoriaProduto
 
-valor = formatters.formatar_numero_br("1234.56")
+DetalhesFiscaisProdutoFormSet = inlineformset_factory(
+    Produto, 
+    DetalhesFiscaisProduto, 
+    form=DetalhesFiscaisProdutoForm, 
+    fields='__all__', 
+    can_delete=False, 
+    extra=1, 
+    max_num=1
+)
 
 # =====================
 # PRODUTOS
@@ -35,13 +35,23 @@ def lista_produtos_view(request):
 def cadastrar_produto_view(request):
     if request.method == "POST":
         form = ProdutoForm(request.POST)
-        if form.is_valid():
-            form.save()
+        formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=form.instance)
+
+        if form.is_valid() and formset.is_valid():
+            produto = form.save()
+            detalhes_fiscais = formset.save(commit=False)
+            for df in detalhes_fiscais:
+                df.produto = produto
+                df.save()
             messages.success(request, "Produto cadastrado com sucesso.")
             return redirect(reverse("produto:lista_produtos"))
+        else:
+            messages.error(request, "Erro ao cadastrar produto. Verifique os campos.")
     else:
         form = ProdutoForm()
-    return render_ajax_or_base(request, "partials/produtos/cadastrar_produto.html", {"form": form})
+        formset = DetalhesFiscaisProdutoFormSet(instance=Produto())
+
+    return render_ajax_or_base(request, "partials/produtos/cadastrar_produto.html", {"form": form, "formset": formset})
 
 @login_required
 def editar_produto_view(request, pk):
@@ -52,18 +62,24 @@ def editar_produto_view(request, pk):
 
     if request.method == "POST":
         form = ProdutoForm(request.POST, instance=produto)
-        if form.is_valid():
-            form.save()
+        formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=produto)
+
+        if form.is_valid() and formset.is_valid():
+            produto = form.save()
+            formset.save()
             return JsonResponse({
                 "sucesso": True,
                 "mensagem": "Produto atualizado com sucesso.",
                 "redirect_url": "/produtos/"
             })
-        return JsonResponse({"sucesso": False, "erros": form.errors}, status=400)
+        else:
+            return JsonResponse({"sucesso": False, "erros": form.errors, "formset_errors": formset.errors}, status=400)
 
     form = ProdutoForm(instance=produto)
+    formset = DetalhesFiscaisProdutoFormSet(instance=produto)
     context = {
         "form": form,
+        "formset": formset,
         "produto": produto,
     }
 
@@ -282,65 +298,6 @@ def importar_ncm_manual_view(request):
         return JsonResponse({"status": "ok", "mensagem": f"{count} códigos NCM importados com sucesso."})
     except Exception as e:
         return JsonResponse({"status": "erro", "mensagem": str(e)}, status=500)
-
-
-@csrf_exempt
-@require_POST
-def importar_xml_nfe_view(request):
-    """
-    View para upload e leitura de XML da NFe.
-    Retorna os dados do emitente e lista de produtos da nota.
-    """
-    xml_file = request.FILES.get("xml")
-
-    if not xml_file or not xml_file.name.endswith(".xml"):
-        return JsonResponse({"erro": "Arquivo XML inválido."}, status=400)
-
-    try:
-        # Salvamento temporário
-        nome_seguro = slugify(xml_file.name)
-        caminho = os.path.join(settings.MEDIA_ROOT, "xmls_temp", nome_seguro)
-        os.makedirs(os.path.dirname(caminho), exist_ok=True)
-
-        with default_storage.open(caminho, "wb+") as destino:
-            for chunk in xml_file.chunks():
-                destino.write(chunk)
-
-        # Parse do XML
-        tree = ET.parse(caminho)
-        root = tree.getroot()
-
-        # Emitente (fornecedor)
-        emit = root.find(".//emit")
-        fornecedor_data = {
-            "cnpj": emit.findtext("CNPJ"),
-            "razao_social": emit.findtext("xNome")
-        } if emit is not None else {}
-
-        # Produtos (múltiplos <det>)
-        produtos = []
-        for det in root.findall(".//det"):
-            prod = {
-                "codigo": det.findtext(".//cProd"),
-                "nome": det.findtext(".//xProd"),
-                "ncm": det.findtext(".//NCM"),
-                "cfop": det.findtext(".//CFOP"),
-            }
-            produtos.append(prod)
-
-        return JsonResponse({
-            "fornecedor": fornecedor_data,
-            "produtos": produtos
-        })
-
-    except Exception as e:
-        return JsonResponse({"erro": str(e)}, status=500)
-
-
-@login_required
-def importar_xml_view(request):
-    return render(request, "partials/nota_fiscal/importar_xml.html")
-
 
 @require_GET
 def buscar_ncm_descricao_ajax(request):

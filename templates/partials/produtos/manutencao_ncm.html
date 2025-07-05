@@ -22,3 +22,13 @@
   </div>
 </div>
 
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Configura o autocompletar para o campo de busca NCM
+    const ncmBuscaInput = document.getElementById('busca-ncm');
+    if (ncmBuscaInput) {
+      setupAutocomplete(ncmBuscaInput.id, '/api/fiscal/ncms/', 'codigo', 'codigo');
+    }
+  });
+</script>
+

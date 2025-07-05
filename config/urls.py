@@ -33,5 +33,7 @@ urlpatterns = [
 
     # Fiscal
     path('fiscal/', include('fiscal.urls', namespace='fiscal')),
-        
+
+    # Integração NFe (Webhooks)
+    path('integracao-nfe/', include('integracao_nfe.urls', namespace='integracao_nfe')),
 ]
