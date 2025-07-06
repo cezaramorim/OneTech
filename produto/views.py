@@ -81,6 +81,10 @@ def editar_produto_view(request, pk):
         "form": form,
         "formset": formset,
         "produto": produto,
+        "icms_isento_cst": '40,41,50,51',
+        "icms_isento_csosn": '103,300,400',
+        "ipi_isento_cst": '51',
+        "pis_cofins_isento_cst": '04,05,06,07,08,09',
     }
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":

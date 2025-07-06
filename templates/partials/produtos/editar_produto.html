@@ -1,5 +1,12 @@
 {% load static %}
 {% load widget_tweaks %}
+{% load custom_filters %}
+
+{% comment %}
+    Lista de códigos CST/CSOSN que indicam isenção ou não tributação.
+    Usado para exibir "Isento" em vez de "0" para alíquotas.
+{% endcomment %}
+
 
 <!-- ✅ Editar Produto - Compatível com AJAX, Bootstrap, tema escuro/claro -->
 <main id="main-content" data-tela="editar_produto" class="container-fluid">

@@ -135,7 +135,8 @@ def aplicar_impostos_na_nota(nota_fiscal: NotaFiscal):
         item.valor_icms = impostos_calculados['valor_icms']
         item.valor_icms_desonerado = impostos_calculados['valor_icms_desonerado']
         item.motivo_desoneracao_icms = impostos_calculados['motivo_desoneracao_icms']
-        item.cst_icms_aplicado = impostos_calculados['cst_icms_aplicado']
+        item.cst_icms_cst_aplicado = impostos_calculados['cst_icms_aplicado']
+        item.cst_icms_csosn_aplicado = impostos_calculados['cst_icms_csosn_aplicado']
 
         item.base_calculo_ipi = impostos_calculados['base_calculo_ipi']
         item.aliquota_ipi = impostos_calculados['aliquota_ipi']

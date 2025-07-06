@@ -2,7 +2,8 @@ from django.db import models
 from django.conf import settings
 from empresas.models import EmpresaAvancada # Certifique-se de que este caminho está correto
 from django.utils import timezone
-from django.apps import apps # Não é estritamente necessário para este arquivo, mas não atrapalha
+from django.apps import apps
+from fiscal.models import CST, CSOSN # Nova importação
 
 class NotaFiscal(models.Model):
     """Modelo para armazenar informações de Notas Fiscais, tanto de entrada quanto de saída.
@@ -273,19 +274,20 @@ class ItemNotaFiscal(models.Model):
     aliquota_icms = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota ICMS (%)")
     valor_icms_desonerado = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Valor ICMS Desonerado")
     motivo_desoneracao_icms = models.CharField(max_length=2, blank=True, null=True, verbose_name="Motivo Desoneração ICMS")
-    cst_icms_aplicado = models.CharField(max_length=5, blank=True, null=True, verbose_name="CST/CSOSN ICMS Aplicado")
+    cst_icms_cst_aplicado = models.ForeignKey(CST, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_icms_cst', verbose_name="CST ICMS Aplicado")
+    cst_icms_csosn_aplicado = models.ForeignKey(CSOSN, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_icms_csosn', verbose_name="CSOSN ICMS Aplicado")
 
     base_calculo_ipi = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo IPI")
     aliquota_ipi = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota IPI (%)")
-    cst_ipi_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST IPI Aplicado")
+    cst_ipi_aplicado = models.ForeignKey(CST, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_ipi_cst', verbose_name="CST IPI Aplicado")
 
     base_calculo_pis = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo PIS")
     aliquota_pis = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota PIS (%)")
-    cst_pis_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST PIS Aplicado")
+    cst_pis_aplicado = models.ForeignKey(CST, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_pis_cst', verbose_name="CST PIS Aplicado")
 
     base_calculo_cofins = models.DecimalField(max_digits=15, decimal_places=4, blank=True, null=True, verbose_name="Base Cálculo COFINS")
     aliquota_cofins = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Alíquota COFINS (%)")
-    cst_cofins_aplicado = models.CharField(max_length=2, blank=True, null=True, verbose_name="CST COFINS Aplicado")
+    cst_cofins_aplicado = models.ForeignKey(CST, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_cofins_cst', verbose_name="CST COFINS Aplicado")
 
     informacoes_adicionais_item = models.TextField(blank=True, null=True, verbose_name="Informações Adicionais do Item")
 

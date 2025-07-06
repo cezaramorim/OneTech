@@ -25,3 +25,29 @@ class NaturezaOperacao(models.Model):
 
     def __str__(self):
         return self.descricao
+
+
+class CST(models.Model):
+    codigo = models.CharField(max_length=2, unique=True, verbose_name="Código CST")
+    descricao = models.TextField(verbose_name="Descrição")
+
+    class Meta:
+        verbose_name = "CST"
+        verbose_name_plural = "CSTs"
+        ordering = ['codigo']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descricao}"
+
+
+class CSOSN(models.Model):
+    codigo = models.CharField(max_length=3, unique=True, verbose_name="Código CSOSN")
+    descricao = models.TextField(verbose_name="Descrição")
+
+    class Meta:
+        verbose_name = "CSOSN"
+        verbose_name_plural = "CSOSNs"
+        ordering = ['codigo']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descricao}"

@@ -26,6 +26,7 @@ from common.utils.formatters import converter_valor_br, converter_data_para_date
 from fiscal.calculos import aplicar_impostos_na_nota
 from empresas.models import EmpresaAvancada
 from produto.models import CategoriaProduto, Produto, UnidadeMedida, FatorConversaoFornecedor, DetalhesFiscaisProduto, NCM
+from fiscal.models import CST, CSOSN
 from .models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal, ItemNotaFiscal
 from produto.models_entradas import EntradaProduto
 from .forms import (
@@ -353,6 +354,47 @@ def processar_importacao_xml_view(request):
             # COFINS
             cofins_data = imposto_detalhes.get('COFINS', {}).get('COFINSAliq', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSQtde', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSNT', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSOutr', {})
 
+            # Get CST/CSOSN objects for ItemNotaFiscal
+            cst_icms_aplicado_obj = None
+            csosn_icms_aplicado_obj = None
+            cst_icms_code_aplicado = icms_data.get('CST', '')
+            csosn_icms_code_aplicado = icms_data.get('CSOSN', '')
+
+            if cst_icms_code_aplicado:
+                cst_icms_aplicado_obj, _ = CST.objects.get_or_create(
+                    codigo=cst_icms_code_aplicado,
+                    defaults={'descricao': f'CST {cst_icms_code_aplicado}'}
+                )
+            elif csosn_icms_code_aplicado:
+                csosn_icms_aplicado_obj, _ = CSOSN.objects.get_or_create(
+                    codigo=csosn_icms_code_aplicado,
+                    defaults={'descricao': f'CSOSN {csosn_icms_code_aplicado}'}
+                )
+
+            cst_ipi_aplicado_obj = None
+            ipi_cst_code_aplicado = ipi_data.get('CST', '')
+            if ipi_cst_code_aplicado:
+                cst_ipi_aplicado_obj, _ = CST.objects.get_or_create(
+                    codigo=ipi_cst_code_aplicado,
+                    defaults={'descricao': f'CST {ipi_cst_code_aplicado}'}
+                )
+
+            cst_pis_aplicado_obj = None
+            pis_cst_code_aplicado = pis_data.get('CST', '')
+            if pis_cst_code_aplicado:
+                cst_pis_aplicado_obj, _ = CST.objects.get_or_create(
+                    codigo=pis_cst_code_aplicado,
+                    defaults={'descricao': f'CST {pis_cst_code_aplicado}'}
+                )
+
+            cst_cofins_aplicado_obj = None
+            cofins_cst_code_aplicado = cofins_data.get('CST', '')
+            if cofins_cst_code_aplicado:
+                cst_cofins_aplicado_obj, _ = CST.objects.get_or_create(
+                    codigo=cofins_cst_code_aplicado,
+                    defaults={'descricao': f'CST {cofins_cst_code_aplicado}'}
+                )
+
             item_nota, created = ItemNotaFiscal.objects.update_or_create(
                 nota_fiscal=nf,
                 codigo=codigo_item,
@@ -370,19 +412,20 @@ def processar_importacao_xml_view(request):
                     'aliquota_icms': Decimal(icms_data.get('pICMS', '0')),
                     'valor_icms_desonerado': Decimal(icms_data.get('vICMSDeson', '0')),
                     'motivo_desoneracao_icms': icms_data.get('motDesICMS', ''),
-                    'cst_icms_aplicado': icms_data.get('CST', '') or icms_data.get('CSOSN', ''),
+                    'cst_icms_cst_aplicado': cst_icms_aplicado_obj,
+                    'cst_icms_csosn_aplicado': csosn_icms_aplicado_obj,
 
                     'base_calculo_ipi': Decimal(ipi_data.get('vBC', '0')),
                     'aliquota_ipi': Decimal(ipi_data.get('pIPI', '0')),
-                    'cst_ipi_aplicado': ipi_data.get('CST', ''),
+                    'cst_ipi_aplicado': cst_ipi_aplicado_obj,
 
                     'base_calculo_pis': Decimal(pis_data.get('vBC', '0')),
                     'aliquota_pis': Decimal(pis_data.get('pPIS', '0')),
-                    'cst_pis_aplicado': pis_data.get('CST', ''),
+                    'cst_pis_aplicado': cst_pis_aplicado_obj,
 
                     'base_calculo_cofins': Decimal(cofins_data.get('vBC', '0')),
                     'aliquota_cofins': Decimal(cofins_data.get('pCOFINS', '0')),
-                    'cst_cofins_aplicado': cofins_data.get('CST', ''),
+                    'cst_cofins_aplicado': cst_cofins_aplicado_obj,
                 }
             )
             
@@ -531,17 +574,56 @@ def _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data
             defaults={'descricao': f'NCM {ncm_codigo}'}
         )
 
+    # Get CST/CSOSN objects
+    cst_icms_obj = None
+    csosn_icms_obj = None
+    cst_icms_code = icms_data.get('CST', '')
+    csosn_icms_code = icms_data.get('CSOSN', '')
+
+    if cst_icms_code:
+        cst_icms_obj, _ = CST.objects.get_or_create(
+            codigo=cst_icms_code,
+            defaults={'descricao': f'CST {cst_icms_code}'}
+        )
+    elif csosn_icms_code:
+        csosn_icms_obj, _ = CSOSN.objects.get_or_create(
+            codigo=csosn_icms_code,
+            defaults={'descricao': f'CSOSN {csosn_icms_code}'}
+        )
+
+    cst_ipi_obj = None
+    ipi_cst_code = ipi_data.get('CST', '')
+    if ipi_cst_code:
+        cst_ipi_obj, _ = CST.objects.get_or_create(
+            codigo=ipi_cst_code,
+            defaults={'descricao': f'CST {ipi_cst_code}'}
+        )
+
+    cst_pis_obj = None
+    pis_cst_code = pis_data.get('CST', '')
+    if pis_cst_code:
+        cst_pis_obj, _ = CST.objects.get_or_create(
+            codigo=pis_cst_code,
+            defaults={'descricao': f'CST {pis_cst_code}'}
+        )
+
+    cst_cofins_obj = None
+    cofins_cst_code = cofins_data.get('CST', '')
+    if cofins_cst_code:
+        cst_cofins_obj, _ = CST.objects.get_or_create(
+            codigo=cofins_cst_code,
+            defaults={'descricao': f'CST {cofins_cst_code}'}
+        )
+
     defaults = {
-        'cst_icms': icms_data.get('CST', '') or icms_data.get('CSOSN', ''),
+        'cst_icms_cst': cst_icms_obj, # Assign to CST FK
+        'cst_icms_csosn': csosn_icms_obj, # Assign to CSOSN FK
         'origem_mercadoria': icms_data.get('orig', ''),
         'aliquota_icms_interna': Decimal(icms_data.get('pICMS', '0')),
         'reducao_base_icms': Decimal(icms_data.get('pRedBC', '0')),
-        'cst_ipi': ipi_data.get('CST', ''),
-        'aliquota_ipi': Decimal(ipi_data.get('pIPI', '0')),
-        'cst_pis': pis_data.get('CST', ''),
-        'aliquota_pis': Decimal(pis_data.get('pPIS', '0')),
-        'cst_cofins': cofins_data.get('CST', ''),
-        'aliquota_cofins': Decimal(cofins_data.get('pCOFINS', '0')),
+        'cst_ipi': cst_ipi_obj,
+        'cst_pis': cst_pis_obj,
+        'cst_cofins': cst_cofins_obj,
         'cest': prod_data_for_item_creation.get('cest', ''), # CEST do XML
         'ncm': ncm_obj, # NCM do XML
         'cfop': prod_data_for_item_creation.get('cfop', ''), # CFOP do XML
@@ -551,11 +633,12 @@ def _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data
         'codigo_produto_fornecedor': prod_data_for_item_creation.get('codigo', ''),
     }
 
+    print(f"DEBUG: Defaults para DetalhesFiscaisProduto: {defaults}")
     detalhes_fiscais, created = DetalhesFiscaisProduto.objects.update_or_create(
         produto=produto,
         defaults=defaults
     )
-    return detalhes_fiscais
+    print(f"DEBUG: DetalhesFiscaisProduto {'criado' if created else 'atualizado'}: {detalhes_fiscais.pk}")
     return detalhes_fiscais
 
 def _create_transporte(nf, data):
