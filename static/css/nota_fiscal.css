@@ -1,0 +1,10 @@
+/* static/css/nota_fiscal.css */
+
+/* Estilo para truncar o texto em uma única linha com reticências */
+.truncate-text {
+    white-space: nowrap;       /* Impede que o texto quebre para a próxima linha */
+    overflow: hidden;          /* Esconde o conteúdo que excede o limite */
+    text-overflow: ellipsis;   /* Adiciona reticências (...) ao texto truncado */
+    /* max-width: 200px; */      /* Removido para permitir ajuste automático */
+    /* display: inline-block; */ /* Pode ser removido se a célula for block por padrão */
+}

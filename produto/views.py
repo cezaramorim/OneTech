@@ -65,6 +65,8 @@ def editar_produto_view(request, pk):
         formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=produto)
 
         if form.is_valid() and formset.is_valid():
+            print("Formulário de Produto é válido.")
+            print("Form.cleaned_data:", form.cleaned_data)
             produto = form.save()
             formset.save()
             return JsonResponse({
@@ -73,6 +75,8 @@ def editar_produto_view(request, pk):
                 "redirect_url": "/produtos/"
             })
         else:
+            print("Formulário de Produto NÃO é válido.")
+            print("Form.errors:", form.errors)
             return JsonResponse({"sucesso": False, "erros": form.errors, "formset_errors": formset.errors}, status=400)
 
     form = ProdutoForm(instance=produto)
@@ -223,7 +227,6 @@ def lista_unidades_view(request):
     unidades = UnidadeMedida.objects.all()
     return render_ajax_or_base(request, "partials/produtos/lista_unidades.html", {"unidades": unidades})
 
-
 @login_required
 def cadastrar_unidade_view(request):
     if request.method == "POST":
@@ -235,6 +238,52 @@ def cadastrar_unidade_view(request):
     else:
         form = UnidadeMedidaForm()
     return render_ajax_or_base(request, "partials/produtos/cadastrar_unidade.html", {"form": form})
+
+@login_required
+def editar_unidade_view(request, pk):
+    unidade = get_object_or_404(UnidadeMedida, pk=pk)
+    if request.method == "POST":
+        form = UnidadeMedidaForm(request.POST, instance=unidade)
+        if form.is_valid():
+            form.save()
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"sucesso": True, "mensagem": "Unidade atualizada com sucesso.", "redirect_url": reverse("produto:lista_unidades")})
+            else:
+                messages.success(request, "Unidade atualizada com sucesso.")
+                return redirect(reverse("produto:lista_unidades"))
+        else:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"sucesso": False, "erros": form.errors}, status=400)
+            else:
+                messages.error(request, "Erro ao atualizar unidade. Verifique os campos.")
+    else:
+        form = UnidadeMedidaForm(instance=unidade)
+    
+    context = {"form": form, "unidade": unidade}
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return render(request, "partials/produtos/editar_unidade.html", context)
+    
+    context["content_template"] = "partials/produtos/editar_unidade.html"
+    context["data_page"] = "editar_unidade"
+    return render(request, "base.html", context)
+
+@require_POST
+@login_required
+def excluir_unidades_view(request):
+    if not request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"erro": "Requisição inválida."}, status=400)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        ids = data.get("ids", [])
+        if not ids:
+            return JsonResponse({"erro": "Nenhuma unidade selecionada."}, status=400)
+
+        UnidadeMedida.objects.filter(id__in=ids).delete()
+        return JsonResponse({"sucesso": True, "mensagem": "Unidades excluídas com sucesso."})
+
+    except Exception as e:
+        return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)
 
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff

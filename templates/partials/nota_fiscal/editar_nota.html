@@ -53,25 +53,33 @@
                         {% endif %}
                         {{ item_formset.management_form }}
                         <div class="row g-2 mb-2 fw-bold">
-                            <div class="col-md-3">Produto</div>
+                            <div class="col-md-2">Produto</div>
                             <div class="col-md-2">Código</div>
-                            <div class="col-md-3">Descrição</div>
+                            <div class="col-md-2">Descrição</div>
                             <div class="col-md-1">Qtd.</div>
-                            <div class="col-md-2">Vlr. Unit.</div>
+                            <div class="col-md-1">Vlr. Unit.</div>
+                            <div class="col-md-1">Vlr. Total</div>
+                            <div class="col-md-1">Desc.</div>
                             <div class="col-md-1"></div>
                         </div>
                         <div id="item-form-list">
                             {% for form in item_formset %}
                                 <div class="row g-2 mb-2 item-form align-items-center">
                                     {{ form.id }}
-                                    <div class="col-md-3">{{ form.produto|add_class:"form-select form-select-sm" }}</div>
+                                    <div class="col-md-2">{{ form.produto|add_class:"form-select form-select-sm" }}</div>
                                     <div class="col-md-2">{{ form.codigo|add_class:"form-control form-control-sm" }}</div>
-                                    <div class="col-md-3">{{ form.descricao|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-2">{{ form.descricao|add_class:"form-control form-control-sm" }}</div>
                                     <div class="col-md-1">{{ form.quantidade|add_class:"form-control form-control-sm" }}</div>
-                                    <div class="col-md-2">{{ form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-1">{{ form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-1">{{ form.valor_total|add_class:"form-control form-control-sm" }}</div>
+                                    <div class="col-md-1">{{ form.desconto|add_class:"form-control form-control-sm" }}</div>
                                     <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
                                     {% if form.errors %}
-                                        <div class="col-12 text-danger small">{{ form.errors }}</div>
+                                        <div class="col-12 text-danger small">
+                                            {% for field_name, errors in form.errors.items %}
+                                                {{ field_name }}: {{ errors|join:", " }}
+                                            {% endfor %}
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}
@@ -79,12 +87,14 @@
                         <button type="button" id="add-item-form" class="btn btn-outline-success btn-sm mt-2">Adicionar Produto</button>
                         <div id="empty-item-form" style="display:none;">
                             <div class="row g-2 mb-2 item-form align-items-center">
-                                <div class="col-md-3">{{ item_formset.empty_form.produto|add_class:"form-select form-select-sm" }}</div>
+                                <div class="col-md-2">{{ item_formset.empty_form.produto|add_class:"form-select form-select-sm" }}</div>
                                 <div class="col-md-2">{{ item_formset.empty_form.codigo|add_class:"form-control form-control-sm" }}</div>
-                                <div class="col-md-3">{{ item_formset.empty_form.descricao|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-2">{{ item_formset.empty_form.descricao|add_class:"form-control form-control-sm" }}</div>
                                 <div class="col-md-1">{{ item_formset.empty_form.quantidade|add_class:"form-control form-control-sm" }}</div>
-                                <div class="col-md-2">{{ item_formset.empty_form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
-                                <div class="col-md-1"></div>
+                                <div class="col-md-1">{{ item_formset.empty_form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-1">{{ item_formset.empty_form.valor_total|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-1">{{ item_formset.empty_form.desconto|add_class:"form-control form-control-sm" }}</div>
+                                <div class="col-md-1"><label class="form-check-label">{{ item_formset.empty_form.DELETE }} Excluir</label></div>
                             </div>
                         </div>
                     </div>
@@ -112,7 +122,7 @@
                                     <div class="col-md-4">{{ form.numero|add_class:"form-control form-control-sm" }}</div>
                                     <div class="col-md-4">{{ form.vencimento|add_class:"form-control form-control-sm" }}</div>
                                     <div class="col-md-3">
-                                        <input type="number" step="0.01" class="form-control form-control-sm" name="{{ form.valor.name }}" id="{{ form.valor.id_for_label }}" value="{{ form.valor.value|floatformat:2|replace:",|." }}">
+                                        {{ form.valor|add_class:"form-control form-control-sm" }}
                                     </div>
                                     <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
                                     {% if form.errors %}
@@ -127,9 +137,9 @@
                                 <div class="col-md-4">{{ duplicata_formset.empty_form.numero|add_class:"form-control form-control-sm" }}</div>
                                 <div class="col-md-4">{{ duplicata_formset.empty_form.vencimento|add_class:"form-control form-control-sm" }}</div>
                                 <div class="col-md-3">
-                                    <input type="number" step="0.01" class="form-control form-control-sm" name="{{ duplicata_formset.empty_form.valor.name }}" id="{{ duplicata_formset.empty_form.valor.id_for_label }}" value="{{ duplicata_formset.empty_form.valor.value|floatformat:2|replace:",|." }}">
+                                    {{ duplicata_formset.empty_form.valor|add_class:"form-control form-control-sm" }}
                                 </div>
-                                <div class="col-md-1"></div>
+                                <div class="col-md-1"><label class="form-check-label">{{ duplicata_formset.empty_form.DELETE }} Excluir</label></div>
                             </div>
                         </div>
                     </div>

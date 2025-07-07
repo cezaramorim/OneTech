@@ -1,4 +1,7 @@
 {% load widget_tweaks nota_fiscal_filters %}
+{% load static %}
+{% load mask_filters %} {# Carrega os novos filtros de máscara #}
+<link rel="stylesheet" href="{% static 'css/nota_fiscal.css' %}">
 
 <main id="main-content" class="container-fluid py-4" data-page="entradas-nota">
   <div class="card shadow-sm">
@@ -30,6 +33,7 @@
               <th style="width: 40px;"><input type="checkbox" id="check-todos-nota"></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'numero' %}-numero{% else %}numero{% endif %}">Número</a></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'emitente__razao_social' %}-emitente__razao_social{% else %}emitente__razao_social{% endif %}">Fornecedor</a></th>
+              <th>CNPJ Fornecedor</th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'data_emissao' %}-data_emissao{% else %}data_emissao{% endif %}">Emissão</a></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'created_at' %}-created_at{% else %}created_at{% endif %}">Lançamento</a></th>
               <th>Valor Total</th>
@@ -40,14 +44,15 @@
               <tr>
                 <td><input type="checkbox" class="checkbox-nota" value="{{ nota.id }}"></td>
                 <td>{{ nota.numero }}</td>
-                <td>{{ nota.emitente.razao_social|default:nota.emitente.nome|truncatechars:35 }}</td>
+                <td class="truncate-text">{{ nota.emitente.razao_social|default:nota.emitente.nome }}</td>
+                <td>{{ nota.emitente.cnpj|mask_cnpj }}</td> {# Aplica a máscara de CNPJ #}
                 <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
                 <td>{{ nota.created_at|date:"d/m/Y" }}</td>
                 <td>{{ nota.valor_total_nota|br_currency }}</td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="6" class="text-center py-4">Nenhuma nota fiscal encontrada.</td>
+                <td colspan="7" class="text-center py-4">Nenhuma nota fiscal encontrada.</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -87,18 +92,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     atualizarBotaoEditar(); // Garante o estado inicial correto
-
-    // Ativar redimensionamento de colunas
-    // Verifica se jQuery e colResizable estão carregados
-    if (typeof jQuery !== 'undefined' && typeof jQuery().colResizable !== 'undefined') {
-        jQuery("#tabela-notas-redimensionavel").colResizable({
-            liveDrag:true,
-            gripInnerHtml:"<div class='grip'></div>", 
-            draggingClass:"dragging", 
-            resizeMode:'flex'
-        });
-    } else {
-        console.warn("colResizable ou jQuery não carregado. Redimensionamento de colunas desativado.");
-    }
 });
 </script>

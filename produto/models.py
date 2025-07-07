@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import Sum
+from decimal import Decimal
 from django.utils.timezone import now
 from empresas.models import EmpresaAvancada
 from .models_fiscais import DetalhesFiscaisProduto
@@ -36,7 +37,6 @@ class Produto(models.Model):
     # 🔑 Identificação
     codigo = models.CharField(max_length=50, unique=True)
     nome = models.CharField(max_length=255)
-    descricao = models.TextField(blank=True, null=True)
 
     # 📂 Classificações
     categoria = models.ForeignKey(CategoriaProduto, on_delete=models.SET_NULL, null=True, related_name='produtos')
@@ -87,42 +87,83 @@ class Produto(models.Model):
 
     # 🧾 Nota fiscal de origem (para importação XML)
     nota_fiscal = models.ForeignKey(
-        'nota_fiscal.NotaFiscal',  # ← referência por string evita importações circulares
+        'nota_fiscal.NotaFiscal',
         on_delete=models.CASCADE,
         null=True, blank=True,
         related_name='produtos',
         help_text="Nota fiscal à qual este produto está vinculado (caso importado do XML)"
     )
 
-def calcular_estoque_atual(self):
-    return self.estoque_total - self.quantidade_saidas
-
-    
-
-def save(self, *args, **kwargs):
-    self.estoque_atual = self.calcular_estoque_atual()
-    super().save(*args, **kwargs)
-
-def __str__(self):
-    return f"{self.codigo} - {self.nome}"
-
-
-# 🔄 Fator de Conversão de Unidades por Fornecedor
-class FatorConversaoFornecedor(models.Model):
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="fatores_conversao")
-    fornecedor = models.ForeignKey(EmpresaAvancada, on_delete=models.CASCADE, related_name="fatores_conversao")
-    unidade_fornecedor = models.CharField(max_length=10, help_text="Unidade de medida usada pelo fornecedor (ex: CX, FARDO)")
+    # 🔄 Conversão de Unidade
     fator_conversao = models.DecimalField(
-        max_digits=18, 
-        decimal_places=10, 
+        max_digits=18,
+        decimal_places=10,
         default=1,
-        help_text="Quantas unidades internas correspondem a uma unidade do fornecedor. Ex: Se a unidade do fornecedor é 'CX' com 12 itens, o fator é 12."
+        help_text="Fator para converter a unidade de compra para a unidade interna. Ex: Se compra em CX com 12 UN, o fator é 12."
     )
+    unidade_fornecedor_padrao = models.ForeignKey(UnidadeMedida, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos_unidade_fornecedor', help_text="Unidade de medida padrão usada pelo fornecedor para este produto.")
 
-    class Meta:
-        unique_together = ('produto', 'fornecedor', 'unidade_fornecedor')
-        verbose_name = "Fator de Conversão por Fornecedor"
-        verbose_name_plural = "Fatores de Conversão por Fornecedor"
+    def calcular_estoque_atual(self):
+        return self.estoque_total - self.quantidade_saidas
+
+    def recalculate_stock_and_prices(self):
+        print(f"DEBUG: Iniciando recalculate_stock_and_prices para o produto: {self.nome} (ID: {self.pk})")
+        from produto.models_entradas import EntradaProduto # Importação local para evitar circular dependency
+
+        total_quantidade_entradas = Decimal('0')
+        total_valor_entradas = Decimal('0')
+        
+        # Recalcula estoque_total e preco_medio com base nas entradas existentes
+        entradas = EntradaProduto.objects.filter(item_nota_fiscal__produto=self)
+        print(f"DEBUG: Encontradas {entradas.count()} entradas para o produto {self.nome}.")
+
+        for entrada in entradas:
+            # Aplica o fator de conversão atual do produto
+            quantidade_convertida = entrada.quantidade * self.fator_conversao
+            preco_unitario_convertido = entrada.preco_unitario / self.fator_conversao if self.fator_conversao > 0 else entrada.preco_unitario
+
+            total_quantidade_entradas += quantidade_convertida
+            total_valor_entradas += preco_unitario_convertido * quantidade_convertida
+            print(f"DEBUG: Entrada {entrada.pk}: Quantidade XML: {entrada.quantidade}, Preço Unitário XML: {entrada.preco_unitario}, Quantidade Convertida: {quantidade_convertida}, Preço Convertido: {preco_unitario_convertido}")
+
+
+        self.estoque_total = total_quantidade_entradas
+        if total_quantidade_entradas > 0:
+            self.preco_medio = total_valor_entradas / total_quantidade_entradas
+            # O preco_custo pode ser o preco_medio ou o preco_unitario da última entrada,
+            # dependendo da regra de negócio. Por simplicidade, usaremos o preco_medio.
+            self.preco_custo = self.preco_medio
+        else:
+            self.preco_medio = Decimal('0')
+            self.preco_custo = Decimal('0')
+
+        self.estoque_atual = self.calcular_estoque_atual()
+        print(f"DEBUG: Valores recalculados para {self.nome}: Estoque Total: {self.estoque_total}, Preço Médio: {self.preco_medio}, Preço Custo: {self.preco_custo}")
+        self.save(update_fields=['estoque_total', 'preco_medio', 'preco_custo', 'estoque_atual'])
+        print(f"DEBUG: Finalizado recalculate_stock_and_prices para o produto: {self.nome}")
+
+
+    def save(self, *args, **kwargs):
+        print(f"DEBUG: Método save do Produto chamado para {self.nome} (ID: {self.pk})")
+        # Verifica se o fator_conversao foi alterado
+        if self.pk: # Se o objeto já existe no banco de dados
+            try:
+                original = Produto.objects.get(pk=self.pk)
+                if original.fator_conversao != self.fator_conversao:
+                    print(f"DEBUG: Fator de conversão alterado de {original.fator_conversao} para {self.fator_conversao}. Recalculando estoque e preços.")
+                    # Salva primeiro para garantir que o fator_conversao esteja atualizado
+                    super().save(*args, **kwargs) 
+                    self.recalculate_stock_and_prices()
+                    return # Já salvou e recalculou, então retorna
+            except Produto.DoesNotExist:
+                print(f"DEBUG: Produto com ID {self.pk} não encontrado no banco de dados. Prosseguindo com save normal.")
+                pass # Objeto não existe, é uma criação, prossegue com o save normal
+        
+        self.estoque_atual = self.calcular_estoque_atual()
+        print(f"DEBUG: Salvando produto {self.nome} com estoque_atual: {self.estoque_atual}")
+        super().save(*args, **kwargs)
+        print(f"DEBUG: Produto {self.nome} salvo com sucesso.")
+
 
     def __str__(self):
-        return f"{self.produto.nome} ({self.fornecedor.nome_fantasia}): 1 {self.unidade_fornecedor} = {self.fator_conversao} unidades internas"
+        return f"{self.codigo} - {self.nome}"

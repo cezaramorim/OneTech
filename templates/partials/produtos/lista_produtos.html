@@ -50,7 +50,7 @@
                 <th>Nome</th>
                 <th>Categoria</th>
                 <th>Unidade</th>
-                <th class="text-end">Preço Venda</th>
+                <th class="text-end">Preço Custo</th>
                 <th class="text-end">Estoque Atual</th>
                 <th>Status</th>
               </tr>
@@ -65,7 +65,7 @@
                 <td>{{ produto.nome }}</td>
                 <td>{{ produto.categoria.nome }}</td>
                 <td>{{ produto.unidade_medida_interna.sigla }}</td>
-                <td class="text-end">R$ {{ produto.preco_venda|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
                 <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
                 <td>
                   {% if produto.ativo %}

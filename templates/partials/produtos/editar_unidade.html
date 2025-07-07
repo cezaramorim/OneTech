@@ -1,0 +1,39 @@
+{% load widget_tweaks %}
+
+<div class="container-fluid py-4">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Editar Unidade de Medida: {{ unidade.sigla }}</h4>
+                <div>
+                    <a href="{% url 'produto:lista_unidades' %}" class="btn btn-secondary ajax-link">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.sigla.id_for_label }}" class="form-label">Sigla</label>
+                        {{ form.sigla|add_class:"form-control" }}
+                        {% if form.sigla.errors %}<div class="invalid-feedback d-block">{{ form.sigla.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.descricao.id_for_label }}" class="form-label">Descrição</label>
+                        {{ form.descricao|add_class:"form-control" }}
+                        {% if form.descricao.errors %}<div class="invalid-feedback d-block">{{ form.descricao.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

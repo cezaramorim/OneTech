@@ -358,6 +358,30 @@ function init() {
     if (btnConfirmarCategorias) {
         btnConfirmarCategorias.addEventListener("click", confirmarRevisaoCategorias);
     }
+
+    const btnAplicarTodos = document.getElementById("btn-aplicar-categoria-todos");
+    if (btnAplicarTodos) {
+        btnAplicarTodos.addEventListener("click", () => {
+            const primeiroSelect = document.querySelector('#revisaoCategoriasModal .categoria-select');
+            console.log("Botão 'Aplicar a todos' clicado.");
+            console.log("Primeiro select encontrado:", primeiroSelect);
+            if (primeiroSelect) {
+                console.log("Valor do primeiro select:", primeiroSelect.value);
+            }
+            if (primeiroSelect && primeiroSelect.value) {
+                const categoriaSelecionada = primeiroSelect.value;
+                const todosSelects = document.querySelectorAll('#revisaoCategoriasModal .categoria-select');
+                todosSelects.forEach(select => {
+                    select.value = categoriaSelecionada;
+                    select.classList.remove("is-invalid"); // Remove validação se houver
+                    select.dispatchEvent(new Event('change')); // Dispara o evento change
+                });
+                mostrarMensagem('success', 'Sucesso', 'Categoria aplicada a todos os itens.');
+            } else {
+                mostrarMensagem('warning', 'Atenção', 'Selecione uma categoria no primeiro item antes de aplicar a todos.');
+            }
+        });
+    }
 }
 
 // Inicia o script quando o DOM estiver pronto.

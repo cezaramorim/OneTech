@@ -429,7 +429,7 @@ function bindPageSpecificActions() {
     if (tela === "lista_produtos") {
       if (btnEditar) {
         btnEditar.onclick = () => {
-          const selecionado = document.querySelector("input.check-produto");
+          const selecionado = document.querySelector("input.check-produto:checked");
           if (!selecionado) return exibirMensagem("Selecione um produto para editar.", "warning");
           const url = `/produtos/editar/${selecionado.value}/`;
           history.pushState({ ajaxUrl: url }, "", url);
@@ -517,8 +517,54 @@ function bindPageSpecificActions() {
     }
 
     if (tela === "lista_categorias") {
-      console.log("Lógica específica para lista_categorias está a ser vinculada.");
-      // ... seu código de lista_categorias sem alteração ...
+      if (btnEditar) {
+        btnEditar.onclick = () => {
+          const selecionado = document.querySelector("input.check-categoria:checked");
+          if (!selecionado) return exibirMensagem("Selecione uma categoria para editar.", "warning");
+          const url = `/produtos/categorias/editar/${selecionado.value}/`;
+          history.pushState({ ajaxUrl: url }, "", url);
+          loadAjaxContent(url);
+        };
+      }
+      if (btnExcluir) {
+        btnExcluir.onclick = () => {
+          const selecionados = Array.from(document.querySelectorAll("input.check-categoria:checked"));
+          if (selecionados.length === 0) {
+            return exibirMensagem("Selecione ao menos uma categoria para excluir.", "warning");
+          }
+          if (!confirm(`Deseja realmente excluir ${selecionados.length > 1 ? selecionados.length + " categorias" : "esta categoria"}?`)) return;
+          
+          exibirMensagem("Excluindo categorias...", "info");
+          const ids = selecionados.map(cb => cb.value);
+          fetch("/produtos/categorias/excluir-multiplos/", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCSRFToken(),
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify({ ids })
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.sucesso) {
+                exibirMensagem(data.mensagem || "Categorias excluídas com sucesso.", "success");
+                loadAjaxContent(window.location.href);
+              } else {
+                exibirMensagem(data.erro || "Erro ao excluir as categorias.", "danger");
+              }
+            })
+            .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
+        };
+      }
+      const selectAll = document.getElementById("select-all-categorias");
+      if (selectAll) {
+        selectAll.addEventListener("change", (e) => {
+          const chks = document.querySelectorAll("input.check-categoria");
+          chks.forEach(cb => cb.checked = e.target.checked);
+          atualizarBotoesAcao();
+        });
+      }
     }
 
     // ============================================
@@ -583,10 +629,11 @@ function bindPageSpecificActions() {
     }
 
 
-    // ============================================
-    // FIM editar_entrada
-    // ============================================
-  };
+
+  
+
+  
+  }; // <-- Chave de fechamento adicionada aqui
 
   window.atualizarBotoesAcaoGlobal = atualizarBotoesAcao;
   document.body.removeEventListener("change", globalCheckboxListener);

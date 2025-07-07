@@ -11,11 +11,13 @@
       <!-- Identificação -->
       <div class="col-md-4">{{ form.codigo.label_tag }} {{ form.codigo|add_class:"form-control" }}</div>
       <div class="col-md-8">{{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}</div>
-      <div class="col-12">{{ form.descricao.label_tag }} {{ form.descricao|add_class:"form-control" }}</div>
+      
 
       <!-- Categoria e Unidade -->
       <div class="col-md-6">{{ form.categoria.label_tag }} {{ form.categoria|add_class:"form-select" }}</div>
-      <div class="col-md-6">{{ form.unidade_medida.label_tag }} {{ form.unidade_medida|add_class:"form-select" }}</div>
+      <div class="col-md-6">{{ form.unidade_medida_interna.label_tag }} {{ form.unidade_medida_interna|add_class:"form-select" }}</div>
+      <div class="col-md-6">{{ form.fator_conversao.label_tag }} {{ form.fator_conversao|add_class:"form-control" }}</div>
+      <div class="col-md-6">{{ form.unidade_fornecedor_padrao.label_tag }} {{ form.unidade_fornecedor_padrao|add_class:"form-select" }}</div>
 
       <!-- Preços -->
       <div class="col-md-4">{{ form.preco_custo.label_tag }} {{ form.preco_custo|add_class:"form-control" }}</div>

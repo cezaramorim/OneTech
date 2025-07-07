@@ -10,10 +10,19 @@
   </div>
 
   {% if unidades %}
+    <!-- 🛠️ Ações principais -->
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+      <div class="d-flex gap-2">
+        <button type="button" id="btn-editar-unidade" class="btn btn-outline-primary btn-sm" disabled>✏️ Editar</button>
+        <button type="button" id="btn-excluir-unidade" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
+      </div>
+    </div>
+
     <div class="table-responsive">
       <table class="table table-hover table-bordered align-middle">
         <thead class="table-light">
           <tr>
+            <th style="width: 40px;"><input type="checkbox" id="select-all-unidades"></th> {# Checkbox para selecionar todos #}
             <th>Sigla</th>
             <th>Descrição</th>
           </tr>
@@ -21,6 +30,9 @@
         <tbody>
           {% for unidade in unidades %}
             <tr>
+              <td>
+                <input type="checkbox" class="check-unidade" value="{{ unidade.id }}"> {# Checkbox para cada unidade #}
+              </td>
               <td>{{ unidade.sigla }}</td>
               <td>{{ unidade.descricao }}</td>
             </tr>

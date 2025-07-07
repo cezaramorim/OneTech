@@ -20,12 +20,13 @@ class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
         fields = [
-            'codigo', 'nome', 'descricao', 'categoria', 'unidade_medida_interna',
+            'codigo', 'nome', 'categoria', 'unidade_medida_interna', 'fator_conversao',
             'preco_custo', 'preco_venda', 'preco_medio',
             'estoque_total', 'quantidade_saidas', 'estoque_atual',
             'controla_estoque', 'ativo', 'data_cadastro',
             'observacoes',
             'fornecedor',
+            'unidade_fornecedor_padrao',
         ]
         labels = {
             'codigo': 'Cód. Fornecedor',
@@ -33,9 +34,9 @@ class ProdutoForm(forms.ModelForm):
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
-            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'categoria': forms.Select(attrs={'class': 'form-select'}),
             'unidade_medida_interna': forms.Select(attrs={'class': 'form-select'}),
+            'fator_conversao': QuantityInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 12 para converter de CX para UN'}),
             'cfop': forms.TextInput(attrs={'class': 'form-control'}),
             'preco_custo': CurrencyInput(attrs={'class': 'form-control'}),
             'preco_venda': CurrencyInput(attrs={'class': 'form-control'}),
@@ -47,6 +48,7 @@ class ProdutoForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'unidade_fornecedor_padrao': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, **kwargs):
