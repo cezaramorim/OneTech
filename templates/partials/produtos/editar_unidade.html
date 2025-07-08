@@ -1,7 +1,7 @@
 {% load widget_tweaks %}
 
-<div class="container-fluid py-4">
-    <form method="post" novalidate>
+<main id="main-content" data-tela="editar_unidade" class="container-fluid py-4">
+    <form method="post" novalidate class="ajax-form" data-url="{% url 'produto:editar_unidade' unidade.id %}">
         {% csrf_token %}
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -36,4 +36,4 @@
             </div>
         </div>
     </form>
-</div>
+</main>

@@ -1,69 +1,94 @@
 {% if perms.accounts.view_user %}
 {% load static %}
 
-<main id="main-content" class="container-fluid py-4" data-page="lista_usuarios">
-  <!-- 🔔 Mensagens instantâneas -->
-  <div id="mensagens"></div>
+<main id="main-content" class="container-fluid py-4">
+  <div id="identificador-tela" 
+       data-tela="lista_usuarios"
+       data-entidade-singular="usuario"
+       data-entidade-plural="usuarios"
+       data-url-editar="/accounts/usuarios/" {# A URL base para edição, o ID e /editar/ serão adicionados pelo JS #}
+       data-url-excluir="{% url 'accounts:excluir_usuario_multiplo' %}"
+       data-seletor-checkbox=".check-usuario">
 
-  <div class="row justify-content-center">
-    <div class="col-md-6">
+    <!-- 🔔 Mensagens instantâneas -->
+    <div id="mensagens"></div>
 
-      <!-- 🔹 Título -->
-      <h2 class="mb-1 text-center">Lista de Usuários</h2>
-      <p class="text-center text-muted mb-4">Selecione um ou mais usuários para editar ou excluir.</p>
+    <div class="row justify-content-center">
+      <div class="col-md-12 col-lg-10">
 
-      <div class="card shadow-sm p-4">
+        <!-- 🔹 Título -->
+        <h2 class="h4 mb-4">Gerenciamento de Usuários</h2>
 
-        {% if usuarios %}
-          <form id="usuarios-form" method="POST" class="ajax-form">
-            {% csrf_token %}
-
-            <!-- 🛠️ Botões -->
-            <div class="d-flex justify-content-between gap-2 mb-3">
-              <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
-                ✏️ Editar
-              </button>
-              <button type="submit"
-                      formaction="{% url 'accounts:excluir_usuario_multiplo' %}"
-                      class="btn btn-outline-danger btn-sm"
-                      id="btn-excluir"
-                      disabled>
-                🗑️ Excluir
-              </button>
+        <div class="card shadow-sm">
+          <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+            <a href="{% url 'accounts:criar_usuario' %}" class="btn btn-primary ajax-link">
+                <i class="bi bi-plus-lg me-1"></i> Novo Usuário
+            </a>
+            <div>
+                <button type="button" id="btn-editar" class="btn btn-outline-secondary me-2" disabled>
+                    <i class="bi bi-pencil-square me-1"></i> Editar
+                </button>
+                <button type="button" id="btn-excluir" class="btn btn-outline-danger" disabled>
+                    <i class="bi bi-trash me-1"></i> Excluir
+                </button>
             </div>
-
-            <!-- 👥 Lista de Usuários -->
-            <ul class="list-group shadow-sm">
-              {% for usuario in usuarios %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <div class="form-check">
-                    <input type="checkbox"
-                          class="form-check-input usuario-checkbox"
-                          name="usuarios_selecionados"
-                          value="{{ usuario.id }}"
-                          id="usuario{{ usuario.id }}">
-                    <label class="form-check-label ms-2" for="usuario{{ usuario.id }}">
-                      <strong>{{ usuario.nome_completo|default:usuario.username }}</strong><br>
-                      <small class="text-muted">{{ usuario.email }}</small>
-                    </label>
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
-          </form>
-        {% else %}
-          <div class="alert alert-info mt-3 text-center">
-            Nenhum usuário cadastrado.
           </div>
-        {% endif %}
-
-        <!-- ➕ Botão novo usuário -->
-        <div class="text-end mt-4">
-          <a href="{% url 'accounts:criar_usuario' %}" class="btn btn-success ajax-link">
-            ➕ Novo Usuário
-          </a>
+          <div class="card-body p-0">
+            <form id="usuarios-form" method="POST" class="ajax-form">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 50px;">
+                                    <input class="form-check-input mx-auto" type="checkbox" id="select-all-usuarios">
+                                </th>
+                                <th scope="col">Nome Completo</th>
+                                <th scope="col">Usuário</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Grupos</th>
+                                <th scope="col" class="text-center">Ativo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usuario in usuarios %}
+                            <tr>
+                                <td class="text-center">
+                                    <input class="form-check-input mx-auto check-usuario" type="checkbox" value="{{ usuario.id }}" name="selecionados" id="usuario_{{ usuario.id }}">
+                                </td>
+                                <td><label for="usuario_{{ usuario.id }}" class="form-check-label" style="cursor: pointer;">{{ usuario.nome_completo|default:"-" }}</label></td>
+                                <td>{{ usuario.username }}</td>
+                                <td>{{ usuario.email }}</td>
+                                <td>
+                                    {% for group in usuario.groups.all %}
+                                        <span class="badge bg-light text-dark border border-secondary-subtle fw-normal">{{ group.name }}</span>
+                                    {% empty %}
+                                        <span class="text-muted fst-italic">Nenhum</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center">
+                                    {% if usuario.is_active %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inativo</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <i class="bi bi-people fs-2 text-muted"></i>
+                                    <p class="mb-0 mt-2 text-muted">Nenhum usuário cadastrado.</p>
+                                    <p><a href="{% url 'accounts:criar_usuario' %}" class="ajax-link">Crie o primeiro</a> para começar.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+          </div>
         </div>
-
       </div>
     </div>
   </div>

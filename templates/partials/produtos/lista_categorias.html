@@ -1,9 +1,15 @@
 {% load static %}
 {% load static widget_tweaks %}
 
-<main id="main-content" data-page="lista_categorias" class="container-fluid">
+<main id="main-content" class="container-fluid">
   {% include 'partials/mensagens.html' %}
-  <div id="identificador-tela" data-tela="lista_categorias"></div>
+  <div id="identificador-tela" 
+       data-entidade-singular="categoria"
+       data-entidade-plural="categorias"
+       data-url-editar="/produtos/categorias/editar/"
+       data-url-excluir="/produtos/categorias/excluir-multiplas/"
+       data-seletor-checkbox=".check-categoria">
+  </div>
   <div class="card shadow-sm">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-4">

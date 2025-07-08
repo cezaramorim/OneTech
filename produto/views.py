@@ -143,7 +143,18 @@ def editar_categoria_view(request, pk):
         if form.is_valid():
             form.save()
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"success": True, "message": "Categoria atualizada com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
+                return JsonResponse({"sucesso": True, "mensagem": "Categoria atualizada com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
+        else:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                erros = []
+                for field, msgs in form.errors.items():
+                    for msg in msgs:
+                        label = form.fields[field].label if field in form.fields else field
+                        erros.append(f"{label}: {msg}")
+                return JsonResponse({
+                    "sucesso": False,
+                    "mensagem": "Erro ao salvar categoria:<br>" + "<br>".join(erros)
+                }, status=400)
     else:
         form = CategoriaProdutoForm(instance=categoria)
 
@@ -152,7 +163,8 @@ def editar_categoria_view(request, pk):
         return render(request, "partials/produtos/editar_categoria.html", context)
 
     return render(request, "base.html", {
-        "content_template": "partials/produtos/lista_categorias.html",
+        "content_template": "partials/produtos/editar_categoria.html",
+        "data_page": "editar_categoria",
         **context,
     })
 
@@ -167,18 +179,21 @@ def excluir_categorias_view(request):
             body = json.loads(request.body)
             ids = body.get("ids", [])
             CategoriaProduto.objects.filter(id__in=ids).delete()
-            return JsonResponse({"sucesso": True, "mensagem": "Categorias excluídas com sucesso."})
+            return JsonResponse({"sucesso": True, "mensagem": "Categorias excluídas com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
         except Exception as e:
             return JsonResponse({"erro": f"Erro ao excluir categorias: {str(e)}"}, status=500)
     return JsonResponse({"erro": "Requisição inválida."}, status=400)
 
 @login_required
 def cadastrar_categoria_view(request):
+    print("DEBUG: cadastrar_categoria_view acessada")
     if request.method == "POST":
         form = CategoriaProdutoForm(request.POST)
+        print("DEBUG: Formulário de categoria válido:", form.is_valid())
         if form.is_valid():
             form.save()
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                print("DEBUG: Retornando JSON de sucesso para cadastro de categoria")
                 return JsonResponse({
                     "sucesso": True,
                     "mensagem": "Categoria cadastrada com sucesso.",
@@ -195,6 +210,7 @@ def cadastrar_categoria_view(request):
                     for msg in msgs:
                         label = form.fields[field].label
                         erros.append(f"{label}: {msg}")
+                print("DEBUG: Retornando JSON de erro para cadastro de categoria")
                 return JsonResponse({
                     "sucesso": False,
                     "mensagem": "Erro ao salvar categoria:<br>" + "<br>".join(erros)
@@ -241,6 +257,8 @@ def cadastrar_unidade_view(request):
 
 @login_required
 def editar_unidade_view(request, pk):
+    print("DEBUG: editar_unidade_view accessed for PK:", pk)
+    print("DEBUG: editar_unidade_view accessed for PK:", pk)
     unidade = get_object_or_404(UnidadeMedida, pk=pk)
     if request.method == "POST":
         form = UnidadeMedidaForm(request.POST, instance=unidade)
@@ -263,9 +281,10 @@ def editar_unidade_view(request, pk):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return render(request, "partials/produtos/editar_unidade.html", context)
     
-    context["content_template"] = "partials/produtos/editar_unidade.html"
-    context["data_page"] = "editar_unidade"
-    return render(request, "base.html", context)
+    return render(request, "base.html", {
+        "content_template": "partials/produtos/lista_unidades.html",
+        **context,
+    })
 
 @require_POST
 @login_required
@@ -280,7 +299,7 @@ def excluir_unidades_view(request):
             return JsonResponse({"erro": "Nenhuma unidade selecionada."}, status=400)
 
         UnidadeMedida.objects.filter(id__in=ids).delete()
-        return JsonResponse({"sucesso": True, "mensagem": "Unidades excluídas com sucesso."})
+        return JsonResponse({"sucesso": True, "mensagem": "Unidades excluídas com sucesso.", "redirect_url": reverse("produto:lista_unidades")})
 
     except Exception as e:
         return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)

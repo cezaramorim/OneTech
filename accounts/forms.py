@@ -24,9 +24,16 @@ class SignUpForm(UserCreationForm):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
-    class Meta:
+    is_active = forms.BooleanField(
+        label="Ativo",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    class Meta(UserCreationForm.Meta):
         model = User
-        fields = ('username', 'email', 'nome_completo', 'grupo', 'password1', 'password2')
+        fields = UserCreationForm.Meta.fields + ('nome_completo', 'grupo', 'is_active')
         widgets = {
             'username': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -42,6 +49,7 @@ class SignUpForm(UserCreationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.nome_completo = self.cleaned_data['nome_completo']
+        user.is_active = self.cleaned_data['is_active']
 
         if commit:
             user.save()
@@ -96,9 +104,15 @@ class EditUserForm(UserChangeForm):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
+    is_active = forms.BooleanField(
+        label="Ativo",
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
     class Meta:
         model = User
-        fields = ('username', 'email', 'nome_completo', 'grupo')
+        fields = ('username', 'email', 'nome_completo', 'grupo', 'is_active')
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': 'form-control',
@@ -156,6 +170,3 @@ class EditUserForm(UserChangeForm):
                 user.user_permissions.set(permissoes_grupo)
 
         return user
-
-
-

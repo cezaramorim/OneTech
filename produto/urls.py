@@ -34,9 +34,9 @@ urlpatterns = [
 
     # Unidades
     path("unidades/", views.lista_unidades_view, name="lista_unidades"),
-    path("unidades/nova/", views.cadastrar_unidade_view, name="cadastrar_unidade"),
-    path("unidades/editar/<int:pk>/", views.editar_unidade_view, name="editar_unidade"), # Nova URL
-    path("unidades/excluir-multiplos/", views.excluir_unidades_view, name="excluir_unidades"), # Nova URL
+    path("unidades-medida/nova/", views.cadastrar_unidade_view, name="cadastrar_unidade"),
+    path("unidades-medida/editar/<int:pk>/", views.editar_unidade_view, name="editar_unidade"), # Nova URL
+    path("unidades-medida/excluir-multiplos/", views.excluir_unidades_view, name="excluir_unidades"), # Nova URL
 
     # NCM
     path("ncm/", views.manutencao_ncm_view, name="manutencao_ncm"),

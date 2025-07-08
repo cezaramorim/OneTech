@@ -40,16 +40,15 @@
 
           <!-- 👥 Grupo -->
           <div class="mb-3">
-            <label for="grupo">Grupo:</label>
-            <select name="grupo" id="grupo" class="form-select">
-              <option value="">---------</option>
-              {% for grupo in grupos %}
-                <option value="{{ grupo.id }}" {% if usuario.groups.first.id == grupo.id %}selected{% endif %}>
-                  {{ grupo.name }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
+    {{ form.grupo.label_tag }}
+    {{ form.grupo }}
+</div>
+<div class="form-check mb-3">
+    {{ form.is_active }}
+    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active.label }}
+    </label>
+</div>
 
           <hr>
 

@@ -1,46 +1,55 @@
-{% load static %}
+<main id="main-content" data-tela="lista_unidades" class="container-fluid">
+  {% load static %}
 
-<!-- ✅ Lista de Unidades de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
-<div class="container-fluid" data-page="lista-unidades">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">Unidades de Medida</h2>
-    <a href="{% url 'produto:cadastrar_unidade' %}" class="btn btn-primary ajax-link">
-      <i class="bi bi-plus-lg"></i> Nova Unidade
-    </a>
-  </div>
+  <!-- ✅ Lista de Unidades de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
+  <div id="identificador-tela" 
+       class="container-fluid" 
+       data-entidade-singular="unidade"
+       data-entidade-plural="unidades"
+       data-url-editar="/produtos/unidades-medida/editar/"
+       data-url-excluir="/produtos/unidades-medida/excluir-multiplos/"
+       data-seletor-checkbox=".check-unidade">
 
-  {% if unidades %}
-    <!-- 🛠️ Ações principais -->
-    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-      <div class="d-flex gap-2">
-        <button type="button" id="btn-editar-unidade" class="btn btn-outline-primary btn-sm" disabled>✏️ Editar</button>
-        <button type="button" id="btn-excluir-unidade" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">Unidades de Medida</h2>
+      <a href="{% url 'produto:cadastrar_unidade' %}" class="btn btn-primary ajax-link">
+        <i class="bi bi-plus-lg"></i> Nova Unidade
+      </a>
+    </div>
+
+    {% if unidades %}
+      <!-- 🛠️ Ações principais -->
+      <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div class="d-flex gap-2">
+          <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>✏️ Editar</button>
+          <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
+        </div>
       </div>
-    </div>
 
-    <div class="table-responsive">
-      <table class="table table-hover table-bordered align-middle">
-        <thead class="table-light">
-          <tr>
-            <th style="width: 40px;"><input type="checkbox" id="select-all-unidades"></th> {# Checkbox para selecionar todos #}
-            <th>Sigla</th>
-            <th>Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for unidade in unidades %}
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle">
+          <thead class="table-light">
             <tr>
-              <td>
-                <input type="checkbox" class="check-unidade" value="{{ unidade.id }}"> {# Checkbox para cada unidade #}
-              </td>
-              <td>{{ unidade.sigla }}</td>
-              <td>{{ unidade.descricao }}</td>
+              <th style="width: 40px;"><input type="checkbox" id="select-all-unidades"></th> {# Checkbox para selecionar todos #}
+              <th>Sigla</th>
+              <th>Descrição</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <div class="alert alert-warning">Nenhuma unidade cadastrada ainda.</div>
-  {% endif %}
-</div>
+          </thead>
+          <tbody>
+            {% for unidade in unidades %}
+              <tr>
+                <td>
+                  <input type="checkbox" class="check-unidade" value="{{ unidade.id }}"> {# Checkbox para cada unidade #}
+                </td>
+                <td>{{ unidade.sigla }}</td>
+                <td>{{ unidade.descricao }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Nenhuma unidade cadastrada ainda.</div>
+    {% endif %}
+  </div>
+</main>

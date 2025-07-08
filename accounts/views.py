@@ -184,11 +184,22 @@ def editar_usuario(request, usuario_id):
             form.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'success': True,
-                    'message': 'Usuário atualizado com sucesso!',
+                    'sucesso': True,
+                    'mensagem': 'Usuário atualizado com sucesso!',
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
             return redirect('accounts:lista_usuarios')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                erros = []
+                for field, msgs in form.errors.items():
+                    for msg in msgs:
+                        label = form.fields[field].label if field in form.fields else field
+                        erros.append(f"{label}: {msg}")
+                return JsonResponse({
+                    'sucesso': False,
+                    'mensagem': "Erro ao atualizar usuário:<br>" + "<br>".join(erros)
+                }, status=400)
 
     # ✅ Aqui está o ponto importante
     contexto = {
@@ -207,32 +218,31 @@ def editar_usuario(request, usuario_id):
         **contexto
     })
 
+import json
+
 @login_required
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_usuario_multiplo(request):
-    ids = request.POST.getlist('usuarios_selecionados')
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Dados inválidos.'}, status=400)
+
     if not ids:
-        msg = "Nenhum usuário selecionado para exclusão."
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'message': msg}, status=400)
-        messages.warning(request, msg)
-        return redirect('accounts:lista_usuarios')
+        return JsonResponse({'success': False, 'message': 'Nenhum usuário selecionado para exclusão.'}, status=400)
 
     usuarios = User.objects.filter(id__in=ids)
-    nomes = [u.get_full_name() or u.username for u in usuarios]
+    count = usuarios.count()
     usuarios.delete()
 
-    msg = f"{len(nomes)} usuário(s) excluído(s) com sucesso: {', '.join(nomes)}."
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'message': msg,
-            'redirect_url': reverse('accounts:lista_usuarios')
-        })
-    
-    messages.success(request, msg)
-    return redirect('accounts:lista_usuarios')
+    msg = f'{count} usuário(s) excluído(s) com sucesso.'
+    return JsonResponse({
+        'success': True,
+        'message': msg,
+        'redirect_url': reverse('accounts:lista_usuarios')
+    })
 
 @login_required
 @user_passes_test(is_super_or_group_admin)
