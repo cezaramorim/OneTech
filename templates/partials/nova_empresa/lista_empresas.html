@@ -6,54 +6,20 @@
   <!-- ✅ Inclusão das mensagens dinâmicas (alertas de sucesso, erro, etc) -->
   {% include 'partials/mensagens.html' %}
 
-  <!-- ✅ Identificador da tela (usado por scripts.js para detectar qual função aplicar) -->
-  <div id="identificador-tela" data-tela="lista_empresas_avancadas"></div>
+  <!-- ✅ Identificador da tela para a lógica de botões genérica -->
+  <div id="identificador-tela" 
+       data-entidade-singular="empresa" 
+       data-entidade-plural="empresas" 
+       data-url-editar="/empresas/avancadas/" 
+       data-url-excluir="/empresas/excluir-multiplos/" 
+       data-seletor-checkbox=".check-empresa">
+  </div>
 
   <!-- ✅ Cartão com sombra e largura máxima controlada -->
   <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
     <div class="card-body">
 
-      <!-- ✅ Título da seção -->
-      <h2 class="mb-4">Empresas Avançadas</h2>
-
-      <!-- ✅ Formulário com filtros dinâmicos e botão "Limpar" -->
-      <form id="filtro-empresas-avancadas" class="row g-2 mb-4" method="get">
-        <!-- 🔍 Campo de busca unificada por razão social ou CNPJ -->
-        <div class="col-md-4">
-          <input type="text" id="busca-empresa" name="termo_empresa" class="form-control"
-                 placeholder="Buscar por razão social ou CNPJ"
-                 value="{{ request.GET.termo_empresa|default_if_none:'' }}"
-                 autocomplete="off">
-        </div>
-
-        <!-- 🔽 Filtro por tipo de empresa -->
-        <div class="col-md-3">
-          <select name="tipo" class="form-select">
-            <option value="">Tipo de Empresa</option>
-            <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jurídica</option>
-            <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa Física</option>
-          </select>
-        </div>
-
-        <!-- 🔽 Filtro por status da empresa -->
-        <div class="col-md-3">
-          <select name="status" class="form-select">
-            <option value="">Status</option>
-            <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
-            <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
-          </select>
-        </div>
-
-        <!-- 🔁 Botão para limpar os filtros (redireciona à URL base) -->
-        <div class="col-md-2 text-end">
-          <a href="{% url 'empresas:lista_empresas_avancadas' %}" class="btn btn-outline-secondary w-100">Limpar</a>
-        </div>
-      </form>
-
-      <!-- ✅ Wrapper da tabela que será atualizado dinamicamente via AJAX -->
-      <div id="empresas-avancadas-tabela-wrapper">
-        {% include 'partials/nova_empresa/tabela_empresas.html' %}
-      </div>
+      {% include 'partials/nova_empresa/_lista_empresas_table.html' %}
 
     </div>
   </div>

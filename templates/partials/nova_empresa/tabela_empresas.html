@@ -3,6 +3,9 @@
   <table class="table table-hover align-middle table-dark table-striped">
     <thead>
       <tr>
+        <th scope="col">
+          <input type="checkbox" id="selecionar-todos-checkbox" class="form-check-input">
+        </th>
         <th scope="col">#</th>
         <th>Razão Social</th>
         <th>CNPJ</th>
@@ -11,12 +14,15 @@
         <th>Contribuinte ICMS</th>
         <th>Categoria</th>
         <th>Status</th>
-        <th>Ações</th>
+        <th>Status</th>
       </tr>
     </thead>
     <tbody>
       {% for empresa in empresas %}
       <tr>
+        <td>
+          <input type="checkbox" class="form-check-input check-empresa" value="{{ empresa.id }}">
+        </td>
         <td>{{ empresa.id }}</td>
         <td>{{ empresa.razao_social|default:empresa.nome }}</td>
         <td>{{ empresa.cnpj|default:empresa.cpf }}</td>
@@ -29,11 +35,6 @@
             <input class="form-check-input toggle-status-empresa" type="checkbox"
                    data-id="{{ empresa.id }}" {% if empresa.status_empresa == 'ativa' %}checked{% endif %} disabled>
           </div>
-        </td>
-        <td>
-          <a href="{% url 'empresas:editar_empresa_avancada' empresa.id %}" class="btn btn-sm btn-primary">
-            Editar
-          </a>
         </td>
       </tr>
       {% empty %}

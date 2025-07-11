@@ -143,7 +143,7 @@
               {% endif %}
               <li><a href="{% url 'empresas:lista_empresas_avancadas' %}" class="list-group-item ajax-link">Lista de Empresas</a></li>
               {% if perms.empresas.add_categoriaempresa %}
-              <li><a href="{% url 'empresas:cadastrar_categoria_avancada' %}" class="list-group-item ajax-link">Categorias</a></li>
+              <li><a href="{% url 'empresas:lista_categorias' %}" class="list-group-item ajax-link">Categorias</a></li>
               {% endif %}
             </ul>
           </div>

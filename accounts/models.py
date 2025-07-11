@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 
 class User(AbstractUser):
@@ -22,4 +22,12 @@ class User(AbstractUser):
         Retorna o primeiro grupo associado ao usuário (usando o campo 'groups' herdado).
         """
         return self.groups.first()
+
+class GroupProfile(models.Model):
+    group = models.OneToOneField(Group, on_delete=models.CASCADE, related_name='profile')
+    is_active = models.BooleanField(default=True)
+    finalidade = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.group.name
 

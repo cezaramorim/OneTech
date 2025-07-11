@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import cadastrar_empresa_avancada
+from .views import empresa_avancada_form_view
 from rest_framework.routers import DefaultRouter
 from common.api.empresa import FornecedorViewSet
 
@@ -19,13 +19,16 @@ urlpatterns = [
     #path('excluir-multiplo/', views.excluir_empresa_multiplo, name='excluir_empresa_multiplo'),
 
     # Categorias
-    path('nova-avancada/categoria/', views.cadastrar_categoria_avancada, name='cadastrar_categoria_avancada'),
+    path('categorias/', views.lista_categorias_view, name='lista_categorias'),
+    path('categorias/nova/', views.categoria_form_view, name='cadastrar_categoria'),
+    path('categorias/<int:pk>/editar/', views.categoria_form_view, name='editar_categoria'),
+    path('categorias/excluir-multiplos/', views.excluir_categorias_view, name='excluir_categorias_multiplos'),
 
     # Empresas Avançadas
-    path('nova-avancada/', cadastrar_empresa_avancada, name='cadastrar_empresa_avancada'),
+    path('nova-avancada/', views.empresa_avancada_form_view, name='cadastrar_empresa_avancada'),
     path('avancadas/', views.lista_empresas_avancadas_view, name='lista_empresas_avancadas'),
     path('avancadas/<int:pk>/atualizar-status/', views.atualizar_status_empresa_avancada, name='atualizar_status_empresa_avancada'),
-    path('avancadas/<int:pk>/editar/', views.editar_empresa_avancada_view, name='editar_empresa_avancada'),
+    path('avancadas/<int:pk>/editar/', views.empresa_avancada_form_view, name='editar_empresa_avancada'),
 
 ]
 

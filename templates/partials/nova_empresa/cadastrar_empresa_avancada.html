@@ -15,7 +15,9 @@
           <h2 class="mb-1 text-center">Cadastro Avançado de Empresa</h2>
           <p class="text-center text-muted mb-4">Preencha os campos abaixo para registrar uma nova empresa.</p>
 
-          <form method="post" id="form-empresa-avancada" class="ajax-form" data-url="{% url 'empresas:cadastrar_empresa_avancada' %} "autocomplete="off">
+          <form method="post" id="form-empresa-avancada" class="ajax-form" 
+      data-url="{% if empresa %}{% url 'empresas:editar_empresa_avancada' pk=empresa.pk %}{% else %}{% url 'empresas:cadastrar_empresa_avancada' %}{% endif %}" 
+      autocomplete="off">
             {% csrf_token %}
 
             <!-- Abas -->
@@ -70,8 +72,6 @@
                 <div class="mb-3">{{ form.categoria.label_tag }} {{ form.categoria }}</div>
                 <div class="mb-3">{{ form.status_empresa.label_tag }} {{ form.status_empresa }}</div>
                 <div class="mb-3">{{ form.data_cadastro.label_tag }} {{ form.data_cadastro }}</div>
-                <div class="mb-3">{{ form.cliente.label_tag }} {{ form.cliente }}</div>
-                <div class="mb-3">{{ form.fornecedor.label_tag }} {{ form.fornecedor }}</div>
               </div>
 
               <!-- Endereço -->
@@ -137,7 +137,7 @@
 <!-- Injeção de dados da empresa para JS (apenas em modo de edição) -->
 {% if empresa %}
 <script id="empresa-data" type="application/json">
-  {{ empresa|json_script:"empresa-data" }}
+  {{ empresa_data|json_script:"empresa-data" }}
 </script>
 {% endif %}
 

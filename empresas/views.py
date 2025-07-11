@@ -30,79 +30,128 @@ from .models import EmpresaAvancada
 
 
 
-# === Função auxiliar ===
 
-def render_ajax_or_base(request, partial_template, context=None):
-    context = context or {}
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return render(request, partial_template, context)
-    return render(request, 'base.html', {'content_template': partial_template, **context})
 
 
 # === Categorias ===
 
 @login_required
-@permission_required('empresas.add_categoriaempresa', raise_exception=True)
-def cadastrar_categoria_avancada(request):
-    form = CategoriaEmpresaForm(request.POST or None)
-    categorias = CategoriaEmpresa.objects.all().order_by('-id')  # ✅ Importante!
-
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, "Categoria cadastrada com sucesso!")
-        return JsonResponse({'redirect_url': reverse('empresas:cadastrar_categoria_avancada')}) \
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest' \
-            else redirect('empresas:cadastrar_categoria_avancada')
-
-    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_categoria.html', {
-        'form': form,
-        'categorias': categorias,  # ✅ Fundamental!
+@permission_required('empresas.view_categoriaempresa', raise_exception=True)
+def lista_categorias_view(request):
+    categorias = CategoriaEmpresa.objects.all().order_by('nome')
+    return render(request, 'base.html', {
+        'content_template': 'partials/nova_empresa/lista_categorias.html',
+        'categorias': categorias
     })
 
 
-# === Nova Empresa ===
-from django.forms.models import model_to_dict
-
 @login_required
-@permission_required('empresas.add_empresa', raise_exception=True)
-def cadastrar_empresa_avancada(request):
-    from .forms import EmpresaAvancadaForm
-    from .models import EmpresaAvancada
+@permission_required('empresas.add_categoriaempresa', raise_exception=True)
+def categoria_form_view(request, pk=None):
+    if pk:
+        categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
+    else:
+        categoria = None
+    
+    form = CategoriaEmpresaForm(request.POST or None, instance=categoria)
 
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"Categoria {'atualizada' if pk else 'cadastrada'} com sucesso!")
+        return JsonResponse({'redirect_url': reverse('empresas:lista_categorias')}) \
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' \
+            else redirect('empresas:lista_categorias')
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'base.html', {'content_template': 'partials/nova_empresa/categoria_form.html', **context})
+
+
+@require_POST
+@login_required
+@permission_required('empresas.delete_categoriaempresa', raise_exception=True)
+def excluir_categorias_view(request):
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        if not ids:
+            return JsonResponse({'sucesso': False, 'erro': 'Nenhum ID fornecido.'}, status=400)
+        
+        CategoriaEmpresa.objects.filter(pk__in=ids).delete()
+        
+        messages.success(request, f"{len(ids)} categorias excluídas com sucesso.")
+        return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_categorias')})
+    except json.JSONDecodeError:
+        return JsonResponse({'sucesso': False, 'erro': 'JSON inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+# === Nova Empresa (Unificada: Cadastro e Edição) ===
+@login_required
+@permission_required('empresas.add_empresaavancada', raise_exception=True)
+def empresa_avancada_form_view(request, pk=None):
+    """
+    View unificada para cadastrar e editar uma EmpresaAvancada.
+    - Se `pk` for fornecido, edita a empresa existente.
+    - Se `pk` for None, cria uma nova empresa.
+    """
+    if pk:
+        empresa = get_object_or_404(EmpresaAvancada, pk=pk)
+        # Garante que o usuário tem permissão para alterar esta empresa específica
+        # (Implementar lógica de permissão de objeto se necessário)
+    else:
+        empresa = None
+
+    # O formulário é instanciado com os dados da requisição (se houver) e a instância da empresa
+    form = EmpresaAvancadaForm(request.POST or None, instance=empresa)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            
+            # Mensagem de sucesso dinâmica
+            mensagem_sucesso = f"Empresa '{form.instance.razao_social}' {'atualizada' if pk else 'cadastrada'} com sucesso!"
+            messages.success(request, mensagem_sucesso)
+
+            # Resposta para requisições AJAX
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'sucesso': True,
+                    'redirect_url': reverse('empresas:lista_empresas_avancadas')
+                })
+            
+            # Redirecionamento padrão
+            return redirect('empresas:lista_empresas_avancadas')
+        else:
+            # Em caso de formulário inválido, retorna os erros
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'sucesso': False, 'erros': form.errors}, status=400)
+
+    # Contexto para o template
     vendedores = get_user_model().objects.filter(groups__name__iexact='vendedores').order_by('first_name')
-
     estados = [
         'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
         'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
         'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
     ]
+    
+    # Converte a instância para um dicionário apenas se ela existir
+    empresa_data = model_to_dict(empresa) if pk else None
 
-    form = EmpresaAvancadaForm(request.POST or None)
-
-    if request.method == 'POST':
-        if form.is_valid():
-            form.save()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'sucesso': True,
-                    'redirect_url': reverse('empresas:cadastrar_empresa_avancado')
-                })
-            messages.success(request, "Empresa cadastrada com sucesso!")
-            return redirect('empresas:cadastrar_empresa_avancada')
-
-        # ❌ Form inválido — Retorna erros
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'sucesso': False,
-                'erros': form.errors
-            }, status=400)
-
-    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_empresa_avancada.html', {
+    context = {
         'form': form,
         'today': now(),
         'vendedores': vendedores,
         'estados': estados,
-    })
+        'empresa': empresa,  # Passa a instância para o template (útil para o título, etc.)
+        'empresa_data': empresa_data, # Passa o dicionário para o json_script
+        'titulo_pagina': f"Editar Empresa: {empresa.razao_social}" if pk else "Cadastrar Nova Empresa"
+    }
+
+    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_empresa_avancada.html', context)
+
 
 
 #from empresas.forms import EmpresaAvancadaFiltroForm  # Form opcional para organizar filtros
@@ -140,13 +189,17 @@ def lista_empresas_avancadas_view(request):
         empresas = empresas.filter(tipo_empresa="PF")
 
     # 🔎 Filtro por status (ativo ou inativo)
-    if status == 'ativa':
-        empresas = empresas.filter(status_empresa=True)
-    elif status == 'inativa':
-        empresas = empresas.filter(status_empresa=False)
+    status_map = {
+        'ativo': 'ativa',
+        'inativo': 'inativa',
+    }
+    if status in status_map:
+        empresas = empresas.filter(status_empresa=status_map[status])
+    
 
-    return render(request, 'base.html', {
-        'content_template': 'partials/nova_empresa/lista_empresas.html',
+    
+
+    return render_ajax_or_base(request, 'partials/nova_empresa/lista_empresas.html', {
         'empresas': empresas,
         'request': request
     })
@@ -165,30 +218,4 @@ def atualizar_status_empresa_avancada(request, pk):
     except Exception:
         return JsonResponse({'sucesso': False, 'mensagem': 'Erro ao atualizar o status.'})
 
-from django.forms.models import model_to_dict
 
-@login_required
-def editar_empresa_avancada_view(request, pk):
-    empresa = get_object_or_404(EmpresaAvancada, pk=pk)
-
-    if request.method == 'POST':
-        form = EmpresaAvancadaForm(request.POST, instance=empresa)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Empresa atualizada com sucesso.')
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
-            return redirect('empresas:lista_empresas_avancadas')
-    else:
-        form = EmpresaAvancadaForm(instance=empresa)
-
-    # Converte a instância do modelo para um dicionário JSON serializável
-    empresa_data = model_to_dict(empresa)
-
-    template = 'partials/nova_empresa/cadastrar_empresa_avancada.html'
-    context = {'form': form, 'empresa': empresa_data} # Passa o dicionário
-
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return render(request, template, context)
-
-    return render(request, 'base.html', {'content_template': template, **context})

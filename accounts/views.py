@@ -8,8 +8,8 @@ from django.contrib import messages
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django import forms
-from .forms import SignUpForm, EditUserForm
-from .models import User
+from .forms import SignUpForm, EditUserForm, GroupForm
+from .models import User, GroupProfile
 from accounts.utils.render import render_ajax_or_base
 from accounts.utils.acessos import is_super_or_group_admin
 from django.contrib import messages
@@ -314,49 +314,60 @@ def editar_permissoes(request, usuario_id):
 
 # === Grupos ===
 
-class GrupoForm(forms.ModelForm):
-    class Meta:
-        model = Group
-        fields = ['name']
-        labels = {'name': 'Nome do Grupo'}
-        widgets = {'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome do grupo'})}
-
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def lista_grupos(request):
-    grupos = Group.objects.all()
+    grupos = Group.objects.prefetch_related('profile').all()
     return render_ajax_or_base(
         request,
         'partials/accounts/lista_grupos.html',
-        {'grupos': grupos,
-         'data_tela': 'lista_grupos'
-         }
+        {'grupos': grupos}
     )
 
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def cadastrar_grupo(request):
-    form = GrupoForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
-        return redirect('accounts:lista_grupos')
+    if request.method == 'POST':
+        form = GroupForm(request.POST)
+        if form.is_valid():
+            group = Group.objects.create(name=form.cleaned_data['name'])
+            profile = GroupProfile.objects.create(
+                group=group,
+                is_active=form.cleaned_data['is_active'],
+                finalidade=form.cleaned_data['finalidade']
+            )
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
+            return redirect('accounts:lista_grupos')
+    else:
+        form = GroupForm()
     return render_ajax_or_base(request, 'partials/accounts/cadastrar_grupo.html', {'form': form})
 
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def editar_grupo(request, grupo_id):
     grupo = get_object_or_404(Group, id=grupo_id)
+    perfil, created = GroupProfile.objects.get_or_create(group=grupo)
+
     if request.method == 'POST':
-        novo_nome = request.POST.get('nome')
-        if novo_nome:
-            grupo.name = novo_nome
+        form = GroupForm(request.POST)
+        if form.is_valid():
+            grupo.name = form.cleaned_data['name']
             grupo.save()
+            perfil.is_active = form.cleaned_data['is_active']
+            perfil.finalidade = form.cleaned_data['finalidade']
+            perfil.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
             return redirect('accounts:lista_grupos')
-    return render_ajax_or_base(request, 'partials/accounts/editar_grupo.html', {'grupo': grupo, 'data_tela': 'editar_grupo'})
+    else:
+        form = GroupForm(initial={
+            'name': grupo.name,
+            'is_active': perfil.is_active,
+            'finalidade': perfil.finalidade
+        })
+
+    return render_ajax_or_base(request, 'partials/accounts/editar_grupo.html', {'form': form, 'grupo': grupo})
 
 @login_required
 @user_passes_test(is_super_or_group_admin)
@@ -378,7 +389,14 @@ def excluir_grupo(request, grupo_id):
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo_multiplo(request):
-    ids = request.POST.getlist('grupos_selecionados')
+    try:
+        # Tenta carregar os IDs do corpo da requisição JSON
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+    except json.JSONDecodeError:
+        # Fallback para o método antigo (formulário)
+        ids = request.POST.getlist('grupos_selecionados')
+
     if not ids:
         msg = "Nenhum grupo selecionado para exclusão."
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -387,12 +405,18 @@ def excluir_grupo_multiplo(request):
         return redirect('accounts:lista_grupos')
 
     grupos = Group.objects.filter(id__in=ids)
-    nomes = [g.name for g in grupos]
+    count = grupos.count()
+    nomes = list(grupos.values_list('name', flat=True))
     grupos.delete()
 
-    msg = f"{len(nomes)} grupo(s) excluído(s) com sucesso: {', '.join(nomes)}."
+    msg = f"{count} grupo(s) excluído(s) com sucesso: {', '.join(nomes)}."
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'success': True, 'message': msg})
+        return JsonResponse({
+            'success': True,
+            'message': msg,
+            'redirect_url': reverse('accounts:lista_grupos')
+        })
+        
     messages.success(request, msg)
     return redirect('accounts:lista_grupos')
 # === Permissões Gerais e por Grupo ===

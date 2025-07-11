@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth.models import Group
-from .models import User
+from .models import User, GroupProfile
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -170,3 +170,26 @@ class EditUserForm(UserChangeForm):
                 user.user_permissions.set(permissoes_grupo)
 
         return user
+
+class GroupForm(forms.ModelForm):
+    name = forms.CharField(
+        label="Nome do Grupo",
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    finalidade = forms.CharField(
+        label="Finalidade",
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    is_active = forms.BooleanField(
+        label="Ativo",
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    class Meta:
+        model = GroupProfile
+        fields = ['name', 'finalidade', 'is_active']

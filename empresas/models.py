@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 
 # === Categorias ===
 class CategoriaEmpresa(models.Model):
-   nome = models.CharField(max_length=100)
+   nome = models.CharField(max_length=100, unique=True)
 
    def __str__(self):
        return self.nome
@@ -53,7 +53,7 @@ class EmpresaAvancada(models.Model):
     # Pessoa Jurídica
     razao_social = models.CharField(max_length=255, blank=True, null=True)
     nome_fantasia = models.CharField(max_length=255, blank=True, null=True)
-    cnpj = models.CharField(max_length=20, blank=True, null=True)
+    cnpj = models.CharField(max_length=20, unique=True, blank=True, null=True)
     ie = models.CharField("Inscrição Estadual", max_length=20, blank=True, null=True)
 
     # Dados Fiscais
@@ -82,7 +82,7 @@ class EmpresaAvancada(models.Model):
 
     # Pessoa Física
     nome = models.CharField(max_length=255, blank=True, null=True)
-    cpf = models.CharField(max_length=20, blank=True, null=True)
+    cpf = models.CharField(max_length=20, unique=True, blank=True, null=True)
     rg = models.CharField(max_length=20, blank=True, null=True)
     profissao = models.CharField(max_length=100, blank=True, null=True)
 

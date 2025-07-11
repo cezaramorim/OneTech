@@ -319,32 +319,8 @@ function bindPageSpecificActions() {
           const novaUrl = `${window.location.pathname}?${params.toString()}`;
           history.pushState({ ajaxUrl: novaUrl }, "", novaUrl);
 
-          fetch(novaUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-            .then(response => {
-              if (!response.ok) throw new Error("Erro ao carregar filtro");
-              return response.text();
-            })
-            .then(html => {
-              const tempDiv   = document.createElement("div");
-              tempDiv.innerHTML = html;
-              const novaTabela = tempDiv.querySelector("#empresas-avancadas-tabela-wrapper");
-              if (novaTabela) {
-                tabelaWrapper.replaceWith(novaTabela);
-                // Restaura foco no campo alterado
-                if (campoAlterado && campoAlterado.name === "termo_empresa") {
-                  const novoCampo = document.getElementById("busca-empresa");
-                  if (novoCampo) {
-                    novoCampo.focus();
-                    novoCampo.setSelectionRange(posicao, posicao);
-                  }
-                }
-                document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url: novaUrl } }));
-              }
-            })
-            .catch(err => {
-              console.error("Erro ao aplicar filtro de empresas:", err);
-              exibirMensagem("Erro ao aplicar filtro de empresas.", "danger");
-            });
+          console.log("DEBUG JS: Input no campo de busca detectado.");
+          loadAjaxContent(novaUrl);
         }, 300); // ✅ Debounce de 300ms
       }
 
@@ -357,7 +333,10 @@ function bindPageSpecificActions() {
       const selects = form.querySelectorAll("select");
       selects.forEach(select => {
         if (!select.dataset.listenerAttached) {
-          select.addEventListener("change", () => enviarFiltroEmpresas());
+          select.addEventListener("change", () => {
+            console.log("DEBUG JS: Select alterado. Enviando filtro.");
+            enviarFiltroEmpresas();
+          });
           select.dataset.listenerAttached = "true";
         }
       });

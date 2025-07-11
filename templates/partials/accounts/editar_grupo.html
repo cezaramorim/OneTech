@@ -1,55 +1,18 @@
-{% if perms.auth.change_group %}
-{% load static %}
-{% load widget_tweaks %}
-
-<main id="main-content" class="container-fluid py-4" data-page="editar_grupo">
-
-  <!-- 🔔 Mensagens instantâneas -->
-  <div id="mensagens" class="mb-3"></div>
-
+<main id="main-content" class="container-fluid py-4">
   <div class="row justify-content-center">
     <div class="col-md-6">
-
-      <!-- 🏷️ Título da página -->
       <div class="text-center mb-4">
         <h2 class="titulo-formulario">Editar Grupo</h2>
-        <p class="text-muted dark:text-light">Atualize o nome do grupo abaixo.</p>
+        <p class="text-muted dark:text-light">Atualize os dados do grupo.</p>
       </div>
-
-      <!-- 📄 Formulário de edição de grupo -->
-      <form method="post" class="ajax-form shadow-sm card p-4" data-url="{% url 'accounts:editar_grupo' grupo.id %}">
+      <form method="post" class="ajax-form card p-4 shadow-sm">
         {% csrf_token %}
-
-        <!-- 📝 Campo: nome do grupo -->
-        <div class="mb-3">
-          <label for="nome" class="form-label">Nome do Grupo:</label>
-          <input type="text"
-                 name="nome"
-                 id="nome"
-                 class="form-control"
-                 value="{{ grupo.name }}"
-                 required>
-        </div>
-
-        <!-- ✅ Botões de ação -->
+        {{ form.as_p }}
         <div class="d-flex justify-content-between mt-4">
-          <!-- 💾 Salvar -->
           <button type="submit" class="btn btn-success w-50 me-2">Salvar</button>
-
-          <!-- ❌ Cancelar -->
-          <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">
-            ← Cancelar
-          </a>
+          <a href="{% url 'accounts:lista_grupos' %}" class="btn btn-secondary w-50 ajax-link">Cancelar</a>
         </div>
       </form>
-
     </div>
   </div>
 </main>
-
-{% else %}
-<!-- 🔒 Acesso negado -->
-<div class="alert alert-danger text-center mt-5">
-  Você não tem permissão para acessar esta funcionalidade.
-</div>
-{% endif %}
