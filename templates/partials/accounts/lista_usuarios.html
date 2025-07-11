@@ -46,6 +46,7 @@
                                 <th scope="col">Nome Completo</th>
                                 <th scope="col">Usuário</th>
                                 <th scope="col">Email</th>
+                                <th scope="col">WhatsApp</th>
                                 <th scope="col">Grupos</th>
                                 <th scope="col" class="text-center">Ativo</th>
                             </tr>
@@ -59,6 +60,7 @@
                                 <td><label for="usuario_{{ usuario.id }}" class="form-check-label" style="cursor: pointer;">{{ usuario.nome_completo|default:"-" }}</label></td>
                                 <td>{{ usuario.username }}</td>
                                 <td>{{ usuario.email }}</td>
+                                <td>{{ usuario.whatsapp|default:"-" }}</td>
                                 <td>
                                     {% for group in usuario.groups.all %}
                                         <span class="badge bg-light text-dark border border-secondary-subtle fw-normal">{{ group.name }}</span>
@@ -76,7 +78,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center py-5">
+                                <td colspan="7" class="text-center py-5">
                                     <i class="bi bi-people fs-2 text-muted"></i>
                                     <p class="mb-0 mt-2 text-muted">Nenhum usuário cadastrado.</p>
                                     <p><a href="{% url 'accounts:criar_usuario' %}" class="ajax-link">Crie o primeiro</a> para começar.</p>

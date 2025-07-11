@@ -28,27 +28,37 @@
 
           <!-- 🔤 Nome Completo -->
           <div class="mb-3">
-            <label for="nome_completo">Nome Completo:</label>
+            <label for="id_nome_completo">Nome Completo:</label>
             {{ form.nome_completo }}
           </div>
 
           <!-- 📧 E-mail -->
           <div class="mb-3">
-            <label for="email">E-mail:</label>
+            <label for="id_email">E-mail:</label>
             {{ form.email }}
+          </div>
+
+          <!-- 📞 WhatsApp -->
+          <div class="mb-3">
+            <label for="id_whatsapp">WhatsApp:</label>
+            {{ form.whatsapp }}
           </div>
 
           <!-- 👥 Grupo -->
           <div class="mb-3">
-    {{ form.grupo.label_tag }}
-    {{ form.grupo }}
-</div>
-<div class="form-check mb-3">
-    {{ form.is_active }}
-    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
-        {{ form.is_active.label }}
-    </label>
-</div>
+            {{ form.grupo.label_tag }}
+            {{ form.grupo }}
+          </div>
+
+          <!-- ✅ Ativo -->
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                {{ form.is_active.label }}
+            </label>
+            <div class="ms-2">
+                {{ form.is_active }}
+            </div>
+          </div>
 
           <hr>
 
@@ -56,13 +66,18 @@
           <h5 class="mb-3">Alterar Senha <small class="text-muted">(opcional)</small></h5>
 
           <div class="mb-3">
-            <label for="nova_senha">Nova Senha:</label>
-            <input type="password" name="nova_senha" id="nova_senha" class="form-control" placeholder="Digite a nova senha">
+            <label for="id_new_password1">Nova Senha:</label>
+            {{ form.new_password1 }}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_new_password2">Confirme a Nova Senha:</label>
+            {{ form.new_password2 }}
           </div>
 
           <div class="mb-4">
-            <label for="confirmar_senha">Confirme a Nova Senha:</label>
-            <input type="password" name="confirmar_senha" id="confirmar_senha" class="form-control" placeholder="Confirme a nova senha">
+            <label for="id_current_password">Senha Atual:</label>
+            {{ form.current_password }}
           </div>
 
           <!-- Botões -->

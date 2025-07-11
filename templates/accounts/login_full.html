@@ -64,6 +64,11 @@
                 <button type="submit" class="btn btn-primary w-100">
                     Entrar
                 </button>
+
+                <!-- Link para recuperação de senha -->
+                <div class="text-center mt-3">
+                    <a href="{% url 'accounts:password_reset' %}" class="text-decoration-none ajax-link fs-6">Esqueceu a senha?</a>
+                </div>
             </form>
 
         </div>

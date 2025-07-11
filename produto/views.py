@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm, DetalhesFiscaisProdutoForm
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFiscaisProduto
-from accounts.utils.render import render_ajax_or_base
+from accounts.utils import render_ajax_or_base
 
 DetalhesFiscaisProdutoFormSet = inlineformset_factory(
     Produto, 

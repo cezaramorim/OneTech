@@ -6,7 +6,7 @@ from .models import Empresa, CategoriaEmpresa
 from django.contrib.auth.decorators import login_required, permission_required
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
-from accounts.utils.render import render_ajax_or_base
+from accounts.utils import render_ajax_or_base
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.template.loader import render_to_string

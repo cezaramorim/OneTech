@@ -8,6 +8,13 @@ class User(AbstractUser):
         blank=True,
         null=True
     )
+    whatsapp = models.CharField(
+        'WhatsApp',
+        max_length=20,  # Suficiente para formatos como +55 (11) 99999-9999
+        blank=True,
+        null=True,
+        help_text='Número de WhatsApp para recuperação de senha.'
+    )
 
     class Meta:
         verbose_name = 'Usuário'

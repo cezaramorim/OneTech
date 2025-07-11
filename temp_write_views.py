@@ -1,4 +1,6 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import os
+
+corrected_views_content = """from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import Permission, Group, User
@@ -8,14 +10,13 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth import views as auth_views
 from django.contrib.auth.forms import PasswordResetForm
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.template.response import TemplateResponse
+import json
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
@@ -164,6 +165,18 @@ def editar_usuario(request, usuario_id):
     grupo_atual = usuario.groups.first()
 
     if request.method == 'POST':
+        nova_senha = request.POST.get('nova_senha')
+        confirmar = request.POST.get('confirmar_senha')
+
+        if nova_senha and nova_senha == confirmar:
+            usuario.set_password(nova_senha)
+
+        grupo_id = request.POST.get('grupo')
+        if grupo_id:
+            grupo = get_object_or_404(Group, id=grupo_id)
+            usuario.groups.clear()
+            usuario.groups.add(grupo)
+
         if form.is_valid():
             form.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -174,7 +187,6 @@ def editar_usuario(request, usuario_id):
                 })
             return redirect('accounts:lista_usuarios')
         else:
-            print(f"DEBUG: form.errors: {form.errors}")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 erros = []
                 for field, msgs in form.errors.items():
@@ -497,15 +509,17 @@ def gerenciar_permissoes_grupo_view(request, grupo_id):
         'produto': 'Produtos',
     }
 
+    # 📥 Todas as permissões existentes, com relação ao app correspondente
     permissoes = Permission.objects.select_related('content_type').order_by(
         'content_type__app_label', 'codename'
     )
 
+    # 📦 Estrutura para agrupar permissões por app e traduzir nomes
     permissoes_agrupadas = {}
     nomes_apps_traduzidos = {}
 
     for p in permissoes:
-        app = p.content_type.app_label
+        app = p.content.type.app_label
         p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
         permissoes_agrupadas.setdefault(app, []).append(p)
         if app not in nomes_apps_traduzidos:
@@ -639,7 +653,7 @@ def password_reset_request_view(request):
                 # Se chegou aqui, é a primeira vez que o usuário vê a tela de escolha
                 # Ofusca o número do WhatsApp para segurança
                 whatsapp_ofuscado = f"*****{user.whatsapp[-4:]}" if user.whatsapp else None
-                return render_ajax_or_base(request, 'accounts/password_reset_choose_method.html', {
+                return render(request, 'accounts/password_reset_choose_method.html', {
                     'user_found': True,
                     'whatsapp_number': whatsapp_ofuscado,
                     'email': email,
@@ -652,17 +666,11 @@ def password_reset_request_view(request):
     else:
         form = PasswordResetForm()
 
-    return render_ajax_or_base(request, 'accounts/password_reset.html', {'form': form})
+    return render(request, 'accounts/password_reset.html', {'form': form})"""
 
-# Custom Django Auth Views for AJAX compatibility
-class CustomPasswordResetDoneView(auth_views.PasswordResetDoneView):
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
+file_path = "C:/Users/cdbg2/documents/onetech/accounts/views.py"
 
-class CustomPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
+with open(file_path, "w") as f:
+    f.write(corrected_views_content)
 
-class CustomPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
+print(f"File {file_path} has been overwritten.")
