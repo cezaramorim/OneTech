@@ -28,16 +28,10 @@ urlpatterns = [
     path('usuarios/<int:usuario_id>/editar/', views.editar_usuario, name='editar_usuario'),
     path('usuarios/excluir-multiplos/', views.excluir_usuario_multiplo, name='excluir_usuario_multiplo'),
 
-    # === PERMISSÕES GERAIS ===
-    path('permissoes/', views.selecionar_usuario_permissoes_view, name='selecionar_usuario_permissoes'),
-    path('permissoes/editar/<int:usuario_id>/', views.editar_permissoes, name='editar_permissoes'),
-    path('permissoes/gerenciar/', views.gerenciar_permissoes_geral, name='gerenciar_permissoes_geral'),
-
-    # === PERMISSÕES POR GRUPO ===
-    path('permissoes/por-grupo/', views.gerenciar_permissoes_grupo_view_selector, name='selecionar_grupo_permissoes'),
-    path('grupos/<int:grupo_id>/permissoes/', views.gerenciar_permissoes_grupo_view, name='gerenciar_permissoes_grupo'),
-    path('grupos/<int:grupo_id>/ver-permissoes/', views.visualizar_permissoes_grupo_view, name='visualizar_permissoes_grupo'),
-     path('grupos/selecionar/', views.seletor_grupo_permissoes, name='gerenciar_permissoes_grupo_selector'),
+    # === PERMISSÕES ===
+    # URLs refatoradas para clareza e responsabilidade única
+    path('usuarios/<int:user_id>/permissoes/', views.gerenciar_permissoes_usuario, name='gerenciar_permissoes_usuario'),
+    path('grupos/<int:group_id>/permissoes/', views.gerenciar_permissoes_grupo, name='gerenciar_permissoes_grupo'),
 
     # === GRUPOS ===
     path('grupos/', views.lista_grupos, name='lista_grupos'),

@@ -4,7 +4,7 @@
 
 <main id="main-content" class="container-fluid py-4" data-page="criar_usuario">
     <!-- 🔔 Mensagens instantâneas (novo padrão escalável) -->
-    <div id="mensagens"></div>
+    
   
     <!-- 🔔 Mensagens instantâneas-->
   {% include 'partials/mensagens.html' %}
@@ -99,10 +99,6 @@
           <div class="d-flex justify-content-between mt-4">
             <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary">
               <i class="bi bi-arrow-left-circle"></i> Voltar
-            </a>
-
-            <a href="{% url 'accounts:gerenciar_permissoes_geral' %}" class="btn btn-outline-primary">
-              <i class="bi bi-shield-lock"></i> Incluir Permissões
             </a>
 
             <button type="submit" class="btn btn-success">

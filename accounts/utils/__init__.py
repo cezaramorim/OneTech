@@ -23,6 +23,7 @@ PERMISSOES_PT_BR = {
     "contenttypes": "Tipos de Conteúdo",
     "sessions": "Sessões",
     "empresas": "Empresas",
+    "fiscal": "Fiscal",
     "nota_fiscal": "Nota Fiscal",
     "produto": "Produtos",
     
@@ -35,6 +36,14 @@ PERMISSOES_PT_BR = {
     "Can change user": "Editar usuário",
     "Can delete user": "Excluir usuário",
     "Can view user": "Visualizar usuário",
+    "Can add Usuário": "Adicionar Usuário",
+    "Can change Usuário": "Editar Usuário",
+    "Can delete Usuário": "Excluir Usuário",
+    "Can view Usuário": "Visualizar Usuário",
+    "Can add group profile": "Adicionar perfil de grupo",
+    "Can change group profile": "Editar perfil de grupo",
+    "Can delete group profile": "Excluir perfil de grupo",
+    "Can view group profile": "Visualizar perfil de grupo",
 
     # 🛡️ Grupos
     'add_group': 'Adicionar Grupo',
@@ -85,111 +94,70 @@ PERMISSOES_PT_BR = {
     "Can view content type": "Visualizar tipo de conteúdo",
 
     # 🧾 Nota Fiscal
-    "Can add nota fiscal": "Adicionar nota fiscal",
-    "Can change nota fiscal": "Editar nota fiscal",
-    "Can delete nota fiscal": "Excluir nota fiscal",
-    "Can view nota fiscal": "Visualizar nota fiscal",
-
+    "Can add Nota Fiscal": "Adicionar Nota Fiscal",
+    "Can change Nota Fiscal": "Editar Nota Fiscal",
+    "Can delete Nota Fiscal": "Excluir Nota Fiscal",
+    "Can view Nota Fiscal": "Visualizar Nota Fiscal",
     "Can add item nota fiscal": "Adicionar item de nota fiscal",
     "Can change item nota fiscal": "Editar item de nota fiscal",
     "Can delete item nota fiscal": "Excluir item de nota fiscal",
     "Can view item nota fiscal": "Visualizar item de nota fiscal",
-
-    "Can add duplicata nota fiscal": "Adicionar duplicata de nota fiscal",
-    "Can change duplicata nota fiscal": "Editar duplicata de nota fiscal",
-    "Can delete duplicata nota fiscal": "Excluir duplicata de nota fiscal",
-    "Can view duplicata nota fiscal": "Visualizar duplicata de nota fiscal",
-
-    "Can add transporte nota fiscal": "Adicionar transporte de nota fiscal",
-    "Can change transporte nota fiscal": "Editar transporte de nota fiscal",
-    "Can delete transporte nota fiscal": "Excluir transporte de nota fiscal",
-    "Can view transporte nota fiscal": "Visualizar transporte de nota fiscal",
+    "Can add Duplicata da Nota Fiscal": "Adicionar Duplicata da Nota Fiscal",
+    "Can change Duplicata da Nota Fiscal": "Editar Duplicata da Nota Fiscal",
+    "Can delete Duplicata da Nota Fiscal": "Excluir Duplicata da Nota Fiscal",
+    "Can view Duplicata da Nota Fiscal": "Visualizar Duplicata da Nota Fiscal",
+    "Can add Transporte da Nota Fiscal": "Adicionar Transporte da Nota Fiscal",
+    "Can change Transporte da Nota Fiscal": "Editar Transporte da Nota Fiscal",
+    "Can delete Transporte da Nota Fiscal": "Excluir Transporte da Nota Fiscal",
+    "Can view Transporte da Nota Fiscal": "Visualizar Transporte da Nota Fiscal",
 
     # 📦 Produtos
     "Can add produto": "Adicionar produto",
     "Can change produto": "Editar produto",
     "Can delete produto": "Excluir produto",
     "Can view produto": "Visualizar produto",
-
     "Can add entrada produto": "Adicionar entrada de produto",
     "Can change entrada produto": "Editar entrada de produto",
     "Can delete entrada produto": "Excluir entrada de produto",
     "Can view entrada produto": "Visualizar entrada de produto",
-
     "Can add ncm": "Adicionar NCM",
     "Can change ncm": "Editar NCM",
     "Can delete ncm": "Excluir NCM",
     "Can view ncm": "Visualizar NCM",
-
     "Can add categoria produto": "Adicionar categoria de produto",
     "Can change categoria produto": "Editar categoria de produto",
     "Can delete categoria produto": "Excluir categoria de produto",
     "Can view categoria produto": "Visualizar categoria de produto",
-
     "Can add unidade medida": "Adicionar unidade de medida",
     "Can change unidade medida": "Editar unidade de medida",
     "Can delete unidade medida": "Excluir unidade de medida",
     "Can view unidade medida": "Visualizar unidade de medida",
+    "Can add detalhes fiscais produto": "Adicionar detalhes fiscais do produto",
+    "Can change detalhes fiscais produto": "Editar detalhes fiscais do produto",
+    "Can delete detalhes fiscais produto": "Excluir detalhes fiscais do produto",
+    "Can view detalhes fiscais produto": "Visualizar detalhes fiscais do produto",
 
     # 🕒 Sessões
     "Can add session": "Adicionar sessão",
     "Can change session": "Editar sessão",
     "Can delete session": "Excluir sessão",
     "Can view session": "Visualizar sessão",
+
+    # 🧾 Fiscal
+    "Can add CFOP": "Adicionar CFOP",
+    "Can change CFOP": "Editar CFOP",
+    "Can delete CFOP": "Excluir CFOP",
+    "Can view CFOP": "Visualizar CFOP",
+    "Can add CSOSN": "Adicionar CSOSN",
+    "Can change CSOSN": "Editar CSOSN",
+    "Can delete CSOSN": "Excluir CSOSN",
+    "Can view CSOSN": "Visualizar CSOSN",
+    "Can add CST": "Adicionar CST",
+    "Can change CST": "Editar CST",
+    "Can delete CST": "Excluir CST",
+    "Can view CST": "Visualizar CST",
+    "Can add Natureza de Operação": "Adicionar Natureza de Operação",
+    "Can change Natureza de Operação": "Editar Natureza de Operação",
+    "Can delete Natureza de Operação": "Excluir Natureza de Operação",
+    "Can view Natureza de Operação": "Visualizar Natureza de Operação",
 }
-
-# ✅ Adicione novas permissões personalizadas aqui conforme necessário.
-
-# Exemplo:
-# PERMISSOES_PT_BR['can_do_something_custom'] = 'Pode fazer algo personalizado'
-# PERMISSOES_PT_BR['view_dashboard'] = 'Visualizar painel de controle'
-
-def enviar_link_whatsapp(numero_destino, link_redefinicao):
-    """
-    Envia uma mensagem com o link de redefinição de senha para o WhatsApp.
-
-    Esta é uma função de exemplo (placeholder). Para funcionar, você precisa
-    integrá-la com um serviço de API de WhatsApp, como Twilio, Z-API, etc.
-
-    Args:
-        numero_destino (str): O número de telefone do destinatário no formato internacional (ex: +5511999999999).
-        link_redefinicao (str): A URL completa para redefinir a senha.
-
-    Returns:
-        bool: True se a mensagem foi enviada com sucesso, False caso contrário.
-    """
-    print("--- SIMULAÇÃO DE ENVIO DE WHATSAPP ---")
-    print(f"Para: {numero_destino}")
-    print(f"Mensagem: Olá! Para redefinir sua senha, acesse: {link_redefinicao}")
-    print("--------------------------------------")
-
-    #
-    # --- INÍCIO DA ÁREA DE INTEGRAÇÃO ---
-    #
-    # Substitua o código abaixo pela lógica de envio da sua API de WhatsApp.
-    # Exemplo com uma API fictícia:
-    #
-    # import requests
-    #
-    # api_url = "https://api.seuprovedor.com/send"
-    # api_key = "SUA_CHAVE_DE_API_AQUI"
-    # headers = {"Authorization": f"Bearer {api_key}"}
-    # data = {
-    #     "to": numero_destino,
-    #     "message": f"Olá! Para redefinir sua senha, acesse: {link_redefinicao}"
-    # }
-    #
-    # try:
-    #     response = requests.post(api_url, headers=headers, json=data)
-    #     response.raise_for_status()  # Lança um erro para respostas 4xx/5xx
-    #     return True # Sucesso
-    # except requests.exceptions.RequestException as e:
-    #     print(f"Erro ao enviar WhatsApp: {e}")
-    #     return False # Falha
-    #
-    # --- FIM DA ÁREA DE INTEGRAÇÃO ---
-    #
-
-    # Como esta é uma simulação, retornamos True para indicar que o fluxo pode continuar.
-    # No ambiente de produção, isso dependerá da resposta da API.
-    return True

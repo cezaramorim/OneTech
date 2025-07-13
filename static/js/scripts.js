@@ -35,26 +35,7 @@ function mostrarMensagemErro(mensagem) {
   mostrarMensagemBootstrap(mensagem, "danger");
 }
 
-function exibirMensagem(texto, tipo = "info") {
-  const mensagens = document.getElementById("mensagens");
-  if (!mensagens) return;
-  const icones = {
-    success: '<i class="bi bi-check-circle-fill me-1 text-success"></i>',
-    danger: '<i class="bi bi-x-circle-fill me-1 text-danger"></i>',
-    error: '<i class="bi bi-x-circle-fill me-1 text-danger"></i>',
-    warning: '<i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>',
-    info: '<i class="bi bi-info-circle-fill me-1 text-info"></i>'
-  };
-  mensagens.innerHTML = `<div class="alert alert-${tipo} alert-dismissible fade show" role="alert">${icones[tipo] || icones.info} ${texto}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button></div>`;
-  setTimeout(() => {
-    const alerta = mensagens.querySelector(".alert");
-    if (alerta) {
-      alerta.classList.remove("show");
-      alerta.classList.add("fade");
-      setTimeout(() => alerta.remove(), 300);
-    }
-  }, 5000);
-}
+
 
 function getCSRFToken() {
   const name = "csrftoken";
@@ -69,13 +50,13 @@ function getCSRFToken() {
 }
 
 function loadAjaxContent(url, forceFullLoad = false) {
-  console.log("🔁 loadAjaxContent chamada com URL:", url);
+  console.log("🔁 loadAjaxContent: Iniciando carregamento para URL:", url);
 
   // Get the current active content area, which is expected to be #identificador-tela or #main-content
   const currentActiveContent = document.querySelector("#main-content") || document.querySelector("main");
 
   if (!currentActiveContent) {
-    console.error("❌ Não foi possível encontrar o elemento de conteúdo ativo para substituição (#main-content ou main).");
+    console.error("❌ loadAjaxContent: Não foi possível encontrar o elemento de conteúdo ativo para substituição (#main-content ou main).");
     return;
   }
 
@@ -83,10 +64,14 @@ function loadAjaxContent(url, forceFullLoad = false) {
 
   fetch(url, { headers })
     .then(response => {
-      if (!response.ok) throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`❌ loadAjaxContent: Erro na resposta HTTP: ${response.status} - ${response.statusText}`);
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      }
       return response.text();
     })
     .then(html => {
+      console.log("✅ loadAjaxContent: HTML recebido. Tamanho:", html.length);
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = html;
 
@@ -94,14 +79,12 @@ function loadAjaxContent(url, forceFullLoad = false) {
       const newActiveContent = tempDiv.querySelector("#main-content") || tempDiv.querySelector("main");
 
       if (!newActiveContent) {
-        console.warn("⚠️ Conteúdo não encontrado ou estrutura inválida na resposta HTML (novo conteúdo - #main-content ou main).");
+        console.warn("⚠️ loadAjaxContent: Conteúdo não encontrado ou estrutura inválida na resposta HTML (novo conteúdo - #main-content ou main).");
         return;
       }
 
       // Preserve focus logic (if applicable)
       const campoBuscaAntigo = currentActiveContent.querySelector("#busca-nota") || currentActiveContent.querySelector("#busca-empresa");
-
-      console.log("DEBUG JS: currentActiveContent before replacement:", currentActiveContent);
 
       if (campoBuscaAntigo) {
         const valor = campoBuscaAntigo.value || "";
@@ -109,34 +92,48 @@ function loadAjaxContent(url, forceFullLoad = false) {
         const idCampo = campoBuscaAntigo.id;
 
         currentActiveContent.replaceWith(newActiveContent); // Replace the current with the new
-        console.log("DEBUG JS: currentActiveContent replaced. New content is now in DOM (with focus preservation).");
 
         const campoBuscaNovo = newActiveContent.querySelector(`#${idCampo}`);
         if (campoBuscaNovo) {
           campoBuscaNovo.focus();
           campoBuscaNovo.setSelectionRange(posicao, posicao);
         }
-        console.log(`✅ Conteúdo com #${idCampo} atualizado preservando foco.`);
+        console.log(`✅ loadAjaxContent: Conteúdo com #${idCampo} atualizado preservando foco.`);
       } else {
         // Normal content update
         currentActiveContent.replaceWith(newActiveContent);
-        console.log("DEBUG JS: currentActiveContent replaced. New content is now in DOM (normal update).");
-        console.log("✅ Novo conteúdo carregado.");
+        console.log("✅ loadAjaxContent: Novo conteúdo carregado (normal update).");
       }
 
       // Re-trigger page-specific actions
       setTimeout(() => {
         document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url: url } }));
       }, 10);
+
+      // Exibir e limpar mensagem de sucesso do localStorage
+      const mensagemSucesso = localStorage.getItem("mensagem_sucesso");
+      if (mensagemSucesso) {
+        mostrarMensagemSucesso(mensagemSucesso);
+        localStorage.removeItem("mensagem_sucesso");
+      }
     })
     .catch(error => {
-      console.error("❌ Erro ao carregar conteúdo via AJAX:", error);
-      exibirMensagem("Erro ao carregar conteúdo: " + error.message, "danger");
+      console.error("❌ loadAjaxContent: Erro ao carregar conteúdo via AJAX:", error);
+      mostrarMensagemErro("Erro ao carregar conteúdo: " + error.message);
     });
 }
 
 
 
+
+document.addEventListener("click", e => {
+  const target = e.target.closest(".ajax-link");
+  if (target) {
+    e.preventDefault();
+    const url = target.href;
+    loadAjaxContent(url);
+  }
+});
 
 document.addEventListener("submit", async e => {
   const form = e.target;
@@ -173,21 +170,37 @@ document.addEventListener("submit", async e => {
     if (contentType && contentType.includes("application/json")) {
       const data = await response.json();
       console.log("DEBUG JS: JSON Response Data:", data);
-      if (data.mensagem) {
-        const tipo = data.sucesso ? "success" : "danger";
-        exibirMensagem(data.mensagem, tipo);
+      if (data.message) {
+        if (!data.redirect_url) { // Só exibe se não houver redirecionamento
+          if (data.success) {
+            mostrarMensagemSucesso(data.message);
+          } else {
+            mostrarMensagemErro(data.message);
+          }
+        }
+      } else if (data.mensagem) { // Fallback para 'mensagem' e 'sucesso' antigos
+        if (!data.redirect_url) { // Só exibe se não houver redirecionamento
+          if (data.sucesso) {
+            mostrarMensagemSucesso(data.mensagem);
+          } else {
+            mostrarMensagemErro(data.mensagem);
+          }
+        }
       }
       if (data.redirect_url) {
-        if (data.message || data.mensagem || data.sucesso) {
-          const msg = data.message || data.mensagem || "Operação realizada com sucesso.";
+        console.log("DEBUG JS: Redirecionamento detectado. URL:", data.redirect_url);
+        if (data.message || data.mensagem) {
+          const msg = data.message || data.mensagem;
+          console.log("DEBUG JS: Salvando mensagem no localStorage:", msg);
           localStorage.setItem("mensagem_sucesso", msg);
+          console.log("DEBUG JS: Mensagem salva no localStorage.");
         }
         const mainContent = document.getElementById("main-content");
         if (mainContent && mainContent.closest(".layout")) {
           history.pushState({ ajaxUrl: data.redirect_url }, "", data.redirect_url);
+          console.log("DEBUG JS: Chamando loadAjaxContent para redirecionamento.");
           loadAjaxContent(data.redirect_url);
           console.log("DEBUG JS: Redirecionando para:", data.redirect_url);
-          document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url: data.redirect_url } }));
 
         } else {
           window.location.href = data.redirect_url;
@@ -215,7 +228,7 @@ document.addEventListener("submit", async e => {
     } else if (err?.message) {
       exibirMensagem("Erro de rede: " + err.message, "danger");
     } else {
-      exibirMensagem("Erro desconhecido ao processar requisição.", "danger");
+      mostrarMensagemErro("Erro desconhecido ao processar requisição.");
     }
   }
 });
@@ -288,7 +301,7 @@ function setupColumnSorting() {
 
 // FUNÇÃO LISTA EMPRESAS AVANÇADAS, NÃO ALTERAR
 function bindPageSpecificActions() {
-  console.log("bindPageSpecificActions chamada");
+  console.log("🔁 bindPageSpecificActions: Iniciando vinculação de ações específicas da página.");
   const mainContent   = document.querySelector("#main-content");
   const identificador = document.querySelector("#identificador-tela");
   let tela = identificador?.dataset?.tela
@@ -296,7 +309,13 @@ function bindPageSpecificActions() {
           || mainContent?.dataset?.page
           || "";
   tela = tela.replace(/-/g, "_");
-  console.log("Tela identificada:", tela);
+  console.log("✅ bindPageSpecificActions: Tela identificada como:", tela);
+  if (identificador) {
+    console.log("✅ bindPageSpecificActions: Dataset do #identificador-tela:", identificador.dataset);
+  }
+  if (mainContent) {
+    console.log("✅ bindPageSpecificActions: Dataset do #main-content:", mainContent.dataset);
+  }
 
   if (tela === "empresa_avancada") {
     initCadastroEmpresaAvancada();
@@ -379,322 +398,14 @@ function bindPageSpecificActions() {
     }
   }
 
-  if (tela === "gerenciar_permissoes_geral") {
-    const grupoSelect   = document.getElementById("grupo");
-    const usuarioSelect = document.getElementById("usuario");
-    const tipoInput     = document.getElementById("tipo-selecionado");
-    if (grupoSelect && usuarioSelect && tipoInput) {
-      grupoSelect.addEventListener("change", () => {
-        usuarioSelect.selectedIndex = 0;
-        tipoInput.value            = "grupo";
-        document.querySelector("form.ajax-form").submit();
-      });
-      usuarioSelect.addEventListener("change", () => {
-        grupoSelect.selectedIndex = 0;
-        tipoInput.value           = "usuario";
-        document.querySelector("form.ajax-form").submit();
-      });
-    }
+  if (tela === "gerenciar_permissoes") {
+    initPermissionsPage();
   }
-
-  // ============================================
-  // FUNÇÃO CENTRAL DE AÇÕES (GENÉRICA + LEGADO)
-  // ============================================
-  const atualizarBotoesAcao = () => {
-    const identificador = document.querySelector("#identificador-tela");
-    const btnEditar  = document.getElementById("btn-editar") || document.getElementById("btn-editar-nota");
-    const btnExcluir = document.getElementById("btn-excluir") || document.getElementById("btn-excluir-nota");
-
-    // ✅ NOVA LÓGICA GENÉRICA (baseada em data-atributos)
-    if (identificador && identificador.dataset.entidadeSingular) {
-      const {
-        entidadeSingular,
-        entidadePlural,
-        urlEditar,
-        urlExcluir,
-        seletorCheckbox
-      } = identificador.dataset;
-
-      console.log("DEBUG JS: Lógica genérica ativada para:", entidadeSingular);
-      console.log("DEBUG JS: urlEditar:", urlEditar);
-      console.log("DEBUG JS: urlExcluir:", urlExcluir);
-      console.log("DEBUG JS: seletorCheckbox:", seletorCheckbox);
-
-      if (!entidadeSingular || !urlEditar || !urlExcluir || !seletorCheckbox) {
-        console.error("❌ Atributos data-* ausentes para a lógica de ações genéricas.");
-        return;
-      }
-
-      const checkboxes = document.querySelectorAll(seletorCheckbox);
-      const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
-      const selectAll = document.getElementById(`select-all-${entidadePlural}`);
-
-      // Habilitar/desabilitar botões
-      if (btnEditar) btnEditar.disabled = selecionados.length !== 1;
-      if (btnExcluir) btnExcluir.disabled = selecionados.length === 0;
-
-      // Ação de Editar
-      if (btnEditar) {
-        btnEditar.onclick = () => {
-          const selecionado = document.querySelector(`${seletorCheckbox}:checked`);
-          console.log("DEBUG JS: Botão Editar clicado. Item selecionado:", selecionado?.value);
-          if (!selecionado) return exibirMensagem(`Selecione um(a) ${entidadeSingular} para editar.`, "warning");
-          const url = `${urlEditar}${selecionado.value}/editar/`;
-          console.log("DEBUG JS: URL de edição construída:", url);
-          history.pushState({ ajaxUrl: url }, "", url);
-          loadAjaxContent(url);
-        };
-      }
-
-      // Ação de Excluir
-      if (btnExcluir) {
-        btnExcluir.onclick = () => {
-          const selecionados = Array.from(document.querySelectorAll(`${seletorCheckbox}:checked`));
-          console.log("DEBUG JS: Botão Excluir clicado. IDs selecionados:", selecionados.map(cb => cb.value));
-          if (selecionados.length === 0) return exibirMensagem(`Selecione ao menos um(a) ${entidadeSingular} para excluir.`, "warning");
-
-          const confirmMsg = `Deseja realmente excluir ${selecionados.length} ${selecionados.length > 1 ? entidadePlural : entidadeSingular}?`;
-          if (!confirm(confirmMsg)) return;
-
-          exibirMensagem(`Excluindo ${entidadePlural}...`, "info");
-          const ids = selecionados.map(cb => cb.value);
-
-          fetch(urlExcluir, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": getCSRFToken(),
-              "Content-Type": "application/json",
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify({ ids })
-          })
-          .then(res => res.json())
-          .then(data => {
-            console.log("DEBUG JS: Resposta da exclusão:", data);
-            if (data.success || data.sucesso) {
-              exibirMensagem(data.mensagem || `${entidadePlural.charAt(0).toUpperCase() + entidadePlural.slice(1)} excluídos com sucesso.`, "success");
-              loadAjaxContent(data.redirect_url || window.location.href);
-            } else {
-              exibirMensagem(data.erro || `Erro ao excluir as ${entidadePlural}.`, "danger");
-            }
-          })
-          .catch(err => {
-            console.error("DEBUG JS: Erro no fetch de exclusão:", err);
-            exibirMensagem("Erro ao excluir: " + err.message, "danger");
-          });
-        };
-      }
-
-      // Ação do "Selecionar Todos"
-      if (selectAll && !selectAll.dataset.listenerAttached) {
-        selectAll.addEventListener("change", (e) => {
-          document.querySelectorAll(seletorCheckbox).forEach(cb => cb.checked = e.target.checked);
-          atualizarBotoesAcao();
-        });
-        selectAll.dataset.listenerAttached = "true";
-      }
-
-      return; // Finaliza a execução para não entrar na lógica antiga
-    }
-
-    // ⚠️ LÓGICA ANTIGA (Fallback para telas não refatoradas)
-    let tela = identificador?.dataset?.tela || document.querySelector("#main-content")?.dataset?.page || "";
-    tela = tela.replace(/-/g, "_");
-
-    const checkboxes = document.querySelectorAll(
-      `input[type="checkbox"].checkbox-nota,
-       #grupos-form input[type="checkbox"],
-       #usuarios-form input[type="checkbox"],
-       input.check-produto`
-    );
-    const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
-    const apenasUm = selecionados.length === 1;
-    const temSelecionado = selecionados.length > 0;
-    const telasComSelecao = [
-      "lista_grupos", "lista_empresas",
-      "selecionar_usuario_permissoes", "gerenciar-permissoes-grupo-selector",
-      "entradas_nota", "lista_produtos"
-    ];
-
-    if (telasComSelecao.includes(tela)) {
-      if (btnEditar)  btnEditar.disabled  = !apenasUm;
-      if (btnExcluir) btnExcluir.disabled = !temSelecionado;
-    }
-
-    if (tela === "lista_produtos") {
-      if (btnEditar) {
-        btnEditar.onclick = () => {
-          const selecionado = document.querySelector("input.check-produto:checked");
-          if (!selecionado) return exibirMensagem("Selecione um produto para editar.", "warning");
-          const url = `/produtos/editar/${selecionado.value}/`;
-          history.pushState({ ajaxUrl: url }, "", url);
-          loadAjaxContent(url);
-        };
-      }
-      if (btnExcluir) {
-        btnExcluir.onclick = () => {
-          const selecionados = Array.from(document.querySelectorAll("input.check-produto:checked"));
-          if (selecionados.length === 0) {
-            return exibirMensagem("Selecione ao menos um produto para excluir.", "warning");
-          }
-          exibirMensagem("Excluindo produtos...", "info");
-          const ids = selecionados.map(cb => cb.value);
-          fetch("/produtos/excluir-multiplos/", {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": getCSRFToken(),
-              "Content-Type": "application/json",
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify({ ids })
-          })
-            .then(res => res.json())
-            .then(data => {
-              if (data.sucesso) {
-                exibirMensagem(data.mensagem || "Produtos excluídos com sucesso.", "success");
-                loadAjaxContent(window.location.href);
-              } else {
-                exibirMensagem(data.erro || "Erro ao excluir os produtos.", "danger");
-              }
-            })
-            .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
-        };
-      }
-      const selectAll = document.getElementById("select-all-produtos");
-      if (selectAll) {
-        selectAll.addEventListener("change", (e) => {
-          const chks = document.querySelectorAll("input.check-produto");
-          chks.forEach(cb => cb.checked = e.target.checked);
-          atualizarBotoesAcao();
-        });
-      }
-    }
-
-    if (tela === "entradas_nota") {
-      if (btnEditar) {
-        btnEditar.onclick = () => {
-          const sel = Array.from(
-            document.querySelectorAll('input[type="checkbox"].checkbox-nota:checked')
-          );
-          if (sel.length !== 1) {
-            return exibirMensagem("Selecione exatamente uma nota para editar.", "warning");
-          }
-          const url = `/nota-fiscal/editar/${sel[0].value}/`;
-          history.pushState({ ajaxUrl: url }, "", url);
-          loadAjaxContent(url);
-        };
-      }
-      if (btnExcluir) {
-        btnExcluir.onclick = () => {
-          const sel = Array.from(
-            document.querySelectorAll('input[type="checkbox"].checkbox-nota:checked')
-          );
-          if (sel.length === 0) return exibirMensagem("Nenhuma nota selecionada para excluir.", "warning");
-          if (!confirm(`Deseja realmente excluir ${sel.length > 1 ? sel.length + " notas fiscais" : "esta nota fiscal"}?`)) return;
-          fetch(`/nota-fiscal/excluir/${sel[0].value}/`, {
-            method: "POST",
-            headers: { "X-CSRFToken": getCSRFToken(), "X-Requested-With": "XMLHttpRequest" }
-          })
-            .then(res => res.json())
-            .then(data => {
-              if (data.sucesso || data.mensagem || data.success) {
-                exibirMensagem(data.mensagem || data.success || "Nota excluída com sucesso.", "success");
-                const novaURL = "/nota-fiscal/entradas/";
-                history.pushState({ ajaxUrl: novaURL }, "", novaURL);
-                loadAjaxContent(novaURL);
-              } else {
-                exibirMensagem(data.erro || data.error || "Erro ao excluir nota.", "danger");
-              }
-            })
-            .catch(err => exibirMensagem("Erro ao excluir: " + err.message, "danger"));
-        };
-      }
-    }
-
-    // ============================================
-    // ←←← AQUI: lógica para editar_entrada ←←←
-    // ============================================
-    if (tela === "editar_entrada") {
-      console.log("Lógica específica para editar_entrada está a ser vinculada.");
-
-      // Botões e form
-      const btnFinalizar = document.getElementById("btn-finalizar-lancamento");
-      const btnDescartar = document.getElementById("btn-descartar-alteracoes");
-      const form         = document.getElementById("form-editar-entrada");
-
-      // Finalizar Lançamento via AJAX
-      if (btnFinalizar && form) {
-        btnFinalizar.onclick = () => {
-          // 1) Cria um FormData completo do <form>
-          const data = new FormData(form);
-
-          // 2) Envia como multipart/form-data (sem setar Content-Type)
-          fetch(window.location.pathname, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken":      getCSRFToken(),
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            body: data
-          })
-          .then(res => res.json().then(json => ({ status: res.status, body: json })))
-          .then(({ status, body }) => {
-            if (status === 200) {
-              // sucesso
-              mostrarMensagemSucesso(body.mensagem || "Alterações salvas com sucesso!");
-              setTimeout(() => {
-                const listUrl = "/nota-fiscal/entradas/";
-                history.pushState({ ajaxUrl: listUrl }, "", listUrl);
-                loadAjaxContent(listUrl);
-              }, 500);
-            } else {
-              // validação falhou: exibe lista de erros
-              const erros = body.erros || body.error || body;
-              mostrarMensagemErro("Erros: " + JSON.stringify(erros));
-            }
-          })
-          .catch(err => {
-            console.error("Erro no fetch:", err);
-            mostrarMensagemErro("Erro ao salvar alterações.");
-          });
-        };
-      }
-
-      // Descartar alterações
-      if (btnDescartar) {
-        btnDescartar.onclick = () => {
-          if (confirm("Descartar alterações?")) {
-            const listUrl = "/nota-fiscal/entradas/";
-            history.pushState({ ajaxUrl: listUrl }, "", listUrl);
-            loadAjaxContent(listUrl);
-          }
-        };
-      }
-    }
-  };
-
-  window.atualizarBotoesAcaoGlobal = atualizarBotoesAcao;
-  document.body.removeEventListener("change", globalCheckboxListener);
-  document.body.addEventListener("change", globalCheckboxListener);
-
-  function globalCheckboxListener(e) {
-    if (e.target && e.target.matches('input[type="checkbox"]')) {
-      if (typeof window.atualizarBotoesAcaoGlobal === "function") {
-        window.atualizarBotoesAcaoGlobal();
-      }
-    }
-  }
-  atualizarBotoesAcao();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOMContentLoaded - chamando bindPageSpecificActions");
+  
   bindPageSpecificActions();
-  const mensagemSucesso = localStorage.getItem("mensagem_sucesso");
-  if (mensagemSucesso) {
-    exibirMensagem(mensagemSucesso, "success");
-    localStorage.removeItem("mensagem_sucesso");
-  }
   history.replaceState({ ajaxUrl: window.location.href }, "", window.location.href);
 });
 

@@ -4,7 +4,7 @@
 
 <main id="main-content" class="container-fluid py-4" data-page="editar_usuario">
   <!-- 🔔 Mensagens instantâneas -->
-  <div id="mensagens"></div>
+  
 
   <div class="row justify-content-center">
     <div class="col-md-6">
@@ -85,6 +85,9 @@
             <button type="submit" class="btn btn-primary">
               💾 Salvar Alterações
             </button>
+            <a href="{% url 'accounts:editar_permissoes' usuario.id %}" class="btn btn-outline-info ajax-link">
+              <i class="bi bi-shield-lock"></i> Gerenciar Permissões
+            </a>
             <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">
               ← Voltar
             </a>

@@ -2,13 +2,19 @@
 {% load widget_tweaks %}
 
 <!-- 🔔 Mensagens instantâneas -->
-<div id="mensagens"></div>
+
 {% include 'partials/mensagens.html' %}
 
 <!-- ✅ Lista de Produtos - AJAX | Responsivo, claro/escuro, boas práticas -->
 <main id="main-content" data-tela="lista_produtos" class="container-fluid">
   <!-- 🆔 Identificador para JS -->
-  <div id="identificador-tela" data-tela="lista_produtos"></div>
+  <div id="identificador-tela" 
+       data-tela="lista_produtos"
+       data-entidade-singular="produto"
+       data-entidade-plural="produtos"
+       data-url-editar="{% url 'produto:editar_produto' pk=0 %}"
+       data-url-excluir="{% url 'produto:excluir_produto_multiplo' %}"
+       data-seletor-checkbox=".check-produto"></div>
 
   <!-- 🎴 Cartão visual padrão do sistema -->
   <div class="card shadow-sm">

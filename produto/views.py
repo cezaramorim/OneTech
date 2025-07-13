@@ -102,7 +102,7 @@ def editar_produto_view(request, pk):
 
 @require_POST
 @login_required
-def excluir_produtos_view(request):
+def excluir_produtos_multiplos_view(request):
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"erro": "Requisição inválida."}, status=400)
 

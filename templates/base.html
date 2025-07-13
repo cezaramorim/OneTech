@@ -87,9 +87,6 @@
                     <li><a href="{% url 'accounts:criar_usuario' %}" class="list-group-item ajax-link">Novo</a></li>
                     {% endif %}
                     <li><a href="{% url 'accounts:lista_usuarios' %}" class="list-group-item ajax-link">Lista</a></li>
-                    {% if perms.accounts.change_permission %}
-                    <li><a href="{% url 'accounts:selecionar_usuario_permissoes' %}" class="list-group-item ajax-link">Permissões</a></li>
-                    {% endif %}
                   </ul>
                 </li>
                 {% endif %}
@@ -109,18 +106,7 @@
                 </li>
                 {% endif %}
     
-                {% if perms.auth.change_permission %}
-                <!-- 🔐 Permissões -->
-                <li class="list-group-item ms-3">
-                  <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-permissoes" aria-expanded="false">
-                    🔐 Permissões
-                  </button>
-                  <ul id="config-permissoes" class="collapse list-group list-group-flush mt-2 ms-3">
-                    <li><a href="{% url 'accounts:gerenciar_permissoes_geral' %}" class="list-group-item ajax-link">Gerenciar</a></li>
-                    <li><a href="{% url 'accounts:gerenciar_permissoes_grupo_selector' %}" class="list-group-item ajax-link">Por Grupo</a></li>
-                  </ul>
-                </li>
-                {% endif %}
+                
     
               </ul>
             </div>

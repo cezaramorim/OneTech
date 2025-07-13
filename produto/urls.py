@@ -24,6 +24,7 @@ urlpatterns = [
     path("", views.lista_produtos_view, name="lista_produtos"),
     path("novo/", views.cadastrar_produto_view, name="cadastrar_produto"),
     path("editar/<int:pk>/", views.editar_produto_view, name="editar_produto"),
+    path("excluir-multiplos/", views.excluir_produtos_multiplos_view, name="excluir_produto_multiplo"),
 
     # Categorias
     path("categorias/", views.lista_categorias_view, name="lista_categorias"),

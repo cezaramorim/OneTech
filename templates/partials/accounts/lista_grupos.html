@@ -10,7 +10,7 @@
        data-seletor-checkbox=".grupo-checkbox">
 
     <!-- 🔔 Mensagens instantâneas -->
-    <div id="mensagens"></div>
+    
 
     <div class="row justify-content-center">
       <div class="col-md-12 col-lg-10">
@@ -45,6 +45,7 @@
                                 <th scope="col">Nome do Grupo</th>
                                 <th scope="col">Finalidade</th>
                                 <th scope="col" class="text-center">Ativo</th>
+                                <th scope="col" class="text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -61,6 +62,11 @@
                                     {% else %}
                                         <span class="badge bg-danger">Inativo</span>
                                     {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'accounts:gerenciar_permissoes_grupo' group_id=grupo.id %}" class="btn btn-sm btn-outline-primary ajax-link" title="Gerenciar Permissões">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </a>
                                 </td>
                             </tr>
                             {% empty %}

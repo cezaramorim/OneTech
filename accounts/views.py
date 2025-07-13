@@ -19,7 +19,7 @@ from django.template.response import TemplateResponse
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
-from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin, render_ajax_or_base, enviar_link_whatsapp
+from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin, render_ajax_or_base
 
 
 # === Autenticação ===
@@ -229,75 +229,123 @@ def excluir_usuario_multiplo(request):
         'redirect_url': reverse('accounts:lista_usuarios')
     })
 
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def selecionar_usuario_permissoes_view(request):
-    usuarios = User.objects.all().order_by('username')
-    return render_ajax_or_base(
-        request,
-        'partials/accounts/selecionar_usuario_permissoes.html',
-        {'usuarios': usuarios}
-    )
 
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def editar_permissoes(request, usuario_id):
+
+# === Permissões (Refatorado) ===
+
+def _get_permissoes_context():
     """
-    View para editar permissões de um usuário específico.
-    Exibe permissões agrupadas por app_label com nomes traduzidos.
+    Busca e organiza as permissões do sistema, agrupando por app e traduzindo os nomes.
+    Filtra apps irrelevantes para a interface de gerenciamento.
     """
-    usuario = get_object_or_404(User, id=usuario_id)
-
-    # Mapeamento fixo de nomes traduzidos de apps
-    NOMES_APPS = {
-        'auth': 'Permissões',
-        'admin': 'Administração',
-        'sessions': 'Sessões',
-        'accounts': 'Usuários',
-        'contenttypes': 'Tipos de Conteúdo',
-        'empresas': 'Empresas',
-        'nota_fiscal': 'Nota Fiscal',
-        'produto': 'Produtos',
-    }
-
-    permissoes = Permission.objects.select_related('content_type').order_by(
-        'content_type__app_label', 'codename'
-    )
+    # Apps a serem excluídos da lista de permissões, pois não são gerenciáveis pela interface
+    EXCLUDED_APPS = [
+        'admin', 'auth', 'contenttypes', 'sessions', 'authtoken', 
+        'django_celery_beat', 'integracao_nfe', 'painel'
+    ]
+    
+    permissoes = Permission.objects.select_related('content_type')                                   .exclude(content_type__app_label__in=EXCLUDED_APPS)                                   .order_by('content_type__app_label', 'codename')
 
     permissoes_agrupadas = {}
-    nomes_apps_traduzidos = {}
+    # Mapeia o app_label para um nome amigável e traduzido
+    nomes_apps_traduzidos = {
+        'accounts': 'Contas e Acesso',
+        'empresas': 'Empresas',
+        'produto': 'Produtos',
+        'nota_fiscal': 'Nota Fiscal',
+        'fiscal': 'Fiscal',
+        'relatorios': 'Relatórios'
+    }
 
     for p in permissoes:
         app = p.content_type.app_label
+        # Usa o nome traduzido do app, ou o nome capitalizado como fallback
+        nome_app_display = nomes_apps_traduzidos.get(app, app.capitalize())
+        
+        # Traduz o nome da permissão individual
         p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
-        permissoes_agrupadas.setdefault(app, []).append(p)
-        if app not in nomes_apps_traduzidos:
-            nomes_apps_traduzidos[app] = NOMES_APPS.get(app, app.capitalize())
+        
+        # Agrupa as permissões pelo nome de exibição do app
+        if nome_app_display not in permissoes_agrupadas:
+            permissoes_agrupadas[nome_app_display] = []
+        permissoes_agrupadas[nome_app_display].append(p)
+        
+    return permissoes_agrupadas
+
+@login_required
+@user_passes_test(is_super_or_group_admin)
+def gerenciar_permissoes_grupo(request, group_id):
+    """
+    Gerencia as permissões de um grupo específico.
+    """
+    grupo = get_object_or_404(Group, id=group_id)
+    permissoes_agrupadas = _get_permissoes_context()
 
     if request.method == 'POST':
         permissoes_ids = request.POST.getlist('permissoes')
-        usuario.user_permissions.set(permissoes_ids)
+        print(f"DEBUG: gerenciar_permissoes_grupo - permissoes_ids recebidos no POST: {permissoes_ids}")
+        grupo.permissions.set(permissoes_ids)
+        if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            messages.success(request, f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!')
+        
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': 'Permissões atualizadas com sucesso!',
-                'redirect_url': reverse('accounts:seletor_usuario_permissoes')
+                'message': f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!',
+                'redirect_url': reverse('accounts:lista_grupos')
             })
+        return redirect('accounts:lista_grupos')
 
-    permissoes_usuario = usuario.user_permissions.all()
+    permissoes_grupo_ids = set(grupo.permissions.values_list('id', flat=True))
+    print(f"DEBUG: gerenciar_permissoes_grupo - permissoes_entidade_ids (GET/Após POST): {permissoes_grupo_ids}")
 
-    return render_ajax_or_base(
-        request,
-        'partials/accounts/editar_permissoes.html',
-        {
-            'usuario': usuario,
-            'permissoes_agrupadas': permissoes_agrupadas,
-            'permissoes_usuario': permissoes_usuario,
-            'nomes_apps_traduzidos': nomes_apps_traduzidos,
-        }
-    )
+    context = {
+        'entidade': grupo,
+        'permissoes_agrupadas': permissoes_agrupadas,
+        'permissoes_entidade_ids': permissoes_grupo_ids,
+        'tipo_entidade': 'Grupo',
+        'data_page': 'gerenciar_permissoes'
+    }
+    return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes.html', context)
 
-# === Grupos ===
+@login_required
+@user_passes_test(is_super_or_group_admin)
+def gerenciar_permissoes_usuario(request, user_id):
+    """
+    Gerencia as permissões individuais de um usuário.
+    """
+    usuario = get_object_or_404(get_user_model(), id=user_id)
+    permissoes_agrupadas = _get_permissoes_context()
+
+    if request.method == 'POST':
+        permissoes_ids = request.POST.getlist('permissoes')
+        print(f"DEBUG: gerenciar_permissoes_usuario - permissoes_ids recebidos no POST: {permissoes_ids}")
+        usuario.user_permissions.set(permissoes_ids)
+        if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            messages.success(request, f'Permissões do usuário "{usuario.get_full_name()}" atualizadas com sucesso!')
+        
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'Permissões do usuário "{usuario.get_full_name() or usuario.username}" atualizadas com sucesso!',
+                'redirect_url': reverse('accounts:lista_usuarios')
+            })
+        return redirect('accounts:lista_usuarios')
+
+    permissoes_usuario_ids = set(usuario.user_permissions.values_list('id', flat=True))
+    print(f"DEBUG: gerenciar_permissoes_usuario - permissoes_entidade_ids (GET/Após POST): {permissoes_usuario_ids}")
+    print(f"DEBUG: gerenciar_permissoes_usuario - usuario.first_name: {usuario.first_name}, usuario.last_name: {usuario.last_name}")
+
+    context = {
+        'entidade': usuario,
+        'permissoes_agrupadas': permissoes_agrupadas,
+        'permissoes_entidade_ids': permissoes_usuario_ids,
+        'tipo_entidade': 'Usuário',
+        'data_page': 'gerenciar_permissoes'
+    }
+    return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes.html', context)
+
+
 
 @login_required
 @user_passes_test(is_super_or_group_admin)
@@ -404,182 +452,7 @@ def excluir_grupo_multiplo(request):
         
     messages.success(request, msg)
     return redirect('accounts:lista_grupos')
-# === Permissões Gerais e por Grupo ===
 
-
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def gerenciar_permissoes_geral(request):
-    """
-    Página de gerenciamento geral de permissões por grupo ou usuário.
-    Permite selecionar e editar permissões associadas a grupos ou usuários,
-    com agrupamento por app e tradução via dicionário externo.
-    """
-    grupos = Group.objects.all()
-    usuarios = User.objects.all()
-    permissoes = Permission.objects.select_related('content_type').order_by('content_type__app_label', 'codename')
-
-    # 🔤 Tradução das permissões via dicionário externo
-    for p in permissoes:
-        p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
-
-    # 📌 Identifica se foi enviado grupo ou usuário
-    grupo_id = request.GET.get('grupo') or request.POST.get('grupo')
-    usuario_id = request.GET.get('usuario') or request.POST.get('usuario')
-    permissoes_selecionadas = []
-    permissoes_ids = []  # ✅ Inicializa para evitar UnboundLocalError
-
-    # 💾 POST = salvar permissões
-    if request.method == 'POST':
-        permissoes_ids = request.POST.getlist('permissoes')
-
-        if grupo_id:
-            grupo = get_object_or_404(Group, id=grupo_id)
-            grupo.permissions.set(permissoes_ids)
-            permissoes_selecionadas = grupo.permissions.all()
-
-        elif usuario_id:
-            usuario = get_object_or_404(User, id=usuario_id)
-            usuario.user_permissions.set(permissoes_ids)
-            permissoes_selecionadas = usuario.user_permissions.all()
-
-        # 🔁 Retorno AJAX com mensagem
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': True, 'message': 'Permissões atualizadas com sucesso!'})
-
-    # 🔍 GET = carregar permissões já atribuídas
-    else:
-        if grupo_id:
-            grupo = get_object_or_404(Group, id=grupo_id)
-            permissoes_selecionadas = grupo.permissions.all()
-            permissoes_ids = list(permissoes_selecionadas.values_list("id", flat=True))
-            print(">> IDs das permissões do grupo:", permissoes_ids)
-
-        elif usuario_id:
-            usuario = get_object_or_404(User, id=usuario_id)
-            permissoes_selecionadas = usuario.user_permissions.all()
-            permissoes_ids = list(permissoes_selecionadas.values_list("id", flat=True))
-            print(">> IDs das permissões do usuário:", permissoes_ids)
-
-    # 📤 Renderização com contexto completo
-    return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes_geral.html', {
-        'grupos': grupos,
-        'usuarios': usuarios,
-        'permissoes': permissoes,
-        'permissoes_selecionadas': permissoes_selecionadas,
-        'permissoes_selecionadas_ids': permissoes_ids,
-    })
-
-
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def gerenciar_permissoes_grupo_view(request, grupo_id):
-    """
-    🔐 View para gerenciar permissões atribuídas a um grupo específico.
-
-    Exibe permissões agrupadas por app_label, com nomes traduzidos conforme dicionário PERMISSOES_PT_BR.
-    Ao submeter o formulário, atualiza as permissões do grupo e retorna JSON (AJAX) ou redireciona.
-
-    Template: partials/accounts/gerenciar_permissoes_grupo.html
-    """
-
-    grupo = get_object_or_404(Group, id=grupo_id)
-
-    # 🔠 Nomes amigáveis para os app_labels
-    NOMES_APPS = {
-        'auth': 'Permissões',
-        'admin': 'Administração',
-        'sessions': 'Sessões',
-        'accounts': 'Usuários',
-        'contenttypes': 'Tipos de Conteúdo',
-        'empresas': 'Empresas',
-        'nota_fiscal': 'Nota Fiscal',
-        'produto': 'Produtos',
-    }
-
-    permissoes = Permission.objects.select_related('content_type').order_by(
-        'content_type__app_label', 'codename'
-    )
-
-    permissoes_agrupadas = {}
-    nomes_apps_traduzidos = {}
-
-    for p in permissoes:
-        app = p.content_type.app_label
-        p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
-        permissoes_agrupadas.setdefault(app, []).append(p)
-        if app not in nomes_apps_traduzidos:
-            nomes_apps_traduzidos[app] = NOMES_APPS.get(app, app.capitalize())
-
-    # ✅ Processamento de submissão
-    if request.method == 'POST':
-        permissoes_ids = request.POST.getlist('permissoes')
-        grupo.permissions.set(permissoes_ids)
-
-        # 🔁 Resposta AJAX com mensagem + redirecionamento
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': 'Permissões do grupo atualizadas com sucesso!',
-                'redirect_url': reverse('accounts:lista_grupos')
-            })
-
-        # 🔁 Resposta padrão (caso não seja AJAX)
-        return redirect('accounts:lista_grupos')
-
-    # 📊 Permissões já associadas ao grupo (para pré-marcação no template)
-    permissoes_grupo = grupo.permissions.all()
-
-    # 📤 Renderiza o template (AJAX ou completo com base.html)
-    return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes_grupo.html', {
-        'grupo': grupo,
-        'permissoes_agrupadas': permissoes_agrupadas,
-        'permissoes_grupo': permissoes_grupo,
-        'nomes_apps_traduzidos': nomes_apps_traduzidos,
-    })
-
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def visualizar_permissoes_grupo_view(request, grupo_id):
-    """
-    Exibe permissões de um grupo de forma somente leitura.
-    """
-    grupo = get_object_or_404(Group, id=grupo_id)
-    permissoes = Permission.objects.select_related('content_type').order_by('content_type__app_label', 'codename')
-    for p in permissoes:
-        p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
-
-    permissoes_grupo = grupo.permissions.all()
-
-    return render_ajax_or_base(request, 'partials/accounts/visualizar_permissoes_grupo.html', {
-        'grupo': grupo,
-        'permissoes': permissoes,
-        'permissoes_grupo': permissoes_grupo
-    })
-
-
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def gerenciar_permissoes_grupo_view_selector(request):
-    """
-    Tela para selecionar grupo e editar permissões.
-    """
-    grupos = Group.objects.all()
-    return render_ajax_or_base(request, 'partials/accounts/selecionar_grupo_permissoes.html', {
-        'grupos': grupos
-    })
-
-
-@login_required
-@user_passes_test(is_super_or_group_admin)
-def seletor_grupo_permissoes(request):
-    """
-    Alternativa reutilizável de seletor de grupo com renderização AJAX/base.
-    """
-    grupos = Group.objects.all()
-    return render_ajax_or_base(request, 'partials/accounts/selecionar_grupo_permissoes.html', {
-        'grupos': grupos
-    })
 
 """Logout Automático"""
 from django.contrib.auth import logout
