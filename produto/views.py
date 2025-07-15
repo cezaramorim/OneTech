@@ -58,7 +58,9 @@ def editar_produto_view(request, pk):
     """
     View para editar um produto existente via AJAX ou GET normal.
     """
+    print(f"DEBUG: editar_produto_view - PK recebido: {pk}")
     produto = get_object_or_404(Produto, pk=pk)
+    print(f"DEBUG: editar_produto_view - Produto encontrado: {produto.nome}")
 
     if request.method == "POST":
         form = ProdutoForm(request.POST, instance=produto)
@@ -137,7 +139,9 @@ def lista_categorias_view(request):
     
 @login_required
 def editar_categoria_view(request, pk):
+    print(f"DEBUG: editar_categoria_view - PK recebido: {pk}")
     categoria = get_object_or_404(CategoriaProduto, pk=pk)
+    print(f"DEBUG: editar_categoria_view - Categoria encontrada: {categoria.nome}")
     if request.method == "POST":
         form = CategoriaProdutoForm(request.POST, instance=categoria)
         if form.is_valid():
@@ -259,7 +263,9 @@ def cadastrar_unidade_view(request):
 def editar_unidade_view(request, pk):
     print("DEBUG: editar_unidade_view accessed for PK:", pk)
     print("DEBUG: editar_unidade_view accessed for PK:", pk)
+    print(f"DEBUG: editar_unidade_view - PK recebido: {pk}")
     unidade = get_object_or_404(UnidadeMedida, pk=pk)
+    print(f"DEBUG: editar_unidade_view - Unidade encontrada: {unidade.sigla}")
     if request.method == "POST":
         form = UnidadeMedidaForm(request.POST, instance=unidade)
         if form.is_valid():

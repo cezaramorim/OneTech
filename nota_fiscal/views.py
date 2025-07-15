@@ -19,7 +19,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.csrf import csrf_exempt
+# Removido o @csrf_exempt por razões de segurança
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from common.utils.formatters import converter_valor_br, converter_data_para_date, CustomDecimalEncoder
@@ -91,54 +91,94 @@ def importar_xml_view(request):
 
 
 @login_required
-@csrf_exempt
 @require_POST
 def importar_xml_nfe_view(request):
     """
-    Recebe um arquivo XML, faz o parsing e retorna um JSON estruturado e simplificado 
-    para o frontend exibir o preview da nota.
+    Recebe um arquivo XML, faz o parsing e retorna um JSON estruturado para o frontend
+    exibir o preview da nota e gerenciar a revisão de itens, incluindo aviso de duplicidade.
     """
-    print("--- Iniciando importação e parsing de XML ---")
+    print("--- Iniciando importação e parsing de XML ---")    
+    print(f"DEBUG: Conteúdo de request.FILES: {request.FILES}")
+    
     xml_file = request.FILES.get('xml')
-    if not xml_file or not xml_file.name.lower().endswith('.xml'):
-        return JsonResponse({'erro': 'Arquivo XML inválido.'}, status=400)
+    
+    if xml_file:
+        print(f"DEBUG: xml_file encontrado. Tipo: {type(xml_file)}")
+        print(f"DEBUG: Nome do arquivo original: '{xml_file.name}'")
+        print(f"DEBUG: Nome do arquivo em minúsculas e sem espaços: '{xml_file.name.lower().strip()}'")
+        is_xml_file = xml_file.name.lower().strip().endswith('.xml')
+        print(f"DEBUG: Resultado de .endswith('.xml'): {is_xml_file}")
+    else:
+        print("DEBUG: Nenhum arquivo XML encontrado em request.FILES.get('xml').")
+        
+    # 1. Verificação de Permissão do Usuário
+    if not request.user.has_perm('nota_fiscal.can_import_xml'):
+        return JsonResponse({'success': False, 'error': 'Você não tem permissão para importar XML de Notas Fiscais.'}, status=403)
+
+    if not xml_file or not xml_file.name.lower().strip().endswith('.xml'):
+        print(f"DEBUG: Condição de arquivo XML inválido acionada. xml_file is None: {xml_file is None}")
+        if xml_file:
+            print(f"DEBUG: xml_file.name.lower().strip().endswith('.xml'): {xml_file.name.lower().strip().endswith('.xml')}")
+        return JsonResponse({'success': False, 'error': 'Arquivo XML inválido ou não fornecido.'}, status=400)
 
     try:
-        # Faz o parsing do XML para um dicionário Python
+        # 2. Parsing do XML
+        print("DEBUG: Tentando parsear o arquivo XML...")
         tree = ET.parse(xml_file)
         root = tree.getroot()
-        full_xml_dict = xml_to_dict(root).get('nfeProc', {})
+        print(f"DEBUG: XML parseado com sucesso. Root tag: {root.tag}")
         
+        # Usa a função xml_to_dict (element_to_dict de utils.py) para parsear o XML completo
+        full_xml_dict = xml_to_dict(root).get('nfeProc', {})
+        print(f"DEBUG: Conteúdo de full_xml_dict (primeiros 200 chars): {str(full_xml_dict)[:200]}...")
+
         infNFe = full_xml_dict.get('NFe', {}).get('infNFe', {})
         if not infNFe:
-            return JsonResponse({'erro': 'Estrutura do XML inválida: <infNFe> não encontrado.'}, status=400)
+            print("ERRO: Estrutura do XML inválida: <infNFe> não encontrado.")
+            return JsonResponse({'success': False, 'error': 'Estrutura do XML inválida: <infNFe> não encontrado.'}, status=400)
+        print("DEBUG: <infNFe> encontrado no XML.")
 
-        # Extração dos dados principais
+        # 3. Extração da Chave de Acesso e Verificação de Duplicidade
+        chave = infNFe.get('Id', '').replace('NFe', '') # Correção de '@Id' para 'Id' já aplicada
+        
+        if not chave:
+            print("ERRO: Não foi possível extrair a chave de acesso do XML.")
+            return JsonResponse({'success': False, 'error': 'Não foi possível extrair a chave de acesso do XML.'}, status=400)
+        print(f"DEBUG: Chave de acesso extraída: {chave}")
+
+        is_duplicate = False
+        if NotaFiscal.objects.filter(chave_acesso=chave).exists():
+            is_duplicate = True
+            print(f"--- Nota Fiscal com a chave de acesso {chave} já existe no sistema. (Detectado como duplicata) ---")
+
+        # Extração de dados principais para o preview
         ide = infNFe.get('ide', {})
-        emit = infNFe.get('emit', {})
-        dest = infNFe.get('dest', {})
+        emit = infNFe.get('emit', {}) # Obter dados do emitente
         total = infNFe.get('total', {}).get('ICMSTot', {})
-        infAdic = infNFe.get('infAdic', {})
-        transp = infNFe.get('transp', {})
-        cobr = infNFe.get('cobr', {})
+        print(f"DEBUG: Dados IDE: {ide.get('nNF', 'N/A')}, Total NF: {total.get('vNF', 'N/A')}")
 
-        chave = infNFe.get('Id', '').replace('NFe', '')
-
-        # Monta a lista de produtos, verificando se já existem no banco
+        # Extrair a razão social do emitente
+        nome_razao_social_emitente = emit.get('xNome', 'Nome do Emitente Não Encontrado')
+        print(f"DEBUG: Nome/Razão Social do Emitente: {nome_razao_social_emitente}") # Adicionado para depuração
+        
+        # 4. Montagem da Lista de Produtos e Itens para Revisão
         produtos_lista = []
+        itens_para_revisar = []
         det_list = infNFe.get('det', [])
+        
         if not isinstance(det_list, list):
-            det_list = [det_list]  # Garante que seja sempre uma lista
+            det_list = [det_list]
+        print(f"DEBUG: Encontrados {len(det_list)} item(s) na nota.")
 
         for det_item in det_list:
             prod = det_item.get('prod', {})
             codigo_importado = prod.get('cProd', '')
 
-            # Busca o produto existente para verificar o estoque e se é novo
             produto_existente = Produto.objects.filter(codigo=codigo_importado).first()
             estoque_atual = produto_existente.estoque_atual if produto_existente else 0
             
-            produtos_lista.append({
+            produto_data = {
+                'nItem': det_item.get('@nItem', ''),
                 'codigo': codigo_importado,
                 'nome': prod.get('xProd', ''),
                 'ncm': prod.get('NCM', ''),
@@ -149,57 +189,50 @@ def importar_xml_nfe_view(request):
                 'valor_total': Decimal(prod.get('vProd', '0')),
                 'desconto': Decimal(prod.get('vDesc', '0')),
                 'novo': not produto_existente,
-                'categoria_id': None, # Será preenchido pelo usuário no frontend
-                'imposto_detalhes': det_item.get('imposto', {}), # Passa os impostos do item
+                'categoria_id': None,
+                'imposto_detalhes': det_item.get('imposto', {}),
                 'estoque_atual': estoque_atual,
-                'cest': prod.get('CEST', ''), # Adiciona o CEST do XML
-            })
+                'cest': prod.get('CEST', ''),
+            }
+            produtos_lista.append(produto_data)
 
-        # Monta o JSON de resposta para o frontend
-        response_data = {
-            'raw_payload': full_xml_dict, # Envia o XML parseado para ser usado no salvamento
+            if not produto_existente:
+                itens_para_revisar.append({
+                    'nItem': produto_data['nItem'],
+                    'codigo_produto': produto_data['codigo'],
+                    'descricao_produto': produto_data['nome'],
+                    'ncm': produto_data['ncm'],
+                })
+        print(f"DEBUG: {len(itens_para_revisar)} produto(s) precisam de revisão.")
+        
+        # 5. Montagem da Resposta JSON para o Frontend
+        message = 'XML processado com sucesso! Verifique os itens para revisão de categoria, se houver.'
+        if is_duplicate:
+            message = f'Esta Nota Fiscal (Chave: {chave}) já existe no sistema. Deseja importá-la novamente e atualizar os dados existentes?'
+
+        response_payload_for_frontend = {
+            'success': True,
+            'message': message,
+            'is_duplicate': is_duplicate,
+            'raw_payload': full_xml_dict,
             'chave_acesso': chave,
             'numero': ide.get('nNF', ''),
-            'natureza_operacao': ide.get('natOp', ''),
-            'data_emissao': ide.get('dhEmi', ''),
-            'data_saida': ide.get('dhSaiEnt', ''),
-            'valor_total': total.get('vNF', '0'),
-            'valor_total_produtos': total.get('vProd', '0'),
-            'valor_total_icms': total.get('vICMS', '0'),
-            'valor_total_pis': total.get('vPIS', '0'),
-            'valor_total_cofins': total.get('vCOFINS', '0'),
-            'valor_total_desconto': total.get('vDesc', '0'),
-            'informacoes_adicionais': infAdic.get('infCpl', ''),
-            'emit': {
-                'CNPJ': emit.get('CNPJ', ''),
-                'xNome': emit.get('xNome', ''),
-                'xFant': emit.get('xFant', ''),
-                'enderEmit': emit.get('enderEmit', {}),
-                'IE': emit.get('IE', ''),
-            },
-            'dest': {
-                'CNPJ': dest.get('CNPJ', ''),
-                'CPF': dest.get('CPF', ''),
-                'xNome': dest.get('xNome', ''),
-                'enderDest': dest.get('enderDest', {}),
-                'IE': dest.get('IE', ''),
-            },
-            'produtos': produtos_lista,
-            'transporte': transp,
-            'cobranca': cobr,
+            'valor_total_nota': total.get('vNF', '0'),
+            'data_emissao': ide.get('dhEmi') or ide.get('dEmi', ''), 
+            'itens_para_revisar': itens_para_revisar,
+            'nome_razao_social': nome_razao_social_emitente, # <-- ADICIONADO AQUI!
         }
         
         print("--- Parsing de XML concluído com sucesso ---")
-        return JsonResponse(response_data, encoder=CustomDecimalEncoder)
+        return JsonResponse(response_payload_for_frontend, encoder=CustomDecimalEncoder)
 
     except Exception as e:
-        print(f"Erro em importar_xml_nfe_view: {e}")
-        traceback.print_exc()
-        return JsonResponse({'erro': f'Ocorreu um erro no servidor ao processar o XML: {str(e)}'}, status=500)
-
-
+        print(f"ERRO CRÍTICO em importar_xml_nfe_view: {type(e).__name__} - {e}")
+        full_traceback = traceback.format_exc()
+        print(f"TRACEBACK COMPLETO:\n{full_traceback}") 
+        return JsonResponse({'success': False, 'error': f'Ocorreu um erro no servidor ao processar o XML: {str(e)}'}, status=500)
 @login_required
-@csrf_exempt
+# @csrf_exempt REMOVIDO: `require_POST` já garante a proteção CSRF adequada para POST requests.
 @require_POST
 @transaction.atomic # Garante que todas as operações de banco de dados sejam atômicas
 def processar_importacao_xml_view(request):
@@ -248,12 +281,12 @@ def processar_importacao_xml_view(request):
             raw_payload=payload.get('raw_payload', {}),
             chave_acesso=chave,
             created_by=request.user,
-            data_emissao=_parse_datetime(payload.get('data_emissao')), 
+            data_emissao=_parse_datetime(payload.get('data_emissao')),
             data_saida=_parse_datetime(payload.get('data_saida')),
             numero=payload.get('numero', ''),
             natureza_operacao=payload.get('natureza_operacao', ''),
             informacoes_adicionais=payload.get('informacoes_adicionais', ''),
-            valor_total_nota=Decimal(payload.get('valor_total', '0')),
+            valor_total_nota=Decimal(payload.get('valor_total_nota', '0')),
             valor_total_produtos=Decimal(payload.get('valor_total_produtos', '0')),
             valor_total_icms=Decimal(payload.get('valor_total_icms', '0')),
             valor_total_pis=Decimal(payload.get('valor_total_pis', '0')),
@@ -462,6 +495,7 @@ def processar_importacao_xml_view(request):
 
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
         return JsonResponse({
+            'success': True,
             'mensagem': mensagem_sucesso,
             'nota_id': nf.pk,
             'redirect_url': reverse('nota_fiscal:entradas_nota')
@@ -511,59 +545,61 @@ def _get_or_create_empresa(data, tipo):
     return empresa
 
 def _get_or_create_produto(data, fornecedor):
-    """Cria ou atualiza um Produto a partir dos dados do XML, preservando campos existentes como categoria.
-    """
+    """Cria ou atualiza um Produto a partir dos dados do XML, preservando campos existentes como categoria."""
     print(f"--- Debug: _get_or_create_produto para dados: {data} ---")
-    codigo_produto = data.get('codigo')
-    categoria_id = data.get('categoria_id')
+    
+    # O payload do item ('det') contém um dicionário 'prod' com os detalhes do produto.
+    prod_data = data.get('prod', {})
+
+    codigo_produto = prod_data.get('cProd')
+    if not codigo_produto:
+        # Lança um erro claro se o código do produto estiver ausente,
+        # em vez de deixar o banco de dados falhar com um erro de integridade.
+        raise ValueError("O código do produto ('cProd') está ausente nos dados do item.")
+
+    categoria_id = prod_data.get('categoria_id')  # Adicionado pelo frontend
     categoria = get_object_or_404(CategoriaProduto, pk=categoria_id) if categoria_id else None
 
-    # Obtém ou cria a UnidadeMedida para a unidade do XML (unidade do fornecedor)
-    unidade_xml_sigla = data.get('unidade', '')
-    unidade_fornecedor_obj, created_unidade_fornecedor = UnidadeMedida.objects.get_or_create(
+    unidade_xml_sigla = prod_data.get('uCom', '')
+    unidade_fornecedor_obj, _ = UnidadeMedida.objects.get_or_create(
         sigla=unidade_xml_sigla,
         defaults={'descricao': f'Unidade {unidade_xml_sigla}'}
     )
 
-    # Tenta obter o produto existente
     produto = Produto.objects.filter(codigo=codigo_produto).first()
 
-    if produto: # Produto já existe, atualiza campos específicos
-        produto.refresh_from_db() # Garante que estamos trabalhando com os dados mais recentes
-        # Atualiza campos que devem ser sobrescritos pelo XML
-        produto.nome = data.get('nome', '')
-        produto.preco_custo = Decimal(data.get('vUnCom', produto.preco_custo))
-        produto.preco_venda = Decimal(data.get('vUnCom', produto.preco_venda))
-        produto.preco_medio = Decimal(data.get('vUnCom', produto.preco_medio))
+    if produto:  # Produto já existe
+        produto.refresh_from_db()
+        produto.nome = prod_data.get('xProd', produto.nome)
+        produto.preco_custo = Decimal(prod_data.get('vUnCom', produto.preco_custo))
+        produto.preco_venda = Decimal(prod_data.get('vUnCom', produto.preco_venda))
+        produto.preco_medio = Decimal(prod_data.get('vUnCom', produto.preco_medio))
         produto.fornecedor = fornecedor
-        produto.unidade_fornecedor_padrao = unidade_fornecedor_obj # Atualiza a unidade do fornecedor
-        produto.controla_estoque = True # Garante que o controle de estoque esteja ativo para produtos existentes
+        produto.unidade_fornecedor_padrao = unidade_fornecedor_obj
+        produto.controla_estoque = True
         
-        # Preserva a categoria se já existir e não for nula no payload
         if produto.categoria is None and categoria is not None:
             produto.categoria = categoria
 
-        # Salva apenas os campos que devem ser atualizados pelo XML
         produto.save(update_fields=[
             'nome', 'preco_custo', 'preco_venda', 'preco_medio', 'fornecedor',
             'unidade_fornecedor_padrao', 'categoria', 'controla_estoque'
         ])
         print(f"DEBUG: Produto existente atualizado: {produto.nome}")
-
-    else: # Produto é novo, cria um novo registro
+    else:  # Produto é novo
         produto = Produto.objects.create(
             codigo=codigo_produto,
-            nome=data.get('nome', ''), # Usar nome do XML para nome
-            preco_custo=Decimal(data.get('vUnCom', '0')),
-            preco_venda=Decimal(data.get('vUnCom', '0')),
-            preco_medio=Decimal(data.get('vUnCom', '0')),
+            nome=prod_data.get('xProd', ''),
+            preco_custo=Decimal(prod_data.get('vUnCom', '0')),
+            preco_venda=Decimal(prod_data.get('vUnCom', '0')),
+            preco_medio=Decimal(prod_data.get('vUnCom', '0')),
             fornecedor=fornecedor,
-            unidade_medida_interna=None, # Deixa None para ser definido manualmente
-            fator_conversao=Decimal('1'), # Padrão 1, para ser definido manualmente
-            unidade_fornecedor_padrao=unidade_fornecedor_obj, # Define a unidade do fornecedor
+            unidade_medida_interna=None,
+            fator_conversao=Decimal('1'),
+            unidade_fornecedor_padrao=unidade_fornecedor_obj,
             controla_estoque=True,
             ativo=True,
-            categoria=categoria, # A categoria só será definida se o produto for novo
+            categoria=categoria,
         )
         print(f"DEBUG: Novo produto criado: {produto.nome}")
 

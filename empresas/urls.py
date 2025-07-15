@@ -20,7 +20,7 @@ urlpatterns = [
 
     # Categorias
     path('categorias/', views.lista_categorias_view, name='lista_categorias'),
-    path('categorias/nova/', views.categoria_form_view, name='cadastrar_categoria'),
+    path('nova-avancada/categoria/', views.categoria_form_view, name='cadastrar_categoria_avancada_new'),
     path('categorias/<int:pk>/editar/', views.categoria_form_view, name='editar_categoria'),
     path('categorias/excluir-multiplos/', views.excluir_categorias_view, name='excluir_categorias_multiplos'),
 

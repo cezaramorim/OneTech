@@ -23,20 +23,20 @@ urlpatterns = [
     # Produtos
     path("", views.lista_produtos_view, name="lista_produtos"),
     path("novo/", views.cadastrar_produto_view, name="cadastrar_produto"),
-    path("editar/<int:pk>/", views.editar_produto_view, name="editar_produto"),
+    path("<int:pk>/editar/", views.editar_produto_view, name="editar_produto"),
     path("excluir-multiplos/", views.excluir_produtos_multiplos_view, name="excluir_produto_multiplo"),
 
     # Categorias
     path("categorias/", views.lista_categorias_view, name="lista_categorias"),
     path("categorias/nova/", views.cadastrar_categoria_view, name="cadastrar_categoria"),
-    path("categorias/editar/<int:pk>/", views.editar_categoria_view, name="editar_categoria"),
+    path("categorias/<int:pk>/editar/", views.editar_categoria_view, name="editar_categoria"),
     path("categorias/excluir-multiplas/", views.excluir_categorias_view, name="excluir_categorias"),
     path('api/categorias/', views.categoria_list_api, name='categoria-list-api'),
 
     # Unidades
     path("unidades/", views.lista_unidades_view, name="lista_unidades"),
     path("unidades-medida/nova/", views.cadastrar_unidade_view, name="cadastrar_unidade"),
-    path("unidades-medida/editar/<int:pk>/", views.editar_unidade_view, name="editar_unidade"), # Nova URL
+    path("unidades-medida/<int:pk>/editar/", views.editar_unidade_view, name="editar_unidade"), # Nova URL
     path("unidades-medida/excluir-multiplos/", views.excluir_unidades_view, name="excluir_unidades"), # Nova URL
 
     # NCM

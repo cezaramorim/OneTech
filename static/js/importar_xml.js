@@ -1,388 +1,454 @@
-// static/js/importar_xml.js
+// static/js/nota_fiscal/importar_xml.js
 
-// Variável global para armazenar os dados recebidos da API do backend.
+// Variável global para armazenar os dados completos da nota fiscal recebidos da API.
 let dadosNotaFiscal = null;
-// Lista de categorias, que será preenchida a partir do template.
+
+// Armazena as categorias disponíveis, carregadas a partir do template.
 let todasCategorias = [];
 
 // --- Funções Auxiliares ---
 
+function getCSRFToken() {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+}
+
 function mostrarLoading(message = "Carregando...") {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingMessage = document.getElementById('loadingMessage');
-    if (loadingMessage) loadingMessage.textContent = message;
-    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+    Swal.fire({
+        title: message,
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
 }
 
 function ocultarLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    Swal.close();
 }
 
-function formatarMoedaBr(valor) {
+function mostrarMensagem(type, title, message) {
+    Swal.fire({
+        icon: type,
+        title: title,
+        text: message,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+    });
+}
+
+function formatarMoeda(valor) {
     const num = parseFloat(valor);
     return isNaN(num) ? 'R$ 0,00' : num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function formatarDataHora(datetimeStr) {
+function formatarData(datetimeStr) {
     if (!datetimeStr) return 'N/A';
-    try {
-        const date = new Date(datetimeStr);
-        return isNaN(date.getTime()) ? datetimeStr : date.toLocaleString('pt-BR');
-    } catch (e) {
-        return datetimeStr;
-    }
+    // Adiciona 'T00:00:00' se for apenas uma data para evitar problemas de fuso horário
+    const dateStr = datetimeStr.includes('T') ? datetimeStr : `${datetimeStr}T00:00:00`;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? datetimeStr : date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 }
 
-function formatarData(dateStr) {
-    if (!dateStr) return 'N/A';
-    try {
-        const date = new Date(dateStr);
-        // Formata apenas a data (DD/MM/YYYY)
-        return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('pt-BR');
-    } catch (e) {
-        return dateStr;
-    }
+function getModalidadeFrete(modFrete) {
+    const modalidades = {
+        '0': '0 - Por conta do Emitente',
+        '1': '1 - Por conta do Destinatário/Remetente',
+        '2': '2 - Por conta de Terceiros',
+        '3': '3 - Transporte Próprio por conta do Remetente',
+        '4': '4 - Transporte Próprio por conta do Destinatário',
+        '9': '9 - Sem Ocorrência de Transporte'
+    };
+    return modalidades[modFrete] || 'Não especificado';
 }
 
-function mostrarMensagem(icon, title, text) {
-    Swal.fire({ icon, title, text, confirmButtonText: 'Ok' });
-}
 
-// --- Funções Principais do Fluxo de Importação ---
+// --- Lógica Principal de Importação ---
 
 /**
- * 1. Envia o arquivo XML para o backend.
- * O backend processa o XML e retorna um JSON estruturado.
+ * Renderiza a pré-visualização completa da nota fiscal, incluindo novas seções.
+ * @param {object} dados - O objeto completo com os dados da nota fiscal.
  */
-async function handleFileUpload() {
-    const inputFile = document.getElementById("id_xml");
-    const arquivo = inputFile.files[0];
-    if (!arquivo) {
-        return mostrarMensagem('error', 'Erro', 'Selecione um arquivo XML para importar.');
-    }
-    if (!arquivo.name.toLowerCase().endsWith('.xml')) {
-        return mostrarMensagem('error', 'Erro', 'O arquivo selecionado não é um XML válido.');
-    }
+function renderizarPreviewNota(dados) {
+    const container = document.getElementById('preview-nota');
+    if (!container) return;
 
-    mostrarLoading("Processando XML...");
-    const formData = new FormData();
-    formData.append("xml", arquivo);
-    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    const infNFe = dados.raw_payload?.NFe?.infNFe || {};
+    const ide = infNFe.ide || {};
+    const emit = infNFe.emit || {};
+    const dest = infNFe.dest || {};
+    const total = infNFe.total?.ICMSTot || {};
+    const transp = infNFe.transp || {};
+    const transporta = transp.transporta || {};
+    const vol = Array.isArray(transp.vol) ? transp.vol[0] : transp.vol || {};
+    const cobr = infNFe.cobr || {};
+    const duplicatas = Array.isArray(cobr.dup) ? cobr.dup : (cobr.dup ? [cobr.dup] : []);
+    const infAdic = infNFe.infAdic || {};
 
-    try {
-        const response = await fetch("/nota-fiscal/api/importar-xml-nfe/", {
-            method: "POST",
-            body: formData,
-            headers: { "X-CSRFToken": csrfToken }
+    let html = `
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header bg-primary text-white"><h5 class="mb-0">Detalhes da Nota Fiscal</h5></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Chave:</strong> <span class="text-muted small">${dados.chave_acesso || 'N/A'}</span></p>
+                        <p><strong>Número:</strong> ${dados.numero || 'N/A'} (Série: ${ide.serie || 'N/A'})</p>
+                        <p><strong>Emissão:</strong> ${formatarData(dados.data_emissao)}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Valor Total:</strong> ${formatarMoeda(dados.valor_total_nota)}</p>
+                        <p><strong>Emitente:</strong> ${emit.xNome || 'N/A'} (${emit.CNPJ || emit.CPF || 'N/A'})</p>
+                        <p><strong>Destinatário:</strong> ${dest.xNome || 'N/A'} (${dest.CNPJ || dest.CPF || 'N/A'})</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header bg-info text-white"><h5 class="mb-0">Itens da Nota</h5></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>Cód.</th><th>Descrição</th><th>NCM</th><th>Qtd</th><th>Un.</th><th>Vl. Unit.</th><th>Vl. Total</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>`;
+
+    const itens = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
+    if (itens.length > 0 && itens[0]) {
+        itens.forEach(item => {
+            const prod = item.prod || {};
+            const isNew = dados.itens_para_revisar.some(rev => rev.codigo_produto === prod.cProd);
+            html += `
+                <tr>
+                    <td>${prod.cProd || 'N/A'}</td>
+                    <td>${prod.xProd || 'N/A'}</td>
+                    <td>${prod.NCM || 'N/A'}</td>
+                    <td>${parseFloat(prod.qCom) || 0}</td>
+                    <td>${prod.uCom || 'N/A'}</td>
+                    <td>${formatarMoeda(prod.vUnCom)}</td>
+                    <td>${formatarMoeda(prod.vProd)}</td>
+                    <td>${isNew ? '<span class="badge bg-warning text-dark">Revisar</span>' : '<span class="badge bg-success">OK</span>'}</td>
+                </tr>`;
         });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.erro || `Erro HTTP: ${response.status}`);
-        }
-
-        // Armazena os dados recebidos do backend na variável global.
-        dadosNotaFiscal = data;
-        console.log("Dados recebidos do backend:", dadosNotaFiscal);
-
-        // Exibe os dados na tela para o usuário revisar.
-        exibirPreview(dadosNotaFiscal);
-
-    } catch (err) {
-        console.error("Erro no upload do XML:", err);
-        mostrarMensagem('error', 'Erro no Upload', err.message);
-    } finally {
-        ocultarLoading();
+    } else {
+        html += '<tr><td colspan="8" class="text-center">Nenhum item encontrado.</td></tr>';
     }
+    html += `</tbody></table></div></div></div>`;
+
+    // Seção de Transporte
+    if (transp.modFrete) {
+        html += `
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header"><h5 class="mb-0">Dados de Transporte</h5></div>
+            <div class="card-body">
+                <p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p>
+                ${transporta.xNome ? `<p><strong>Transportadora:</strong> ${transporta.xNome} (${transporta.CNPJ || transporta.CPF || 'N/A'})</p>` : ''}
+                ${vol.qVol ? `<p><strong>Volumes:</strong> ${vol.qVol}</p>` : ''}
+                ${vol.pesoL ? `<p><strong>Peso Líquido:</strong> ${vol.pesoL} kg</p>` : ''}
+                ${vol.pesoB ? `<p><strong>Peso Bruto:</strong> ${vol.pesoB} kg</p>` : ''}
+            </div>
+        </div>`;
+    }
+
+    // Seção de Duplicatas
+    if (duplicatas.length > 0) {
+        html += `
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header"><h5 class="mb-0">Faturas / Duplicatas</h5></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light"><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
+                        <tbody>`;
+        duplicatas.forEach(dup => {
+            html += `<tr><td>${dup.nDup || 'N/A'}</td><td>${formatarData(dup.dVenc)}</td><td>${formatarMoeda(dup.vDup)}</td></tr>`;
+        });
+        html += `</tbody></table></div></div></div>`;
+    }
+
+    // Seção de Informações Adicionais
+    if (infAdic.infCpl) {
+        html += `
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header"><h5 class="mb-0">Informações Adicionais</h5></div>
+            <div class="card-body">
+                <p class="font-monospace small text-muted">${infAdic.infCpl}</p>
+            </div>
+        </div>`;
+    }
+
+    // Botões de Ação
+    html += `
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+            ${dados.itens_para_revisar && dados.itens_para_revisar.length > 0 ?
+                `<button type="button" class="btn btn-warning" id="btn-revisar-categorias" data-bs-toggle="modal" data-bs-target="#revisaoCategoriasModal">
+                    Revisar Categorias (${dados.itens_para_revisar.length})
+                 </button>` : ''
+            }
+            <button type="button" class="btn btn-success" id="btn-confirmar-importacao">Confirmar Importação</button>
+        </div>`;
+
+    container.innerHTML = html;
+    adicionarEventListenersBotoes();
 }
 
 /**
- * 2. Renderiza o preview da Nota Fiscal na tela com os dados do backend.
+ * Renderiza os itens para revisão de categoria no modal com layout simplificado.
  */
-function exibirPreview(dados) {
-    const previewDiv = document.getElementById("preview-nota");
-    if (!previewDiv) return;
+function renderizarItensParaRevisao() {
+    const revisaoLista = document.getElementById('revisao-lista');
+    if (!revisaoLista) return;
 
-    const { emit, dest, produtos, chave_acesso, numero, natureza_operacao, data_emissao, data_saida, valor_total, informacoes_adicionais } = dados;
-
-    previewDiv.innerHTML = `
-        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Dados Gerais</h5></div>
-            <div class="card-body">
-                <p><strong>Emitente:</strong> ${emit.xNome || 'N/A'}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p>
-                <p><strong>Nota Fiscal:</strong> ${numero || 'N/A'}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Chave:</strong> ${chave_acesso || 'N/A'}</p>
-                <p><strong>Natureza:</strong> ${natureza_operacao || 'N/A'}</p>
-                <p><strong>Emissão:</strong> ${formatarDataHora(data_emissao)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Saída/Entrada:</strong> ${formatarDataHora(data_saida)}</p>
-                <p><strong>Valor Total:</strong> ${formatarMoedaBr(valor_total)}</p>
-                <p><strong>Dados Adicionais:</strong> ${informacoes_adicionais || 'N/A'}</p>
-            </div>
-        </div>
-        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Destinatário</h5></div>
-            <div class="card-body">
-                <p><strong>Nome:</strong> ${dest.xNome || 'N/A'}</p>
-                <p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p>
-            </div>
-        </div>
-        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Produtos</h5></div>
-            <div class="card-body"><div class="table-responsive">
-                <table class="table table-striped table-bordered table-sm">
-                    <thead><tr><th>Cód. Fornecedor</th><th>Nome</th><th>UN</th><th>NCM</th><th>Qtd</th><th>Vlr. Unit.</th><th>Vlr. Total</th><th>Status</th></tr></thead>
-                    <tbody>
-                        ${produtos.map(p => `
-                            <tr>
-                                <td>${p.codigo}</td>
-                                <td>${p.nome}</td>
-                                <td>${p.unidade}</td>
-                                <td>${p.ncm}</td>
-                                <td>${parseFloat(p.quantidade || '0').toLocaleString('pt-BR')}</td>
-                                <td>${formatarMoedaBr(p.valor_unitario)}</td>
-                                <td>${formatarMoedaBr(p.valor_total)}</td>
-                                <td>${p.novo ? '<span class="badge bg-danger">Novo</span>' : '<span class="badge bg-success">Existente</span>'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div></div>
-        </div>
-        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Transporte</h5></div>
-            <div class="card-body">
-                <p><strong>Modalidade do Frete:</strong> ${dados.transporte.modFrete || 'N/A'}</p>
-                <p><strong>Transportadora:</strong> ${(dados.transporte.transporta && dados.transporte.transporta.xNome) || 'N/A'}</p>
-                <p><strong>CNPJ Transportadora:</strong> ${(dados.transporte.transporta && dados.transporte.transporta.CNPJ) || 'N/A'}</p>
-                <p><strong>Quantidade Volumes:</strong> ${(dados.transporte.vol && dados.transporte.vol.qVol) || 'N/A'}</p>
-                <p><strong>Peso Líquido:</strong> ${(dados.transporte.vol && dados.transporte.vol.pesoL) || 'N/A'}</p>
-                <p><strong>Peso Bruto:</strong> ${(dados.transporte.vol && dados.transporte.vol.pesoB) || 'N/A'}</p>
-            </div>
-        </div>
-        <div class="card mb-3"><div class="card-header"><h5 class="mb-0">Duplicatas</h5></div>
-            <div class="card-body">
-                ${(dados.cobranca && dados.cobranca.dup && dados.cobranca.dup.length > 0) ? `
-                    <table class="table table-striped table-bordered table-sm">
-                        <thead><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
-                        <tbody>
-                            ${dados.cobranca.dup.map(dup => `
-                                <tr>
-                                    <td>${dup.nDup || 'N/A'}</td>
-                                    <td>${formatarData(dup.dVenc)}</td>
-                                    <td>${formatarMoedaBr(dup.vDup)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                ` : '<p>Nenhuma duplicata encontrada.</p>'}
-            </div>
-        </div>
-        <div class="d-grid gap-2">
-            <button id="confirmarImportacaoBtn" class="btn btn-success btn-lg">Confirmar e Salvar Importação</button>
-        </div>
-    `;
-
-    document.getElementById('confirmarImportacaoBtn').addEventListener('click', abrirModalRevisaoCategorias);
+    let html = '<div class="container-fluid">';
+    dadosNotaFiscal.itens_para_revisar.forEach((item, index) => {
+        html += `
+            <div class="row align-items-center py-2 border-bottom">
+                <div class="col-md-7">
+                    <label for="categoria-${index}" class="form-label mb-0">${item.descricao_produto}</label>
+                </div>
+                <div class="col-md-5">
+                    <select id="categoria-${index}" class="form-select form-select-sm categoria-select" data-codigo-produto="${item.codigo_produto}" required>
+                        <option value="">Selecione uma categoria...</option>
+                        ${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('')}
+                    </select>
+                </div>
+            </div>`;
+    });
+    html += '</div>';
+    revisaoLista.innerHTML = html;
 }
 
-/**
- * 3. Abre o modal para o usuário selecionar a categoria dos produtos novos.
- */
-function abrirModalRevisaoCategorias() {
-    if (!dadosNotaFiscal || !Array.isArray(dadosNotaFiscal.produtos)) {
-        return mostrarMensagem('error', 'Erro', 'Dados da nota não encontrados.');
+
+function adicionarEventListenersBotoes() {
+    const btnRevisar = document.getElementById('btn-revisar-categorias');
+    if (btnRevisar) {
+        btnRevisar.addEventListener('click', renderizarItensParaRevisao);
     }
 
-    const produtosNovos = dadosNotaFiscal.produtos.filter(p => p.novo);
+    const btnConfirmar = document.getElementById('btn-confirmar-importacao');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', () => {
+            if (dadosNotaFiscal.itens_para_revisar && dadosNotaFiscal.itens_para_revisar.length > 0) {
+                mostrarMensagem('info', 'Revisão Pendente', 'Por favor, revise as categorias dos novos produtos antes de confirmar.');
+                new bootstrap.Modal(document.getElementById('revisaoCategoriasModal')).show();
+                return;
+            }
 
-    if (produtosNovos.length === 0) {
-        Swal.fire({
-            title: 'Nenhum produto novo!',
-            text: 'Todos os produtos já existem no sistema. Deseja prosseguir com a importação?',
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, importar!',
-            cancelButtonText: 'Cancelar'
-        }).then(result => {
-            if (result.isConfirmed) {
-                salvarImportacao();
+            if (dadosNotaFiscal.is_duplicate) {
+                Swal.fire({
+                    title: 'Nota Fiscal Duplicada',
+                    text: "Esta nota já existe. Deseja substituir todos os dados com esta nova importação?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Sim, substituir!',
+                    cancelButtonText: 'Cancelar'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        finalizarImportacao(true);
+                    }
+                });
+            } else {
+                finalizarImportacao(false);
             }
         });
-        return;
     }
-
-    const listaDiv = document.getElementById("revisao-lista");
-    listaDiv.innerHTML = produtosNovos.map((p, idx) => `
-        <div class="row align-items-center mb-2">
-            <div class="col-md-5"><strong>${p.nome}</strong></div>
-            <div class="col-md-7">
-                <select class="form-select form-select-sm categoria-select" required data-product-code="${p.codigo}">
-                    <option value="" disabled selected>Selecione a categoria...</option>
-                    ${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join("")}
-                </select>
-            </div>
-        </div>
-    `).join('');
-
-    new bootstrap.Modal(document.getElementById("revisaoCategoriasModal")).show();
 }
 
-/**
- * 4. Confirma as categorias selecionadas e avança para salvar.
- */
-function confirmarRevisaoCategorias() {
-    let valido = true;
-    const selects = document.querySelectorAll('#revisaoCategoriasModal .categoria-select');
+function salvarCategoriasRevisadas() {
+    const selects = document.querySelectorAll('#revisao-lista .categoria-select');
+    let todasValidas = true;
+    const categoriasRevisadas = [];
 
     selects.forEach(select => {
-        const productCode = select.dataset.productCode;
-        const selectedCategoryId = select.value;
-        const produto = dadosNotaFiscal.produtos.find(p => p.codigo === productCode);
-
-        if (!selectedCategoryId) {
-            valido = false;
-            select.classList.add("is-invalid");
+        if (!select.value) {
+            select.classList.add('is-invalid');
+            todasValidas = false;
         } else {
-            select.classList.remove("is-invalid");
-            if (produto) {
-                produto.categoria_id = Number(selectedCategoryId);
-            }
+            select.classList.remove('is-invalid');
+            categoriasRevisadas.push({
+                codigo_produto: select.dataset.codigoProduto,
+                categoria_id: select.value
+            });
         }
     });
 
-    if (!valido) {
-        return mostrarMensagem('error', 'Erro de Validação', 'Por favor, selecione uma categoria para todos os produtos novos.');
+    if (!todasValidas) {
+        mostrarMensagem('error', 'Validação Falhou', 'Selecione uma categoria para todos os itens.');
+        return;
     }
 
-    bootstrap.Modal.getInstance(document.getElementById("revisaoCategoriasModal")).hide();
-    salvarImportacao();
+    const produtosPayload = dadosNotaFiscal.raw_payload.NFe.infNFe.det;
+    const produtosArray = Array.isArray(produtosPayload) ? produtosPayload : [produtosPayload];
+
+    categoriasRevisadas.forEach(revisao => {
+        const produto = produtosArray.find(p => p.prod.cProd === revisao.codigo_produto);
+        if (produto) {
+            // Adiciona a categoria ao objeto do produto para ser enviado ao backend
+            if (!produto.prod) produto.prod = {};
+            produto.prod.categoria_id = revisao.categoria_id;
+        }
+    });
+    
+    dadosNotaFiscal.itens_para_revisar = [];
+
+    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('revisaoCategoriasModal'));
+    if (modalInstance) {
+        modalInstance.hide();
+    }
+
+    document.getElementById('btn-confirmar-importacao').click();
 }
 
-/**
- * 5. Envia os dados da nota (com as categorias) para o backend para salvamento final.
- */
-async function salvarImportacao(forceUpdate = false) {
-    if (!dadosNotaFiscal) {
-        return mostrarMensagem('error', 'Erro', 'Não há dados da nota para salvar.');
-    }
+function finalizarImportacao(force = false) {
+    mostrarLoading("Processando e salvando a nota fiscal...");
 
-    mostrarLoading("Salvando importação no sistema...");
-    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-
-    // Prepara o payload, adicionando force_update se necessário
-    const payload = { ...dadosNotaFiscal };
-    if (forceUpdate) {
-        payload.force_update = true;
-    }
-
-    try {
-        const response = await fetch("/nota-fiscal/api/processar-importacao-xml/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrfToken
-            },
-            body: JSON.stringify(payload) // Usa o payload modificado
-        });
-
-        const data = await response.json();
-
-        // Lida com o cenário de nota duplicada
-        if (response.ok && data.nota_existente && !forceUpdate) {
-            ocultarLoading(); // Oculta o loading antes de mostrar a confirmação
-            Swal.fire({
-                icon: 'warning',
-                title: 'Nota Fiscal Já Importada!',
-                text: data.mensagem + ' Deseja substituir/atualizar os dados existentes?',
-                showCancelButton: true,
-                confirmButtonText: 'Sim, atualizar!',
-                cancelButtonText: 'Não, cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    mostrarLoading("Atualizando dados existentes...");
-                    salvarImportacao(true); // Chama a si mesma com forceUpdate = true
-                } else {
-                    // Usuário cancelou a atualização
-                    mostrarMensagem('info', 'Operação Cancelada', 'A importação foi cancelada pelo usuário.').then(() => {
-                        if (data.redirect_url) {
-                            window.location.href = data.redirect_url;
-                        }
-                    });
-                }
-            });
-            return; // Sai daqui, pois estamos aguardando a confirmação do usuário ou uma nova chamada
-        }
-
-        // Lida com erros reais do backend (ex: 400, 500)
-        if (!response.ok) {
-            throw new Error(data.erro || `Erro HTTP ${response.status}`);
-        }
-
-        // Caso de sucesso (nova importação ou atualização forçada)
-        Swal.fire({
-            icon: 'success',
-            title: 'Sucesso!',
-            text: data.mensagem || "Importação concluída com sucesso.",
-            confirmButtonText: 'Ok'
-        }).then(() => {
-            if (data.redirect_url) {
-                window.location.href = data.redirect_url;
-            } else {
-                window.location.reload();
-            }
-        });
-
-    } catch (err) {
-        console.error("Falha ao salvar a nota:", err);
-        mostrarMensagem('error', 'Erro ao Salvar', err.message);
-    } finally {
+    // Garante que a URL da API está definida.
+    if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
         ocultarLoading();
+        mostrarMensagem('error', 'Erro de Configuração', 'A URL da API para processar o XML não foi encontrada.');
+        console.error('A variável window.API_PROCESSAR_IMPORTACAO_XML_URL não está definida.');
+        return;
     }
+
+    const payloadFinal = JSON.parse(JSON.stringify(dadosNotaFiscal));
+    payloadFinal.force_update = force;
+
+    // Prepara o payload com os dados necessários para o backend.
+    const infNFe = payloadFinal.raw_payload?.NFe?.infNFe || {};
+    payloadFinal.produtos = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
+    payloadFinal.emit = infNFe.emit;
+    payloadFinal.dest = infNFe.dest;
+    payloadFinal.transporte = infNFe.transp;
+    payloadFinal.cobranca = infNFe.cobr;
+    payloadFinal.informacoes_adicionais = infNFe.infAdic?.infCpl;
+    payloadFinal.natureza_operacao = infNFe.ide?.natOp;
+    payloadFinal.valor_total_produtos = infNFe.total?.ICMSTot?.vProd;
+    payloadFinal.valor_total_icms = infNFe.total?.ICMSTot?.vICMS;
+    payloadFinal.valor_total_pis = infNFe.total?.ICMSTot?.vPIS;
+    payloadFinal.valor_total_cofins = infNFe.total?.ICMSTot?.vCOFINS;
+    payloadFinal.valor_total_desconto = infNFe.total?.ICMSTot?.vDesc;
+
+    // Envia os dados para o endpoint correto, sem ID na URL.
+    fetch(window.API_PROCESSAR_IMPORTACAO_XML_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(payloadFinal)
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Tenta extrair uma mensagem de erro do JSON, caso contrário, usa o status.
+            return response.json().then(err => { 
+                throw new Error(err.erro || `Erro no servidor: ${response.statusText}`);
+            }).catch(() => {
+                // Se o corpo não for JSON, lança um erro com o status da resposta.
+                throw new Error(`Erro na comunicação com o servidor: ${response.status} ${response.statusText}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        ocultarLoading();
+        if (data.success) {
+            mostrarMensagem('success', 'Sucesso!', data.mensagem);
+            // Redireciona para a página de edição da nota recém-criada.
+            setTimeout(() => {
+                window.location.href = data.redirect_url || '/painel/';
+            }, 1500);
+        } else {
+            throw new Error(data.erro || 'Ocorreu um erro desconhecido ao salvar a nota.');
+        }
+    })
+    .catch(error => {
+        ocultarLoading();
+        console.error('Erro ao finalizar importação:', error);
+        mostrarMensagem('error', 'Erro ao Salvar', error.message);
+    });
 }
 
-/**
- * Função de inicialização que adiciona os event listeners.
- */
 function init() {
-    // Tenta carregar as categorias do objeto global injetado pelo Django.
-    todasCategorias = window.CATEGORIAS_DISPONIVEIS || [];
-    if (todasCategorias.length === 0) {
-        console.warn("A lista de categorias de produtos não foi encontrada. O seletor de categorias ficará vazio.");
+    // Define a URL da API lendo o atributo data do contêiner principal.
+    const mainContainer = document.querySelector('[data-page="importar-xml"]');
+    if (mainContainer) {
+        window.API_PROCESSAR_IMPORTACAO_XML_URL = mainContainer.dataset.apiUrl;
     }
 
-    const formXml = document.getElementById("form-importar-xml");
-    if (formXml) {
-        formXml.addEventListener("submit", e => {
+    if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
+        console.error('Erro Crítico: A URL da API para processar o XML não foi encontrada no atributo data-api-url.');
+        mostrarMensagem('error', 'Erro de Configuração', 'Não foi possível encontrar a URL da API. A funcionalidade de importação está desativada.');
+        return; // Impede a execução do resto da função se a URL não estiver definida.
+    }
+
+    const categoriasData = document.getElementById('categorias-disponiveis-data');
+    if (categoriasData) {
+        try {
+            todasCategorias = JSON.parse(categoriasData.textContent || '[]');
+        } catch (e) {
+            console.error("Erro ao carregar categorias:", e);
+        }
+    }
+
+    const form = document.getElementById('form-importar-xml');
+    if (form) {
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
-            handleFileUpload();
+            mostrarLoading("Analisando XML...");
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken() },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Erro na análise do XML.') });
+                }
+                return response.json();
+            })
+            .then(data => {
+                ocultarLoading();
+                if (data.success) {
+                    mostrarMensagem('success', 'XML Processado', data.message);
+                    dadosNotaFiscal = data;
+                    renderizarPreviewNota(data);
+                } else {
+                    throw new Error(data.error || 'Falha ao processar XML.');
+                }
+            })
+            .catch(error => {
+                ocultarLoading();
+                console.error('Erro na importação do XML:', error);
+                mostrarMensagem('error', 'Erro na Importação', error.message);
+            });
         });
     }
-
-    const btnConfirmarCategorias = document.getElementById("btn-confirmar-categorias");
+    
+    const btnConfirmarCategorias = document.getElementById('btn-confirmar-categorias');
     if (btnConfirmarCategorias) {
-        btnConfirmarCategorias.addEventListener("click", confirmarRevisaoCategorias);
+        btnConfirmarCategorias.addEventListener('click', salvarCategoriasRevisadas);
     }
-
-    const btnAplicarTodos = document.getElementById("btn-aplicar-categoria-todos");
+    
+    const btnAplicarTodos = document.getElementById('btn-aplicar-categoria-todos');
     if (btnAplicarTodos) {
-        btnAplicarTodos.addEventListener("click", () => {
-            const primeiroSelect = document.querySelector('#revisaoCategoriasModal .categoria-select');
-            console.log("Botão 'Aplicar a todos' clicado.");
-            console.log("Primeiro select encontrado:", primeiroSelect);
-            if (primeiroSelect) {
-                console.log("Valor do primeiro select:", primeiroSelect.value);
-            }
+        btnAplicarTodos.addEventListener('click', () => {
+            const primeiroSelect = document.querySelector('#revisao-lista .categoria-select');
             if (primeiroSelect && primeiroSelect.value) {
-                const categoriaSelecionada = primeiroSelect.value;
-                const todosSelects = document.querySelectorAll('#revisaoCategoriasModal .categoria-select');
-                todosSelects.forEach(select => {
-                    select.value = categoriaSelecionada;
-                    select.classList.remove("is-invalid"); // Remove validação se houver
-                    select.dispatchEvent(new Event('change')); // Dispara o evento change
+                document.querySelectorAll('#revisao-lista .categoria-select').forEach(select => {
+                    select.value = primeiroSelect.value;
+                    select.classList.remove('is-invalid');
                 });
-                mostrarMensagem('success', 'Sucesso', 'Categoria aplicada a todos os itens.');
             } else {
-                mostrarMensagem('warning', 'Atenção', 'Selecione uma categoria no primeiro item antes de aplicar a todos.');
+                mostrarMensagem('warning', 'Atenção', 'Selecione uma categoria no primeiro item.');
             }
         });
     }
 }
 
-// Inicia o script quando o DOM estiver pronto.
-document.addEventListener("DOMContentLoaded", init);
+window.initImportarXml = init;

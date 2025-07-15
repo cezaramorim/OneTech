@@ -1,15 +1,23 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from accounts.views import login_view
+
+def home_redirect_view(request):
+    if request.user.is_authenticated:
+        return redirect('painel:home')
+    else:
+        return redirect('accounts:login')
 
 urlpatterns = [
     # 🔹 Administração do Django
     path('admin/', admin.site.urls),
 
     # 🔹 Painel principal (protegido por login)
-    path('', include('painel.urls')),  # '/' será tratado pelo painel.views.painel_onetech
+    path('', home_redirect_view, name='home_redirect'),
 
     # 🔹 Módulo de autenticação e gestão de usuários
+    path('painel/', include('painel.urls', namespace='painel')), # Adiciona o namespace painel explicitamente
     path('accounts/', include('accounts.urls', namespace='accounts')),
 
     # 🔹 Módulo de empresas e categorias

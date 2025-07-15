@@ -77,13 +77,9 @@ def login_view(request):
 def logout_view(request):
     if request.method == 'POST':
         logout(request)
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'redirect_url': '/accounts/login/'})
         return redirect('accounts:login')
 
-    template = 'partials/accounts/logout.html' if request.headers.get('x-requested-with') == 'XMLHttpRequest' else 'base.html'
-    context = {} if 'partials' in template else {'content_template': 'partials/accounts/logout.html'}
-    return render(request, template, context)
+    return redirect('accounts:login')
 
 @login_required
 def edit_profile_view(request):

@@ -3,16 +3,15 @@
 {% load mask_filters %} {# Carrega os novos filtros de máscara #}
 <link rel="stylesheet" href="{% static 'css/nota_fiscal.css' %}">
 
-<div id="identificador-tela"
-     data-tela="entradas_nota"
-     data-entidade-singular="nota"
-     data-entidade-plural="notas"
-     data-url-editar="{% url 'nota_fiscal:editar_nota' 0 %}"
-     data-url-excluir="{% url 'nota_fiscal:excluir_nota_multiplo' %}"
-     data-seletor-checkbox=".checkbox-nota"
-     class="d-none"></div>
-
 <main id="main-content" class="container-fluid py-4" data-page="entradas_nota">
+  <div id="identificador-tela"
+       data-tela="entradas_nota"
+       data-entidade-singular="nota"
+       data-entidade-plural="notas"
+       data-url-editar="{% url 'nota_fiscal:editar_nota' 0 %}"
+       {# data-url-excluir="{% url 'nota_fiscal:excluir_nota_multiplo' %}" #}
+       data-seletor-checkbox=".checkbox-nota"
+       class="d-none"></div>
   <div class="card shadow-sm">
     <div class="card-body">
       <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
@@ -39,7 +38,7 @@
         <table class="table table-bordered table-hover align-middle" id="tabela-notas-redimensionavel">
           <thead class="table-light">
             <tr>
-              <th style="width: 40px;"><input type="checkbox" id="check-todos-nota"></th>
+              <th style="width: 40px;"><input type="checkbox" id="select-all-nota"></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'numero' %}-numero{% else %}numero{% endif %}">Número</a></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'emitente__razao_social' %}-emitente__razao_social{% else %}emitente__razao_social{% endif %}">Fornecedor</a></th>
               <th>CNPJ Fornecedor</th>
