@@ -64,7 +64,7 @@
                 ⚙️ Configurações
               </button>
             </h2>
-            <div id="submenu-configuracoes" class="accordion-collapse collapse">
+            <div id="submenu-configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <div class="accordion-body p-0">
                 <ul class="list-group list-group-flush">
       
@@ -117,7 +117,7 @@
                 🏢 Empresas
               </button>
             </h2>
-            <div id="submenu-empresas" class="accordion-collapse collapse">
+            <div id="submenu-empresas" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 {% if perms.empresas.add_empresaavancada %}
                 <li><a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="list-group-item ajax-link">Cadastrar Empresa</a></li>              
@@ -140,7 +140,7 @@
                 📦 Produtos
               </button>
             </h2>
-            <div id="submenu-produtos" class="accordion-collapse collapse">
+            <div id="submenu-produtos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 <li><a href="{% url 'produto:cadastrar_produto' %}" class="list-group-item ajax-link">Cadadtro Produtos</a></li>
                 <li><a href="{% url 'produto:lista_produtos' %}" class="list-group-item ajax-link">Listar Produtos</a></li>
@@ -159,7 +159,7 @@
                 📄 Nota Fiscal
               </button>
             </h2>
-            <div id="submenu-nota-fiscal" class="accordion-collapse collapse">
+            <div id="submenu-nota-fiscal" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
                 <li><a href="{% url 'nota_fiscal:lancar_nota_manual' %}" class="list-group-item ajax-link">Lançar Nota Manual</a></li>
@@ -175,7 +175,7 @@
                 🧾 Fiscal
               </button>
             </h2>
-            <div id="submenu-fiscal" class="accordion-collapse collapse">
+            <div id="submenu-fiscal" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 <li><a href="{% url 'fiscal:cfop_list' %}" class="list-group-item ajax-link">CFOPs</a></li>
                 <li><a href="{% url 'fiscal:natureza_operacao_list' %}" class="list-group-item ajax-link">Naturezas de Operação</a></li>
@@ -202,7 +202,7 @@
                 📊 Relatórios
               </button>
             </h2>
-            <div id="submenu-relatorios" class="accordion-collapse collapse">
+            <div id="submenu-relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 <li><a href="{% url 'relatorios:api_nota_detalhada' pk=1 %}" class="list-group-item ajax-link">Nota Fiscal</a></li>
               </ul>
@@ -216,7 +216,7 @@
                 👤 Perfil
               </button>
             </h2>
-            <div id="submenu-perfil" class="accordion-collapse collapse">
+            <div id="submenu-perfil" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
               <ul class="list-group list-group-flush">
                 <li><a href="{% url 'accounts:edit_profile' %}" class="list-group-item ajax-link">Editar Perfil</a></li>
                 <li>

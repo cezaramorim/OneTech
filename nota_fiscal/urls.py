@@ -2,6 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views # Adicionado para importar o módulo views
 
 from .views import importar_xml_view
 from .views import importar_xml_nfe_view
@@ -32,4 +33,5 @@ urlpatterns = [
     # --- API ENDPOINTS PARA O FRONTEND ---
     path("api/importar-xml-nfe/", importar_xml_nfe_view, name="api_importar_xml_nfe"),
     path("api/processar-importacao-xml/", processar_importacao_xml_view, name="api_processar_importacao_xml"),
+    path("api/excluir-multiplo/", views.excluir_notas_multiplo_view, name="excluir_nota_multiplo"),
 ]

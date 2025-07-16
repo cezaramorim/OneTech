@@ -279,7 +279,9 @@ function initGenericActionButtons() {
   btnEditar.addEventListener("click", () => {
     const selecionado = document.querySelector(`${seletorCheckbox}:checked`);
     if (selecionado) {
-      const finalUrl = `${urlEditar}${selecionado.value}/editar/`;
+      // Substitui o '0' na URL base pelo ID do item selecionado
+      const finalUrl = urlEditar.replace('/0/', `/${selecionado.value}/`);
+      history.pushState({ ajaxUrl: finalUrl }, "", finalUrl);
       loadAjaxContent(finalUrl);
     }
   });

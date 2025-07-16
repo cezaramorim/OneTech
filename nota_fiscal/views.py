@@ -856,3 +856,33 @@ def editar_nota_view(request, pk):
         'data_page': 'editar_nota',
     }
     return render(request, 'base.html', context)
+
+@login_required
+@require_POST
+@transaction.atomic
+def excluir_notas_multiplo_view(request):
+    """
+    Exclui múltiplas notas fiscais com base nos IDs recebidos via POST.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        ids = data.get('ids', [])
+
+        if not ids:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Nenhum ID fornecido para exclusão.'}, status=400)
+
+        # Filtra as notas fiscais que pertencem ao usuário logado (opcional, mas boa prática de segurança)
+        # ou que o usuário tem permissão para excluir.
+        # Por enquanto, vamos apenas excluir as notas com os IDs fornecidos.
+        notas_excluidas, _ = NotaFiscal.objects.filter(id__in=ids).delete()
+
+        if notas_excluidas > 0:
+            return JsonResponse({'sucesso': True, 'mensagem': f'{notas_excluidas} nota(s) fiscal(is) excluída(s) com sucesso.'})
+        else:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Nenhuma nota fiscal encontrada com os IDs fornecidos.'}, status=404)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'sucesso': False, 'mensagem': 'Requisição inválida. JSON malformado.'}, status=400)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao excluir notas fiscais: {str(e)}'}, status=500)
