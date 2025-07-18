@@ -1,0 +1,143 @@
+{% load static %}
+<nav class="navbar navbar-expand-lg navbar-dark navbar-superior">
+    <div class="container-fluid">
+        <a href="{% url 'painel:home' %}" class="navbar-brand ajax-link">
+            <img src="{% static 'icons/logo_sidbar.png' %}" alt="OneTech" style="max-height: 40px;">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+                <!-- Configurações -->
+                {% if perms.accounts.view_user or perms.auth.view_group %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarConfiguracoes" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        ⚙️ Configurações
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarConfiguracoes">
+                        {% if perms.accounts.view_user %}
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#">👤 Usuários</a>
+                            <ul class="dropdown-menu">
+                                {% if perms.accounts.add_user %}
+                                <li><a class="dropdown-item ajax-link" href="{% url 'accounts:criar_usuario' %}">Novo</a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item ajax-link" href="{% url 'accounts:lista_usuarios' %}">Lista</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        {% if perms.auth.view_group %}
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#">🛡️ Grupos</a>
+                            <ul class="dropdown-menu">
+                                {% if perms.auth.add_group %}
+                                <li><a class="dropdown-item ajax-link" href="{% url 'accounts:cadastrar_grupo' %}">Novo</a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item ajax-link" href="{% url 'accounts:lista_grupos' %}">Lista</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Empresas -->
+                {% if perms.empresas.view_empresaavancada %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarEmpresas" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        🏢 Empresas
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarEmpresas">
+                        {% if perms.empresas.add_empresaavancada %}
+                        <li><a class="dropdown-item ajax-link" href="{% url 'empresas:cadastrar_empresa_avancada' %}">Cadastrar Empresa</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item ajax-link" href="{% url 'empresas:lista_empresas_avancadas' %}">Lista de Empresas</a></li>
+                        {% if perms.empresas.add_categoriaempresa %}
+                        <li><a class="dropdown-item ajax-link" href="{% url 'empresas:cadastrar_categoria_avancada_new' %}">Categorias</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Produtos -->
+                {% if perms.produto.view_produto %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarProdutos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        📦 Produtos
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarProdutos">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'produto:cadastrar_produto' %}">Cadadtro Produtos</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'produto:lista_produtos' %}">Listar Produtos</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'produto:lista_categorias' %}">Categorias de Produto</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'produto:lista_unidades' %}">Unidades de Medida</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'produto:manutencao_ncm' %}">NCM</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Nota Fiscal -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarNotaFiscal" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        📄 Nota Fiscal
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarNotaFiscal">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'nota_fiscal:importar_xml' %}">Importar XML</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'nota_fiscal:lancar_nota_manual' %}">Lançar Nota Manual</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'nota_fiscal:entradas_nota' %}">Entradas de Nota</a></li>
+                    </ul>
+                </li>
+
+                <!-- Fiscal -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarFiscal" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        🧾 Fiscal
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarFiscal">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'fiscal:cfop_list' %}">CFOPs</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'fiscal:natureza_operacao_list' %}">Naturezas de Operação</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'fiscal:import_fiscal_data' %}">Importar Dados Fiscais</a></li>
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#">⚙️ Configurações Fiscais</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item ajax-link" href="#">Regras Tributárias (Futuro)</a></li>
+                                <li><a class="dropdown-item ajax-link" href="#">Status NF-e (Futuro)</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Relatórios -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarRelatorios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        📊 Relatórios
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarRelatorios">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'relatorios:api_nota_detalhada' pk=1 %}">Nota Fiscal</a></li>
+                    </ul>
+                </li>
+
+            </ul>
+            <ul class="navbar-nav ms-auto">
+                <!-- Perfil -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarPerfil" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        👤 Perfil
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarPerfil">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a></li>
+                        <li><a class="dropdown-item" href="#" id="btn-alternar-layout-superior">Layout Menu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'accounts:logout' %}" class="m-0 p-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item logout-link w-100 text-start">Sair</button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

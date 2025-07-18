@@ -9,7 +9,11 @@ if (temaSalvo === "dark") {
 // ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
 
-document.addEventListener("ajaxContentLoaded", bindPageSpecificActions);
+document.addEventListener("ajaxContentLoaded", (event) => {
+  bindPageSpecificActions();
+  const url = event.detail?.url || window.location.href;
+  updateActiveMenuLink(url);
+});
 
 function mostrarMensagemBootstrap(mensagem, tipo = "success") {
   const container = document.getElementById("alert-container");
@@ -371,6 +375,7 @@ function bindPageSpecificActions() {
 document.addEventListener("DOMContentLoaded", () => {
   bindPageSpecificActions();
   history.replaceState({ ajaxUrl: window.location.href }, "", window.location.href);
+  initLayout();
 });
 
 function initCadastroEmpresaAvancada() {
@@ -386,8 +391,23 @@ function initCadastroEmpresaAvancada() {
   atualizarCampos(selectTipo.value);
 }
 
-// 💡 Alterna o tema ao clicar no botão
+function updateActiveMenuLink(url) {
+    const currentPath = new URL(url, window.location.origin).pathname;
+    const menuLinks = document.querySelectorAll('.sidebar .ajax-link, .navbar-superior .ajax-link');
+    
+    menuLinks.forEach(link => {
+        const linkPath = new URL(link.href).pathname;
+        if (linkPath === currentPath) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  // ... (código existente do primeiro DOMContentLoaded)
+
   const botaoTema = document.getElementById("theme-toggle");
   if (botaoTema) {
     botaoTema.addEventListener("click", () => {
@@ -396,4 +416,37 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem("tema", modoEscuroAtivo ? "dark" : "light");
     });
   }
+
+  // --- LÓGICA DO SWITCHER DE LAYOUT ---
+  console.log("DEBUG: Layout switcher logic initializing...");
+
+  function initLayout() {
+      const savedLayout = localStorage.getItem('layout_preferencia') || 'layout-lateral';
+      console.log(`DEBUG: Initializing layout to: ${savedLayout}`);
+      document.body.classList.remove('layout-lateral', 'layout-superior');
+      document.body.classList.add(savedLayout);
+  }
+
+  function alternarLayout() {
+      console.log("DEBUG: alternarLayout() called.");
+      const isLateral = document.body.classList.contains('layout-lateral');
+      const newLayout = isLateral ? 'layout-superior' : 'layout-lateral';
+      document.body.classList.remove('layout-lateral', 'layout-superior');
+      document.body.classList.add(newLayout);
+      localStorage.setItem('layout_preferencia', newLayout);
+      console.log(`DEBUG: Layout changed to: ${newLayout}`);
+  }
+
+  // Listener delegado para os botões de troca
+  document.addEventListener('click', (event) => {
+      const toggleButton = event.target.closest('#btn-alternar-layout, #btn-alternar-layout-superior');
+      if (toggleButton) {
+          console.log("DEBUG: Layout toggle button clicked:", toggleButton);
+          event.preventDefault();
+          alternarLayout();
+      }
+  });
+
+  // Inicializa o layout no carregamento inicial
+  initLayout();
 });

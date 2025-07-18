@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'relatorios',
     'fiscal',
     'integracao_nfe',
+    'layout_switcher',
 ]
 
 REST_FRAMEWORK = {
