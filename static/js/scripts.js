@@ -13,6 +13,7 @@ document.addEventListener("ajaxContentLoaded", (event) => {
   bindPageSpecificActions();
   const url = event.detail?.url || window.location.href;
   updateActiveMenuLink(url);
+  closeAllCollapses(); // Fecha todos os collapses ao carregar conteúdo AJAX
 });
 
 function mostrarMensagemBootstrap(mensagem, tipo = "success") {
@@ -399,6 +400,18 @@ function updateActiveMenuLink(url) {
     });
 }
 
+function closeAllCollapses() {
+  document.querySelectorAll('.collapse.show').forEach(collapseElement => {
+    const bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
+    if (bsCollapse) {
+      bsCollapse.hide();
+    } else {
+      // Fallback if Bootstrap's JS is not fully initialized for this element
+      collapseElement.classList.remove('show');
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // --- LÓGICA UNIFICADA DE INICIALIZAÇÃO ---
 
@@ -427,18 +440,6 @@ document.addEventListener("DOMContentLoaded", () => {
       document.body.classList.add(newLayout);
       localStorage.setItem('layout_preferencia', newLayout);
       console.log(`DEBUG: Layout changed to: ${newLayout}`);
-
-      // Diagnostic: Directly manipulate display property
-      const navbarSuperior = document.querySelector('.navbar-superior');
-      const sidebar = document.querySelector('.sidebar');
-
-      if (newLayout === 'layout-superior') {
-          if (navbarSuperior) navbarSuperior.style.display = 'flex';
-          if (sidebar) sidebar.style.display = 'none';
-      } else { // newLayout === 'layout-lateral'
-          if (navbarSuperior) navbarSuperior.style.display = 'none';
-          if (sidebar) sidebar.style.display = 'flex';
-      }
   }
 
   // 2. Bind de Ações da Página e Estado do Histórico
@@ -447,6 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 3. Inicialização do Layout
   initLayout();
+  closeAllCollapses(); // Fecha todos os collapses ao carregar a página
 
   // 4. Listeners de Eventos Globais (Click)
   document.addEventListener('click', (event) => {
@@ -456,6 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log("DEBUG: Layout toggle button clicked:", toggleButton);
           event.preventDefault();
           alternarLayout();
+          closeAllCollapses(); // Fecha todos os collapses ao alternar layout
       }
   });
 
