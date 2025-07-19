@@ -381,17 +381,10 @@ html.dark .accordion-button:focus {
 }
 
 /* Menu lateral */
-html.dark .list-group-item,
-body.dark .list-group-item {
+html.dark .list-group-item {
   background-color: transparent;
   color: #ccc;
   border: none;
-}
-
-html.dark .list-group-item:hover,
-body.dark .list-group-item:hover {
-  background-color: #343a40;
-  color: #fff;
 }
 
 /* Botões */
@@ -1360,3 +1353,5 @@ html.dark .modal-body .row,
 html.dark .modal-body .col {
   background-color: inherit; /* Garante que herdem o fundo do modal-body no tema escuro */
 }
+
+

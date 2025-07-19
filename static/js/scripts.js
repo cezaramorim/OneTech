@@ -372,12 +372,6 @@ function bindPageSpecificActions() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  bindPageSpecificActions();
-  history.replaceState({ ajaxUrl: window.location.href }, "", window.location.href);
-  initLayout();
-});
-
 function initCadastroEmpresaAvancada() {
   const selectTipo = document.getElementById("id_tipo_empresa");
   const camposPJ = document.getElementById("campos-pj");
@@ -406,8 +400,9 @@ function updateActiveMenuLink(url) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ... (código existente do primeiro DOMContentLoaded)
+  // --- LÓGICA UNIFICADA DE INICIALIZAÇÃO ---
 
+  // 1. Funções do Tema e Layout
   const botaoTema = document.getElementById("theme-toggle");
   if (botaoTema) {
     botaoTema.addEventListener("click", () => {
@@ -417,11 +412,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- LÓGICA DO SWITCHER DE LAYOUT ---
-  console.log("DEBUG: Layout switcher logic initializing...");
-
   function initLayout() {
-      const savedLayout = localStorage.getItem('layout_preferencia') || 'layout-lateral';
+      const savedLayout = localStorage.getItem('layout_preferencia') || 'layout-superior';
       console.log(`DEBUG: Initializing layout to: ${savedLayout}`);
       document.body.classList.remove('layout-lateral', 'layout-superior');
       document.body.classList.add(savedLayout);
@@ -435,10 +427,30 @@ document.addEventListener("DOMContentLoaded", () => {
       document.body.classList.add(newLayout);
       localStorage.setItem('layout_preferencia', newLayout);
       console.log(`DEBUG: Layout changed to: ${newLayout}`);
+
+      // Diagnostic: Directly manipulate display property
+      const navbarSuperior = document.querySelector('.navbar-superior');
+      const sidebar = document.querySelector('.sidebar');
+
+      if (newLayout === 'layout-superior') {
+          if (navbarSuperior) navbarSuperior.style.display = 'flex';
+          if (sidebar) sidebar.style.display = 'none';
+      } else { // newLayout === 'layout-lateral'
+          if (navbarSuperior) navbarSuperior.style.display = 'none';
+          if (sidebar) sidebar.style.display = 'flex';
+      }
   }
 
-  // Listener delegado para os botões de troca
+  // 2. Bind de Ações da Página e Estado do Histórico
+  bindPageSpecificActions();
+  history.replaceState({ ajaxUrl: window.location.href }, "", window.location.href);
+
+  // 3. Inicialização do Layout
+  initLayout();
+
+  // 4. Listeners de Eventos Globais (Click)
   document.addEventListener('click', (event) => {
+      // Listener para o botão de alternar layout
       const toggleButton = event.target.closest('#btn-alternar-layout, #btn-alternar-layout-superior');
       if (toggleButton) {
           console.log("DEBUG: Layout toggle button clicked:", toggleButton);
@@ -447,6 +459,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   });
 
-  // Inicializa o layout no carregamento inicial
-  initLayout();
+  // Impede que o dropdown feche ao clicar em um item para expandir/recolher
+  document.querySelectorAll('.dropdown-menu a[data-bs-toggle="collapse"]').forEach(element => {
+    element.addEventListener('click', e => {
+      e.stopPropagation();
+    });
+  });
 });

@@ -67,46 +67,40 @@
               </button>
             </h2>
             <div id="submenu-configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <div class="accordion-body p-0">
-                <ul class="list-group list-group-flush">
+              <ul class="list-group list-group-flush">
       
                   {% if perms.accounts.view_user %}
-                  <!-- 👤 Usuários -->
-                  <li class="list-group-item ms-3">
-                    <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-usuarios" aria-expanded="false">
-                      👤 Usuários
-                    </button>
-                    <ul id="config-usuarios" class="collapse list-group list-group-flush mt-2 ms-3">
-                      {% if perms.accounts.add_user %}
-                      <li><a href="{% url 'accounts:criar_usuario' %}" class="list-group-item ajax-link">Novo</a></li>
-                      {% endif %}
-                      <li><a href="{% url 'accounts:lista_usuarios' %}" class="list-group-item ajax-link">Lista</a></li>
-                      {% if perms.accounts.change_permission %}
-                      
-                      {% endif %}
-                    </ul>
+                  <li class="list-group-item">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#config-usuarios">
+                          👤 Usuários
+                      </button>
+                      <div id="config-usuarios" class="accordion-collapse collapse" data-bs-parent="#submenu-configuracoes">
+                          <ul class="list-group list-group-flush">
+                              {% if perms.accounts.add_user %}
+                              <li><a href="{% url 'accounts:criar_usuario' %}" class="list-group-item ajax-link">Novo</a></li>
+                              {% endif %}
+                              <li><a href="{% url 'accounts:lista_usuarios' %}" class="list-group-item ajax-link">Lista</a></li>
+                          </ul>
+                      </div>
                   </li>
                   {% endif %}
       
                   {% if perms.auth.view_group %}
-                  <!-- 🛡️ Grupos -->
-                  <li class="list-group-item ms-3">
-                    <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#config-grupos" aria-expanded="false">
-                      🛡️ Grupos
-                    </button>
-                    <ul id="config-grupos" class="collapse list-group list-group-flush mt-2 ms-3">
-                      {% if perms.auth.add_group %}
-                      <li><a href="{% url 'accounts:cadastrar_grupo' %}" class="list-group-item ajax-link">Novo</a></li>
-                      {% endif %}
-                      <li><a href="{% url 'accounts:lista_grupos' %}" class="list-group-item ajax-link">Lista</a></li>
-                    </ul>
+                  <li class="list-group-item">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#config-grupos">
+                          🛡️ Grupos
+                      </button>
+                      <div id="config-grupos" class="accordion-collapse collapse" data-bs-parent="#submenu-configuracoes">
+                          <ul class="list-group list-group-flush">
+                              {% if perms.auth.add_group %}
+                              <li><a href="{% url 'accounts:cadastrar_grupo' %}" class="list-group-item ajax-link">Novo</a></li>
+                              {% endif %}
+                              <li><a href="{% url 'accounts:lista_grupos' %}" class="list-group-item ajax-link">Lista</a></li>
+                          </ul>
+                      </div>
                   </li>
                   {% endif %}
-      
-                  
-      
-                </ul>
-              </div>
+              </ul>
             </div>
           </div>
           {% endif %}
