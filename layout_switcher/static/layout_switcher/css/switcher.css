@@ -1,7 +1,110 @@
 /* Base styles for the top navbar */
 .navbar-superior {
-    /* display: none; Hidden by default */    background-color: #fff; /* Light theme default */    border-bottom: 1px solid #ddd;    position: fixed; /* Make it stick to the top */    top: 0;    left: 0; /* Ensure it starts from the left edge */    width: 100%; /* Make it full width */    z-index: 1030; /* Ensure it's above other content */    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: subtle shadow */    transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */    min-height: 40px; /* Altura mínima para alinhar com o logo */    padding: 0 1rem; /* Ajusta o preenchimento horizontal */} .sidebar {
-    /* display: flex; Sidebar is visible by default */    flex-direction: column; /* Ensure content stacks vertically */} .navbar-superior .navbar-brand img {    max-height: 40px; /* Garante que o logo não ultrapasse a altura da barra */} .navbar-superior .navbar-nav {    align-items: center; /* Alinha verticalmente os itens do menu */} .navbar-superior .nav-link {    padding-top: 0.1rem; /* Reduz o preenchimento vertical dos links */    padding-bottom: 0.1rem;}html.dark .navbar-superior {    background-color: #2b2f3a;    border-color: #444;    box-shadow: 0 2px 4px rgba(255,255,255,0.05);}html.dark .navbar-superior .nav-link,html.dark .navbar-superior .navbar-brand {    color: #f0f0f0; /* Cor de texto clara para links e marca */}html.dark .navbar-superior .nav-link:hover,html.dark .navbar-superior .navbar-brand:hover {    color: #ffffff; /* Cor de texto mais clara no hover */}html.dark .navbar-superior .dropdown-menu {    background-color: #2b2f3a; /* Fundo escuro para o dropdown principal */    border-color: #444;}html.dark .navbar-superior .dropdown-menu .dropdown-item {    color: #f0f0f0; /* Cor de texto padrão para itens do dropdown no tema escuro */    background-color: #2b2f3a; /* Fundo padrão para itens do dropdown no tema escuro */}html.dark .navbar-superior .dropdown-menu .dropdown-item:hover,html.dark .navbar-superior .dropdown-menu .dropdown-item:focus {    background-color: #3a3f4a; /* Fundo no hover/focus para itens do dropdown */    color: #ffffff; /* Cor de texto no hover/focus para itens do dropdown */} /* Estilos para submenus aninhados (collapse) no tema escuro */html.dark .navbar-superior .dropdown-menu .collapse {    background-color: #2b2f3a; /* Fundo para o container do submenu aninhado */}html.dark .navbar-superior .dropdown-menu .collapse > ul {    background-color: #2b2f3a; /* Fundo para a lista de sub-itens no tema escuro */    border-left-color: rgba(255,255,255,0.15);}html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item {    color: #f0f0f0; /* Cor de texto padrão para links dentro de submenus aninhados */    background-color: #2b2f3a; /* Fundo padrão para links dentro de submenus aninhados */}html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:hover,html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:focus {    background-color: #3a3f4a; /* Fundo no hover/focus para links dentro de submenus aninhados */    color: #ffffff; /* Cor de texto no hover/focus para links dentro de submenus aninhados */} /* Estilo específico para o dropdown-item que expande o submenu aninhado */html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collapse"][aria-expanded="true"] {    background-color: #3a3f4a; /* Fundo quando expandido */    color: #ffffff; /* Cor de texto quando expandido */} /* Layout com menu superior ativo */
+    /* display: none; Hidden by default */
+    background-color: #fff; /* Light theme default */
+    border-bottom: 1px solid #ddd;
+    position: fixed; /* Make it stick to the top */
+    top: 0;
+    left: 0; /* Ensure it starts from the left edge */
+    width: 100%; /* Make it full width */
+    z-index: 1030; /* Ensure it's above other content */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: subtle shadow */
+    transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
+    min-height: 40px; /* Altura mínima para alinhar com o logo */
+    padding: 0 1rem; /* Ajusta o preenchimento horizontal */
+}
+
+.sidebar {
+    /* display: flex; Sidebar is visible by default */
+    flex-direction: column; /* Ensure content stacks vertically */
+}
+
+.navbar-superior .navbar-brand img {
+    max-height: 40px; /* Garante que o logo não ultrapasse a altura da barra */
+}
+
+.navbar-superior .navbar-nav {
+    align-items: center; /* Alinha verticalmente os itens do menu */
+}
+
+.navbar-superior .nav-link {
+    padding-top: 0.1rem; /* Reduz o preenchimento vertical dos links */
+    padding-bottom: 0.1rem;
+}
+
+html.dark .navbar-superior {
+    background-color: #2b2f3a;
+    border-color: #444;
+    box-shadow: 0 2px 4px rgba(255,255,255,0.05);
+}
+
+html.dark .navbar-superior .nav-link,
+html.dark .navbar-superior .navbar-brand {
+    color: #f0f0f0; /* Cor de texto clara para links e marca */
+}
+
+html.dark .navbar-superior .nav-link:hover,
+html.dark .navbar-superior .navbar-brand:hover {
+    color: #ffffff; /* Cor de texto mais clara no hover */
+}
+
+/* Added for dropdown sizing */
+.navbar-superior .dropdown-menu {
+    width: max-content; /* Adjust width to content */
+    min-width: 10rem; /* Ensure a minimum width */
+    background-color: #fff; /* Light theme default */
+    border-color: #ddd;
+}
+
+html.dark .navbar-superior .dropdown-menu {
+    background-color: #2b2f3a; /* Fundo escuro para o dropdown principal */
+    border-color: #444;
+}
+
+/* Added for dropdown item sizing */
+.navbar-superior .dropdown-menu .dropdown-item {
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+html.dark .navbar-superior .dropdown-menu .dropdown-item {
+    color: #f0f0f0; /* Cor de texto padrão para itens do dropdown no tema escuro */
+    background-color: #2b2f3a; /* Fundo padrão para itens do dropdown no tema escuro */
+}
+
+html.dark .navbar-superior .dropdown-menu .dropdown-item:hover,
+html.dark .navbar-superior .dropdown-menu .dropdown-item:focus {
+    background-color: #3a3f4a; /* Fundo no hover/focus para itens do dropdown */
+    color: #ffffff; /* Cor de texto no hover/focus para itens do dropdown */
+}
+
+/* Estilos para submenus aninhados (collapse) no tema escuro */
+html.dark .navbar-superior .dropdown-menu .collapse {
+    background-color: #2b2f3a; /* Fundo para o container do submenu aninhado */
+}
+
+html.dark .navbar-superior .dropdown-menu .collapse > ul {
+    background-color: #2b2f3a; /* Fundo para a lista de sub-itens no tema escuro */
+    border-left-color: rgba(255,255,255,0.15);
+}
+
+html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item {
+    color: #f0f0f0; /* Cor de texto padrão para links dentro de submenus aninhados */
+    background-color: #2b2f3a; /* Fundo padrão para links dentro de submenus aninhados */
+}
+
+html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:hover,
+html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:focus {
+    background-color: #3a3f4a; /* Fundo no hover/focus para links dentro de submenus aninhados */
+    color: #ffffff; /* Cor de texto no hover/focus para links dentro de submenus aninhados */
+}
+
+/* Estilo específico para o dropdown-item que expande o submenu aninhado */
+html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collapse"][aria-expanded="true"] {
+    background-color: #3a3f4a; /* Fundo quando expandido */
+    color: #ffffff; /* Cor de texto quando expandido */
+}
+
+/* Layout com barra superior ativa */
 html body#page-body.layout-superior .navbar-superior {
     display: flex !important; /* Show the top navbar */
 }
@@ -26,4 +129,21 @@ html body#page-body.layout-lateral .sidebar {
     padding: 20px !important; /* Restore sidebar padding */
     display: flex !important; /* Explicitly show the sidebar */
     transition: flex 0.3s ease, width 0.3s ease, padding 0.3s ease; /* Smooth transition */
+}
+
+/* Estilo da seta indicadora */
+.navbar-superior .dropdown-menu .submenu-arrow {
+    display: inline-block;
+    font-size: 0.6em; /* Tamanho menor para a seta do submenu aninhado */
+    transition: transform 0.2s ease-in-out;
+    vertical-align: middle;
+}
+
+.navbar-superior .dropdown-menu a[aria-expanded="true"] .submenu-arrow {
+    transform: rotate(90deg);
+}
+
+/* Ajuste para o padding-top do main-content quando o layout superior está ativo */
+html body#page-body.layout-superior #main-content {
+     padding-top: 120px !important; /* Aumenta o padding para compensar a navbar fixa */
 }
