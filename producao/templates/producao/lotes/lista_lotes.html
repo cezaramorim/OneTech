@@ -1,0 +1,59 @@
+{% load static %}
+<div class="container-fluid mt-3" id="identificador-tela"
+    data-page="lista_lotes"
+    data-entidade-singular="lote"
+    data-entidade-plural="lotes"
+    data-url-editar="{% url 'producao:editar_lote' pk=0 %}"
+    data-url-excluir="{% url 'producao:excluir_lotes_multiplos' %}"
+    data-seletor-checkbox=".selecionar-lote">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Lista de Lotes</h2>
+        <div>
+            <a href="{% url 'producao:cadastrar_lote' %}" class="btn btn-primary ajax-link">Novo Lote</a>
+            <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
+            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selecionar-todos-lotes"></th>
+                            <th>Nome</th>
+                            <th>Curva de Crescimento</th>
+                            <th>Fase de Produção</th>
+                            <th>Tanque Atual</th>
+                            <th>Quantidade Inicial</th>
+                            <th>Peso Médio Inicial</th>
+                            <th>Data Povoamento</th>
+                            <th>Ativo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lote in lotes %}
+                        <tr data-id="{{ lote.pk }}">
+                            <td><input type="checkbox" class="selecionar-lote"></td>
+                            <td>{{ lote.nome }}</td>
+                            <td>{{ lote.curva_crescimento.nome|default:"N/A" }}</td>
+                            <td>{{ lote.fase_producao.nome|default:"N/A" }}</td>
+                            <td>{{ lote.tanque_atual.nome|default:"N/A" }}</td>
+                            <td>{{ lote.quantidade_inicial|floatformat:2 }}</td>
+                            <td>{{ lote.peso_medio_inicial|floatformat:2 }}</td>
+                            <td>{{ lote.data_povoamento|date:"d/m/Y" }}</td>
+                            <td>{% if lote.ativo %}Sim{% else %}Não{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">Nenhum lote encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'producao/js/lotes.js' %}"></script>

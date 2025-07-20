@@ -87,6 +87,25 @@
                 </li>
                 {% endif %}
 
+                <!-- Produção -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarProducao" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        🐟 Produção
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarProducao">
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:cadastrar_tanque' %}">Cadastrar Tanque</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:lista_tanques' %}">Lista de Tanques</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:cadastrar_curva' %}">Cadastrar Curva</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:lista_curvas' %}">Lista de Curvas</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:cadastrar_lote' %}">Cadastrar Lote</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:lista_lotes' %}">Lista de Lotes</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:registrar_evento' %}">Registrar Evento</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:lista_eventos' %}">Lista de Eventos</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:registrar_alimentacao' %}">Registrar Alimentação</a></li>
+                        <li><a class="dropdown-item ajax-link" href="{% url 'producao:lista_alimentacao' %}">Lista de Alimentações</a></li>
+                    </ul>
+                </li>
+
                 <!-- Nota Fiscal -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarNotaFiscal" role="button" data-bs-toggle="dropdown" aria-expanded="false">

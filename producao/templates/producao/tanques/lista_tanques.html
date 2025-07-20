@@ -1,0 +1,59 @@
+{% load static %}
+<div class="container-fluid mt-3" id="identificador-tela"
+    data-page="lista_tanques"
+    data-entidade-singular="tanque"
+    data-entidade-plural="tanques"
+    data-url-editar="{% url 'producao:editar_tanque' pk=0 %}"
+    data-url-excluir="{% url 'producao:excluir_tanques_multiplos' %}"
+    data-seletor-checkbox=".selecionar-tanque">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Lista de Tanques</h2>
+        <div>
+            <a href="{% url 'producao:cadastrar_tanque' %}" class="btn btn-primary ajax-link">Novo Tanque</a>
+            <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
+            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selecionar-todos-tanques"></th>
+                            <th>Nome</th>
+                            <th>Linha de Produção</th>
+                            <th>Tipo de Tanque</th>
+                            <th>Atividade</th>
+                            <th>Status</th>
+                            <th>Área (m²)</th>
+                            <th>Volume (m³)</th>
+                            <th>Ativo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tanque in tanques %}
+                        <tr data-id="{{ tanque.pk }}">
+                            <td><input type="checkbox" class="selecionar-tanque"></td>
+                            <td>{{ tanque.nome }}</td>
+                            <td>{{ tanque.linha_producao.nome|default:"N/A" }}</td>
+                            <td>{{ tanque.tipo_tanque.nome|default:"N/A" }}</td>
+                            <td>{{ tanque.atividade.nome|default:"N/A" }}</td>
+                            <td>{{ tanque.status_tanque.nome|default:"N/A" }}</td>
+                            <td>{{ tanque.area_m2|floatformat:2 }}</td>
+                            <td>{{ tanque.volume_m3|floatformat:2 }}</td>
+                            <td>{% if tanque.ativo %}Sim{% else %}Não{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">Nenhum tanque encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'producao/js/tanques.js' %}"></script>

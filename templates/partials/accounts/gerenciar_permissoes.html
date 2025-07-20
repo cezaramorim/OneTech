@@ -19,7 +19,7 @@
                 {% csrf_token %}
 
                 {% for nome_app, permissoes_app in permissoes_agrupadas.items %}
-                    <div class="mb-4 p-3 border rounded bg-white">
+                    <div class="mb-4 p-3 border rounded bg-white" data-permission-group>
                         <div class="form-check mb-2">
                             <input class="form-check-input permission-group-toggle" type="checkbox" id="check-group-{{ forloop.counter }}">
                             <label class="form-check-label fw-bold" for="check-group-{{ forloop.counter }}">

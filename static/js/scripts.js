@@ -1,10 +1,27 @@
-// 🌙 Aplica o tema dark o mais cedo possível (antes do paint)
+// 🌙 Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
 if (temaSalvo === "dark") {
   document.documentElement.classList.add("dark");
 } else {
   document.documentElement.classList.remove("dark");
 }
+
+// 🎛️ Alterna entre tema claro e escuro ao clicar no botão
+document.addEventListener("DOMContentLoaded", () => {
+  const btnToggleTema = document.querySelector("#btn-toggle-tema");
+
+  if (btnToggleTema) {
+    btnToggleTema.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("tema", isDark ? "dark" : "light");
+
+      console.debug(`🌗 Tema alterado para: ${isDark ? "dark" : "light"}`);
+    });
+  } else {
+    console.warn("⛔ Botão de troca de tema (#btn-toggle-tema) não encontrado.");
+  }
+});
+
 
 // ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
@@ -132,6 +149,11 @@ document.addEventListener("submit", async e => {
     return;
   }
   const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]")?.value;
+  const formData = new FormData(form);
+  console.log("DEBUG: Dados do formulário (FormData):");
+  for (let [key, value] of formData.entries()) {
+    console.log(`  ${key}: ${value}`);
+  }
   try {
     const response = await fetch(urlBase, {
       method: method,
@@ -140,7 +162,7 @@ document.addEventListener("submit", async e => {
         "X-CSRFToken": csrfToken,
         "Content-Type": "application/x-www-form-urlencoded"
       },
-      body: new URLSearchParams(new FormData(form))
+      body: new URLSearchParams(formData)
     });
     const contentType = response.headers.get("Content-Type");
     if (contentType && contentType.includes("application/json")) {
@@ -272,16 +294,46 @@ function initGenericActionButtons() {
     console.log("DEBUG: updateButtonStates - btnEditar.classList.contains('disabled'):", btnEditar.classList.contains('disabled'), "btnExcluir.disabled:", btnExcluir.disabled);
   }
 
-  selectAllCheckbox.addEventListener("change", () => {
-    itemCheckboxes.forEach(checkbox => { checkbox.checked = selectAllCheckbox.checked; });
-    updateButtonStates();
-  });
+  
 
-  itemCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener("change", updateButtonStates);
+  // Delegação de eventos para os checkboxes
+  document.addEventListener('change', (event) => {
+    const target = event.target;
+    const idTela = document.getElementById("identificador-tela");
+
+    if (!idTela) return; // Garante que estamos em uma página com identificador-tela
+
+    const { seletorCheckbox } = idTela.dataset;
+    const selectAllCheckbox = document.querySelector('[id^="select-all-"]');
+    const itemCheckboxes = document.querySelectorAll(seletorCheckbox);
+
+    // Lógica para o checkbox "selecionar todos"
+    if (target.matches('[id^="select-all-"]')) {
+      itemCheckboxes.forEach(checkbox => { checkbox.checked = target.checked; });
+      updateButtonStates();
+    } 
+    // Lógica para os checkboxes individuais
+    else if (target.matches(seletorCheckbox)) {
+      updateButtonStates();
+      // Desmarca o "selecionar todos" se algum filho for desmarcado
+      if (!target.checked) {
+        if (selectAllCheckbox) {
+          selectAllCheckbox.checked = false;
+        }
+      } else {
+        // Se todos os filhos estiverem marcados, marca o "selecionar todos"
+        const allChecked = Array.from(itemCheckboxes).every(cb => cb.checked);
+        if (allChecked && selectAllCheckbox) {
+          selectAllCheckbox.checked = true;
+        }
+      }
+    }
   });
 
   btnEditar.addEventListener("click", () => {
+    const idTela = document.getElementById("identificador-tela");
+    if (!idTela) return;
+    const { urlEditar, seletorCheckbox } = idTela.dataset;
     const selecionado = document.querySelector(`${seletorCheckbox}:checked`);
     if (selecionado) {
       // Substitui o '0' na URL base pelo ID do item selecionado
@@ -292,8 +344,11 @@ function initGenericActionButtons() {
   });
 
   // Só adiciona o listener de exclusão se a URL de exclusão estiver definida
-  if (urlExcluir) {
+  if (urlExcluir) { // urlExcluir é uma variável do escopo de initGenericActionButtons
     btnExcluir.addEventListener("click", () => {
+      const idTela = document.getElementById("identificador-tela");
+      if (!idTela) return;
+      const { entidadeSingular, entidadePlural, urlExcluir, seletorCheckbox } = idTela.dataset;
       const selecionados = document.querySelectorAll(`${seletorCheckbox}:checked`);
       const ids = Array.from(selecionados).map(cb => cb.value);
       if (ids.length === 0) return;
@@ -327,14 +382,136 @@ function initGenericActionButtons() {
     });
   }
 
-  updateButtonStates();
+  updateButtonStatesGlobal();
 }
 
-function bindPageSpecificActions() {
-  initGenericActionButtons();
+// Listener global para o evento 'change' para lidar com elementos dinâmicos
+document.addEventListener('change', (event) => {
+  const target = event.target;
+  const idTela = document.getElementById("identificador-tela");
 
+  if (!idTela) return; // Não faz nada se não houver identificador-tela
+
+  const { seletorCheckbox } = idTela.dataset;
+  const selectAllCheckbox = document.querySelector('[id^="select-all-"]');
+  const itemCheckboxes = document.querySelectorAll(seletorCheckbox);
+
+  // Lógica para o checkbox "selecionar todos"
+  if (target.matches('[id^="select-all-"]')) {
+    itemCheckboxes.forEach(checkbox => { checkbox.checked = target.checked; });
+    // A função updateButtonStates precisa ser chamada no contexto correto
+    // ou ser adaptada para ser chamada globalmente.
+    // Por enquanto, vamos garantir que a lógica de seleção funcione.
+    // A atualização dos botões será tratada pela chamada de initGenericActionButtons
+    // após o carregamento AJAX.
+  } 
+  // Lógica para os checkboxes individuais
+  else if (target.matches(seletorCheckbox)) {
+    // Desmarca o "selecionar todos" se algum filho for desmarcado
+    if (!target.checked) {
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+      }
+    } else {
+      // Se todos os filhos estiverem marcados, marca o "selecionar todos"
+      const allChecked = Array.from(itemCheckboxes).every(cb => cb.checked);
+      if (allChecked && selectAllCheckbox) {
+        selectAllCheckbox.checked = true;
+      }
+    }
+  }
+});
+
+// A função updateButtonStates precisa ser acessível globalmente ou ser chamada
+// após cada interação relevante. Como ela já é chamada em initGenericActionButtons,
+// e initGenericActionButtons é chamada em ajaxContentLoaded, isso deve ser suficiente.
+// No entanto, para garantir que os botões sejam atualizados imediatamente após
+// uma interação com checkbox individual, vamos garantir que updateButtonStates
+// seja chamada no contexto correto.
+
+// A função updateButtonStates precisa ser definida fora de initGenericActionButtons
+// ou ser passada como parâmetro, ou os elementos btnEditar e btnExcluir
+// precisam ser re-consultados dentro do listener global.
+// Para simplificar, vamos re-consultar os botões dentro do listener global.
+
+// Removendo a definição de updateButtonStates de dentro de initGenericActionButtons
+// e tornando-a uma função auxiliar global.
+function updateButtonStatesGlobal() {
+  const idTela = document.getElementById("identificador-tela");
+  if (!idTela) return;
+
+  const btnEditar = document.getElementById("btn-editar");
+  const btnExcluir = document.getElementById("btn-excluir");
+  if (!btnEditar || !btnExcluir) return;
+
+  const { seletorCheckbox } = idTela.dataset;
+  const selecionados = document.querySelectorAll(`${seletorCheckbox}:checked`);
+  const count = selecionados.length;
+
+  // Para o botão 'Editar' (tag <a>)
+  if (count !== 1) {
+    btnEditar.classList.add('disabled');
+    btnEditar.setAttribute('aria-disabled', 'true');
+    btnEditar.style.pointerEvents = 'none';
+  } else {
+    btnEditar.classList.remove('disabled');
+    btnEditar.removeAttribute('aria-disabled');
+    btnEditar.style.pointerEvents = 'auto';
+  }
+
+  // Para o botão 'Excluir' (tag <button>)
+  btnExcluir.disabled = count === 0;
+}
+
+// Chamando updateButtonStatesGlobal no listener delegado
+document.addEventListener('change', (event) => {
+  const target = event.target;
+  const idTela = document.getElementById("identificador-tela");
+
+  if (!idTela) return;
+
+  const { seletorCheckbox } = idTela.dataset;
+  const selectAllCheckbox = document.querySelector('[id^="select-all-"]');
+  const itemCheckboxes = document.querySelectorAll(seletorCheckbox);
+
+  // Lógica para o checkbox "selecionar todos"
+  if (target.matches('[id^="select-all-"]')) {
+    itemCheckboxes.forEach(checkbox => { checkbox.checked = target.checked; });
+    updateButtonStatesGlobal(); // Chama a função global
+  } 
+  // Lógica para os checkboxes individuais
+  else if (target.matches(seletorCheckbox)) {
+    updateButtonStatesGlobal(); // Chama a função global
+    // Desmarca o "selecionar todos" se algum filho for desmarcado
+    if (!target.checked) {
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+      }
+    } else {
+      // Se todos os filhos estiverem marcados, marca o "selecionar todos"
+      const allChecked = Array.from(itemCheckboxes).every(cb => cb.checked);
+      if (allChecked && selectAllCheckbox) {
+        selectAllCheckbox.checked = true;
+      }
+    }
+  }
+});
+
+// Certifique-se de que updateButtonStatesGlobal seja chamada na inicialização
+// e após cada carregamento AJAX.
+// A chamada original de updateButtonStates dentro de initGenericActionButtons
+// será substituída por updateButtonStatesGlobal.
+
+// Removendo a chamada final de updateButtonStates de initGenericActionButtons
+// e garantindo que updateButtonStatesGlobal seja chamada no final de initGenericActionButtons.
+
+function bindPageSpecificActions() {
   const mainContent = document.querySelector("#main-content");
-  const tela = mainContent?.dataset?.page || mainContent?.dataset?.tela || "";
+  // Prioriza a leitura de data-tela do elemento identificador-tela
+  const idTelaElement = document.getElementById("identificador-tela");
+  const tela = idTelaElement?.dataset?.tela || mainContent?.dataset?.page || mainContent?.dataset?.tela || "";
+
+  console.log("DEBUG: Valor da variável tela:", tela); // Adicionado para depuração
 
   if (tela === "lista_empresas_avancadas") {
     // Lógica específica para filtro de empresas
@@ -361,7 +538,7 @@ function bindPageSpecificActions() {
   }
 
   if (tela === "gerenciar_permissoes") {
-    // initPermissionsPage(); // Função não definida, comentada para evitar erros
+    //initPermissionsPage(); // Removido: será auto-executado por permissions.js
   }
 
   if (tela === "empresa_avancada") {
@@ -385,4 +562,3 @@ function initCadastroEmpresaAvancada() {
   selectTipo.addEventListener("change", () => atualizarCampos(selectTipo.value));
   atualizarCampos(selectTipo.value);
 }
-

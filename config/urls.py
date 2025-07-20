@@ -13,12 +13,15 @@ urlpatterns = [
     # 🔹 Administração do Django
     path('admin/', admin.site.urls),
 
-    # 🔹 Painel principal (protegido por login)
-    path('', home_redirect_view, name='home_redirect'),
-
     # 🔹 Módulo de autenticação e gestão de usuários
     path('painel/', include('painel.urls', namespace='painel')), # Adiciona o namespace painel explicitamente
     path('accounts/', include('accounts.urls', namespace='accounts')),
+
+    # Produção (Tilápias) - Movido para cima para ser avaliado antes do redirecionamento genérico
+    path('producao/', include('producao.urls', namespace='producao')),
+
+    # 🔹 Painel principal (protegido por login) - Agora abaixo das URLs específicas
+    path('', home_redirect_view, name='home_redirect'),
 
     # 🔹 Módulo de empresas e categorias
     path('empresas/', include('empresas.urls', namespace='empresas')),
