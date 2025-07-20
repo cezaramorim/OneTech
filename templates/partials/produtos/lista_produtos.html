@@ -12,7 +12,7 @@
        data-tela="lista_produtos"
        data-entidade-singular="produto"
        data-entidade-plural="produtos"
-       data-url-editar="/produtos/"
+       data-url-editar="{% url 'produto:editar_produto' 0 %}"
        data-url-excluir="{% url 'produto:excluir_produto_multiplo' %}"
        data-seletor-checkbox=".check-produto"></div>
 
@@ -33,9 +33,9 @@
         <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
           <div class="d-flex flex-wrap gap-2">
             <!-- ✏️ Editar -->
-            <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>
+            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
               ✏️ Editar
-            </button>
+            </a>
 
             <!-- ❌ Excluir -->
             <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>

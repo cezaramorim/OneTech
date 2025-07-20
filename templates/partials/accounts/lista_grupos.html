@@ -5,7 +5,7 @@
   <div id="identificador-tela" 
        data-entidade-singular="grupo"
        data-entidade-plural="grupos"
-       data-url-editar="/accounts/grupos/"
+       data-url-editar="{% url 'accounts:editar_grupo' 0 %}"
        data-url-excluir="{% url 'accounts:excluir_grupo_multiplo' %}"
        data-seletor-checkbox=".grupo-checkbox">
 
@@ -24,9 +24,9 @@
                 <i class="bi bi-plus-lg me-1"></i> Novo Grupo
             </a>
             <div>
-                <button type="button" id="btn-editar" class="btn btn-outline-secondary me-2" disabled>
+                <a id="btn-editar" class="btn btn-outline-secondary me-2 disabled" role="button">
                     <i class="bi bi-pencil-square me-1"></i> Editar
-                </button>
+                </a>
                 <button type="button" id="btn-excluir" class="btn btn-outline-danger" disabled>
                     <i class="bi bi-trash me-1"></i> Excluir
                 </button>

@@ -219,3 +219,23 @@ def atualizar_status_empresa_avancada(request, pk):
         return JsonResponse({'sucesso': False, 'mensagem': 'Erro ao atualizar o status.'})
 
 
+@require_POST
+@login_required
+@permission_required('empresas.delete_empresaavancada', raise_exception=True)
+def excluir_empresas_avancadas_view(request):
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        if not ids:
+            return JsonResponse({'sucesso': False, 'erro': 'Nenhum ID fornecido.'}, status=400)
+        
+        EmpresaAvancada.objects.filter(pk__in=ids).delete()
+        
+        messages.success(request, f"{len(ids)} empresa(s) excluída(s) com sucesso.")
+        return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
+    except json.JSONDecodeError:
+        return JsonResponse({'sucesso': False, 'erro': 'JSON inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+

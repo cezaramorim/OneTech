@@ -10,8 +10,8 @@
   <div id="identificador-tela" 
        data-entidade-singular="empresa" 
        data-entidade-plural="empresas" 
-       data-url-editar="/empresas/avancadas/" 
-       data-url-excluir="/empresas/excluir-multiplos/" 
+       data-url-editar="{% url 'empresas:editar_empresa_avancada' 0 %}" 
+       data-url-excluir="{% url 'empresas:excluir_empresas_avancadas_multiplos' %}" 
        data-seletor-checkbox=".check-empresa">
   </div>
 

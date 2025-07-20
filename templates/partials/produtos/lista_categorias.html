@@ -6,8 +6,8 @@
   <div id="identificador-tela" 
        data-entidade-singular="categoria"
        data-entidade-plural="categorias"
-       data-url-editar="/produtos/categorias/"
-       data-url-excluir="/produtos/categorias/excluir-multiplas/"
+       data-url-editar="{% url 'produto:editar_categoria' 0 %}"
+       data-url-excluir="{% url 'produto:excluir_categorias' %}"
        data-seletor-checkbox=".check-categoria">
   </div>
   <div class="card shadow-sm">
@@ -23,7 +23,7 @@
         <!-- 🛠️ Ações principais -->
         <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
           <div class="d-flex gap-2">
-            <button type="button" id="btn-editar" class="btn btn-outline-primary btn-sm" disabled>✏️ Editar</button>
+            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">✏️ Editar</a>
             <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
           </div>
         </div>

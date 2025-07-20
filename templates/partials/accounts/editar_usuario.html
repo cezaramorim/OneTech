@@ -85,7 +85,7 @@
             <button type="submit" class="btn btn-primary">
               💾 Salvar Alterações
             </button>
-            <a href="{% url 'accounts:editar_permissoes' usuario.id %}" class="btn btn-outline-info ajax-link">
+            <a href="{% url 'accounts:gerenciar_permissoes_usuario' usuario.id %}" class="btn btn-outline-info ajax-link">
               <i class="bi bi-shield-lock"></i> Gerenciar Permissões
             </a>
             <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">

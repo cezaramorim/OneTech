@@ -1,3 +1,15 @@
+function getCSRFToken() {
+  const name = "csrftoken";
+  const cookies = document.cookie.split(";");
+  for (let cookie of cookies) {
+    const trimmed = cookie.trim();
+    if (trimmed.startsWith(name + "=")) {
+      return decodeURIComponent(trimmed.substring(name.length + 1));
+    }
+  }
+  return "";
+}
+
 function updateActiveMenuLink(url) {
     const currentPath = new URL(url, window.location.origin).pathname;
     const menuLinks = document.querySelectorAll('.sidebar .ajax-link, .navbar-superior .ajax-link');
@@ -66,6 +78,27 @@ document.addEventListener("DOMContentLoaded", () => {
             e.stopPropagation();
         });
     });
+
+    // Listener para o link de logout no menu superior
+    const logoutLink = document.getElementById('logout-link-superior');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = this.href;
+            const csrfToken = getCSRFToken();
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+            }
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
 });
 
 document.addEventListener("ajaxContentLoaded", (event) => {

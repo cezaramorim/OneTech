@@ -144,12 +144,7 @@
                         <li><a class="dropdown-item ajax-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a></li>
                         <li><a class="dropdown-item" href="#" id="btn-alternar-layout-superior">Layout Menu</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form method="post" action="{% url 'accounts:logout' %}" class="m-0 p-0">
-                                {% csrf_token %}
-                                <button type="submit" class="dropdown-item logout-link w-100 text-start">Sair</button>
-                            </form>
-                        </li>
+                        <li><a class="dropdown-item" id="logout-link-superior" href="{% url 'accounts:logout' %}">Sair</a></li>
                     </ul>
                 </li>
             </ul>
