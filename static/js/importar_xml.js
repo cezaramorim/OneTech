@@ -68,10 +68,6 @@ function getModalidadeFrete(modFrete) {
 
 // --- Lógica Principal de Importação ---
 
-/**
- * Renderiza a pré-visualização completa da nota fiscal, incluindo todas as seções.
- * @param {object} dados - O objeto completo com os dados da nota fiscal.
- */
 function renderizarPreviewNota(dados) {
     const container = document.getElementById('preview-nota');
     if (!container) return;
@@ -81,7 +77,6 @@ function renderizarPreviewNota(dados) {
         return;
     }
 
-    // Armazena os dados para fácil acesso no console durante o desenvolvimento
     window.__lastXmlResponseData = dados;
 
     const infNFe = dados.raw_payload?.NFe?.infNFe || {};
@@ -148,22 +143,22 @@ function renderizarPreviewNota(dados) {
 
     html += `</tbody></table></div></div></div>`;
 
-    // Seção de Transporte
-    html += `
-        <div class="card mb-3 shadow-sm">
-            <div class="card-header"><h5 class="mb-0">Transporte / Frete</h5></div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4"><p><strong>Modalidade:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div>
-                    <div class="col-md-8"><p><strong>Transportadora:</strong> ${transporta.xNome || 'N/A'}</p></div>
-                    <div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${vol.qVol || 0}</p></div>
-                    <div class="col-md-4"><p><strong>Peso Líquido:</strong> ${vol.pesoL || 0} kg</p></div>
-                    <div class="col-md-4"><p><strong>Peso Bruto:</strong> ${vol.pesoB || 0} kg</p></div>
+    if (transp.modFrete) {
+        html += `
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Transporte / Frete</h5></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4"><p><strong>Modalidade:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div>
+                        <div class="col-md-8"><p><strong>Transportadora:</strong> ${transporta.xNome || 'N/A'}</p></div>
+                        <div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${vol.qVol || 0}</p></div>
+                        <div class="col-md-4"><p><strong>Peso Líquido:</strong> ${vol.pesoL || 0} kg</p></div>
+                        <div class="col-md-4"><p><strong>Peso Bruto:</strong> ${vol.pesoB || 0} kg</p></div>
+                    </div>
                 </div>
-            </div>
-        </div>`;
+            </div>`;
+    }
 
-    // Seção de Cobrança / Duplicatas
     if (duplicatas.length > 0) {
         html += `
             <div class="card mb-3 shadow-sm">
@@ -184,7 +179,6 @@ function renderizarPreviewNota(dados) {
         html += `</tbody></table></div></div></div>`;
     }
 
-    // Seção de Informações Adicionais
     if (infAdic.infCpl) {
         html += `
             <div class="card mb-3 shadow-sm">
@@ -195,7 +189,6 @@ function renderizarPreviewNota(dados) {
             </div>`;
     }
     
-    // Card de Ações
     html += `
         <div class="card shadow-sm">
             <div class="card-header"><h5 class="mb-0">Ações</h5></div>
@@ -207,24 +200,17 @@ function renderizarPreviewNota(dados) {
         </div>`;
 
     container.innerHTML = html;
-    adicionarEventListenersBotoes(); // Re-anexa os listeners aos novos botões
+    adicionarEventListenersBotoes();
 }
 
-
-/**
- * Renderiza os itens para revisão de categoria no modal com layout simplificado.
- */
 function renderizarItensParaRevisao() {
     const revisaoLista = document.getElementById('revisao-lista');
     if (!revisaoLista) return;
-
     let html = '<div class="container-fluid">';
     dadosNotaFiscal.itens_para_revisar.forEach((item, index) => {
         html += `
             <div class="row align-items-center py-2 border-bottom">
-                <div class="col-md-7">
-                    <label for="categoria-${index}" class="form-label mb-0">${item.descricao_produto}</label>
-                </div>
+                <div class="col-md-7"><label for="categoria-${index}" class="form-label mb-0">${item.descricao_produto}</label></div>
                 <div class="col-md-5">
                     <select id="categoria-${index}" class="form-select form-select-sm categoria-select" data-codigo-produto="${item.codigo_produto}" required>
                         <option value="">Selecione uma categoria...</option>
@@ -237,13 +223,11 @@ function renderizarItensParaRevisao() {
     revisaoLista.innerHTML = html;
 }
 
-
 function adicionarEventListenersBotoes() {
     const btnRevisar = document.getElementById('btn-revisar-categorias');
     if (btnRevisar) {
         btnRevisar.addEventListener('click', renderizarItensParaRevisao);
     }
-
     const btnConfirmar = document.getElementById('btn-confirmar-importacao');
     if (btnConfirmar) {
         btnConfirmar.addEventListener('click', () => {
@@ -252,11 +236,10 @@ function adicionarEventListenersBotoes() {
                 new bootstrap.Modal(document.getElementById('revisaoCategoriasModal')).show();
                 return;
             }
-
             if (dadosNotaFiscal.is_duplicate) {
                 Swal.fire({
                     title: 'Nota Fiscal Duplicada',
-                    text: "Esta nota já existe. Deseja substituir todos os dados com esta nova importação?",
+                    text: "Esta nota já existe. Deseja substituir os dados com esta nova importação?",
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#d33',
@@ -278,62 +261,46 @@ function salvarCategoriasRevisadas() {
     const selects = document.querySelectorAll('#revisao-lista .categoria-select');
     let todasValidas = true;
     const categoriasRevisadas = [];
-
     selects.forEach(select => {
         if (!select.value) {
             select.classList.add('is-invalid');
             todasValidas = false;
         } else {
             select.classList.remove('is-invalid');
-            categoriasRevisadas.push({
-                codigo_produto: select.dataset.codigoProduto,
-                categoria_id: select.value
-            });
+            categoriasRevisadas.push({ codigo_produto: select.dataset.codigoProduto, categoria_id: select.value });
         }
     });
-
     if (!todasValidas) {
         mostrarMensagem('error', 'Validação Falhou', 'Selecione uma categoria para todos os itens.');
         return;
     }
-
     const produtosPayload = dadosNotaFiscal.raw_payload.NFe.infNFe.det;
     const produtosArray = Array.isArray(produtosPayload) ? produtosPayload : [produtosPayload];
-
     categoriasRevisadas.forEach(revisao => {
         const produto = produtosArray.find(p => p.prod.cProd === revisao.codigo_produto);
         if (produto) {
-            // Adiciona a categoria ao objeto do produto para ser enviado ao backend
             if (!produto.prod) produto.prod = {};
             produto.prod.categoria_id = revisao.categoria_id;
         }
     });
-    
     dadosNotaFiscal.itens_para_revisar = [];
-
     const modalInstance = bootstrap.Modal.getInstance(document.getElementById('revisaoCategoriasModal'));
     if (modalInstance) {
         modalInstance.hide();
     }
-
     document.getElementById('btn-confirmar-importacao').click();
 }
 
 function finalizarImportacao(force = false) {
     mostrarLoading("Processando e salvando a nota fiscal...");
-
-    // Garante que a URL da API está definida.
     if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
         ocultarLoading();
         mostrarMensagem('error', 'Erro de Configuração', 'A URL da API para processar o XML não foi encontrada.');
         console.error('A variável window.API_PROCESSAR_IMPORTACAO_XML_URL não está definida.');
         return;
     }
-
     const payloadFinal = JSON.parse(JSON.stringify(dadosNotaFiscal));
     payloadFinal.force_update = force;
-
-    // Prepara o payload com os dados necessários para o backend.
     const infNFe = payloadFinal.raw_payload?.NFe?.infNFe || {};
     payloadFinal.produtos = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
     payloadFinal.emit = infNFe.emit;
@@ -348,24 +315,15 @@ function finalizarImportacao(force = false) {
     payloadFinal.valor_total_cofins = infNFe.total?.ICMSTot?.vCOFINS;
     payloadFinal.valor_total_desconto = infNFe.total?.ICMSTot?.vDesc;
 
-    // Envia os dados para o endpoint correto, sem ID na URL.
     fetch(window.API_PROCESSAR_IMPORTACAO_XML_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
         body: JSON.stringify(payloadFinal)
     })
     .then(response => {
         if (!response.ok) {
-            // Tenta extrair uma mensagem de erro do JSON, caso contrário, usa o status.
-            return response.json().then(err => { 
-                throw new Error(err.erro || `Erro no servidor: ${response.statusText}`);
-            }).catch(() => {
-                // Se o corpo não for JSON, lança um erro com o status da resposta.
-                throw new Error(`Erro na comunicação com o servidor: ${response.status} ${response.statusText}`);
-            });
+            return response.json().then(err => { throw new Error(err.erro || `Erro no servidor: ${response.statusText}`); })
+            .catch(() => { throw new Error(`Erro na comunicação com o servidor: ${response.status} ${response.statusText}`); });
         }
         return response.json();
     })
@@ -373,10 +331,7 @@ function finalizarImportacao(force = false) {
         ocultarLoading();
         if (data.success) {
             mostrarMensagem('success', 'Sucesso!', data.mensagem);
-            // Redireciona para a página de edição da nota recém-criada.
-            setTimeout(() => {
-                window.location.href = data.redirect_url || '/painel/';
-            }, 1500);
+            setTimeout(() => { window.location.href = data.redirect_url || '/painel/'; }, 1500);
         } else {
             throw new Error(data.erro || 'Ocorreu um erro desconhecido ao salvar a nota.');
         }
@@ -388,19 +343,17 @@ function finalizarImportacao(force = false) {
     });
 }
 
-function init() {
-    // Define a URL da API lendo o atributo data do contêiner principal.
+function initImportarXml() {
+    console.log("🚀 Inicializando a página de importação de XML...");
     const mainContainer = document.querySelector('[data-page="importar-xml"]');
     if (mainContainer) {
         window.API_PROCESSAR_IMPORTACAO_XML_URL = mainContainer.dataset.apiUrl;
+        console.log("✅ URL da API de processamento definida:", window.API_PROCESSAR_IMPORTACAO_XML_URL);
     }
-
     if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
-        console.error('Erro Crítico: A URL da API para processar o XML não foi encontrada no atributo data-api-url.');
-        mostrarMensagem('error', 'Erro de Configuração', 'Não foi possível encontrar a URL da API. A funcionalidade de importação está desativada.');
-        return; // Impede a execução do resto da função se a URL não estiver definida.
+        console.error('❌ Erro Crítico: A URL da API para processar o XML não foi encontrada no atributo data-api-url.');
+        mostrarMensagem('error', 'Erro de Configuração', 'A URL da API não foi encontrada. A importação final não funcionará.');
     }
-
     const categoriasData = document.getElementById('categorias-disponiveis-data');
     if (categoriasData) {
         try {
@@ -409,14 +362,10 @@ function init() {
             console.error("Erro ao carregar categorias:", e);
         }
     }
-
-    
-    
     const btnConfirmarCategorias = document.getElementById('btn-confirmar-categorias');
     if (btnConfirmarCategorias) {
         btnConfirmarCategorias.addEventListener('click', salvarCategoriasRevisadas);
     }
-    
     const btnAplicarTodos = document.getElementById('btn-aplicar-categoria-todos');
     if (btnAplicarTodos) {
         btnAplicarTodos.addEventListener('click', () => {
@@ -435,11 +384,12 @@ function init() {
 
 document.addEventListener("ajaxFormSuccess", function (e) {
     const { responseJson, form } = e.detail || {};
-    
-    // Garante que o evento veio do formulário de importação
     if (form && form.id === 'form-importar-xml' && responseJson?.success) {
         console.debug("🔁 importar_xml.js: Evento ajaxFormSuccess recebido. Renderizando preview...");
         dadosNotaFiscal = responseJson;
         renderizarPreviewNota(responseJson);
     }
 });
+
+// Registra o inicializador da página
+window.pageInitializers['importar_xml'] = initImportarXml;
