@@ -136,10 +136,14 @@ document.addEventListener("click", e => {
 
 document.addEventListener("submit", async e => {
   const form = e.target;
+  console.log("DEBUG: Submit event triggered for form:", form.id, "with classList:", form.classList);
   if (!form.classList.contains("ajax-form")) {
+    console.log("DEBUG: Form", form.id, "does NOT have 'ajax-form' class. Returning.");
     return;
   }
+  console.log("DEBUG: Form", form.id, "HAS 'ajax-form' class. Proceeding.");
   e.preventDefault();
+  console.log("DEBUG: e.preventDefault() called for form:", form.id);
   const urlBase = form.dataset.url || form.action;
   const method = form.method.toUpperCase();
   if (method === "GET") {
@@ -155,18 +159,40 @@ document.addEventListener("submit", async e => {
     console.log(`  ${key}: ${value}`);
   }
   try {
+    let requestHeaders = {
+      "X-Requested-With": "XMLHttpRequest",
+      "X-CSRFToken": csrfToken
+    };
+    let requestBody;
+
+    // Check if the form is for file uploads (multipart/form-data)
+    if (form.enctype === "multipart/form-data") {
+      // For file uploads, fetch automatically sets the Content-Type header
+      // when FormData is passed directly as the body.
+      requestBody = formData;
+    } else {
+      // For regular forms, use URLSearchParams and set Content-Type
+      requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+      requestBody = new URLSearchParams(formData);
+    }
+
+    console.log("DEBUG: urlBase:", urlBase);
+    console.log("DEBUG: method:", method);
+    console.log("DEBUG: requestHeaders:", requestHeaders);
+    console.log("DEBUG: requestBody:", requestBody);
+
     const response = await fetch(urlBase, {
       method: method,
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-        "X-CSRFToken": csrfToken,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams(formData)
+      headers: requestHeaders,
+      body: requestBody
     });
+    console.log("DEBUG: Fetch response received:", response.status, response.statusText);
     const contentType = response.headers.get("Content-Type");
+    console.log("DEBUG: Response Content-Type:", contentType);
     if (contentType && contentType.includes("application/json")) {
       const data = await response.json();
+      console.log("DEBUG: Response data (JSON):");
+      console.log(data);
       if (data.message || data.mensagem) {
         const msg = data.message || data.mensagem;
         if (!data.redirect_url) {
@@ -192,8 +218,19 @@ document.addEventListener("submit", async e => {
         history.pushState({ ajaxUrl: data.redirect_url }, "", data.redirect_url);
         loadAjaxContent(data.redirect_url);
       }
+
+      // Dispara um evento de sucesso para a página específica tratar
+      if (data.success || data.sucesso) {
+          document.dispatchEvent(new CustomEvent("ajaxFormSuccess", {
+              detail: { form: form, responseJson: data }
+          }));
+      }
+      
     } else {
+      console.log("DEBUG: Response is NOT JSON. Attempting to read as text.");
       const html = await response.text();
+      console.log("DEBUG: Response data (HTML):");
+      console.log(html);
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = html;
       const novoMain = tempDiv.querySelector("#main-content") || tempDiv.firstElementChild;
@@ -329,58 +366,6 @@ function initGenericActionButtons() {
       }
     }
   });
-
-  btnEditar.addEventListener("click", () => {
-    const idTela = document.getElementById("identificador-tela");
-    if (!idTela) return;
-    const { urlEditar, seletorCheckbox } = idTela.dataset;
-    const selecionado = document.querySelector(`${seletorCheckbox}:checked`);
-    if (selecionado) {
-      // Substitui o '0' na URL base pelo ID do item selecionado
-      const finalUrl = urlEditar.replace('/0/', `/${selecionado.value}/`);
-      history.pushState({ ajaxUrl: finalUrl }, "", finalUrl);
-      loadAjaxContent(finalUrl);
-    }
-  });
-
-  // Só adiciona o listener de exclusão se a URL de exclusão estiver definida
-  if (urlExcluir) { // urlExcluir é uma variável do escopo de initGenericActionButtons
-    btnExcluir.addEventListener("click", () => {
-      const idTela = document.getElementById("identificador-tela");
-      if (!idTela) return;
-      const { entidadeSingular, entidadePlural, urlExcluir, seletorCheckbox } = idTela.dataset;
-      const selecionados = document.querySelectorAll(`${seletorCheckbox}:checked`);
-      const ids = Array.from(selecionados).map(cb => cb.value);
-      if (ids.length === 0) return;
-      const text = `Excluir ${ids.length} ${ids.length === 1 ? entidadeSingular : entidadePlural}?`;
-      Swal.fire({
-        title: "Confirmar Exclusão",
-        text: text,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Sim, excluir!",
-        cancelButtonText: "Cancelar"
-      }).then((result) => {
-        if (result.isConfirmed) {
-          fetch(urlExcluir, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken(), "X-Requested-With": "XMLHttpRequest" },
-            body: JSON.stringify({ ids: ids })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.sucesso) {
-              mostrarMensagemSucesso(data.mensagem || "Itens excluídos.");
-              loadAjaxContent(window.location.href);
-            } else {
-              mostrarMensagemErro(data.mensagem || "Erro ao excluir.");
-            }
-          })
-          .catch(error => mostrarMensagemErro("Erro de comunicação."));
-        }
-      });
-    });
-  }
 
   updateButtonStatesGlobal();
 }
@@ -562,3 +547,63 @@ function initCadastroEmpresaAvancada() {
   selectTipo.addEventListener("change", () => atualizarCampos(selectTipo.value));
   atualizarCampos(selectTipo.value);
 }
+
+document.addEventListener("click", (event) => {
+  const idTela = document.getElementById("identificador-tela");
+  if (!idTela) return;
+
+  const { entidadeSingular, entidadePlural, urlEditar, urlExcluir, seletorCheckbox } = idTela.dataset;
+
+  // Lógica para o botão Editar
+  const btnEditar = event.target.closest("#btn-editar");
+  if (btnEditar && !btnEditar.classList.contains("disabled")) {
+    const selecionado = document.querySelector(`${seletorCheckbox}:checked`);
+    if (selecionado) {
+      const finalUrl = urlEditar.replace("/0/", `/${selecionado.value}/`);
+      history.pushState({ ajaxUrl: finalUrl }, "", finalUrl);
+      loadAjaxContent(finalUrl);
+    }
+    return; // Importante para evitar que o evento continue para outros listeners
+  }
+
+  // Lógica para o botão Excluir
+  const btnExcluir = event.target.closest("#btn-excluir");
+  if (btnExcluir && !btnExcluir.disabled) {
+    const selecionados = document.querySelectorAll(`${seletorCheckbox}:checked`);
+    const ids = Array.from(selecionados).map((cb) => cb.value);
+    if (ids.length === 0) return;
+
+    const text = `Excluir ${ids.length} ${ids.length === 1 ? entidadeSingular : entidadePlural}?`;
+    Swal.fire({
+      title: "Confirmar Exclusão",
+      text: text,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, excluir!",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        fetch(urlExcluir, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCSRFToken(),
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({ ids: ids }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.sucesso) {
+              mostrarMensagemSucesso(data.mensagem || "Itens excluídos.");
+              loadAjaxContent(window.location.href);
+            } else {
+              mostrarMensagemErro(data.mensagem || "Erro ao excluir.");
+            }
+          })
+          .catch((error) => mostrarMensagemErro("Erro de comunicação."));
+      }
+    });
+    return; // Importante para evitar que o evento continue para outros listeners
+  }
+});

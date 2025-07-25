@@ -1,0 +1,46 @@
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Importar Curva de Crescimento de Excel</h2>
+        </div>
+        <div class="card-body">
+            <p class="card-text">
+                Faça o upload de um arquivo Excel (.xlsx) para criar ou atualizar uma Curva de Crescimento.
+                O sistema identificará a curva pelo nome e substituirá todos os detalhes existentes por aqueles no arquivo.
+            </p>
+            <form method="post" enctype="multipart/form-data" action="{% url 'producao:importar_curva' %}" class="ajax-form">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    {{ form.arquivo_excel.label_tag }}
+                    {{ form.arquivo_excel }}
+                    <div class="form-text">{{ form.arquivo_excel.help_text }}</div>
+                    {% if form.arquivo_excel.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.arquivo_excel.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{% url 'producao:download_template' %}" class="btn btn-info" target="_blank">
+                        <i class="fas fa-download"></i> Baixar Modelo Excel
+                    </a>
+                    <div>
+                        <a href="{% url 'producao:lista_curvas' %}" class="btn btn-secondary me-2 ajax-link">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Importar Arquivo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="card-footer">
+            <small class="text-muted">
+                <strong>Atenção:</strong> A importação substituirá os dados de qualquer curva com o mesmo nome existente no sistema.
+            </small>
+        </div>
+    </div>
+</div>

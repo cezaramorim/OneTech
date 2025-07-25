@@ -224,7 +224,9 @@ def importar_xml_nfe_view(request):
         }
         
         print("--- Parsing de XML concluído com sucesso ---")
-        return JsonResponse(response_payload_for_frontend, encoder=CustomDecimalEncoder)
+        response = JsonResponse(response_payload_for_frontend, encoder=CustomDecimalEncoder)
+        print(f"DEBUG: Content-Type da resposta: {response['Content-Type']}")
+        return response
 
     except Exception as e:
         print(f"ERRO CRÍTICO em importar_xml_nfe_view: {type(e).__name__} - {e}")

@@ -69,12 +69,20 @@ function getModalidadeFrete(modFrete) {
 // --- Lógica Principal de Importação ---
 
 /**
- * Renderiza a pré-visualização completa da nota fiscal, incluindo novas seções.
+ * Renderiza a pré-visualização completa da nota fiscal, incluindo todas as seções.
  * @param {object} dados - O objeto completo com os dados da nota fiscal.
  */
 function renderizarPreviewNota(dados) {
     const container = document.getElementById('preview-nota');
     if (!container) return;
+
+    if (!dados || typeof dados !== 'object') {
+        container.innerHTML = '<div class="alert alert-danger">Erro: dados inválidos para renderização.</div>';
+        return;
+    }
+
+    // Armazena os dados para fácil acesso no console durante o desenvolvimento
+    window.__lastXmlResponseData = dados;
 
     const infNFe = dados.raw_payload?.NFe?.infNFe || {};
     const ide = infNFe.ide || {};
@@ -87,6 +95,7 @@ function renderizarPreviewNota(dados) {
     const cobr = infNFe.cobr || {};
     const duplicatas = Array.isArray(cobr.dup) ? cobr.dup : (cobr.dup ? [cobr.dup] : []);
     const infAdic = infNFe.infAdic || {};
+    const itens = Array.isArray(infNFe.det) ? infNFe.det : (infNFe.det ? [infNFe.det] : []);
 
     let html = `
         <div class="card mb-3 shadow-sm">
@@ -117,11 +126,10 @@ function renderizarPreviewNota(dados) {
                         </thead>
                         <tbody>`;
 
-    const itens = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
-    if (itens.length > 0 && itens[0]) {
+    if (itens.length > 0) {
         itens.forEach(item => {
             const prod = item.prod || {};
-            const isNew = dados.itens_para_revisar.some(rev => rev.codigo_produto === prod.cProd);
+            const isNew = dados.itens_para_revisar?.some(rev => rev.codigo_produto === prod.cProd);
             html += `
                 <tr>
                     <td>${prod.cProd || 'N/A'}</td>
@@ -137,35 +145,41 @@ function renderizarPreviewNota(dados) {
     } else {
         html += '<tr><td colspan="8" class="text-center">Nenhum item encontrado.</td></tr>';
     }
+
     html += `</tbody></table></div></div></div>`;
 
     // Seção de Transporte
-    if (transp.modFrete) {
-        html += `
+    html += `
         <div class="card mb-3 shadow-sm">
-            <div class="card-header"><h5 class="mb-0">Dados de Transporte</h5></div>
+            <div class="card-header"><h5 class="mb-0">Transporte / Frete</h5></div>
             <div class="card-body">
-                <p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p>
-                ${transporta.xNome ? `<p><strong>Transportadora:</strong> ${transporta.xNome} (${transporta.CNPJ || transporta.CPF || 'N/A'})</p>` : ''}
-                ${vol.qVol ? `<p><strong>Volumes:</strong> ${vol.qVol}</p>` : ''}
-                ${vol.pesoL ? `<p><strong>Peso Líquido:</strong> ${vol.pesoL} kg</p>` : ''}
-                ${vol.pesoB ? `<p><strong>Peso Bruto:</strong> ${vol.pesoB} kg</p>` : ''}
+                <div class="row">
+                    <div class="col-md-4"><p><strong>Modalidade:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div>
+                    <div class="col-md-8"><p><strong>Transportadora:</strong> ${transporta.xNome || 'N/A'}</p></div>
+                    <div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${vol.qVol || 0}</p></div>
+                    <div class="col-md-4"><p><strong>Peso Líquido:</strong> ${vol.pesoL || 0} kg</p></div>
+                    <div class="col-md-4"><p><strong>Peso Bruto:</strong> ${vol.pesoB || 0} kg</p></div>
+                </div>
             </div>
         </div>`;
-    }
 
-    // Seção de Duplicatas
+    // Seção de Cobrança / Duplicatas
     if (duplicatas.length > 0) {
         html += `
-        <div class="card mb-3 shadow-sm">
-            <div class="card-header"><h5 class="mb-0">Faturas / Duplicatas</h5></div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
-                        <thead class="table-light"><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
-                        <tbody>`;
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Cobrança / Duplicatas</h5></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead class="table-light"><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
+                            <tbody>`;
         duplicatas.forEach(dup => {
-            html += `<tr><td>${dup.nDup || 'N/A'}</td><td>${formatarData(dup.dVenc)}</td><td>${formatarMoeda(dup.vDup)}</td></tr>`;
+            html += `
+                <tr>
+                    <td>${dup.nDup || 'N/A'}</td>
+                    <td>${formatarData(dup.dVenc)}</td>
+                    <td>${formatarMoeda(dup.vDup)}</td>
+                </tr>`;
         });
         html += `</tbody></table></div></div></div>`;
     }
@@ -173,28 +187,29 @@ function renderizarPreviewNota(dados) {
     // Seção de Informações Adicionais
     if (infAdic.infCpl) {
         html += `
-        <div class="card mb-3 shadow-sm">
-            <div class="card-header"><h5 class="mb-0">Informações Adicionais</h5></div>
-            <div class="card-body">
-                <p class="font-monospace small text-muted">${infAdic.infCpl}</p>
-            </div>
-        </div>`;
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header"><h5 class="mb-0">Informações Adicionais</h5></div>
+                <div class="card-body">
+                    <p class="small text-muted">${infAdic.infCpl}</p>
+                </div>
+            </div>`;
     }
-
-    // Botões de Ação
+    
+    // Card de Ações
     html += `
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
-            ${dados.itens_para_revisar && dados.itens_para_revisar.length > 0 ?
-                `<button type="button" class="btn btn-warning" id="btn-revisar-categorias" data-bs-toggle="modal" data-bs-target="#revisaoCategoriasModal">
-                    Revisar Categorias (${dados.itens_para_revisar.length})
-                 </button>` : ''
-            }
-            <button type="button" class="btn btn-success" id="btn-confirmar-importacao">Confirmar Importação</button>
+        <div class="card shadow-sm">
+            <div class="card-header"><h5 class="mb-0">Ações</h5></div>
+            <div class="card-body text-center">
+                ${dados.itens_para_revisar.length > 0 ? 
+                    `<button id="btn-revisar-categorias" class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#revisaoCategoriasModal">Revisar Categorias de ${dados.itens_para_revisar.length} Iten(s)</button>` : ''}
+                <button id="btn-confirmar-importacao" class="btn btn-success">Confirmar Importação</button>
+            </div>
         </div>`;
 
     container.innerHTML = html;
-    adicionarEventListenersBotoes();
+    adicionarEventListenersBotoes(); // Re-anexa os listeners aos novos botões
 }
+
 
 /**
  * Renderiza os itens para revisão de categoria no modal com layout simplificado.
@@ -395,40 +410,7 @@ function init() {
         }
     }
 
-    const form = document.getElementById('form-importar-xml');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            mostrarLoading("Analisando XML...");
-            const formData = new FormData(this);
-            fetch(this.action, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCSRFToken() },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.error || 'Erro na análise do XML.') });
-                }
-                return response.json();
-            })
-            .then(data => {
-                ocultarLoading();
-                if (data.success) {
-                    mostrarMensagem('success', 'XML Processado', data.message);
-                    dadosNotaFiscal = data;
-                    renderizarPreviewNota(data);
-                } else {
-                    throw new Error(data.error || 'Falha ao processar XML.');
-                }
-            })
-            .catch(error => {
-                ocultarLoading();
-                console.error('Erro na importação do XML:', error);
-                mostrarMensagem('error', 'Erro na Importação', error.message);
-            });
-        });
-    }
+    
     
     const btnConfirmarCategorias = document.getElementById('btn-confirmar-categorias');
     if (btnConfirmarCategorias) {
@@ -451,4 +433,13 @@ function init() {
     }
 }
 
-window.initImportarXml = init;
+document.addEventListener("ajaxFormSuccess", function (e) {
+    const { responseJson, form } = e.detail || {};
+    
+    // Garante que o evento veio do formulário de importação
+    if (form && form.id === 'form-importar-xml' && responseJson?.success) {
+        console.debug("🔁 importar_xml.js: Evento ajaxFormSuccess recebido. Renderizando preview...");
+        dadosNotaFiscal = responseJson;
+        renderizarPreviewNota(responseJson);
+    }
+});
