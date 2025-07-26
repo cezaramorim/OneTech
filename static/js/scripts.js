@@ -58,20 +58,27 @@ function loadAjaxContent(url) {
 
     fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(response => {
-            if (!response.ok) throw new Error(`Erro de rede: ${response.statusText}`);
+            // ✅ Se a resposta for 401 (Não Autorizado), a sessão expirou.
+            if (response.status === 401) {
+                // O corpo da resposta contém o JSON com a URL de redirect.
+                return response.json().then(data => {
+                    window.location.href = data.redirect_url;
+                    throw new Error('Sessão expirada. Redirecionando para login.');
+                });
+            }
+            if (!response.ok) {
+                throw new Error(`Erro de rede: ${response.statusText}`);
+            }
             return response.text();
         })
         .then(html => {
-            mainContent.innerHTML = html; // Substitui o conteúdo do main-content pelo HTML recebido
+            mainContent.innerHTML = html;
 
-            // Encontra o identificador da tela dentro do novo conteúdo
             const identificadorTela = mainContent.querySelector("#identificador-tela");
             if (identificadorTela) {
-                // Atualiza o data-page do main-content com o data-tela do identificador
                 mainContent.dataset.page = identificadorTela.dataset.tela;
-                mainContent.dataset.tela = identificadorTela.dataset.tela; // Garante consistência
+                mainContent.dataset.tela = identificadorTela.dataset.tela;
             } else {
-                // Se não encontrar o identificador, tenta limpar o data-page para evitar vinculação incorreta
                 mainContent.dataset.page = "";
                 mainContent.dataset.tela = "";
                 console.warn("⚠️ Identificador de tela (#identificador-tela) não encontrado no conteúdo AJAX. A vinculação de ações pode estar incorreta.");
@@ -82,8 +89,10 @@ function loadAjaxContent(url) {
             console.log("✅ Conteúdo do #main-content atualizado.");
         })
         .catch(error => {
-            console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
-            mostrarMensagem("danger", "Erro ao carregar a página.");
+            if (error.message !== 'Sessão expirada. Redirecionando para login.') {
+                console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
+                mostrarMensagem("danger", "Erro ao carregar a página.");
+            }
         });
 }
 
@@ -212,7 +221,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!form) return;
         e.preventDefault();
 
-        // Tenta ler data-api-url, cai em action caso não exista
         const apiUrl = form.getAttribute("data-api-url") || form.action;
         const method = form.method;
         const formData = new FormData(form);
@@ -222,14 +230,31 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         fetch(apiUrl, { method, headers, body: formData })
-            .then(response => response.json())
+            .then(response => {
+                // ✅ Se a resposta for 401 (Não Autorizado), o middleware retornou JSON
+                if (response.status === 401) {
+                    return response.json().then(data => {
+                        // Força o redirecionamento para a página de login
+                        window.location.href = data.redirect_url;
+                        // Lança um erro para interromper a cadeia de promessas
+                        throw new Error('Sessão expirada. Redirecionando para login.');
+                    });
+                }
+                // Se não for 401, continua o fluxo normal
+                return response.json();
+            })
             .then(data => {
                 console.log("✅ Resposta JSON recebida:", data);
                 if (data.success) {
                     document.dispatchEvent(new CustomEvent("ajaxFormSuccess", { detail: { form, responseJson: data } }));
                 }
                 if (data.redirect_url) {
-                    window.location.href = data.redirect_url;
+                    // Se a URL de redirecionamento for a mesma da página atual, recarrega a página
+                    if (window.location.href === data.redirect_url) {
+                        window.location.reload();
+                    } else {
+                        window.location.href = data.redirect_url;
+                    }
                 } else if (data.message || data.mensagem) {
                     const messageText = data.message || data.mensagem;
                     const messageType = data.success ? "success" : "danger";
@@ -237,8 +262,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             })
             .catch(error => {
-                console.error("❌ Erro na submissão do formulário AJAX:", error);
-                mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
+                // Evita mostrar a mensagem de erro de "Sessão expirada" para o usuário final
+                if (error.message !== 'Sessão expirada. Redirecionando para login.') {
+                    console.error("❌ Erro na submissão do formulário AJAX:", error);
+                    mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
+                }
             });
     });
     // ←– Fim do bloco a ser colado

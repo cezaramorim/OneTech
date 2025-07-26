@@ -75,10 +75,22 @@ def login_view(request):
 
 @login_required
 def logout_view(request):
+    # A verificação do método é importante para segurança
     if request.method == 'POST':
         logout(request)
+        
+        # Se for uma requisição AJAX, retorna uma resposta JSON
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'redirect_url': reverse('accounts:login')
+            })
+            
+        # Para requisições normais, redireciona como antes
+        messages.success(request, "Você saiu com sucesso.")
         return redirect('accounts:login')
 
+    # Se não for POST, apenas redireciona para a página de login
     return redirect('accounts:login')
 
 @login_required
