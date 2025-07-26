@@ -1,9 +1,9 @@
-<main id="main-content" data-tela="lista_unidades" class="container-fluid">
+<main id="main-content" class="container-fluid">
   {% load static %}
 
   <!-- ✅ Lista de Unidades de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
   <div id="identificador-tela" 
-       class="container-fluid" 
+       data-tela="lista_unidades"
        data-entidade-singular="unidade"
        data-entidade-plural="unidades"
        data-url-editar="{% url 'produto:editar_unidade' 0 %}"

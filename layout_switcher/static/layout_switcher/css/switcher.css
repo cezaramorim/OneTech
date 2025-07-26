@@ -145,5 +145,5 @@ html body#page-body.layout-lateral .sidebar {
 
 /* Ajuste para o padding-top do main-content quando o layout superior está ativo */
 html body#page-body.layout-superior #main-content {
-     padding-top: 120px !important; /* Aumenta o padding para compensar a navbar fixa */
+     padding-top: 50px !important; /* Aumenta o padding para compensar a navbar fixa */
 }

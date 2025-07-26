@@ -3,15 +3,22 @@
 {% load mask_filters %} {# Carrega os novos filtros de máscara #}
 <link rel="stylesheet" href="{% static 'css/nota_fiscal.css' %}">
 
-<main id="main-content" class="container-fluid py-4" data-page="entradas_nota">
+<main id="main-content" class="container-fluid py-4">
   <div id="identificador-tela"
        data-tela="entradas_nota"
        data-entidade-singular="nota"
        data-entidade-plural="notas"
        data-url-editar="{% url 'nota_fiscal:editar_nota' 0 %}"
-            data-url-excluir="{% url 'nota_fiscal:excluir_nota_multiplo' %}"
+       data-url-excluir="{% url 'nota_fiscal:excluir_nota_multiplo' %}"
        data-seletor-checkbox=".checkbox-nota"
        class="d-none"></div>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <a id="btn-editar" class="btn btn-info me-2" role="button">Editar</a>
+      <button id="btn-excluir" class="btn btn-danger">Excluir</button>
+    </div>
+    <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-success">+ Importar Nova Nota</a>
+  </div>
   <div class="card shadow-sm">
     <div class="card-body">
       <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
@@ -25,14 +32,6 @@
           <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary">Limpar</a>
         </div>
       </form>
-
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <a id="btn-editar" class="btn btn-info me-2" role="button">Editar</a>
-          <button id="btn-excluir" class="btn btn-danger">Excluir</button>
-        </div>
-        <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-success">+ Importar Nova Nota</a>
-      </div>
 
       <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle" id="tabela-notas-redimensionavel">

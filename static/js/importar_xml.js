@@ -293,12 +293,26 @@ function salvarCategoriasRevisadas() {
 
 function finalizarImportacao(force = false) {
     mostrarLoading("Processando e salvando a nota fiscal...");
-    if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
+
+    // tenta ler a URL da API do atributo data-api-url do form ou cai em action
+    const form = document.getElementById('form-importar-xml');
+    const apiUrl = form?.getAttribute('data-api-url') || form?.action;
+
+    if (!apiUrl) {
         ocultarLoading();
-        mostrarMensagem('error', 'Erro de Configuração', 'A URL da API para processar o XML não foi encontrada.');
-        console.error('A variável window.API_PROCESSAR_IMPORTACAO_XML_URL não está definida.');
+        mostrarMensagem(
+          'error',
+          'Erro de Configuração',
+          'A URL da API para processar o XML não foi encontrada no form (data-api-url ou action).'
+        );
+        console.error(
+          'Erro: A URL da API para processar o XML não foi encontrada no form.'
+        );
         return;
     }
+    
+    // A seguir continua: const payloadFinal = …
+
     const payloadFinal = JSON.parse(JSON.stringify(dadosNotaFiscal));
     payloadFinal.force_update = force;
     const infNFe = payloadFinal.raw_payload?.NFe?.infNFe || {};
@@ -315,11 +329,21 @@ function finalizarImportacao(force = false) {
     payloadFinal.valor_total_cofins = infNFe.total?.ICMSTot?.vCOFINS;
     payloadFinal.valor_total_desconto = infNFe.total?.ICMSTot?.vDesc;
 
-    fetch(window.API_PROCESSAR_IMPORTACAO_XML_URL, {
+    // renomeei para evitar redeclaração
+    const importForm = document.getElementById('form-importar-xml');
+    const formData = new FormData(importForm);
+    formData.append('force_update', force);
+    formData.append('payload', JSON.stringify(payloadFinal));
+
+    fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-        body: JSON.stringify(payloadFinal)
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: formData
     })
+
+
     .then(response => {
         if (!response.ok) {
             return response.json().then(err => { throw new Error(err.erro || `Erro no servidor: ${response.statusText}`); })
@@ -330,8 +354,15 @@ function finalizarImportacao(force = false) {
     .then(data => {
         ocultarLoading();
         if (data.success) {
+            // Exibe a mensagem de sucesso primeiro
             mostrarMensagem('success', 'Sucesso!', data.mensagem);
-            setTimeout(() => { window.location.href = data.redirect_url || '/painel/'; }, 1500);
+            
+            // Aguarda um pouco antes de redirecionar para dar tempo ao usuário de ler a mensagem
+            setTimeout(() => {
+                // Usa a URL vindoura do JSON ou, em último caso, o path completo de Entradas de Nota
+                loadAjaxContent(data.redirect_url || '/nota-fiscal/entradas/');
+            }, 1500); // 1.5 segundos de atraso
+
         } else {
             throw new Error(data.erro || 'Ocorreu um erro desconhecido ao salvar a nota.');
         }
@@ -345,41 +376,6 @@ function finalizarImportacao(force = false) {
 
 function initImportarXml() {
     console.log("🚀 Inicializando a página de importação de XML...");
-    const mainContainer = document.querySelector('[data-page="importar-xml"]');
-    if (mainContainer) {
-        window.API_PROCESSAR_IMPORTACAO_XML_URL = mainContainer.dataset.apiUrl;
-        console.log("✅ URL da API de processamento definida:", window.API_PROCESSAR_IMPORTACAO_XML_URL);
-    }
-    if (!window.API_PROCESSAR_IMPORTACAO_XML_URL) {
-        console.error('❌ Erro Crítico: A URL da API para processar o XML não foi encontrada no atributo data-api-url.');
-        mostrarMensagem('error', 'Erro de Configuração', 'A URL da API não foi encontrada. A importação final não funcionará.');
-    }
-    const categoriasData = document.getElementById('categorias-disponiveis-data');
-    if (categoriasData) {
-        try {
-            todasCategorias = JSON.parse(categoriasData.textContent || '[]');
-        } catch (e) {
-            console.error("Erro ao carregar categorias:", e);
-        }
-    }
-    const btnConfirmarCategorias = document.getElementById('btn-confirmar-categorias');
-    if (btnConfirmarCategorias) {
-        btnConfirmarCategorias.addEventListener('click', salvarCategoriasRevisadas);
-    }
-    const btnAplicarTodos = document.getElementById('btn-aplicar-categoria-todos');
-    if (btnAplicarTodos) {
-        btnAplicarTodos.addEventListener('click', () => {
-            const primeiroSelect = document.querySelector('#revisao-lista .categoria-select');
-            if (primeiroSelect && primeiroSelect.value) {
-                document.querySelectorAll('#revisao-lista .categoria-select').forEach(select => {
-                    select.value = primeiroSelect.value;
-                    select.classList.remove('is-invalid');
-                });
-            } else {
-                mostrarMensagem('warning', 'Atenção', 'Selecione uma categoria no primeiro item.');
-            }
-        });
-    }
 }
 
 document.addEventListener("ajaxFormSuccess", function (e) {

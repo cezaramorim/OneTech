@@ -86,6 +86,7 @@ def importar_xml_view(request):
         'categorias_disponiveis_json': json.dumps(categorias, ensure_ascii=False),
         'content_template': 'partials/nota_fiscal/importar_xml.html',
         'data_page': 'importar_xml',
+        'api_processar_importacao_xml_url': reverse('nota_fiscal:api_processar_importacao_xml'),
     }
     return render(request, 'base.html', context)
 

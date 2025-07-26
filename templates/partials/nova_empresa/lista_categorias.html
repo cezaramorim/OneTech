@@ -4,8 +4,8 @@
      data-tela="lista_categorias"
      data-entidade-singular="categoria" 
      data-entidade-plural="categorias" 
-     data-url-editar="/empresas/categorias/"
-     data-url-excluir="/empresas/categorias/excluir-multiplos/" 
+     data-url-editar="{% url 'empresas:editar_categoria' 0 %}"
+     data-url-excluir="{% url 'empresas:excluir_categorias_multiplos' %}" 
      data-seletor-checkbox=".check-categoria">
 </div>
 

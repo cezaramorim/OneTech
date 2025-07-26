@@ -4,11 +4,18 @@
 <main id="main-content" class="container-fluid">
   {% include 'partials/mensagens.html' %}
   <div id="identificador-tela" 
+       data-tela="lista_categorias"
        data-entidade-singular="categoria"
        data-entidade-plural="categorias"
        data-url-editar="{% url 'produto:editar_categoria' 0 %}"
        data-url-excluir="{% url 'produto:excluir_categorias' %}"
        data-seletor-checkbox=".check-categoria">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+      <div class="d-flex gap-2">
+        <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">✏️ Editar</a>
+        <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>🗑️ Excluir</button>
+      </div>
+    </div>
   </div>
   <div class="card shadow-sm">
     <div class="card-body">

@@ -1,15 +1,18 @@
 // static/js/empresa_avancada_form.js
 
-document.addEventListener('DOMContentLoaded', function() {
+// static/js/empresa_avancada_form.js
+
+window.pageInitializers.empresa_avancada = function() {
     const tipoEmpresaSelect = document.getElementById('id_tipo_empresa');
     const camposPj = document.getElementById('campos-pj');
     const camposPf = document.getElementById('campos-pf');
 
     function toggleFields() {
-        if (tipoEmpresaSelect.value === 'pj') {
+        const selectedValue = tipoEmpresaSelect.value.toLowerCase();
+        if (selectedValue === 'pj') {
             camposPj.classList.remove('d-none');
             camposPf.classList.add('d-none');
-        } else if (tipoEmpresaSelect.value === 'pf') {
+        } else if (selectedValue === 'pf') {
             camposPf.classList.remove('d-none');
             camposPj.classList.add('d-none');
         } else {
@@ -49,4 +52,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-});
+};

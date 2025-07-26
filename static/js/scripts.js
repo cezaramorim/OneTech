@@ -5,7 +5,7 @@ if (temaSalvo === "dark") {
 }
 
 // ✅ Objeto global para registrar inicializadores de página
-window.pageInitializers = window.pageInitializers || {};
+window.pageInitializers = {};
 
 // ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
@@ -18,11 +18,17 @@ function getCSRFToken() {
 }
 
 function mostrarMensagem(type, message) {
-    const container = document.getElementById("toast-container");
+    let container = document.getElementById("toast-container");
+    // Se o container não existir, cria e anexa ao body. Abordagem robusta.
     if (!container) {
-        console.error("Elemento #toast-container não encontrado para exibir a mensagem.");
-        return;
+        console.warn("Container de toast não encontrado. Criando um novo.");
+        container = document.createElement('div');
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.id = 'toast-container';
+        container.style.zIndex = '1090'; // Garante que fique acima de outros elementos
+        document.body.appendChild(container);
     }
+    
     const toastId = `toast-${Date.now()}`;
     const toastHTML = `
         <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -45,7 +51,7 @@ function loadAjaxContent(url) {
     console.log("🔁 loadAjaxContent: Iniciando carregamento para URL:", url);
     const mainContent = document.getElementById("main-content");
     if (!mainContent) {
-        console.error("❌ loadAjaxContent: Elemento #main-content não encontrado. Recarregando a página inteira.");
+        console.error("❌ #main-content não encontrado. Recarregando a página.");
         window.location.href = url;
         return;
     }
@@ -56,32 +62,69 @@ function loadAjaxContent(url) {
             return response.text();
         })
         .then(html => {
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = html;
-            const newMainContent = tempDiv.querySelector("#main-content");
+            mainContent.innerHTML = html; // Substitui o conteúdo do main-content pelo HTML recebido
 
-            if (newMainContent) {
-                mainContent.innerHTML = newMainContent.innerHTML;
-                // Atualiza os atributos data-* do container principal
-                Object.keys(newMainContent.dataset).forEach(key => {
-                    mainContent.dataset[key] = newMainContent.dataset[key];
-                });
-
-                history.pushState({ ajaxUrl: url }, "", url);
-                document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
-                console.log("✅ loadAjaxContent: Conteúdo do #main-content atualizado com sucesso.");
+            // Encontra o identificador da tela dentro do novo conteúdo
+            const identificadorTela = mainContent.querySelector("#identificador-tela");
+            if (identificadorTela) {
+                // Atualiza o data-page do main-content com o data-tela do identificador
+                mainContent.dataset.page = identificadorTela.dataset.tela;
+                mainContent.dataset.tela = identificadorTela.dataset.tela; // Garante consistência
             } else {
-                console.warn("⚠️ loadAjaxContent: #main-content não encontrado na resposta. A página será recarregada.");
-                window.location.href = url;
+                // Se não encontrar o identificador, tenta limpar o data-page para evitar vinculação incorreta
+                mainContent.dataset.page = "";
+                mainContent.dataset.tela = "";
+                console.warn("⚠️ Identificador de tela (#identificador-tela) não encontrado no conteúdo AJAX. A vinculação de ações pode estar incorreta.");
             }
+            
+            history.pushState({ ajaxUrl: url }, "", url);
+            document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
+            console.log("✅ Conteúdo do #main-content atualizado.");
         })
         .catch(error => {
-            console.error("❌ loadAjaxContent: Falha ao carregar conteúdo via AJAX:", error);
+            console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
             mostrarMensagem("danger", "Erro ao carregar a página.");
         });
 }
 
 // --- Lógica de Inicialização e Bind de Eventos ---
+
+// --- Funções de Ação de Tabela Genéricas ---
+function updateButtonStates(mainContent) {
+    if (!mainContent) return; // Garante que o mainContent exista
+
+    const identificadorTela = mainContent.querySelector("#identificador-tela");
+    if (!identificadorTela) return; // Garante que o identificadorTela exista
+
+    const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="select-all-"]');
+    const itemCheckboxes = mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox);
+    const btnEditar = mainContent.querySelector('#btn-editar');
+    const btnExcluir = mainContent.querySelector('#btn-excluir');
+
+    const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
+    const hasSelection = selectedItems.length > 0;
+    const hasSingleSelection = selectedItems.length === 1;
+
+    if (btnEditar) {
+        btnEditar.classList.toggle('disabled', !hasSingleSelection);
+        if (hasSingleSelection) {
+            const editUrlBase = identificadorTela.dataset.urlEditar;
+            const itemId = selectedItems[0].value;
+            btnEditar.href = editUrlBase.replace('0', itemId); // Substitui o placeholder '0' pelo ID
+        } else {
+            btnEditar.removeAttribute('href'); // Remove o href se não houver seleção única
+        }
+    }
+
+    if (btnExcluir) {
+        btnExcluir.disabled = !hasSelection;
+    }
+
+    // Update select all checkbox state
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = itemCheckboxes.length > 0 && Array.from(itemCheckboxes).every(c => c.checked);
+    }
+}
 
 function bindPageSpecificActions() {
     const mainContent = document.getElementById("main-content");
@@ -102,50 +145,104 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    document.body.addEventListener("click", e => {
+    document.body.addEventListener("click", async e => {
         const ajaxLink = e.target.closest(".ajax-link");
+        const btnEditar = e.target.closest('#btn-editar');
+        const btnExcluir = e.target.closest('#btn-excluir');
+        const mainContent = document.getElementById("main-content");
+        const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
+
         if (ajaxLink) {
             e.preventDefault();
             loadAjaxContent(ajaxLink.href);
+        } else if (btnEditar && !btnEditar.classList.contains('disabled')) {
+            e.preventDefault();
+            loadAjaxContent(btnEditar.href);
+        } else if (btnExcluir && !btnExcluir.disabled) {
+            e.preventDefault();
+            if (!identificadorTela) return; // Ensure identificadorTela exists
+
+            const selectedItems = Array.from(mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox)).filter(cb => cb.checked);
+            if (selectedItems.length === 0) return;
+
+            const entidadeSingular = identificadorTela.dataset.entidadeSingular || 'item';
+            const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
+
+            const result = await Swal.fire({
+                title: 'Tem certeza?',
+                text: `Você realmente deseja excluir ${selectedItems.length} ${selectedItems.length > 1 ? entidadePlural : entidadeSingular} selecionado(s)?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, excluir!',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = identificadorTela.dataset.urlExcluir;
+                form.classList.add('ajax-form');
+
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = getCSRFToken();
+                form.appendChild(csrfInput);
+
+                selectedItems.forEach(item => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = item.name;
+                    input.value = item.value;
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            }
         }
     });
 
+    // ←– Início do bloco a ser colado
     document.body.addEventListener("submit", e => {
         const form = e.target.closest(".ajax-form");
         if (!form) return;
         e.preventDefault();
-        const url = form.action;
+
+        // Tenta ler data-api-url, cai em action caso não exista
+        const apiUrl = form.getAttribute("data-api-url") || form.action;
         const method = form.method;
         const formData = new FormData(form);
-        const headers = { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCSRFToken() };
+        const headers = {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": getCSRFToken()
+        };
 
-        fetch(url, { method, headers, body: formData })
-            .then(response => {
-                const contentType = response.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    throw new Error("A resposta do servidor não é JSON.");
-                }
-                return response.json();
-            })
+        fetch(apiUrl, { method, headers, body: formData })
+            .then(response => response.json())
             .then(data => {
                 console.log("✅ Resposta JSON recebida:", data);
                 if (data.success) {
                     document.dispatchEvent(new CustomEvent("ajaxFormSuccess", { detail: { form, responseJson: data } }));
                 }
-                if (data.message || data.mensagem) {
-                    const msg = data.message || data.mensagem;
-                    const type = data.success ? "success" : "danger";
-                    mostrarMensagem(type, msg);
-                }
                 if (data.redirect_url) {
-                    setTimeout(() => loadAjaxContent(data.redirect_url), 1500);
+                    window.location.href = data.redirect_url;
+                } else if (data.message || data.mensagem) {
+                    const messageText = data.message || data.mensagem;
+                    const messageType = data.success ? "success" : "danger";
+                    mostrarMensagem(messageType, messageText);
                 }
             })
             .catch(error => {
                 console.error("❌ Erro na submissão do formulário AJAX:", error);
-                mostrarMensagem("danger", error.message || "Erro de comunicação.");
+                mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
             });
     });
+    // ←– Fim do bloco a ser colado
+
 
     window.addEventListener("popstate", e => {
         if (e.state && e.state.ajaxUrl) {
@@ -153,6 +250,30 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    document.addEventListener("ajaxContentLoaded", bindPageSpecificActions);
+    document.body.addEventListener("change", e => {
+        const mainContent = document.getElementById("main-content");
+        const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
+        // Check if the change event is from a checkbox within a table that has data-seletor-checkbox
+        if (e.target.type === 'checkbox' && identificadorTela && identificadorTela.dataset.seletorCheckbox) {
+            const itemCheckbox = e.target.closest(identificadorTela.dataset.seletorCheckbox);
+            const selectAllCheckbox = e.target.id.startsWith('select-all-');
+
+            if (itemCheckbox || selectAllCheckbox) {
+                updateButtonStates(mainContent);
+            }
+        }
+    });
+
+    document.addEventListener("ajaxContentLoaded", () => {
+        bindPageSpecificActions();
+        const mainContent = document.getElementById("main-content");
+        if (mainContent) {
+            updateButtonStates(mainContent);
+        }
+    });
     bindPageSpecificActions(); // Para a carga inicial da página
+    const mainContent = document.getElementById("main-content");
+    if (mainContent) {
+        updateButtonStates(mainContent);
+    }
 });

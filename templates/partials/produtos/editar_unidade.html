@@ -1,6 +1,7 @@
 {% load widget_tweaks %}
 
 <main id="main-content" data-tela="editar_unidade" class="container-fluid py-4">
+    <div id="identificador-tela" data-tela="editar_unidade"></div>
     <form method="post" novalidate class="ajax-form" data-url="{% url 'produto:editar_unidade' unidade.id %}">
         {% csrf_token %}
         <div class="card shadow-sm">
