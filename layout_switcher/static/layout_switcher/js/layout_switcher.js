@@ -53,6 +53,20 @@ function alternarLayout() {
     console.log(`DEBUG: Layout changed to: ${newLayout}`);
 }
 
+ function alternarTema() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('tema', isDark ? 'dark' : 'light');
+  console.log(`DEBUG: Tema alterado para: ${ isDark ? 'dark' : 'light' }`);
+
+  // ── Atualiza classes do navbar para herdar contraste correto ──
+  const navbar = document.querySelector('.navbar-superior');
+  if (navbar) {
+    navbar.classList.toggle('navbar-dark', isDark);
+    navbar.classList.toggle('navbar-light', !isDark);
+  }
+ }
+
+
 document.addEventListener("DOMContentLoaded", () => {
     // --- LÓGICA UNIFICADA DE INICIALIZAÇÃO ---
 
@@ -69,6 +83,16 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             alternarLayout();
             closeAllCollapses(); // Fecha todos os collapses ao alternar layout
+        }
+
+        // ─── b) Toggle de tema ──────────────────────────────────────
+        const themeButton = event.target.closest(
+        '#btn-alternar-tema, #btn-alternar-tema-superior'
+        );
+        if (themeButton) {
+        event.preventDefault();
+        alternarTema();
+        closeAllCollapses();
         }
     });
 

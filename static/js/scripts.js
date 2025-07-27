@@ -1,6 +1,7 @@
 // 🌙 Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
-if (temaSalvo === "dark") {
+const isDarkInit = temaSalvo === "dark";
+if (isDarkInit) {
   document.documentElement.classList.add("dark");
 }
 
@@ -9,6 +10,12 @@ window.pageInitializers = {};
 
 // ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
+
+// ── Ajusta o navbar logo de cara ──
+const navbarInicial = document.querySelector(".navbar-superior");
+if (navbarInicial) {
+  navbarInicial.classList.add(isDarkInit ? "navbar-dark" : "navbar-light");
+}
 
 // --- Funções de Utilidade Global ---
 
@@ -58,9 +65,7 @@ function loadAjaxContent(url) {
 
     fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(response => {
-            // ✅ Se a resposta for 401 (Não Autorizado), a sessão expirou.
             if (response.status === 401) {
-                // O corpo da resposta contém o JSON com a URL de redirect.
                 return response.json().then(data => {
                     window.location.href = data.redirect_url;
                     throw new Error('Sessão expirada. Redirecionando para login.');
@@ -72,21 +77,48 @@ function loadAjaxContent(url) {
             return response.text();
         })
         .then(html => {
-            mainContent.innerHTML = html;
-
-            const identificadorTela = mainContent.querySelector("#identificador-tela");
-            if (identificadorTela) {
-                mainContent.dataset.page = identificadorTela.dataset.tela;
-                mainContent.dataset.tela = identificadorTela.dataset.tela;
-            } else {
-                mainContent.dataset.page = "";
-                mainContent.dataset.tela = "";
-                console.warn("⚠️ Identificador de tela (#identificador-tela) não encontrado no conteúdo AJAX. A vinculação de ações pode estar incorreta.");
-            }
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const scriptTag = doc.querySelector('script[src]');
             
-            history.pushState({ ajaxUrl: url }, "", url);
-            document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
-            console.log("✅ Conteúdo do #main-content atualizado.");
+            // Injeta o HTML principal primeiro
+            mainContent.innerHTML = doc.body.innerHTML;
+
+            // Função para finalizar o processo
+            const finishLoading = () => {
+                const identificadorTela = mainContent.querySelector("#identificador-tela");
+                if (identificadorTela) {
+                    mainContent.dataset.page = identificadorTela.dataset.tela;
+                    mainContent.dataset.tela = identificadorTela.dataset.tela;
+                } else {
+                    mainContent.dataset.page = "";
+                    mainContent.dataset.tela = "";
+                    console.warn("⚠️ Identificador de tela (#identificador-tela) não encontrado no conteúdo AJAX. A vinculação de ações pode estar incorreta.");
+                }
+                
+                history.pushState({ ajaxUrl: url }, "", url);
+                document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
+                console.log("✅ Conteúdo e scripts (se houver) do #main-content atualizados.");
+            };
+
+            // Se um script for encontrado, carrega-o e depois finaliza.
+            // Caso contrário, apenas finaliza.
+            if (scriptTag && scriptTag.src) {
+                const newScript = document.createElement('script');
+                // Copia todos os atributos importantes
+                newScript.src = scriptTag.src;
+                if (scriptTag.defer) newScript.defer = true;
+                if (scriptTag.async) newScript.async = true;
+                
+                newScript.onload = finishLoading;
+                newScript.onerror = () => {
+                    console.error(`❌ Falha ao carregar o script dinâmico: ${scriptTag.src}`);
+                    finishLoading(); // Continua mesmo se o script falhar para não travar a navegação
+                };
+                document.body.appendChild(newScript); // Anexa ao body para garantir a execução
+            } else {
+                finishLoading();
+            }
         })
         .catch(error => {
             if (error.message !== 'Sessão expirada. Redirecionando para login.') {

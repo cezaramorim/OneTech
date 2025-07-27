@@ -117,10 +117,18 @@ class EditUserForm(UserChangeForm):
             'autocomplete': 'current-password'
         })
     )
+    
+    # ←── Aqui adicionamos o campo "grupo" na edição
+    grupo = forms.ModelChoiceField(
+        queryset=Group.objects.all(),
+        label="Grupo",
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'nome_completo', 'whatsapp', 'is_active')
+        fields = ('username', 'email', 'nome_completo', 'whatsapp', 'grupo', 'is_active')
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': 'form-control',
