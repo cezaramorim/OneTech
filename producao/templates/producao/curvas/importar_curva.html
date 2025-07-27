@@ -1,46 +1,45 @@
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
-            <h2>Importar Curva de Crescimento de Excel</h2>
-        </div>
-        <div class="card-body">
-            <p class="card-text">
-                Faça o upload de um arquivo Excel (.xlsx) para criar ou atualizar uma Curva de Crescimento.
-                O sistema identificará a curva pelo nome e substituirá todos os detalhes existentes por aqueles no arquivo.
-            </p>
-            <form method="post" enctype="multipart/form-data" action="{% url 'producao:importar_curva' %}" class="ajax-form">
-                {% csrf_token %}
-                
-                <div class="mb-3">
-                    {{ form.arquivo_excel.label_tag }}
-                    {{ form.arquivo_excel }}
-                    <div class="form-text">{{ form.arquivo_excel.help_text }}</div>
-                    {% if form.arquivo_excel.errors %}
-                        <div class="invalid-feedback d-block">
-                            {% for error in form.arquivo_excel.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
+{% load static %}
 
-                <div class="d-flex justify-content-between align-items-center">
-                    <a href="{% url 'producao:download_template' %}" class="btn btn-info" target="_blank">
-                        <i class="fas fa-download"></i> Baixar Modelo Excel
-                    </a>
-                    <div>
-                        <a href="{% url 'producao:lista_curvas' %}" class="btn btn-secondary me-2 ajax-link">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-upload"></i> Importar Arquivo
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="card-footer">
-            <small class="text-muted">
-                <strong>Atenção:</strong> A importação substituirá os dados de qualquer curva com o mesmo nome existente no sistema.
-            </small>
-        </div>
+<div id="identificador-tela" data-tela="importar_curva" class="d-none"></div>
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+      <div class="card-body">
+        <h2 class="mb-4 text-center">Importar Curva de Crescimento</h2>
+        <p class="text-center text-muted mb-4">Utilize este formulário para importar dados de curvas de crescimento a partir de um arquivo Excel.</p>
+
+        <form method="post" enctype="multipart/form-data" class="ajax-form" action="{% url 'producao:importar_curva' %}">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label for="id_nome" class="form-label">Nome da Curva</label>
+            {{ form.nome }}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_especie" class="form-label">Espécie</label>
+            {{ form.especie }}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_rendimento_perc" class="form-label">% Rendimento</label>
+            {{ form.rendimento_perc }}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_arquivo_excel" class="form-label">Arquivo Excel</label>
+            {{ form.arquivo_excel }}
+            <div class="form-text">Faça o upload do arquivo Excel contendo os dados da curva.</div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary mt-3">Importar Curva</button>
+            <a href="{% url 'producao:download_template_curva' %}" class="btn btn-outline-secondary mt-2">Baixar Modelo Excel</a>
+          </div>
+        </form>
+
+      </div>
     </div>
+  </div>
 </div>

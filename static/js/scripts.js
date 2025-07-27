@@ -132,12 +132,11 @@ function loadAjaxContent(url) {
 
 // --- Funções de Ação de Tabela Genéricas ---
 function updateButtonStates(mainContent) {
-    if (!mainContent) return; // Garante que o mainContent exista
+    if (!mainContent) return;
 
     const identificadorTela = mainContent.querySelector("#identificador-tela");
-    if (!identificadorTela) return; // Garante que o identificadorTela exista
+    if (!identificadorTela || !identificadorTela.dataset.seletorCheckbox) return;
 
-    const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="select-all-"]');
     const itemCheckboxes = mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox);
     const btnEditar = mainContent.querySelector('#btn-editar');
     const btnExcluir = mainContent.querySelector('#btn-excluir');
@@ -147,35 +146,40 @@ function updateButtonStates(mainContent) {
     const hasSingleSelection = selectedItems.length === 1;
 
     if (btnEditar) {
-        btnEditar.classList.toggle('disabled', !hasSingleSelection);
+        btnEditar.disabled = !hasSingleSelection;
         if (hasSingleSelection) {
             const editUrlBase = identificadorTela.dataset.urlEditar;
-            const itemId = selectedItems[0].value;
-            btnEditar.href = editUrlBase.replace('0', itemId); // Substitui o placeholder '0' pelo ID
+            if (editUrlBase) {
+                const itemId = selectedItems[0].value;
+                btnEditar.setAttribute('data-href', editUrlBase.replace('0', itemId));
+            } else {
+                 btnEditar.disabled = true;
+            }
         } else {
-            btnEditar.removeAttribute('href'); // Remove o href se não houver seleção única
+            btnEditar.removeAttribute('data-href');
         }
     }
 
     if (btnExcluir) {
         btnExcluir.disabled = !hasSelection;
     }
-
-    // Update select all checkbox state
+    
+    const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="selecionar-todas-"]');
     if (selectAllCheckbox) {
-        selectAllCheckbox.checked = itemCheckboxes.length > 0 && Array.from(itemCheckboxes).every(c => c.checked);
+        selectAllCheckbox.checked = itemCheckboxes.length > 0 && selectedItems.length === itemCheckboxes.length;
     }
 }
 
 function bindPageSpecificActions() {
     const mainContent = document.getElementById("main-content");
-    const page = mainContent?.dataset.page || "";
+    const page = mainContent?.dataset.tela || "";
     console.log(`🔎 Binding de ações para a página: ${page}`);
     if (page && window.pageInitializers[page]) {
         console.log(`🚀 Executando inicializador para a página '${page}'.`);
         window.pageInitializers[page]();
     }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const themeToggle = document.getElementById("theme-toggle");
@@ -196,12 +200,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ajaxLink) {
             e.preventDefault();
             loadAjaxContent(ajaxLink.href);
-        } else if (btnEditar && !btnEditar.classList.contains('disabled')) {
+        } else if (btnEditar && !btnEditar.disabled) {
             e.preventDefault();
-            loadAjaxContent(btnEditar.href);
+            const href = btnEditar.getAttribute('data-href');
+            if(href) loadAjaxContent(href);
         } else if (btnExcluir && !btnExcluir.disabled) {
             e.preventDefault();
-            if (!identificadorTela) return; // Ensure identificadorTela exists
+            if (!identificadorTela) return;
 
             const selectedItems = Array.from(mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox)).filter(cb => cb.checked);
             if (selectedItems.length === 0) return;
@@ -221,28 +226,31 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = identificadorTela.dataset.urlExcluir;
-                form.classList.add('ajax-form');
-
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = 'csrfmiddlewaretoken';
-                csrfInput.value = getCSRFToken();
-                form.appendChild(csrfInput);
-
-                selectedItems.forEach(item => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = item.name;
-                    input.value = item.value;
-                    form.appendChild(input);
+                const ids = selectedItems.map(cb => cb.value);
+                const url = identificadorTela.dataset.urlExcluir;
+                
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ ids: ids })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.sucesso) {
+                        mostrarMensagem('success', data.mensagem);
+                        loadAjaxContent(window.location.pathname); // Recarrega a lista
+                    } else {
+                        mostrarMensagem('danger', data.mensagem || 'Erro desconhecido.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na exclusão:', error);
+                    mostrarMensagem('danger', 'Erro de comunicação ao tentar excluir.');
                 });
-
-                document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form);
             }
         }
     });

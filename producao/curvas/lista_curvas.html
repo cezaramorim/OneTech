@@ -1,13 +1,14 @@
+{% extends 'base.html' %}
 {% load static %}
-<div id="identificador-tela" 
-     data-tela="lista_curvas"
-     data-entidade-singular="curva de crescimento"
-     data-entidade-plural="curvas de crescimento"
-     data-url-editar="{% url 'producao:editar_curva' pk=0 %}"
-     data-url-editar="{% url 'producao:editar_curva' pk=0 %}"
-     data-url-excluir="{% url 'producao:excluir_curvas_multiplas' %}"
-     data-seletor-checkbox=".selecionar-curva">
 
+{% block content %}
+<main id="main-content" class="container-fluid py-4" data-page="lista_curvas">
+  <div id="identificador-tela" data-tela="lista_curvas"
+    data-entidade-singular="curva de crescimento"
+    data-entidade-plural="curvas de crescimento"
+    data-url-editar="{% url 'producao:editar_curva' pk=0 %}"
+    data-url-excluir="{% url 'producao:excluir_curvas_multiplas' %}"
+    data-seletor-checkbox=".selecionar-curva">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="mb-0">Curvas de Crescimento</h2>
       <div>
@@ -43,6 +44,10 @@
                   <a href="{% url 'producao:detalhe_curva' pk=curva.pk %}" class="btn btn-sm btn-info ajax-link" title="Ver Detalhes">
                     <i class="fas fa-eye"></i>
                   </a>
+                  <a href="{% url 'producao:editar_curva' pk=curva.pk %}" class="btn btn-sm btn-warning ajax-link" title="Editar">
+                    <i class="fas fa-edit"></i>
+                  </a>
+                  <!-- Excluir individualmente pode ser adicionado aqui se necessário -->
                 </td>
               </tr>
               {% endfor %}
@@ -56,6 +61,7 @@
       Nenhuma curva de crescimento encontrada. <a href="{% url 'producao:importar_curva' %}" class="alert-link ajax-link">Importe uma agora!</a>
     </div>
     {% endif %}
-</div>
-
+  </div>
+</main>
+{% endblock %}
 <script src="{% static 'producao/js/curvas.js' %}"></script>

@@ -1,0 +1,64 @@
+{% load static %}
+<div id="identificador-tela" data-tela="detalhe_curva">
+  <div class="container-fluid">
+      <h1 class="h3 mb-4 text-gray-800">Detalhes da Curva de Crescimento</h1>
+
+      <div class="card shadow mb-4">
+          <div class="card-header py-3">
+              <h6 class="m-0 font-weight-bold text-primary">{{ curva.nome }}</h6>
+          </div>
+          <div class="card-body">
+              <p><strong>Espécie:</strong> {{ curva.especie }}</p>
+              <p><strong>Rendimento Percentual:</strong> {{ curva.rendimento_perc }}%</p>
+          </div>
+      </div>
+
+      <div class="card shadow mb-4">
+          <div class="card-header py-3">
+              <h6 class="m-0 font-weight-bold text-primary">Detalhes da Curva</h6>
+          </div>
+          <div class="card-body">
+              <div class="table-responsive">
+                  <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                      <thead>
+                          <tr>
+                              <th>Período</th>
+                              <th>Dias</th>
+                              <th>Peso Inicial (g)</th>
+                              <th>Peso Final (g)</th>
+                              <th>Ganho de Peso (g)</th>
+                              <th>Tratos Diários</th>
+                              <th>Hora Início Trato</th>
+                              <th>% Arraçoamento Biomassa</th>
+                              <th>% Mortalidade Presumida</th>
+                              <th>Tipo Ração</th>
+                              <th>GPD</th>
+                              <th>TCA</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {% for detalhe in detalhes %}
+                          <tr>
+                              <td>{{ detalhe.periodo }}</td>
+                              <td>{{ detalhe.dias_periodo }}</td>
+                              <td>{{ detalhe.peso_inicial_g }}</td>
+                              <td>{{ detalhe.peso_final_g }}</td>
+                              <td>{{ detalhe.ganho_peso_g }}</td>
+                              <td>{{ detalhe.tratos_diarios }}</td>
+                              <td>{{ detalhe.hora_inicio_trato|time:"H:i" }}</td>
+                              <td>{{ detalhe.arracoamento_biomassa_perc }}</td>
+                              <td>{{ detalhe.mortalidade_presumida_perc }}</td>
+                              <td>{{ detalhe.tipo_racao }}</td>
+                              <td>{{ detalhe.gpd }}</td>
+                              <td>{{ detalhe.tca }}</td>
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+
+      <a href="{% url 'producao:lista_curvas' %}" class="btn btn-secondary ajax-link">Voltar para a Lista de Curvas</a>
+  </div>
+</div>
