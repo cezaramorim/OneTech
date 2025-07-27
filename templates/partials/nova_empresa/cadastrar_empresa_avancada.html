@@ -135,10 +135,8 @@
 </main>
 
 <!-- Injeção de dados da empresa para JS (apenas em modo de edição) -->
-{% if empresa %}
-<script id="empresa-data" type="application/json">
+{% if empresa_data %}
   {{ empresa_data|json_script:"empresa-data" }}
-</script>
 {% endif %}
 
 <script defer src="{% static 'js/empresa_avancada_form.js' %}"></script>
