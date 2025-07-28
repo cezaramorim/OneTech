@@ -6,16 +6,6 @@ from django.http import JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 import json
 
-def render_ajax_or_base(request, partial_template, context=None):
-    """
-    Renderiza um template parcial dentro do base.html para requisições normais
-    ou apenas o template parcial para requisições AJAX.
-    """
-    context = context or {}
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return render(request, partial_template, context)
-    return render(request, 'base.html', {'content_template': partial_template, **context})
-
 
 class AjaxFormMixin:
     """

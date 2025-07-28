@@ -1,7 +1,7 @@
 {% if perms.auth.view_group %}
 {% load static %}
 
-<main id="main-content" class="container-fluid py-4">
+<div class="container-fluid py-4">
   <div id="identificador-tela" 
        data-tela="lista_grupos"
        data-entidade-singular="grupo"
@@ -88,7 +88,6 @@
       </div>
     </div>
   </div>
-</main>
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

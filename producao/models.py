@@ -71,27 +71,34 @@ class CurvaCrescimento(models.Model):
 # Modelo para os detalhes (linhas) da Curva de Crescimento
 class CurvaCrescimentoDetalhe(models.Model):
     curva = models.ForeignKey(CurvaCrescimento, on_delete=models.CASCADE, related_name='detalhes')
-    periodo = models.IntegerField(help_text="Número do período ou semana do ciclo")
-    dias_periodo = models.IntegerField(help_text="Número de dias no período (ex: 7)")
-    peso_inicial_g = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso inicial do animal no período (em gramas)")
-    peso_final_g = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso final do animal no período (em gramas)")
-    ganho_peso_g = models.DecimalField(max_digits=10, decimal_places=2, help_text="Ganho de peso total no período (em gramas)")
-    tratos_diarios = models.IntegerField(help_text="Número de tratos de ração por dia")
-    hora_inicio_trato = models.TimeField(help_text="Hora de início do primeiro trato do dia")
-    arracoamento_biomassa_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de arraçoamento sobre a biomassa")
-    mortalidade_presumida_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de mortalidade presumida para o período")
-    tipo_racao = models.CharField(max_length=255, help_text="Descrição da ração utilizada no período")
-    gpd = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ganho de Peso Diário (g)")
-    tca = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Taxa de Conversão Alimentar")
+    periodo_semana = models.IntegerField(help_text="Número do período ou semana do ciclo", default=0)
+    periodo_dias = models.IntegerField(help_text="Número de dias no período (ex: 7)", default=0)
+    peso_inicial = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso inicial do animal no período (em gramas)", default=0)
+    peso_final = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso final do animal no período (em gramas)", default=0)
+    ganho_de_peso = models.DecimalField(max_digits=10, decimal_places=2, help_text="Ganho de peso total no período (em gramas)", default=0)
+    numero_tratos = models.IntegerField(help_text="Número de tratos de ração por dia", default=0)
+    hora_inicio = models.TimeField(help_text="Hora de início do primeiro trato do dia", default='00:00')
+    arracoamento_biomassa_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de arraçoamento sobre a biomassa", default=0)
+    mortalidade_presumida_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de mortalidade presumida para o período", default=0)
+    racao = models.ForeignKey(
+        Produto,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='curvas_crescimento',
+        help_text="Ração utilizada no período (vinculada ao cadastro de produtos)"
+    )
+    gpd = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ganho de Peso Diário (g)", default=0)
+    tca = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Taxa de Conversão Alimentar", default=0)
 
     class Meta:
         verbose_name = "Detalhe da Curva de Crescimento"
         verbose_name_plural = "Detalhes da Curva de Crescimento"
-        ordering = ['curva', 'periodo']
-        unique_together = ('curva', 'periodo') # Garante que cada período é único para uma curva
+        ordering = ['curva', 'periodo_semana']
+        unique_together = ('curva', 'periodo_semana') # Garante que cada período é único para uma curva
 
     def __str__(self):
-        return f"{self.curva.nome} - Período {self.periodo}"
+        return f"{self.curva.nome} - Semana {self.periodo_semana}"
 
 class Tanque(models.Model):
     nome = models.CharField(max_length=255, unique=True)

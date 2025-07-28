@@ -27,28 +27,30 @@
                               <th>Peso Inicial (g)</th>
                               <th>Peso Final (g)</th>
                               <th>Ganho de Peso (g)</th>
-                              <th>Tratos Diários</th>
-                              <th>Hora Início Trato</th>
-                              <th>% Arraçoamento Biomassa</th>
+                              <th>Nº Tratos</th>
+                              <th>Hora Início</th>
+                              <th>% Arraç. Biomassa</th>
                               <th>% Mortalidade Presumida</th>
-                              <th>Tipo Ração</th>
+                              <th>Ração</th>
                               <th>GPD</th>
                               <th>TCA</th>
                           </tr>
                       </thead>
                       <tbody>
                           {% for detalhe in detalhes %}
-                          <tr>
-                              <td>{{ detalhe.periodo }}</td>
-                              <td>{{ detalhe.dias_periodo }}</td>
-                              <td>{{ detalhe.peso_inicial_g }}</td>
-                              <td>{{ detalhe.peso_final_g }}</td>
-                              <td>{{ detalhe.ganho_peso_g }}</td>
-                              <td>{{ detalhe.tratos_diarios }}</td>
-                              <td>{{ detalhe.hora_inicio_trato|time:"H:i" }}</td>
+                          <tr data-id="{{ detalhe.pk }}">
+                              <td>{{ detalhe.periodo_semana }}</td>
+                              <td>{{ detalhe.periodo_dias }}</td>
+                              <td>{{ detalhe.peso_inicial }}</td>
+                              <td>{{ detalhe.peso_final }}</td>
+                              <td>{{ detalhe.ganho_de_peso }}</td>
+                              <td>{{ detalhe.numero_tratos }}</td>
+                              <td>{{ detalhe.hora_inicio|time:"H:i" }}</td>
                               <td>{{ detalhe.arracoamento_biomassa_perc }}</td>
                               <td>{{ detalhe.mortalidade_presumida_perc }}</td>
-                              <td>{{ detalhe.tipo_racao }}</td>
+                              <td class="editable-racao" data-detalhe-id="{{ detalhe.pk }}" data-racao-id="{{ detalhe.racao.pk|default_if_none:'' }}">
+                                  {{ detalhe.racao.nome|default:"-- Selecionar --" }}
+                              </td>
                               <td>{{ detalhe.gpd }}</td>
                               <td>{{ detalhe.tca }}</td>
                           </tr>
@@ -62,3 +64,5 @@
       <a href="{% url 'producao:lista_curvas' %}" class="btn btn-secondary ajax-link">Voltar para a Lista de Curvas</a>
   </div>
 </div>
+
+<script src="{% static 'producao/js/detalhe_curva.js' %}"></script>

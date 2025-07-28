@@ -6,90 +6,88 @@
 {% include 'partials/mensagens.html' %}
 
 <!-- ✅ Lista de Produtos - AJAX | Responsivo, claro/escuro, boas práticas -->
-<main id="main-content" data-tela="lista_produtos" class="container-fluid">
-  <!-- 🆔 Identificador para JS -->
-  <div id="identificador-tela" 
-       data-tela="lista_produtos"
-       data-entidade-singular="produto"
-       data-entidade-plural="produtos"
-       data-url-editar="{% url 'produto:editar_produto' 0 %}"
-       data-url-excluir="{% url 'produto:excluir_produto_multiplo' %}"
-       data-seletor-checkbox=".check-produto"></div>
+<!-- 🆔 Identificador para JS -->
+<div id="identificador-tela" 
+     data-tela="lista_produtos"
+     data-entidade-singular="produto"
+     data-entidade-plural="produtos"
+     data-url-editar="{% url 'produto:editar_produto' 0 %}"
+     data-url-excluir="{% url 'produto:excluir_produto_multiplo' %}"
+     data-seletor-checkbox=".check-produto"></div>
 
-  <!-- 🎴 Cartão visual padrão do sistema -->
-  <div class="card shadow-sm">
-    <div class="card-body">
+<!-- 🎴 Cartão visual padrão do sistema -->
+<div class="card shadow-sm">
+  <div class="card-body">
 
-      <!-- 🔹 Cabeçalho da página -->
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">📦 Produtos</h2>
-        <a href="{% url 'produto:cadastrar_produto' %}" class="btn btn-primary ajax-link">
-          <i class="bi bi-plus-lg"></i> Novo Produto
-        </a>
+    <!-- 🔹 Cabeçalho da página -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">📦 Produtos</h2>
+      <a href="{% url 'produto:cadastrar_produto' %}" class="btn btn-primary ajax-link">
+        <i class="bi bi-plus-lg"></i> Novo Produto
+      </a>
+    </div>
+
+    {% if produtos %}
+      <!-- 🛠️ Ações principais (padrão scripts.js) -->
+      <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2">
+          <!-- ✏️ Editar -->
+          <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
+            ✏️ Editar
+          </a>
+
+          <!-- ❌ Excluir -->
+          <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
+            🗑️ Excluir
+          </button>
+        </div>
       </div>
 
-      {% if produtos %}
-        <!-- 🛠️ Ações principais (padrão scripts.js) -->
-        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-          <div class="d-flex flex-wrap gap-2">
-            <!-- ✏️ Editar -->
-            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
-              ✏️ Editar
-            </a>
+      <!-- 📋 Tabela de produtos -->
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>
+                <input type="checkbox" id="select-all-produtos">
+              </th>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Unidade</th>
+              <th class="text-end">Preço Custo</th>
+              <th class="text-end">Estoque Atual</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for produto in produtos %}
+            <tr>
+              <td>
+                <input type="checkbox" class="check-produto" value="{{ produto.id }}">
+              </td>
+              <td>{{ produto.codigo }}</td>
+              <td>{{ produto.nome }}</td>
+              <td>{{ produto.categoria.nome }}</td>
+              <td>{{ produto.unidade_medida_interna.sigla }}</td>
+              <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
+              <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
+              <td>
+                {% if produto.ativo %}
+                  <span class="badge bg-success">Ativo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inativo</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <!-- ⚠️ Alerta caso não haja produtos -->
+      <div class="alert alert-warning">Nenhum produto cadastrado ainda.</div>
+    {% endif %}
 
-            <!-- ❌ Excluir -->
-            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
-              🗑️ Excluir
-            </button>
-          </div>
-        </div>
-
-        <!-- 📋 Tabela de produtos -->
-        <div class="table-responsive">
-          <table class="table table-hover table-bordered align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>
-                  <input type="checkbox" id="select-all-produtos">
-                </th>
-                <th>Código</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Unidade</th>
-                <th class="text-end">Preço Custo</th>
-                <th class="text-end">Estoque Atual</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for produto in produtos %}
-              <tr>
-                <td>
-                  <input type="checkbox" class="check-produto" value="{{ produto.id }}">
-                </td>
-                <td>{{ produto.codigo }}</td>
-                <td>{{ produto.nome }}</td>
-                <td>{{ produto.categoria.nome }}</td>
-                <td>{{ produto.unidade_medida_interna.sigla }}</td>
-                <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
-                <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
-                <td>
-                  {% if produto.ativo %}
-                    <span class="badge bg-success">Ativo</span>
-                  {% else %}
-                    <span class="badge bg-secondary">Inativo</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <!-- ⚠️ Alerta caso não haja produtos -->
-        <div class="alert alert-warning">Nenhum produto cadastrado ainda.</div>
-      {% endif %}
-
-    </div>
   </div>
-</main>
+</div>

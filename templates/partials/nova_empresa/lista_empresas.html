@@ -1,27 +1,23 @@
 {% load static %}
 
-<!-- ✅ Container principal identificado para AJAX -->
-<main id="main-content" data-page="lista_empresas_avancadas" class="container-fluid">
+<!-- ✅ Inclusão das mensagens dinâmicas (alertas de sucesso, erro, etc) -->
+{% include 'partials/mensagens.html' %}
 
-  <!-- ✅ Inclusão das mensagens dinâmicas (alertas de sucesso, erro, etc) -->
-  {% include 'partials/mensagens.html' %}
+<!-- ✅ Identificador da tela para a lógica de botões genérica -->
+<div id="identificador-tela" 
+     data-tela="lista_empresas_avancadas"
+     data-entidade-singular="empresa" 
+     data-entidade-plural="empresas" 
+     data-url-editar="{% url 'empresas:editar_empresa_avancada' 0 %}" 
+     data-url-excluir="{% url 'empresas:excluir_empresas_avancadas_multiplos' %}" 
+     data-seletor-checkbox=".check-empresa">
+</div>
 
-  <!-- ✅ Identificador da tela para a lógica de botões genérica -->
-  <div id="identificador-tela" 
-       data-tela="lista_empresas_avancadas"
-       data-entidade-singular="empresa" 
-       data-entidade-plural="empresas" 
-       data-url-editar="{% url 'empresas:editar_empresa_avancada' 0 %}" 
-       data-url-excluir="{% url 'empresas:excluir_empresas_avancadas_multiplos' %}" 
-       data-seletor-checkbox=".check-empresa">
+<!-- ✅ Cartão com sombra e largura máxima controlada -->
+<div class="card shadow-sm mx-auto" style="max-width: 1100px;">
+  <div class="card-body">
+
+    {% include 'partials/nova_empresa/_lista_empresas_table.html' %}
+
   </div>
-
-  <!-- ✅ Cartão com sombra e largura máxima controlada -->
-  <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
-    <div class="card-body">
-
-      {% include 'partials/nova_empresa/_lista_empresas_table.html' %}
-
-    </div>
-  </div>
-</main>
+</div>

@@ -1,8 +1,7 @@
 {% if perms.accounts.view_user %}
 {% load static %}
 
-<main id="main-content" class="container-fluid py-4">
-  <div id="identificador-tela" 
+<div id="identificador-tela" 
        data-tela="lista_usuarios"
        data-entidade-singular="usuario"
        data-entidade-plural="usuarios"
@@ -100,7 +99,6 @@
       </div>
     </div>
   </div>
-</main>
 {% else %}
 <div class="alert alert-danger text-center mt-5">
   Você não tem permissão para acessar esta funcionalidade.

@@ -19,7 +19,8 @@ from django.template.response import TemplateResponse
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
-from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin, render_ajax_or_base
+from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin
+from common.utils import render_ajax_or_base
 
 
 # === Autenticação ===

@@ -36,4 +36,7 @@ urlpatterns = [
     path('alimentacao/registrar/', views.RegistrarAlimentacaoView.as_view(), name='registrar_alimentacao'),
     path('alimentacao/<int:pk>/editar/', views.EditarAlimentacaoView.as_view(), name='editar_alimentacao'),
     path('alimentacao/excluir-multipla/', views.ExcluirAlimentacaoMultiplaView.as_view(), name='excluir_alimentacao_multipla'),
+
+    # API para Edição Interativa de Detalhes da Curva
+    path('api/curvas/detalhe/atualizar/', views.AtualizarDetalheCurvaAPIView.as_view(), name='api_atualizar_detalhe_curva'),
 ]

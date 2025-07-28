@@ -132,10 +132,14 @@ function loadAjaxContent(url) {
 
 // --- Funções de Ação de Tabela Genéricas ---
 function updateButtonStates(mainContent) {
-    if (!mainContent) return;
+    if (!mainContent) {
+        return;
+    }
 
     const identificadorTela = mainContent.querySelector("#identificador-tela");
-    if (!identificadorTela || !identificadorTela.dataset.seletorCheckbox) return;
+    if (!identificadorTela || !identificadorTela.dataset.seletorCheckbox) {
+        return;
+    }
 
     const itemCheckboxes = mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox);
     const btnEditar = mainContent.querySelector('#btn-editar');
@@ -147,6 +151,11 @@ function updateButtonStates(mainContent) {
 
     if (btnEditar) {
         btnEditar.disabled = !hasSingleSelection;
+        if (btnEditar.disabled) {
+            btnEditar.classList.add('disabled');
+        } else {
+            btnEditar.classList.remove('disabled');
+        }
         if (hasSingleSelection) {
             const editUrlBase = identificadorTela.dataset.urlEditar;
             if (editUrlBase) {
@@ -154,6 +163,7 @@ function updateButtonStates(mainContent) {
                 btnEditar.setAttribute('data-href', editUrlBase.replace('0', itemId));
             } else {
                  btnEditar.disabled = true;
+                 btnEditar.classList.add('disabled');
             }
         } else {
             btnEditar.removeAttribute('data-href');
@@ -162,6 +172,11 @@ function updateButtonStates(mainContent) {
 
     if (btnExcluir) {
         btnExcluir.disabled = !hasSelection;
+        if (btnExcluir.disabled) {
+            btnExcluir.classList.add('disabled');
+        } else {
+            btnExcluir.classList.remove('disabled');
+        }
     }
     
     const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="selecionar-todas-"]');
