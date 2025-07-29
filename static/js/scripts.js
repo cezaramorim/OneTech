@@ -63,6 +63,7 @@ function loadAjaxContent(url) {
         return;
     }
 
+    console.log("DEBUG: Enviando requisição AJAX com cabeçalho X-Requested-With: XMLHttpRequest");
     fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(response => {
             if (response.status === 401) {
@@ -206,13 +207,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     document.body.addEventListener("click", async e => {
-        const ajaxLink = e.target.closest(".ajax-link");
+        console.log("DEBUG: Evento de clique disparado.");
         const btnEditar = e.target.closest('#btn-editar');
         const btnExcluir = e.target.closest('#btn-excluir');
         const mainContent = document.getElementById("main-content");
         const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
-
+        const ajaxLink = e.target.closest(".ajax-link");
+        console.log("DEBUG: ajaxLink encontrado:", ajaxLink);
         if (ajaxLink) {
+            console.log("DEBUG: ajaxLink.href:", ajaxLink.href);
             e.preventDefault();
             loadAjaxContent(ajaxLink.href);
         } else if (btnEditar && !btnEditar.disabled) {
@@ -353,10 +356,22 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mainContent) {
             updateButtonStates(mainContent);
         }
+        adjustMainContentPadding(); // Ajusta o padding após o carregamento AJAX
     });
+
     bindPageSpecificActions(); // Para a carga inicial da página
     const mainContent = document.getElementById("main-content");
     if (mainContent) {
         updateButtonStates(mainContent);
     }
+    adjustMainContentPadding(); // Ajusta o padding na carga inicial
 });
+
+function adjustMainContentPadding() {
+    const navbarSuperior = document.querySelector('.navbar-superior');
+    const mainContent = document.getElementById('main-content');
+    if (navbarSuperior && mainContent) {
+        const navbarHeight = navbarSuperior.offsetHeight;
+        mainContent.style.paddingTop = `${navbarHeight}px`;
+    }
+}

@@ -114,6 +114,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'painel.context_processors.definir_data_tela',
+                # ADICIONAR A LINHA ABAIXO
+                'common.context_processors.dynamic_menu', 
             ],
         },
     },

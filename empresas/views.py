@@ -39,8 +39,7 @@ from .models import EmpresaAvancada
 @permission_required('empresas.view_categoriaempresa', raise_exception=True)
 def lista_categorias_view(request):
     categorias = CategoriaEmpresa.objects.all().order_by('nome')
-    return render(request, 'base.html', {
-        'content_template': 'partials/nova_empresa/lista_categorias.html',
+    return render_ajax_or_base(request, 'partials/nova_empresa/lista_categorias.html', {
         'categorias': categorias
     })
 

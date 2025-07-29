@@ -59,176 +59,39 @@
       <nav>
         <div class="accordion" id="menuAccordion">
       
-          <!-- ⚙️ Configurações -->
-          {% if perms.accounts.view_user or perms.auth.view_group %}
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-configuracoes">
-                ⚙️ Configurações
-              </button>
-            </h2>
-            <div id="submenu-configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-      
-                  {% if perms.accounts.view_user %}
-                  <li class="list-group-item">
-                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#config-usuarios">
-                          👤 Usuários
-                      </button>
-                      <div id="config-usuarios" class="accordion-collapse collapse" data-bs-parent="#submenu-configuracoes">
-                          <ul class="list-group list-group-flush">
-                              {% if perms.accounts.add_user %}
-                              <li><a href="{% url 'accounts:criar_usuario' %}" class="list-group-item ajax-link">Novo</a></li>
-                              {% endif %}
-                              <li><a href="{% url 'accounts:lista_usuarios' %}" class="list-group-item ajax-link">Lista</a></li>
+          {% for item in dynamic_menu_items %}
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-{{ forloop.counter }}">
+                  {{ item.icon }} {{ item.name }}
+                </button>
+              </h2>
+              <div id="submenu-{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                <div class="accordion-body p-0">
+                  <ul class="list-group list-group-flush">
+                    {% for child in item.children %}
+                      {% if child.children %}
+                        <!-- Submenu de segundo nível (ex: Usuários, Grupos) -->
+                        <li class="list-group-item ms-3">
+                          <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#submenu-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                            {{ child.icon }} {{ child.name }}
+                          </button>
+                          <ul id="submenu-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" class="collapse list-group list-group-flush mt-2 ms-3">
+                            {% for grandchild in child.children %}
+                              <li><a href="{{ grandchild.url }}" class="list-group-item ajax-link">{{ grandchild.name }}</a></li>
+                            {% endfor %}
                           </ul>
-                      </div>
-                  </li>
-                  {% endif %}
-      
-                  {% if perms.auth.view_group %}
-                  <li class="list-group-item">
-                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#config-grupos">
-                          🛡️ Grupos
-                      </button>
-                      <div id="config-grupos" class="accordion-collapse collapse" data-bs-parent="#submenu-configuracoes">
-                          <ul class="list-group list-group-flush">
-                              {% if perms.auth.add_group %}
-                              <li><a href="{% url 'accounts:cadastrar_grupo' %}" class="list-group-item ajax-link">Novo</a></li>
-                              {% endif %}
-                              <li><a href="{% url 'accounts:lista_grupos' %}" class="list-group-item ajax-link">Lista</a></li>
-                          </ul>
-                      </div>
-                  </li>
-                  {% endif %}
-              </ul>
-            </div>
-          </div>
-          {% endif %}
-      
-          <!-- 🏢 Empresas -->
-          {% if perms.empresas.view_empresaavancada %}
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-empresas">
-                🏢 Empresas
-              </button>
-            </h2>
-            <div id="submenu-empresas" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                {% if perms.empresas.add_empresaavancada %}
-                <li><a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="list-group-item ajax-link">Cadastrar Empresa</a></li>              
-                {% endif %}
-                <li><a href="{% url 'empresas:lista_empresas_avancadas' %}" class="list-group-item ajax-link">Lista de Empresas</a></li>
-                {% if perms.empresas.add_categoriaempresa %}
-                <li><a href="{% url 'empresas:cadastrar_categoria_avancada_new' %}" class="list-group-item ajax-link">Categorias</a></li>
-                {% endif %}
-              </ul>
-            </div>
-          </div>
-          {% endif %}
-
-      
-          <!-- 📦 Produtos -->
-          {% if perms.produto.view_produto %}
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-produtos">
-                📦 Produtos
-              </button>
-            </h2>
-            <div id="submenu-produtos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'produto:cadastrar_produto' %}" class="list-group-item ajax-link">Cadadtro Produtos</a></li>
-                <li><a href="{% url 'produto:lista_produtos' %}" class="list-group-item ajax-link">Listar Produtos</a></li>
-                <li><a href="{% url 'produto:lista_categorias' %}" class="list-group-item ajax-link">Categorias de Produto</a></li>
-                <li><a href="{% url 'produto:lista_unidades' %}" class="list-group-item ajax-link">Unidades de Medida</a></li>
-                <li><a href="{% url 'produto:manutencao_ncm' %}" class="list-group-item ajax-link">NCM</a></li>
-              </ul>
-            </div>
-          </div>
-          {% endif %}
-
-          <!-- 🐟 Produção -->
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-producao">
-                🐟 Produção
-              </button>
-            </h2>
-            <div id="submenu-producao" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'producao:cadastrar_tanque' %}" class="list-group-item ajax-link">Cadastrar Tanque</a></li>
-                <li><a href="{% url 'producao:lista_tanques' %}" class="list-group-item ajax-link">Lista de Tanques</a></li>
-                <li><a href="{% url 'producao:importar_curva' %}" class="list-group-item ajax-link">Importar Curva</a></li>
-                <li><a href="{% url 'producao:cadastrar_curva' %}" class="list-group-item ajax-link">Cadastrar Curva</a></li>
-                <li><a href="{% url 'producao:lista_curvas' %}" class="list-group-item ajax-link">Lista de Curvas</a></li>
-                <li><a href="{% url 'producao:cadastrar_lote' %}" class="list-group-item ajax-link">Cadastrar Lote</a></li>
-                <li><a href="{% url 'producao:lista_lotes' %}" class="list-group-item ajax-link">Lista de Lotes</a></li>
-                <li><a href="{% url 'producao:registrar_evento' %}" class="list-group-item ajax-link">Registrar Evento</a></li>
-                <li><a href="{% url 'producao:lista_eventos' %}" class="list-group-item ajax-link">Lista de Eventos</a></li>
-                <li><a href="{% url 'producao:registrar_alimentacao' %}" class="list-group-item ajax-link">Registrar Alimentação</a></li>
-                <li><a href="{% url 'producao:lista_alimentacao' %}" class="list-group-item ajax-link">Lista de Alimentações</a></li>
-              </ul>
-            </div>
-          </div>
-      
-          <!-- 📄 Nota Fiscal -->
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-nota-fiscal">
-                📄 Nota Fiscal
-              </button>
-            </h2>
-            <div id="submenu-nota-fiscal" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'nota_fiscal:importar_xml' %}" class="list-group-item ajax-link">Importar XML</a></li>
-                <li><a href="{% url 'nota_fiscal:lancar_nota_manual' %}" class="list-group-item ajax-link">Lançar Nota Manual</a></li>
-                <li><a href="{% url 'nota_fiscal:entradas_nota' %}" class="list-group-item ajax-link">Entradas de Nota</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 🧾 Fiscal -->
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-fiscal">
-                🧾 Fiscal
-              </button>
-            </h2>
-            <div id="submenu-fiscal" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'fiscal:cfop_list' %}" class="list-group-item ajax-link">CFOPs</a></li>
-                <li><a href="{% url 'fiscal:natureza_operacao_list' %}" class="list-group-item ajax-link">Naturezas de Operação</a></li>
-                <li><a href="{% url 'fiscal:import_fiscal_data' %}" class="list-group-item ajax-link">Importar Dados Fiscais</a></li>
-                
-                <!-- Novo Submenu de Configurações Fiscais -->
-                <li class="list-group-item ms-3">
-                  <button class="btn w-100 text-start p-0" data-bs-toggle="collapse" data-bs-target="#submenu-config-fiscal" aria-expanded="false">
-                    ⚙️ Configurações Fiscais
-                  </button>
-                  <ul id="submenu-config-fiscal" class="collapse list-group list-group-flush mt-2 ms-3">
-                    <li><a href="#" class="list-group-item ajax-link">Regras Tributárias (Futuro)</a></li>
-                    <li><a href="#" class="list-group-item ajax-link">Status NF-e (Futuro)</a></li>
+                        </li>
+                      {% else %}
+                        <!-- Link direto no primeiro nível (ex: Cadastrar Empresa) -->
+                        <li><a href="{{ child.url }}" class="list-group-item ajax-link">{{ child.icon }} {{ child.name }}</a></li>
+                      {% endif %}
+                    {% endfor %}
                   </ul>
-                </li>
-              </ul>
+                </div>
+              </div>
             </div>
-          </div>
-      
-          <!-- 📊 Relatórios -->
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#submenu-relatorios">
-                📊 Relatórios
-              </button>
-            </h2>
-            <div id="submenu-relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-              <ul class="list-group list-group-flush">
-                <li><a href="{% url 'relatorios:api_nota_detalhada' pk=1 %}" class="list-group-item ajax-link">Nota Fiscal</a></li>
-              </ul>
-            </div>
-          </div>
+          {% endfor %}
       
           <!-- 👤 Perfil -->
           <div class="accordion-item">
