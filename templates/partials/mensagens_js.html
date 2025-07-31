@@ -1,0 +1,10 @@
+{% if messages %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for message in messages %}
+            // Chama a função global que já existe em scripts.js
+            mostrarMensagem("{{ message.tags }}", "{{ message|escapejs }}");
+        {% endfor %}
+    });
+</script>
+{% endif %}

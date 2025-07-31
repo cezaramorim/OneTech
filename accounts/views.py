@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import Permission, Group, User
 from django.http import JsonResponse
 from django.contrib import messages
+from common.messages_utils import get_app_messages
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django import forms
@@ -25,11 +26,13 @@ from common.utils import render_ajax_or_base
 
 # === Autenticação ===
 def signup_view(request):
+    app_messages = get_app_messages(request)
     form = SignUpForm(request.POST or None)
     if request.method == 'POST':
         if form.is_valid():
             user = form.save()
             login(request, user)
+            app_messages.success_created(user)
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'redirect_url': '/'})
             return redirect('painel:home')
@@ -88,7 +91,6 @@ def logout_view(request):
             })
             
         # Para requisições normais, redireciona como antes
-        messages.success(request, "Você saiu com sucesso.")
         return redirect('accounts:login')
 
     # Se não for POST, apenas redireciona para a página de login
@@ -96,10 +98,11 @@ def logout_view(request):
 
 @login_required
 def edit_profile_view(request):
+    app_messages = get_app_messages(request)
     form = EditUserForm(request.POST or None, instance=request.user, request_user=request.user)
     if request.method == 'POST' and form.is_valid():
         form.save()
-        messages.success(request, 'Dados salvos com sucesso!')
+        app_messages.success_updated(request.user)
 
     template = 'partials/accounts/edit_profile.html' if request.headers.get('x-requested-with') == 'XMLHttpRequest' else 'base.html'
     context = {'form': form} if 'partials' in template else {'form': form, 'content_template': 'partials/accounts/edit_profile.html'}
@@ -108,39 +111,36 @@ def edit_profile_view(request):
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def criar_usuario(request):
+    app_messages = get_app_messages(request)
     form = SignUpForm(request.POST or None)
 
     if request.method == 'POST':
         if form.is_valid():
             novo_usuario = form.save()
 
-            msg = "Usuário criado com sucesso com permissões herdadas do grupo."
-
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 # ✅ Retorna JSON com sucesso e mensagem
                 return JsonResponse({
                     'success': True,
-                    'message': msg,
+                    'message': app_messages.success_created(novo_usuario), # Mensagem será gerada aqui
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
 
             # ✅ Comum: exibe mensagem e redireciona
-            messages.success(request, msg)
+            app_messages.success_created(novo_usuario)
             return redirect('accounts:lista_usuarios')
 
         else:
-            erro_msg = 'Erro ao criar usuário. Verifique os campos.'
-
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 # ❌ Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'success': False,
                     'errors': form.errors,
-                    'message': erro_msg
+                    'message': app_messages.error('Erro ao criar usuário. Verifique os campos.')
                 }, status=400)
 
             # ❌ Comum: exibe erro e renderiza novamente o formulário
-            messages.error(request, erro_msg)
+            app_messages.error('Erro ao criar usuário. Verifique os campos.')
 
     # 🧾 GET inicial ou POST inválido sem AJAX
     return render_ajax_or_base(request, 'partials/accounts/criar_usuario.html', {
@@ -167,6 +167,7 @@ def lista_usuarios(request):
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def editar_usuario(request, usuario_id):
+    app_messages = get_app_messages(request)
     usuario = get_object_or_404(User, id=usuario_id)
     form = EditUserForm(request.POST or None, instance=usuario, request_user=request.user)
     grupos = Group.objects.all()
@@ -178,21 +179,19 @@ def editar_usuario(request, usuario_id):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'sucesso': True,
-                    'mensagem': 'Usuário atualizado com sucesso!',
+                    'mensagem': app_messages.success_updated(usuario), # Mensagem será gerada aqui
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
+            app_messages.success_updated(usuario)
             return redirect('accounts:lista_usuarios')
         else:
             print(f"DEBUG: form.errors: {form.errors}")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                erros = []
-                for field, msgs in form.errors.items():
-                    for msg in msgs:
-                        label = form.fields[field].label if field in form.fields else field
-                        erros.append(f"{label}: {msg}")
+                # ❌ Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'sucesso': False,
-                    'mensagem': "Erro ao atualizar usuário:<br>" + "<br>".join(erros)
+                    'mensagem': app_messages.error("Erro ao atualizar usuário. Verifique os campos."),
+                    'errors': form.errors # Mantém os erros do formulário para o frontend
                 }, status=400)
 
     # ✅ Aqui está o ponto importante
@@ -218,20 +217,21 @@ import json
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_usuario_multiplo(request):
+    app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
         ids = data.get('ids', [])
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Dados inválidos.'}, status=400)
+        return JsonResponse({'success': False, 'message': app_messages.error('Dados inválidos.')}, status=400)
 
     if not ids:
-        return JsonResponse({'success': False, 'message': 'Nenhum usuário selecionado para exclusão.'}, status=400)
+        return JsonResponse({'success': False, 'message': app_messages.error('Nenhum usuário selecionado para exclusão.')}, status=400)
 
     usuarios = User.objects.filter(id__in=ids)
     count = usuarios.count()
     usuarios.delete()
 
-    msg = f'{count} usuário(s) excluído(s) com sucesso.'
+    msg = app_messages.success_deleted("usuário(s)", f"{count} selecionado(s)")
     return JsonResponse({
         'success': True,
         'message': msg,
@@ -284,9 +284,7 @@ def _get_permissoes_context():
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_grupo(request, group_id):
-    """
-    Gerencia as permissões de um grupo específico.
-    """
+    app_messages = get_app_messages(request)
     grupo = get_object_or_404(Group, id=group_id)
     permissoes_agrupadas = _get_permissoes_context()
 
@@ -295,12 +293,12 @@ def gerenciar_permissoes_grupo(request, group_id):
         print(f"DEBUG: gerenciar_permissoes_grupo - permissoes_ids recebidos no POST: {permissoes_ids}")
         grupo.permissions.set(permissoes_ids)
         if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            messages.success(request, f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!')
+            app_messages.success_updated(grupo, custom_message=f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!')
         
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!',
+                'message': app_messages.success_updated(grupo, custom_message=f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!'),
                 'redirect_url': reverse('accounts:lista_grupos')
             })
         return redirect('accounts:lista_grupos')
@@ -320,9 +318,7 @@ def gerenciar_permissoes_grupo(request, group_id):
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_usuario(request, user_id):
-    """
-    Gerencia as permissões individuais de um usuário.
-    """
+    app_messages = get_app_messages(request)
     usuario = get_object_or_404(get_user_model(), id=user_id)
     permissoes_agrupadas = _get_permissoes_context()
 
@@ -331,12 +327,12 @@ def gerenciar_permissoes_usuario(request, user_id):
         print(f"DEBUG: gerenciar_permissoes_usuario - permissoes_ids recebidos no POST: {permissoes_ids}")
         usuario.user_permissions.set(permissoes_ids)
         if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            messages.success(request, f'Permissões do usuário "{usuario.get_full_name()}" atualizadas com sucesso!')
+            app_messages.success_updated(usuario, custom_message=f'Permissões do usuário "{usuario.get_full_name()}" atualizadas com sucesso!')
         
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Permissões do usuário "{usuario.get_full_name() or usuario.username}" atualizadas com sucesso!',
+                'message': app_messages.success_updated(usuario, custom_message=f'Permissões do usuário "{usuario.get_full_name() or usuario.username}" atualizadas com sucesso!'),
                 'redirect_url': reverse('accounts:lista_usuarios')
             })
         return redirect('accounts:lista_usuarios')
@@ -369,6 +365,7 @@ def lista_grupos(request):
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def cadastrar_grupo(request):
+    app_messages = get_app_messages(request)
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
@@ -379,8 +376,13 @@ def cadastrar_grupo(request):
                 finalidade=form.cleaned_data['finalidade']
             )
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
+                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_created(group)})
+            app_messages.success_created(group)
             return redirect('accounts:lista_grupos')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors, 'message': app_messages.error('Erro ao cadastrar grupo. Verifique os campos.')}, status=400)
+            app_messages.error('Erro ao cadastrar grupo. Verifique os campos.')
     else:
         form = GroupForm()
     return render_ajax_or_base(request, 'partials/accounts/cadastrar_grupo.html', {'form': form})
@@ -388,6 +390,7 @@ def cadastrar_grupo(request):
 @login_required
 @user_passes_test(is_super_or_group_admin)
 def editar_grupo(request, grupo_id):
+    app_messages = get_app_messages(request)
     grupo = get_object_or_404(Group, id=grupo_id)
     perfil, created = GroupProfile.objects.get_or_create(group=grupo)
 
@@ -400,8 +403,13 @@ def editar_grupo(request, grupo_id):
             perfil.finalidade = form.cleaned_data['finalidade']
             perfil.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
+                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_updated(grupo)})
+            app_messages.success_updated(grupo)
             return redirect('accounts:lista_grupos')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors, 'message': app_messages.error('Erro ao atualizar grupo. Verifique os campos.')}, status=400)
+            app_messages.error('Erro ao atualizar grupo. Verifique os campos.')
     else:
         form = GroupForm(initial={
             'name': grupo.name,
@@ -421,16 +429,19 @@ def confirmar_exclusao_grupo(request, grupo_id):
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo(request, grupo_id):
+    app_messages = get_app_messages(request)
     grupo = get_object_or_404(Group, id=grupo_id)
     grupo.delete()
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'redirect_url': reverse('accounts:lista_grupos')})
+        return JsonResponse({'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_deleted("grupo", grupo.name)})
+    app_messages.success_deleted("grupo", grupo.name)
     return redirect('accounts:lista_grupos')
 
 @login_required
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo_multiplo(request):
+    app_messages = get_app_messages(request)
     try:
         # Tenta carregar os IDs do corpo da requisição JSON
         data = json.loads(request.body)
@@ -440,10 +451,10 @@ def excluir_grupo_multiplo(request):
         ids = request.POST.getlist('grupos_selecionados')
 
     if not ids:
-        msg = "Nenhum grupo selecionado para exclusão."
+        msg = app_messages.error("Nenhum grupo selecionado para exclusão.")
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': msg}, status=400)
-        messages.warning(request, msg)
+        app_messages.warning(msg)
         return redirect('accounts:lista_grupos')
 
     grupos = Group.objects.filter(id__in=ids)
@@ -451,7 +462,7 @@ def excluir_grupo_multiplo(request):
     nomes = list(grupos.values_list('name', flat=True))
     grupos.delete()
 
-    msg = f"{count} grupo(s) excluído(s) com sucesso: {', '.join(nomes)}."
+    msg = app_messages.success_deleted("grupo(s)", f"{count} selecionado(s)")
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({
             'success': True,
@@ -459,7 +470,7 @@ def excluir_grupo_multiplo(request):
             'redirect_url': reverse('accounts:lista_grupos')
         })
         
-    messages.success(request, msg)
+    app_messages.success_deleted("grupo(s)", f"{count} selecionado(s)")
     return redirect('accounts:lista_grupos')
 
 

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
+from common.messages_utils import get_app_messages
 from .forms import EmpresaForm, CategoriaEmpresaForm
 from .models import Empresa, CategoriaEmpresa
 from django.contrib.auth.decorators import login_required, permission_required
@@ -47,6 +48,7 @@ def lista_categorias_view(request):
 @login_required
 @permission_required('empresas.add_categoriaempresa', raise_exception=True)
 def categoria_form_view(request, pk=None):
+    app_messages = get_app_messages(request)
     if pk:
         categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
     else:
@@ -54,12 +56,25 @@ def categoria_form_view(request, pk=None):
     
     form = CategoriaEmpresaForm(request.POST or None, instance=categoria)
 
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, f"Categoria {'atualizada' if pk else 'cadastrada'} com sucesso!")
-        return JsonResponse({'redirect_url': reverse('empresas:lista_categorias')}) \
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest' \
-            else redirect('empresas:lista_categorias')
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            
+            if pk:
+                message = app_messages.success_updated(form.instance)
+            else:
+                message = app_messages.success_created(form.instance)
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'redirect_url': reverse('empresas:lista_categorias'), 'message': message})
+            else:
+                return redirect('empresas:lista_empresas_avancadas') # Redireciona para a lista de empresas
+        else:
+            # Formulário inválido
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors, 'message': app_messages.error('Erro ao salvar categoria. Verifique os campos.')}, status=400)
+            else:
+                app_messages.error('Erro ao salvar categoria. Verifique os campos.')
 
     context = {
         'form': form,
@@ -91,6 +106,7 @@ def excluir_categorias_view(request):
 @login_required
 @permission_required('empresas.add_empresaavancada', raise_exception=True)
 def empresa_avancada_form_view(request, pk=None):
+    app_messages = get_app_messages(request)
     """
     View unificada para cadastrar e editar uma EmpresaAvancada.
     - Se `pk` for fornecido, edita a empresa existente.
@@ -111,13 +127,16 @@ def empresa_avancada_form_view(request, pk=None):
             form.save()
             
             # Mensagem de sucesso dinâmica
-            mensagem_sucesso = f"Empresa '{form.instance.razao_social}' {'atualizada' if pk else 'cadastrada'} com sucesso!"
-            messages.success(request, mensagem_sucesso)
+            if pk:
+                message = app_messages.success_updated(form.instance)
+            else:
+                message = app_messages.success_created(form.instance)
 
             # Resposta para requisições AJAX
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
                     'sucesso': True,
+                    'message': message,
                     'redirect_url': reverse('empresas:lista_empresas_avancadas')
                 })
             
@@ -126,29 +145,20 @@ def empresa_avancada_form_view(request, pk=None):
         else:
             # Em caso de formulário inválido, retorna os erros
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': False, 'erros': form.errors}, status=400)
-
-    # Contexto para o template
-    vendedores = get_user_model().objects.filter(groups__name__iexact='vendedores').order_by('first_name')
-    estados = [
-        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-    ]
-    
-    # Converte a instância para um dicionário apenas se ela existir
-    empresa_data = model_to_dict(empresa) if pk else None
+                return JsonResponse({'sucesso': False, 'erros': form.errors, 'message': app_messages.error('Erro ao salvar empresa. Verifique os campos.')}, status=400)
+            else:
+                app_messages.error('Erro ao salvar empresa. Verifique os campos.')
 
     context = {
         'form': form,
-        'today': now(),
-        'vendedores': vendedores,
-        'estados': estados,
-        'empresa': empresa,  # Passa a instância para o template (útil para o título, etc.)
-        'empresa_data': empresa_data, # Passa o dicionário para o json_script
-        'titulo_pagina': f"Editar Empresa: {empresa.razao_social}" if pk else "Cadastrar Nova Empresa"
+        'vendedores': get_user_model().objects.filter(groups__name__iexact='vendedores').order_by('first_name'),
+        'estados': [
+            'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+        ],
+        'empresa': empresa, # Passa a instância para o template
     }
-
     return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_empresa_avancada.html', context)
 
 
@@ -208,14 +218,15 @@ def lista_empresas_avancadas_view(request):
 @csrf_exempt
 @require_POST
 def atualizar_status_empresa_avancada(request, pk):
+    app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
         empresa = EmpresaAvancada.objects.get(pk=pk)
         empresa.ativo = data.get('ativo', False)
         empresa.save()
-        return JsonResponse({'sucesso': True, 'mensagem': 'Status atualizado com sucesso.'})
+        return JsonResponse({'sucesso': True, 'mensagem': app_messages.success_updated(empresa, custom_message=f'Status da empresa "{empresa.razao_social or empresa.nome}" atualizado com sucesso.')})
     except Exception:
-        return JsonResponse({'sucesso': False, 'mensagem': 'Erro ao atualizar o status.'})
+        return JsonResponse({'sucesso': False, 'mensagem': app_messages.error('Erro ao atualizar o status da empresa.')})
 
 
 @require_POST

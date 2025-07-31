@@ -1,6 +1,7 @@
 import json
 from django.db.models import Q
 from django.contrib import messages
+from common.messages_utils import get_app_messages
 from django.urls import reverse
 from django.forms import inlineformset_factory
 from django.contrib.auth.decorators import login_required
@@ -33,6 +34,7 @@ def lista_produtos_view(request):
 
 @login_required
 def cadastrar_produto_view(request):
+    app_messages = get_app_messages(request)
     if request.method == "POST":
         form = ProdutoForm(request.POST)
         formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=form.instance)
@@ -43,10 +45,10 @@ def cadastrar_produto_view(request):
             for df in detalhes_fiscais:
                 df.produto = produto
                 df.save()
-            messages.success(request, "Produto cadastrado com sucesso.")
+            app_messages.success_created(produto)
             return redirect(reverse("produto:lista_produtos"))
         else:
-            messages.error(request, "Erro ao cadastrar produto. Verifique os campos.")
+            app_messages.error("Erro ao cadastrar produto. Verifique os campos.")
     else:
         form = ProdutoForm()
         formset = DetalhesFiscaisProdutoFormSet(instance=Produto())
@@ -55,6 +57,7 @@ def cadastrar_produto_view(request):
 
 @login_required
 def editar_produto_view(request, pk):
+    app_messages = get_app_messages(request)
     """
     View para editar um produto existente via AJAX ou GET normal.
     """
@@ -73,13 +76,13 @@ def editar_produto_view(request, pk):
             formset.save()
             return JsonResponse({
                 "sucesso": True,
-                "mensagem": "Produto atualizado com sucesso.",
-                "redirect_url": "/produtos/"
+                "mensagem": app_messages.success_updated(produto),
+                "redirect_url": reverse("produto:lista_produtos")
             })
         else:
             print("Formulário de Produto NÃO é válido.")
             print("Form.errors:", form.errors)
-            return JsonResponse({"sucesso": False, "erros": form.errors, "formset_errors": formset.errors}, status=400)
+            return JsonResponse({"sucesso": False, "erros": form.errors, "formset_errors": formset.errors, "message": app_messages.error("Erro ao atualizar produto. Verifique os campos.")}, status=400)
 
     form = ProdutoForm(instance=produto)
     formset = DetalhesFiscaisProdutoFormSet(instance=produto)
@@ -139,6 +142,7 @@ def lista_categorias_view(request):
     
 @login_required
 def editar_categoria_view(request, pk):
+    app_messages = get_app_messages(request)
     print(f"DEBUG: editar_categoria_view - PK recebido: {pk}")
     categoria = get_object_or_404(CategoriaProduto, pk=pk)
     print(f"DEBUG: editar_categoria_view - Categoria encontrada: {categoria.nome}")
@@ -147,7 +151,7 @@ def editar_categoria_view(request, pk):
         if form.is_valid():
             form.save()
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": True, "mensagem": "Categoria atualizada com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
+                return JsonResponse({"sucesso": True, "message": app_messages.success_updated(categoria), "redirect_url": reverse("produto:lista_categorias")})
         else:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
                 erros = []
@@ -157,7 +161,8 @@ def editar_categoria_view(request, pk):
                         erros.append(f"{label}: {msg}")
                 return JsonResponse({
                     "sucesso": False,
-                    "mensagem": "Erro ao salvar categoria:<br>" + "<br>".join(erros)
+                    "message": app_messages.error("Erro ao salvar categoria. Verifique os campos."),
+                    "erros": form.errors
                 }, status=400)
     else:
         form = CategoriaProdutoForm(instance=categoria)
@@ -175,6 +180,7 @@ def editar_categoria_view(request, pk):
 @require_POST
 @login_required
 def excluir_categorias_view(request):
+    app_messages = get_app_messages(request)
     """
     Exclui múltiplas categorias de produto via AJAX.
     """
@@ -183,13 +189,14 @@ def excluir_categorias_view(request):
             body = json.loads(request.body)
             ids = body.get("ids", [])
             CategoriaProduto.objects.filter(id__in=ids).delete()
-            return JsonResponse({"sucesso": True, "mensagem": "Categorias excluídas com sucesso.", "redirect_url": reverse("produto:lista_categorias")})
+            return JsonResponse({"sucesso": True, "message": app_messages.success_deleted("categoria(s)", f"{len(ids)} selecionada(s)"), "redirect_url": reverse("produto:lista_categorias")})
         except Exception as e:
-            return JsonResponse({"erro": f"Erro ao excluir categorias: {str(e)}"}, status=500)
-    return JsonResponse({"erro": "Requisição inválida."}, status=400)
+            return JsonResponse({"success": False, "message": app_messages.error(f"Erro ao excluir categorias: {str(e)}")}, status=500)
+    return JsonResponse({"success": False, "message": app_messages.error("Requisição inválida.")}, status=400)
 
 @login_required
 def cadastrar_categoria_view(request):
+    app_messages = get_app_messages(request)
     print("DEBUG: cadastrar_categoria_view acessada")
     if request.method == "POST":
         form = CategoriaProdutoForm(request.POST)
@@ -200,11 +207,11 @@ def cadastrar_categoria_view(request):
                 print("DEBUG: Retornando JSON de sucesso para cadastro de categoria")
                 return JsonResponse({
                     "sucesso": True,
-                    "mensagem": "Categoria cadastrada com sucesso.",
+                    "message": app_messages.success_created(form.instance),
                     "redirect_url": reverse("produto:lista_categorias")
                 })
             else:
-                messages.success(request, "Categoria cadastrada com sucesso.")
+                app_messages.success_created(form.instance)
                 return redirect("produto:lista_categorias")
         else:
             # Tratamento de erro para AJAX
@@ -217,7 +224,8 @@ def cadastrar_categoria_view(request):
                 print("DEBUG: Retornando JSON de erro para cadastro de categoria")
                 return JsonResponse({
                     "sucesso": False,
-                    "mensagem": "Erro ao salvar categoria:<br>" + "<br>".join(erros)
+                    "message": app_messages.error("Erro ao salvar categoria. Verifique os campos."),
+                    "erros": form.errors
                 }, status=400)
 
     else:
@@ -249,11 +257,12 @@ def lista_unidades_view(request):
 
 @login_required
 def cadastrar_unidade_view(request):
+    app_messages = get_app_messages(request)
     if request.method == "POST":
         form = UnidadeMedidaForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Unidade cadastrada com sucesso.")
+            app_messages.success_created(form.instance)
             return redirect(reverse("produto:lista_unidades"))
     else:
         form = UnidadeMedidaForm()
@@ -261,6 +270,7 @@ def cadastrar_unidade_view(request):
 
 @login_required
 def editar_unidade_view(request, pk):
+    app_messages = get_app_messages(request)
     print("DEBUG: editar_unidade_view accessed for PK:", pk)
     print("DEBUG: editar_unidade_view accessed for PK:", pk)
     print(f"DEBUG: editar_unidade_view - PK recebido: {pk}")
@@ -271,15 +281,15 @@ def editar_unidade_view(request, pk):
         if form.is_valid():
             form.save()
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": True, "mensagem": "Unidade atualizada com sucesso.", "redirect_url": reverse("produto:lista_unidades")})
+                return JsonResponse({"sucesso": True, "message": app_messages.success_updated(unidade), "redirect_url": reverse("produto:lista_unidades")})
             else:
-                messages.success(request, "Unidade atualizada com sucesso.")
+                app_messages.success_updated(unidade)
                 return redirect(reverse("produto:lista_unidades"))
         else:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": False, "erros": form.errors}, status=400)
+                return JsonResponse({"sucesso": False, "erros": form.errors, "message": app_messages.error("Erro ao atualizar unidade. Verifique os campos.")}, status=400)
             else:
-                messages.error(request, "Erro ao atualizar unidade. Verifique os campos.")
+                app_messages.error("Erro ao atualizar unidade. Verifique os campos.")
     else:
         form = UnidadeMedidaForm(instance=unidade)
     
@@ -295,20 +305,21 @@ def editar_unidade_view(request, pk):
 @require_POST
 @login_required
 def excluir_unidades_view(request):
+    app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"erro": "Requisição inválida."}, status=400)
+        return JsonResponse({"success": False, "message": app_messages.error("Requisição inválida.")}, status=400)
 
     try:
         data = json.loads(request.body.decode("utf-8"))
         ids = data.get("ids", [])
         if not ids:
-            return JsonResponse({"erro": "Nenhuma unidade selecionada."}, status=400)
+            return JsonResponse({"success": False, "message": app_messages.error("Nenhuma unidade selecionada.")}, status=400)
 
         UnidadeMedida.objects.filter(id__in=ids).delete()
-        return JsonResponse({"sucesso": True, "mensagem": "Unidades excluídas com sucesso.", "redirect_url": reverse("produto:lista_unidades")})
+        return JsonResponse({"sucesso": True, "message": app_messages.success_deleted("unidade(s)", f"{len(ids)} selecionada(s)"), "redirect_url": reverse("produto:lista_unidades")})
 
     except Exception as e:
-        return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)
+        return JsonResponse({"success": False, "message": app_messages.error(f"Erro ao excluir: {str(e)}")}, status=500)
 
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
@@ -316,6 +327,7 @@ def is_superuser_or_staff(user):
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manutencao_ncm_view(request):
+    app_messages = get_app_messages(request)
     termo = request.GET.get("term", "").strip()
     ncm_lista = NCM.objects.all()
 
@@ -360,6 +372,7 @@ def buscar_ncm_ajax(request):
 @login_required
 @user_passes_test(is_superuser_or_staff)
 def importar_ncm_manual_view(request):
+    app_messages = get_app_messages(request)
     import json, requests
     try:
         url = "https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json"
@@ -373,27 +386,6 @@ def importar_ncm_manual_view(request):
                 codigo, descricao = item.split('|', 1)
                 NCM.objects.update_or_create(codigo=codigo.strip(), defaults={"descricao": descricao.strip()})
                 count += 1
-        return JsonResponse({"status": "ok", "mensagem": f"{count} códigos NCM importados com sucesso."})
+        return JsonResponse({"status": "ok", "message": app_messages.success_imported(instance=None, custom_message=f"{count} códigos NCM importados com sucesso.")})
     except Exception as e:
-        return JsonResponse({"status": "erro", "mensagem": str(e)}, status=500)
-
-@require_GET
-def buscar_ncm_descricao_ajax(request):
-    """
-    View para autocomplete do campo NCM no cadastro de produto.
-    Retorna uma lista de objetos JSON com 'id' e 'text'.
-    """
-    termo = request.GET.get('term', '').strip()
-    resultados = []
-
-    if termo:
-        ncm_qs = NCM.objects.filter(
-            Q(codigo__icontains=termo) | Q(descricao__icontains=termo)
-        ).order_by("codigo")[:20]
-
-        resultados = [
-            {"id": ncm.codigo, "text": f"{ncm.codigo} - {ncm.descricao}"}
-            for ncm in ncm_qs
-        ]
-
-    return JsonResponse({"results": resultados})
+        return JsonResponse({"status": "erro", "message": app_messages.error(f"Erro ao importar NCM: {str(e)}")}, status=500)

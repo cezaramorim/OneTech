@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
+from common.messages_utils import get_app_messages
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
 from django.views.decorators.http import require_POST
@@ -56,11 +57,12 @@ def cfop_list(request):
 
 @login_required
 def cfop_create(request):
+    app_messages = get_app_messages(request)
     if request.method == 'POST':
         form = CfopForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'CFOP cadastrado com sucesso!')
+            app_messages.success_created(form.instance)
             return redirect('fiscal:cfop_list')
     else:
         form = CfopForm()
@@ -75,12 +77,13 @@ def cfop_create(request):
 
 @login_required
 def cfop_update(request, pk):
+    app_messages = get_app_messages(request)
     cfop = get_object_or_404(Cfop, pk=pk)
     if request.method == 'POST':
         form = CfopForm(request.POST, instance=cfop)
         if form.is_valid():
             form.save()
-            messages.success(request, 'CFOP atualizado com sucesso!')
+            app_messages.success_updated(form.instance)
             return redirect('fiscal:cfop_list')
     else:
         form = CfopForm(instance=cfop)
@@ -133,11 +136,12 @@ def natureza_operacao_list(request):
 
 @login_required
 def natureza_operacao_create(request):
+    app_messages = get_app_messages(request)
     if request.method == 'POST':
         form = NaturezaOperacaoForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Natureza de Operação cadastrada com sucesso!')
+            app_messages.success_created(form.instance)
             return redirect('fiscal:natureza_operacao_list')
     else:
         form = NaturezaOperacaoForm()
@@ -152,12 +156,13 @@ def natureza_operacao_create(request):
 
 @login_required
 def natureza_operacao_update(request, pk):
+    app_messages = get_app_messages(request)
     natureza = get_object_or_404(NaturezaOperacao, pk=pk)
     if request.method == 'POST':
         form = NaturezaOperacaoForm(request.POST, instance=natureza)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Natureza de Operação atualizada com sucesso!')
+            app_messages.success_updated(form.instance)
             return redirect('fiscal:natureza_operacao_list')
     else:
         form = NaturezaOperacaoForm(instance=natureza)
@@ -177,6 +182,7 @@ from .utils import import_cfop_from_excel, import_natureza_operacao_from_excel
 @login_required
 @permission_required('fiscal.add_cfop', raise_exception=True)
 def import_fiscal_data_view(request):
+    app_messages = get_app_messages(request)
     """
     View para importar dados fiscais (CFOPs ou Naturezas de Operação) a partir de um arquivo Excel.
 
@@ -199,16 +205,19 @@ def import_fiscal_data_view(request):
                 redirect_url = 'fiscal:natureza_operacao_list'
             
             if result["success"]:
-                messages.success(request, result["message"])
+                app_messages.success_imported(instance=None, custom_message=result["message"])
             else:
-                messages.error(request, result["message"])
+                app_messages.error(result["message"])
             
             return redirect(redirect_url)
         else:
+            # Se o formulário não for válido, renderiza a página com os erros
+            error_messages = []
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f"Erro no campo {field}: {error}")
-            # Se o formulário não for válido, renderiza a página com os erros
+                    error_messages.append(f"Campo '{field}': {error}")
+            app_messages.error("Erro no formulário de importação: " + "; ".join(error_messages))
+            
             context = {
                 'form': form,
                 'content_template': 'partials/fiscal/import_fiscal_data.html',
@@ -264,6 +273,7 @@ def download_fiscal_template_view(request):
 @require_POST
 @csrf_exempt # Temporário para testes, remover em produção e usar CSRF token
 def delete_fiscal_items(request):
+    app_messages = get_app_messages(request)
     """
     View para exclusão de itens fiscais (CFOPs ou Naturezas de Operação) via requisição AJAX.
     Espera um JSON com 'ids' (lista de IDs a serem excluídos) e 'item_type' ('cfop' ou 'natureza_operacao').
@@ -275,7 +285,7 @@ def delete_fiscal_items(request):
         item_type = data.get('item_type') # 'cfop' ou 'natureza_operacao'
 
         if not ids:
-            return JsonResponse({'success': False, 'error': 'Nenhum ID fornecido para exclusão.'}, status=400)
+            return JsonResponse({'success': False, 'message': app_messages.error('Nenhum ID fornecido para exclusão.')}, status=400)
 
         with transaction.atomic():
             # Realiza a exclusão com base no tipo de item.
@@ -286,12 +296,12 @@ def delete_fiscal_items(request):
                 deleted_count, _ = NaturezaOperacao.objects.filter(pk__in=ids).delete()
                 model_name = "Natureza de Operação"
             else:
-                return JsonResponse({'success': False, 'error': 'Tipo de item inválido.'}, status=400)
+                return JsonResponse({'success': False, 'message': app_messages.error('Tipo de item inválido.')}, status=400)
 
-        return JsonResponse({'success': True, 'message': f'{deleted_count} {model_name}(s) excluído(s) com sucesso.'})
+        return JsonResponse({'success': True, 'message': app_messages.success_deleted(model_name, f'{deleted_count} selecionado(s)')})
 
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Requisição inválida.'}, status=400)
+        return JsonResponse({'success': False, 'message': app_messages.error('Requisição inválida. JSON malformado.')}, status=400)
     except Exception as e:
         # Captura exceções gerais e retorna uma resposta de erro.
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': app_messages.error(f'Erro ao excluir itens fiscais: {str(e)}')}, status=500)

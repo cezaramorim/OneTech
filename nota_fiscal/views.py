@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
+from common.messages_utils import get_app_messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -239,6 +240,7 @@ def importar_xml_nfe_view(request):
 @require_POST
 @transaction.atomic # Garante que todas as operações de banco de dados sejam atômicas
 def processar_importacao_xml_view(request):
+    app_messages = get_app_messages(request)
     """
     View unificada que recebe o JSON da nota (com categorias dos produtos já definidas),
     valida e salva a nota fiscal e todos os seus dados relacionados (empresas, produtos, itens, etc.)
@@ -249,10 +251,9 @@ def processar_importacao_xml_view(request):
         payload = json.loads(request.body.decode('utf-8'))
         chave = payload.get('chave_acesso')
         force_update = payload.get('force_update', False) # Novo parâmetro
-        mensagem_sucesso = "Nota Fiscal importada e processada com sucesso!" # Inicializa a variável
 
         if not chave:
-            return JsonResponse({'erro': 'Chave de acesso não encontrada no payload.'}, status=400)
+            return JsonResponse({'success': False, 'message': app_messages.error('Chave de acesso não encontrada no payload.')}, status=400)
         
         # Verifica se a nota fiscal já existe
         nota_existente = NotaFiscal.objects.filter(chave_acesso=chave).first()
@@ -261,7 +262,7 @@ def processar_importacao_xml_view(request):
             if not force_update:
                 # Se a nota existe e não é para forçar atualização, retorna alerta para o frontend
                 return JsonResponse({
-                    'mensagem': f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?',
+                    'message': app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?'),
                     'nota_existente': True,
                     'nota_id': nota_existente.pk,
                     'redirect_url': reverse('nota_fiscal:entradas_nota')
@@ -270,7 +271,7 @@ def processar_importacao_xml_view(request):
                 # Se force_update é True, exclui a nota existente e seus relacionados
                 print(f"--- Excluindo nota fiscal existente (ID: {nota_existente.pk}) para atualização ---")
                 nota_existente.delete() # CASCADE delete cuidará dos itens, transportes, duplicatas e entradas
-                mensagem_sucesso = "Todos os dados da importação foram atualizados!"
+                # A mensagem de sucesso será gerada no final da view, indicando atualização
 
         # 1. Processar e salvar Emitente e Destinatário
         emit_data = payload.get('emit', {})
@@ -497,16 +498,22 @@ def processar_importacao_xml_view(request):
             _create_duplicatas(nf, cobr_data.get('dup', []))
 
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
+        # Determine the appropriate success message
+        if nota_existente and force_update:
+            message = app_messages.success_updated(nf)
+        else:
+            message = app_messages.success_imported(nf, source_type="XML")
+
         return JsonResponse({
             'success': True,
-            'mensagem': mensagem_sucesso,
+            'message': message,
             'nota_id': nf.pk,
             'redirect_url': reverse('nota_fiscal:entradas_nota')
         }, status=201)
 
     except Exception as e:
         traceback.print_exc()
-        return JsonResponse({'erro': f'Ocorreu um erro inesperado no servidor: {str(e)}'}, status=500)
+        return JsonResponse({'success': False, 'message': app_messages.error(f'Ocorreu um erro inesperado no servidor: {str(e)}')}, status=500)
 
 
 # --- Funções de Apoio para `processar_importacao_xml_view` ---
@@ -806,6 +813,7 @@ def lancar_nota_manual_view(request):
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def editar_nota_view(request, pk):
+    app_messages = get_app_messages(request)
     """Lida com a edição de uma Nota Fiscal e seus dados relacionados."""
     nota = get_object_or_404(NotaFiscal, pk=pk)
 
@@ -821,11 +829,11 @@ def editar_nota_view(request, pk):
             duplicata_formset.save()
             transporte_formset.save()
             
-            messages.success(request, f"Nota Fiscal {nota.numero} atualizada com sucesso!")
+            app_messages.success_updated(nota)
             return redirect('nota_fiscal:entradas_nota')
         else:
             # Se houver erros, exibe-os para o usuário
-            messages.error(request, "Foram encontrados erros no formulário. Por favor, corrija-os.")
+            app_messages.error("Foram encontrados erros no formulário. Por favor, corrija-os.")
             print("\n--- Erros de Validação ---")
             if form.errors:
                 print(f"Formulário principal: {form.errors}")
@@ -864,6 +872,7 @@ def editar_nota_view(request, pk):
 @require_POST
 @transaction.atomic
 def excluir_notas_multiplo_view(request):
+    app_messages = get_app_messages(request)
     """
     Exclui múltiplas notas fiscais com base nos IDs recebidos via POST.
     """
@@ -872,7 +881,7 @@ def excluir_notas_multiplo_view(request):
         ids = data.get('ids', [])
 
         if not ids:
-            return JsonResponse({'sucesso': False, 'mensagem': 'Nenhum ID fornecido para exclusão.'}, status=400)
+            return JsonResponse({'success': False, 'message': app_messages.error('Nenhum ID fornecido para exclusão.')}, status=400)
 
         # Filtra as notas fiscais que pertencem ao usuário logado (opcional, mas boa prática de segurança)
         # ou que o usuário tem permissão para excluir.
@@ -880,12 +889,12 @@ def excluir_notas_multiplo_view(request):
         notas_excluidas, _ = NotaFiscal.objects.filter(id__in=ids).delete()
 
         if notas_excluidas > 0:
-            return JsonResponse({'sucesso': True, 'mensagem': f'{notas_excluidas} nota(s) fiscal(is) excluída(s) com sucesso.'})
+            return JsonResponse({'success': True, 'message': app_messages.success_deleted("nota(s) fiscal(is)", f"{notas_excluidas} selecionada(s)")})
         else:
-            return JsonResponse({'sucesso': False, 'mensagem': 'Nenhuma nota fiscal encontrada com os IDs fornecidos.'}, status=404)
+            return JsonResponse({'success': False, 'message': app_messages.error('Nenhuma nota fiscal encontrada com os IDs fornecidos.')}, status=404)
 
     except json.JSONDecodeError:
-        return JsonResponse({'sucesso': False, 'mensagem': 'Requisição inválida. JSON malformado.'}, status=400)
+        return JsonResponse({'success': False, 'message': app_messages.error('Requisição inválida. JSON malformado.')}, status=400)
     except Exception as e:
         traceback.print_exc()
-        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao excluir notas fiscais: {str(e)}'}, status=500)
+        return JsonResponse({'success': False, 'message': app_messages.error(f'Erro ao excluir notas fiscais: {str(e)}')}, status=500)
