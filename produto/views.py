@@ -74,15 +74,17 @@ def editar_produto_view(request, pk):
             print("Form.cleaned_data:", form.cleaned_data)
             produto = form.save()
             formset.save()
+            message = app_messages.success_updated(produto)
             return JsonResponse({
-                "sucesso": True,
-                "mensagem": app_messages.success_updated(produto),
+                "success": True,
+                "message": message,
                 "redirect_url": reverse("produto:lista_produtos")
             })
         else:
             print("Formulário de Produto NÃO é válido.")
             print("Form.errors:", form.errors)
-            return JsonResponse({"sucesso": False, "erros": form.errors, "formset_errors": formset.errors, "message": app_messages.error("Erro ao atualizar produto. Verifique os campos.")}, status=400)
+            message = app_messages.error("Erro ao atualizar produto. Verifique os campos.")
+            return JsonResponse({"success": False, "message": message, "errors": form.errors, "formset_errors": formset.errors}, status=400)
 
     form = ProdutoForm(instance=produto)
     formset = DetalhesFiscaisProdutoFormSet(instance=produto)
@@ -108,20 +110,26 @@ def editar_produto_view(request, pk):
 @require_POST
 @login_required
 def excluir_produtos_multiplos_view(request):
+    app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"erro": "Requisição inválida."}, status=400)
+        message = app_messages.error("Requisição inválida.")
+        return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
         data = json.loads(request.body.decode("utf-8"))
         ids = data.get("ids", [])
         if not ids:
-            return JsonResponse({"erro": "Nenhum produto selecionado."}, status=400)
+            message = app_messages.error("Nenhum produto selecionado.")
+            return JsonResponse({"success": False, "message": message}, status=400)
 
+        count = len(ids)
         Produto.objects.filter(id__in=ids).delete()
-        return JsonResponse({"sucesso": True, "mensagem": "Produtos excluídos com sucesso."})
+        message = app_messages.success_deleted("Produto(s)", f"{count} selecionado(s)")
+        return JsonResponse({"success": True, "message": message})
 
     except Exception as e:
-        return JsonResponse({"erro": f"Erro ao excluir: {str(e)}"}, status=500)
+        message = app_messages.error(f"Erro ao excluir: {str(e)}")
+        return JsonResponse({"success": False, "message": message}, status=500)
 
 
 # ======================
@@ -150,19 +158,16 @@ def editar_categoria_view(request, pk):
         form = CategoriaProdutoForm(request.POST, instance=categoria)
         if form.is_valid():
             form.save()
+            message = app_messages.success_updated(categoria)
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": True, "message": app_messages.success_updated(categoria), "redirect_url": reverse("produto:lista_categorias")})
+                return JsonResponse({"success": True, "message": message, "redirect_url": reverse("produto:lista_categorias")})
         else:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                erros = []
-                for field, msgs in form.errors.items():
-                    for msg in msgs:
-                        label = form.fields[field].label if field in form.fields else field
-                        erros.append(f"{label}: {msg}")
+                message = app_messages.error("Erro ao salvar categoria. Verifique os campos.")
                 return JsonResponse({
-                    "sucesso": False,
-                    "message": app_messages.error("Erro ao salvar categoria. Verifique os campos."),
-                    "erros": form.errors
+                    "success": False,
+                    "message": message,
+                    "errors": form.errors
                 }, status=400)
     else:
         form = CategoriaProdutoForm(instance=categoria)
@@ -184,15 +189,24 @@ def excluir_categorias_view(request):
     """
     Exclui múltiplas categorias de produto via AJAX.
     """
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        try:
-            body = json.loads(request.body)
-            ids = body.get("ids", [])
-            CategoriaProduto.objects.filter(id__in=ids).delete()
-            return JsonResponse({"sucesso": True, "message": app_messages.success_deleted("categoria(s)", f"{len(ids)} selecionada(s)"), "redirect_url": reverse("produto:lista_categorias")})
-        except Exception as e:
-            return JsonResponse({"success": False, "message": app_messages.error(f"Erro ao excluir categorias: {str(e)}")}, status=500)
-    return JsonResponse({"success": False, "message": app_messages.error("Requisição inválida.")}, status=400)
+    if not request.headers.get("x-requested-with") == "XMLHttpRequest":
+        message = app_messages.error("Requisição inválida.")
+        return JsonResponse({"success": False, "message": message}, status=400)
+
+    try:
+        body = json.loads(request.body)
+        ids = body.get("ids", [])
+        if not ids:
+            message = app_messages.error("Nenhuma categoria selecionada.")
+            return JsonResponse({"success": False, "message": message}, status=400)
+
+        count = len(ids)
+        CategoriaProduto.objects.filter(id__in=ids).delete()
+        message = app_messages.success_deleted("Categoria(s)", f"{count} selecionada(s)")
+        return JsonResponse({"success": True, "message": message, "redirect_url": reverse("produto:lista_categorias")})
+    except Exception as e:
+        message = app_messages.error(f"Erro ao excluir categorias: {str(e)}")
+        return JsonResponse({"success": False, "message": message}, status=500)
 
 @login_required
 def cadastrar_categoria_view(request):
@@ -203,29 +217,25 @@ def cadastrar_categoria_view(request):
         print("DEBUG: Formulário de categoria válido:", form.is_valid())
         if form.is_valid():
             form.save()
+            message = app_messages.success_created(form.instance)
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
                 print("DEBUG: Retornando JSON de sucesso para cadastro de categoria")
                 return JsonResponse({
-                    "sucesso": True,
-                    "message": app_messages.success_created(form.instance),
+                    "success": True,
+                    "message": message,
                     "redirect_url": reverse("produto:lista_categorias")
                 })
             else:
-                app_messages.success_created(form.instance)
                 return redirect("produto:lista_categorias")
         else:
             # Tratamento de erro para AJAX
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                erros = []
-                for field, msgs in form.errors.items():
-                    for msg in msgs:
-                        label = form.fields[field].label
-                        erros.append(f"{label}: {msg}")
+                message = app_messages.error("Erro ao salvar categoria. Verifique os campos.")
                 print("DEBUG: Retornando JSON de erro para cadastro de categoria")
                 return JsonResponse({
-                    "sucesso": False,
-                    "message": app_messages.error("Erro ao salvar categoria. Verifique os campos."),
-                    "erros": form.errors
+                    "success": False,
+                    "message": message,
+                    "errors": form.errors
                 }, status=400)
 
     else:
@@ -280,14 +290,15 @@ def editar_unidade_view(request, pk):
         form = UnidadeMedidaForm(request.POST, instance=unidade)
         if form.is_valid():
             form.save()
+            message = app_messages.success_updated(unidade)
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": True, "message": app_messages.success_updated(unidade), "redirect_url": reverse("produto:lista_unidades")})
+                return JsonResponse({"success": True, "message": message, "redirect_url": reverse("produto:lista_unidades")})
             else:
-                app_messages.success_updated(unidade)
                 return redirect(reverse("produto:lista_unidades"))
         else:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"sucesso": False, "erros": form.errors, "message": app_messages.error("Erro ao atualizar unidade. Verifique os campos.")}, status=400)
+                message = app_messages.error("Erro ao atualizar unidade. Verifique os campos.")
+                return JsonResponse({"success": False, "message": message, "errors": form.errors}, status=400)
             else:
                 app_messages.error("Erro ao atualizar unidade. Verifique os campos.")
     else:
@@ -307,19 +318,24 @@ def editar_unidade_view(request, pk):
 def excluir_unidades_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"success": False, "message": app_messages.error("Requisição inválida.")}, status=400)
+        message = app_messages.error("Requisição inválida.")
+        return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
         data = json.loads(request.body.decode("utf-8"))
         ids = data.get("ids", [])
         if not ids:
-            return JsonResponse({"success": False, "message": app_messages.error("Nenhuma unidade selecionada.")}, status=400)
+            message = app_messages.error("Nenhuma unidade selecionada.")
+            return JsonResponse({"success": False, "message": message}, status=400)
 
+        count = len(ids)
         UnidadeMedida.objects.filter(id__in=ids).delete()
-        return JsonResponse({"sucesso": True, "message": app_messages.success_deleted("unidade(s)", f"{len(ids)} selecionada(s)"), "redirect_url": reverse("produto:lista_unidades")})
+        message = app_messages.success_deleted("Unidade(s)", f"{count} selecionada(s)")
+        return JsonResponse({"success": True, "message": message, "redirect_url": reverse("produto:lista_unidades")})
 
     except Exception as e:
-        return JsonResponse({"success": False, "message": app_messages.error(f"Erro ao excluir: {str(e)}")}, status=500)
+        message = app_messages.error(f"Erro ao excluir: {str(e)}")
+        return JsonResponse({"success": False, "message": message}, status=500)
 
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
@@ -368,6 +384,14 @@ def buscar_ncm_ajax(request):
 
     return JsonResponse({"results": resultados})
 
+@login_required
+def api_racoes_list(request):
+    """
+    Retorna uma lista de produtos da categoria 'Ração' em formato JSON.
+    """
+    racoes = Produto.objects.filter(categoria__nome__iexact='Ração').values('id', 'nome').order_by('nome')
+    return JsonResponse(list(racoes), safe=False)
+
 
 @login_required
 @user_passes_test(is_superuser_or_staff)
@@ -386,6 +410,8 @@ def importar_ncm_manual_view(request):
                 codigo, descricao = item.split('|', 1)
                 NCM.objects.update_or_create(codigo=codigo.strip(), defaults={"descricao": descricao.strip()})
                 count += 1
-        return JsonResponse({"status": "ok", "message": app_messages.success_imported(instance=None, custom_message=f"{count} códigos NCM importados com sucesso.")})
+        message = app_messages.success_imported(instance=None, custom_message=f"{count} códigos NCM importados com sucesso.")
+        return JsonResponse({"success": True, "message": message})
     except Exception as e:
-        return JsonResponse({"status": "erro", "message": app_messages.error(f"Erro ao importar NCM: {str(e)}")}, status=500)
+        message = app_messages.error(f"Erro ao importar NCM: {str(e)}")
+        return JsonResponse({"success": False, "message": message}, status=500)

@@ -22,6 +22,7 @@ from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
 from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin
 from common.utils import render_ajax_or_base
+from common.context_processors import dynamic_menu
 
 
 # === Autenticação ===
@@ -559,3 +560,8 @@ class CustomPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
 class CustomPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
     def render_to_response(self, context, **response_kwargs):
         return render_ajax_or_base(self.request, self.template_name, context)
+
+def get_navbar_content(request):
+    context = dynamic_menu(request)
+    print(f"DEBUG: Contexto do navbar: {context}")
+    return render(request, 'layout_switcher/navbar.html', context)

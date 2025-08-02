@@ -44,6 +44,7 @@ urlpatterns = [
     path("ncm/importar/", views.importar_ncm_manual_view, name="importar_ncm_manual"),
     path("buscar-ncm/", views.buscar_ncm_ajax, name="buscar_ncm_ajax"),
     path("ncm-autocomplete-produto/", views.buscar_ncm_ajax, name="ncm_autocomplete"),
+    path("api/racoes/", views.api_racoes_list, name="api_racoes_list"),
 
     
 ]

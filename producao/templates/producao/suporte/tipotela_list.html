@@ -1,0 +1,36 @@
+<div id="identificador-tela" data-page="{{ data_page }}" data-tela="{{ data_tela }}">
+    <div class="container-fluid">
+        <h2 class="my-4">Lista de Tipos de Tela</h2>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Tipos de Tela Cadastrados</h5>
+                <a href="{% url 'producao:cadastrar_tipotela' %}" class="btn btn-primary ajax-link">Novo Tipo de Tela</a>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tipo_tela in object_list %}
+                        <tr>
+                            <td>{{ tipo_tela.nome }}</td>
+                            <td>
+                                <a href="{% url 'producao:editar_tipotela' tipo_tela.pk %}" class="btn btn-sm btn-outline-primary ajax-link">Editar</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="text-center">Nenhum tipo de tela cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

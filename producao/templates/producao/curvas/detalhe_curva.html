@@ -1,5 +1,6 @@
 {% load static %}
-<div id="identificador-tela" data-tela="detalhe_curva">
+<div id="identificador-tela" data-tela="detalhe_curva" data-api-racoes-url="{% url 'produto:api_racoes_list' %}" data-api-atualizar-url="{% url 'producao:api_atualizar_detalhe_curva' %}">
+  {% csrf_token %}
   <div class="container-fluid">
       <h1 class="h3 mb-4 text-gray-800">Detalhes da Curva de Crescimento</h1>
 

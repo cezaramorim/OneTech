@@ -8,8 +8,10 @@ def painel_onetech(request):
     O conteúdo será carregado dinamicamente via AJAX dentro da div #main-content.
     """
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return render(request, 'partials/_main_content_wrapper.html')
+        return render(request, 'partials/_main_content_wrapper.html', {'data_page': 'home', 'data_tela': 'home'})
 
     return render(request, 'base.html', {
-        'content_template': 'partials/home_content.html'  # ✅ Corrigido aqui
+        'content_template': 'partials/home_content.html',
+        'data_page': 'home',
+        'data_tela': 'home'
     })

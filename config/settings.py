@@ -54,8 +54,8 @@ INSTALLED_APPS = [
     'relatorios',
     'fiscal',
     'integracao_nfe',
-    'layout_switcher',
     'producao',
+    'layout_switcher',
 ]
 
 REST_FRAMEWORK = {
@@ -145,6 +145,8 @@ USE_TZ = True
 # =======================
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static', BASE_DIR / 'producao' / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 
 # =======================
 # Modelo de Usuário Customizado

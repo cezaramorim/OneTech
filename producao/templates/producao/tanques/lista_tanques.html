@@ -6,12 +6,14 @@
     data-url-editar="{% url 'producao:editar_tanque' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_tanques_multiplos' %}"
     data-seletor-checkbox=".selecionar-tanque">
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Lista de Tanques</h2>
         <div>
+            <a href="{% url 'producao:importar_tanques' %}" class="btn btn-info ajax-link">Importar de Excel</a>
             <a href="{% url 'producao:cadastrar_tanque' %}" class="btn btn-primary ajax-link">Novo Tanque</a>
-            <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
-            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
+            <button id="btn-editar" class="btn btn-secondary" disabled>Editar</button>
+            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir</button>
         </div>
     </div>
 
@@ -22,32 +24,38 @@
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="selecionar-todos-tanques"></th>
+                            <th>ID</th>
                             <th>Nome</th>
-                            <th>Linha de Produção</th>
-                            <th>Tipo de Tanque</th>
-                            <th>Atividade</th>
-                            <th>Status</th>
-                            <th>Área (m²)</th>
-                            <th>Volume (m³)</th>
+                            <th>Tag</th>
+                            <th>Unidade</th>
+                            <th>Linha</th>
+                            <th>Fase</th>
+                            <th>Situação</th>
+                            <th>m²</th>
+                            <th>m³</th>
+                            <th>Ha</th>
                             <th>Ativo</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for tanque in tanques %}
                         <tr data-id="{{ tanque.pk }}">
-                            <td><input type="checkbox" class="selecionar-tanque"></td>
-                            <td>{{ tanque.nome }}</td>
-                            <td>{{ tanque.linha_producao.nome|default:"N/A" }}</td>
-                            <td>{{ tanque.tipo_tanque.nome|default:"N/A" }}</td>
-                            <td>{{ tanque.atividade.nome|default:"N/A" }}</td>
-                            <td>{{ tanque.status_tanque.nome|default:"N/A" }}</td>
-                            <td>{{ tanque.area_m2|floatformat:2 }}</td>
-                            <td>{{ tanque.volume_m3|floatformat:2 }}</td>
+                            <td><input type="checkbox" class="selecionar-tanque" value="{{ tanque.pk }}"></td>
+                            <td>{{ tanque.id }}</td>
+                            <td><a href="{% url 'producao:editar_tanque' tanque.pk %}" class="ajax-link">{{ tanque.nome }}</a></td>
+                            <td>{{ tanque.tag_tanque|default:"-" }}</td>
+                            <td>{{ tanque.unidade.nome|default:"-" }}</td>
+                            <td>{{ tanque.linha_producao.nome|default:"-" }}</td>
+                            <td>{{ tanque.fase.nome|default:"-" }}</td>
+                            <td>{{ tanque.status_tanque.nome|default:"-" }}</td>
+                            <td>{{ tanque.metro_quadrado|floatformat:2 }}</td>
+                            <td>{{ tanque.metro_cubico|floatformat:2 }}</td>
+                            <td>{{ tanque.ha|floatformat:4 }}</td>
                             <td>{% if tanque.ativo %}Sim{% else %}Não{% endif %}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center">Nenhum tanque encontrado.</td>
+                            <td colspan="12" class="text-center">Nenhum tanque encontrado.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -56,4 +64,3 @@
         </div>
     </div>
 </div>
-<script src="{% static 'producao/js/tanques.js' %}"></script>

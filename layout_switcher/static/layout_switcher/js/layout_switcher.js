@@ -37,21 +37,11 @@ function closeAllCollapses() {
 }
 
 function initLayout() {
-    const savedLayout = localStorage.getItem('layout_preferencia') || 'layout-superior';
-    console.log(`DEBUG: Initializing layout to: ${savedLayout}`);
-    document.body.classList.remove('layout-lateral', 'layout-superior');
-    document.body.classList.add(savedLayout);
+    // Não faz nada, pois o layout agora é fixo (apenas navbar superior)
+    console.log("DEBUG: initLayout() - Layout fixo, sem alternância.");
 }
 
-function alternarLayout() {
-    console.log("DEBUG: alternarLayout() called.");
-    const isLateral = document.body.classList.contains('layout-lateral');
-    const newLayout = isLateral ? 'layout-superior' : 'layout-lateral';
-    document.body.classList.remove('layout-lateral', 'layout-superior');
-    document.body.classList.add(newLayout);
-    localStorage.setItem('layout_preferencia', newLayout);
-    console.log(`DEBUG: Layout changed to: ${newLayout}`);
-}
+// Funções de alternância de layout removidas, pois não há mais sidebar.
 
  function alternarTema() {
   const isDark = document.documentElement.classList.toggle('dark');
@@ -77,13 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 2. Listeners de Eventos Globais (Click)
     document.addEventListener('click', (event) => {
         // Listener para o botão de alternar layout
-        const toggleButton = event.target.closest('#btn-alternar-layout, #btn-alternar-layout-superior');
-        if (toggleButton) {
-            console.log("DEBUG: Layout toggle button clicked:", toggleButton);
-            event.preventDefault();
-            alternarLayout();
-            closeAllCollapses(); // Fecha todos os collapses ao alternar layout
-        }
+        // REMOVIDO: Lógica de alternar layout
 
         // ─── b) Toggle de tema ──────────────────────────────────────
         const themeButton = event.target.closest(

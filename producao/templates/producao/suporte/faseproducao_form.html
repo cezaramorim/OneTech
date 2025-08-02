@@ -1,0 +1,11 @@
+<div id="identificador-tela" data-tela="form_faseproducao">
+    <div class="container-fluid mt-4">
+        <h2>{% if object %}Editar Fase de Produção{% else %}Nova Fase de Produção{% endif %}</h2>
+        <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_fasesproducao' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type-="submit" class="btn btn-success">Salvar</button>
+            <a href="{% url 'producao:lista_fasesproducao' %}" class="btn btn-secondary ajax-link">Cancelar</a>
+        </form>
+    </div>
+</div>

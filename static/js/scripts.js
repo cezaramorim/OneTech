@@ -196,15 +196,38 @@ function bindPageSpecificActions() {
     }
 }
 
+// Nova função para carregar e atualizar o navbar
+function loadNavbar() {
+    console.log("Calling loadNavbar()");
+    fetch('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.text())
+        .then(html => {
+            console.log("DEBUG: HTML recebido para o navbar:", html);
+            const navbarContainer = document.getElementById('navbar-container');
+            console.log("DEBUG: navbarContainer (antes da injeção):", navbarContainer);
+            if (navbarContainer) {
+                // Limpa o conteúdo existente
+                navbarContainer.innerHTML = '';
+                console.log("DEBUG: navbarContainer.innerHTML (após limpeza):", navbarContainer.innerHTML);
+                // Cria a tag <nav> dinamicamente
+                const navElement = document.createElement('nav');
+                navElement.classList.add('navbar', 'navbar-expand-lg', 'navbar-dark', 'navbar-superior');
+                navElement.innerHTML = html;
+                console.log("DEBUG: navElement.innerHTML (após atribuição do HTML): ", navElement.innerHTML);
+                navbarContainer.appendChild(navElement);
+                console.log("DEBUG: navbarContainer.outerHTML (após appendChild): ", navbarContainer.outerHTML);
+            }
+        })
+        .catch(error => console.error('Erro ao carregar o navbar:', error));
+}
 
 document.addEventListener("DOMContentLoaded", () => {
-    const themeToggle = document.getElementById("theme-toggle");
-    if (themeToggle) {
-        themeToggle.addEventListener("click", () => {
-            const isDark = document.documentElement.classList.toggle("dark");
-            localStorage.setItem("tema", isDark ? "dark" : "light");
-        });
+    const navbarContainerOnLoad = document.getElementById('navbar-container');
+    console.log("DEBUG: DOMContentLoaded - navbarContainer (antes de loadNavbar()):", navbarContainerOnLoad);
+    if (navbarContainerOnLoad) { // Only call loadNavbar if the container exists
+        loadNavbar(); // Chama loadNavbar na carga inicial da página
     }
+    console.log("DEBUG: DOMContentLoaded - navbarContainer (após loadNavbar()):", document.getElementById('navbar-container'));
 
     document.body.addEventListener("click", async e => {
         console.log("DEBUG: Evento de clique disparado.");
@@ -214,7 +237,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
         const ajaxLink = e.target.closest(".ajax-link");
         console.log("DEBUG: ajaxLink encontrado:", ajaxLink);
-        if (ajaxLink) {
+
+        // CONDIÇÃO ADICIONADA: Ignora links que são componentes do Bootstrap (como dropdowns)
+        if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
             console.log("DEBUG: ajaxLink.href:", ajaxLink.href);
             e.preventDefault();
             loadAjaxContent(ajaxLink.href);
@@ -307,12 +332,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.dispatchEvent(new CustomEvent("ajaxFormSuccess", { detail: { form, responseJson: data } }));
                 }
                 if (data.redirect_url) {
-                    // Se a URL de redirecionamento for a mesma da página atual, recarrega a página
-                    if (window.location.href === data.redirect_url) {
-                        window.location.reload();
-                    } else {
-                        window.location.href = data.redirect_url;
+                    const navbarContainerOnRedirect = document.getElementById('navbar-container');
+                    if (navbarContainerOnRedirect) { // Recarrega o navbar apenas se o container existir
+                        loadNavbar();
                     }
+                    window.location.href = data.redirect_url;
                 } else if (data.message || data.mensagem) {
                     const messageText = data.message || data.mensagem;
                     const messageType = data.success ? "success" : "danger";

@@ -46,7 +46,14 @@ MENU_ITEMS = [
             {'name': 'Lista de Eventos', 'url_name': 'producao:lista_eventos', 'required_perms': ['producao.view_evento']},
             {'name': 'Registrar Alimentação', 'url_name': 'producao:registrar_alimentacao', 'required_perms': ['producao.add_alimentacao']},
             {'name': 'Lista de Alimentações', 'url_name': 'producao:lista_alimentacao', 'required_perms': ['producao.view_alimentacao']},
-        ]
+            {'name': 'Unidades', 'url_name': 'producao:lista_unidades', 'required_perms': ['producao.view_unidade']},
+            {'name': 'Malhas', 'url_name': 'producao:lista_malhas', 'required_perms': ['producao.view_malha']},
+            {'name': 'Tipos de Tela', 'url_name': 'producao:lista_tipotelas', 'required_perms': ['producao.view_tipotela']},
+            {'name': 'Linhas de Produção', 'url_name': 'producao:lista_linhasproducao', 'required_perms': ['producao.view_linhaproducao']},
+            {'name': 'Fases de Produção', 'url_name': 'producao:lista_fasesproducao', 'required_perms': ['producao.view_faseproducao']},
+            {'name': 'Status de Tanque', 'url_name': 'producao:lista_statustanque', 'required_perms': ['producao.view_statustanque']},
+            {'name': 'Tipos de Tanque', 'url_name': 'producao:lista_tipostanque', 'required_perms': ['producao.view_tipotanque']},
+            ]
     },
     {
         'name': 'Nota Fiscal',

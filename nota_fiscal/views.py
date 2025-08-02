@@ -115,13 +115,15 @@ def importar_xml_nfe_view(request):
         
     # 1. Verificação de Permissão do Usuário
     if not request.user.has_perm('nota_fiscal.can_import_xml'):
-        return JsonResponse({'success': False, 'error': 'Você não tem permissão para importar XML de Notas Fiscais.'}, status=403)
+        message = app_messages.error('Você não tem permissão para importar XML de Notas Fiscais.')
+        return JsonResponse({'success': False, 'message': message}, status=403)
 
     if not xml_file or not xml_file.name.lower().strip().endswith('.xml'):
         print(f"DEBUG: Condição de arquivo XML inválido acionada. xml_file is None: {xml_file is None}")
         if xml_file:
             print(f"DEBUG: xml_file.name.lower().strip().endswith('.xml'): {xml_file.name.lower().strip().endswith('.xml')}")
-        return JsonResponse({'success': False, 'error': 'Arquivo XML inválido ou não fornecido.'}, status=400)
+        message = app_messages.error('Arquivo XML inválido ou não fornecido.')
+        return JsonResponse({'success': False, 'message': message}, status=400)
 
     try:
         # 2. Parsing do XML
@@ -137,7 +139,8 @@ def importar_xml_nfe_view(request):
         infNFe = full_xml_dict.get('NFe', {}).get('infNFe', {})
         if not infNFe:
             print("ERRO: Estrutura do XML inválida: <infNFe> não encontrado.")
-            return JsonResponse({'success': False, 'error': 'Estrutura do XML inválida: <infNFe> não encontrado.'}, status=400)
+            message = app_messages.error('Estrutura do XML inválida: <infNFe> não encontrado.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
         print("DEBUG: <infNFe> encontrado no XML.")
 
         # 3. Extração da Chave de Acesso e Verificação de Duplicidade
@@ -145,7 +148,8 @@ def importar_xml_nfe_view(request):
         
         if not chave:
             print("ERRO: Não foi possível extrair a chave de acesso do XML.")
-            return JsonResponse({'success': False, 'error': 'Não foi possível extrair a chave de acesso do XML.'}, status=400)
+            message = app_messages.error('Não foi possível extrair a chave de acesso do XML.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
         print(f"DEBUG: Chave de acesso extraída: {chave}")
 
         is_duplicate = False
@@ -234,7 +238,8 @@ def importar_xml_nfe_view(request):
         print(f"ERRO CRÍTICO em importar_xml_nfe_view: {type(e).__name__} - {e}")
         full_traceback = traceback.format_exc()
         print(f"TRACEBACK COMPLETO:\n{full_traceback}") 
-        return JsonResponse({'success': False, 'error': f'Ocorreu um erro no servidor ao processar o XML: {str(e)}'}, status=500)
+        message = app_messages.error(f'Ocorreu um erro no servidor ao processar o XML: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
 @login_required
 # @csrf_exempt REMOVIDO: `require_POST` já garante a proteção CSRF adequada para POST requests.
 @require_POST
@@ -261,8 +266,10 @@ def processar_importacao_xml_view(request):
         if nota_existente:
             if not force_update:
                 # Se a nota existe e não é para forçar atualização, retorna alerta para o frontend
+                message = app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?')
                 return JsonResponse({
-                    'message': app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?'),
+                    'success': True, # É um sucesso, mas com um aviso
+                    'message': message,
                     'nota_existente': True,
                     'nota_id': nota_existente.pk,
                     'redirect_url': reverse('nota_fiscal:entradas_nota')
@@ -881,20 +888,22 @@ def excluir_notas_multiplo_view(request):
         ids = data.get('ids', [])
 
         if not ids:
-            return JsonResponse({'success': False, 'message': app_messages.error('Nenhum ID fornecido para exclusão.')}, status=400)
+            message = app_messages.error('Nenhum ID fornecido para exclusão.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
 
-        # Filtra as notas fiscais que pertencem ao usuário logado (opcional, mas boa prática de segurança)
-        # ou que o usuário tem permissão para excluir.
-        # Por enquanto, vamos apenas excluir as notas com os IDs fornecidos.
         notas_excluidas, _ = NotaFiscal.objects.filter(id__in=ids).delete()
 
         if notas_excluidas > 0:
-            return JsonResponse({'success': True, 'message': app_messages.success_deleted("nota(s) fiscal(is)", f"{notas_excluidas} selecionada(s)")})
+            message = app_messages.success_deleted("nota(s) fiscal(is)", f"{notas_excluidas} selecionada(s)")
+            return JsonResponse({'success': True, 'message': message})
         else:
-            return JsonResponse({'success': False, 'message': app_messages.error('Nenhuma nota fiscal encontrada com os IDs fornecidos.')}, status=404)
+            message = app_messages.error('Nenhuma nota fiscal encontrada com os IDs fornecidos.')
+            return JsonResponse({'success': False, 'message': message}, status=404)
 
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': app_messages.error('Requisição inválida. JSON malformado.')}, status=400)
+        message = app_messages.error('Requisição inválida. JSON malformado.')
+        return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as e:
         traceback.print_exc()
-        return JsonResponse({'success': False, 'message': app_messages.error(f'Erro ao excluir notas fiscais: {str(e)}')}, status=500)
+        message = app_messages.error(f'Erro ao excluir notas fiscais: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)

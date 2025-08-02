@@ -33,7 +33,7 @@
                     <tbody>
                         {% for alimentacao in alimentacoes %}
                         <tr data-id="{{ alimentacao.pk }}">
-                            <td><input type="checkbox" class="selecionar-alimentacao"></td>
+                            <td><input type="checkbox" class="selecionar-alimentacao" value="{{ alimentacao.pk }}"></td>
                             <td>{{ alimentacao.lote.nome|default:"N/A" }}</td>
                             <td>{{ alimentacao.produto_racao.nome|default:"N/A" }}</td>
                             <td>{{ alimentacao.data_alimentacao|date:"d/m/Y" }}</td>
@@ -52,4 +52,3 @@
         </div>
     </div>
 </div>
-<script src="{% static 'producao/js/alimentacao.js' %}"></script>

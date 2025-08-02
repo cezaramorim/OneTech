@@ -86,20 +86,25 @@ def categoria_form_view(request, pk=None):
 @login_required
 @permission_required('empresas.delete_categoriaempresa', raise_exception=True)
 def excluir_categorias_view(request):
+    app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
         ids = data.get('ids', [])
         if not ids:
-            return JsonResponse({'sucesso': False, 'erro': 'Nenhum ID fornecido.'}, status=400)
+            message = app_messages.error('Nenhum ID fornecido.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
         
+        count = len(ids)
         CategoriaEmpresa.objects.filter(pk__in=ids).delete()
         
-        messages.success(request, f"{len(ids)} categorias excluídas com sucesso.")
-        return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_categorias')})
+        message = app_messages.success_deleted("Categoria(s)", f"{count} selecionada(s)")
+        return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_categorias')})
     except json.JSONDecodeError:
-        return JsonResponse({'sucesso': False, 'erro': 'JSON inválido.'}, status=400)
+        message = app_messages.error('Requisição inválida (JSON malformatado).')
+        return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as e:
-        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+        message = app_messages.error(f'Erro ao excluir categorias: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
 
 
 # === Nova Empresa (Unificada: Cadastro e Edição) ===
@@ -135,7 +140,7 @@ def empresa_avancada_form_view(request, pk=None):
             # Resposta para requisições AJAX
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'sucesso': True,
+                    'success': True,
                     'message': message,
                     'redirect_url': reverse('empresas:lista_empresas_avancadas')
                 })
@@ -145,7 +150,8 @@ def empresa_avancada_form_view(request, pk=None):
         else:
             # Em caso de formulário inválido, retorna os erros
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': False, 'erros': form.errors, 'message': app_messages.error('Erro ao salvar empresa. Verifique os campos.')}, status=400)
+                message = app_messages.error('Erro ao salvar empresa. Verifique os campos.')
+                return JsonResponse({'success': False, 'message': message, 'errors': form.errors}, status=400)
             else:
                 app_messages.error('Erro ao salvar empresa. Verifique os campos.')
 
@@ -224,28 +230,35 @@ def atualizar_status_empresa_avancada(request, pk):
         empresa = EmpresaAvancada.objects.get(pk=pk)
         empresa.ativo = data.get('ativo', False)
         empresa.save()
-        return JsonResponse({'sucesso': True, 'mensagem': app_messages.success_updated(empresa, custom_message=f'Status da empresa "{empresa.razao_social or empresa.nome}" atualizado com sucesso.')})
+        message = app_messages.success_updated(empresa, custom_message=f'Status da empresa "{empresa.razao_social or empresa.nome}" atualizado com sucesso.')
+        return JsonResponse({'success': True, 'message': message})
     except Exception:
-        return JsonResponse({'sucesso': False, 'mensagem': app_messages.error('Erro ao atualizar o status da empresa.')})
+        message = app_messages.error('Erro ao atualizar o status da empresa.')
+        return JsonResponse({'success': False, 'message': message}, status=500)
 
 
 @require_POST
 @login_required
 @permission_required('empresas.delete_empresaavancada', raise_exception=True)
 def excluir_empresas_avancadas_view(request):
+    app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
         ids = data.get('ids', [])
         if not ids:
-            return JsonResponse({'sucesso': False, 'erro': 'Nenhum ID fornecido.'}, status=400)
+            message = app_messages.error('Nenhum ID fornecido.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
         
+        count = len(ids)
         EmpresaAvancada.objects.filter(pk__in=ids).delete()
         
-        messages.success(request, f"{len(ids)} empresa(s) excluída(s) com sucesso.")
-        return JsonResponse({'sucesso': True, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
+        message = app_messages.success_deleted("Empresa(s)", f"{count} selecionada(s)")
+        return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
     except json.JSONDecodeError:
-        return JsonResponse({'sucesso': False, 'erro': 'JSON inválido.'}, status=400)
+        message = app_messages.error('Requisição inválida (JSON malformatado).')
+        return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as e:
-        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+        message = app_messages.error(f'Erro ao excluir empresas: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
 
 

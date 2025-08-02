@@ -1,6 +1,5 @@
 {% load static %}
-<nav class="navbar navbar-expand-lg navbar-dark navbar-superior">
-    <div class="container-fluid">
+<div class="container-fluid">
         <a href="{% url 'painel:home' %}" class="navbar-brand ajax-link">
             <img src="{% static 'icons/logo_sidbar.png' %}" alt="OneTech" style="max-height: 40px;">
         </a>
@@ -48,7 +47,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarPerfil">
                         <li><a class="dropdown-item ajax-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a></li>
-                        <li><a class="dropdown-item" href="#" id="btn-alternar-layout-superior">Layout Menu</a></li>
+                        
                         <li><a class="dropdown-item" href="#" id="btn-alternar-tema-superior">Alternar Tema</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" id="logout-link-superior" href="{% url 'accounts:logout' %}">Sair</a></li>
@@ -57,4 +56,3 @@
             </ul>
         </div>
     </div>
-</nav>

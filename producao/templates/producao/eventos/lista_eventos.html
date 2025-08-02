@@ -36,7 +36,7 @@
                     <tbody>
                         {% for evento in eventos %}
                         <tr data-id="{{ evento.pk }}">
-                            <td><input type="checkbox" class="selecionar-evento"></td>
+                            <td><input type="checkbox" class="selecionar-evento" value="{{ evento.pk }}"></td>
                             <td>{{ evento.get_tipo_evento_display }}</td>
                             <td>{{ evento.lote.nome|default:"N/A" }}</td>
                             <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
@@ -58,4 +58,3 @@
         </div>
     </div>
 </div>
-<script src="{% static 'producao/js/eventos.js' %}"></script>

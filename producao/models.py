@@ -1,9 +1,36 @@
 from django.db import models
+from django.utils import timezone
 from produto.models import Produto # Importa o modelo Produto do app produto
 from django.core.validators import MinValueValidator
 from datetime import date # Importa date para calculo de GPD
 from decimal import Decimal # Importa Decimal para cálculos precisos
 
+# NOVOS MODELOS DE SUPORTE
+class Unidade(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    class Meta:
+        verbose_name = "Unidade"
+        verbose_name_plural = "Unidades"
+    def __str__(self):
+        return self.nome
+
+class Malha(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    class Meta:
+        verbose_name = "Malha"
+        verbose_name_plural = "Malhas"
+    def __str__(self):
+        return self.nome
+
+class TipoTela(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    class Meta:
+        verbose_name = "Tipo de Tela"
+        verbose_name_plural = "Tipos de Tela"
+    def __str__(self):
+        return self.nome
+
+# MODELOS EXISTENTES
 class LinhaProducao(models.Model):
     nome = models.CharField(max_length=100, unique=True)
 
@@ -101,23 +128,43 @@ class CurvaCrescimentoDetalhe(models.Model):
         return f"{self.curva.nome} - Semana {self.periodo_semana}"
 
 class Tanque(models.Model):
+    # Campos Mantidos
     nome = models.CharField(max_length=255, unique=True)
-    linha_producao = models.ForeignKey(LinhaProducao, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques')
+    linha_producao = models.ForeignKey(LinhaProducao, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques_linha_producao')
     tipo_tanque = models.ForeignKey(TipoTanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques')
-    atividade = models.ForeignKey(Atividade, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques')
-    status_tanque = models.ForeignKey(StatusTanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques')
+    status_tanque = models.ForeignKey(StatusTanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='tanques_status')
     largura = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     comprimento = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     profundidade = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     ativo = models.BooleanField(default=True)
 
-    @property
-    def area_m2(self):
-        return self.largura * self.comprimento
+    data_criacao = models.DateTimeField(default=timezone.now)
+    metro_cubico = models.DecimalField(max_digits=10, decimal_places=2, editable=False, default=0)
+    metro_quadrado = models.DecimalField(max_digits=10, decimal_places=2, editable=False, default=0)
+    ha = models.DecimalField(max_digits=10, decimal_places=4, editable=False, default=0, verbose_name="Hectares (ha)")
+    unidade = models.ForeignKey(Unidade, on_delete=models.SET_NULL, null=True, blank=True)
+    fase = models.ForeignKey(FaseProducao, on_delete=models.SET_NULL, null=True, blank=True)
+    sequencia = models.IntegerField(default=0)
+    malha = models.ForeignKey(Malha, on_delete=models.SET_NULL, null=True, blank=True)
+    tag_tanque = models.CharField(max_length=100, blank=True)
+    tipo_tela = models.ForeignKey(TipoTela, on_delete=models.SET_NULL, null=True, blank=True)
 
-    @property
-    def volume_m3(self):
-        return self.largura * self.comprimento * self.profundidade
+    def save(self, *args, **kwargs):
+        # Lógica de Cálculo
+        if self.largura and self.comprimento:
+            self.metro_quadrado = self.largura * self.comprimento
+            self.ha = self.metro_quadrado / 10000
+        else:
+            self.metro_quadrado = Decimal('0')
+            self.ha = Decimal('0')
+
+        # metro_cubico agora depende apenas de profundidade, largura e comprimento
+        if self.largura and self.comprimento and self.profundidade:
+            self.metro_cubico = self.largura * self.comprimento * self.profundidade
+        else:
+            self.metro_cubico = Decimal('0')
+            
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Tanque"

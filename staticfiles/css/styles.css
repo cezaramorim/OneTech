@@ -1,0 +1,1357 @@
+html:not(.theme-ready) body {
+  visibility: hidden;
+}
+
+/* ============================
+   RESET E CONFIGURAÇÃO BASE
+=============================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 16px;
+  color: #333;
+  background-color: #f8f9fa;
+  /*transition: background 0.3s, color 0.3s;*/
+}
+
+html.dark,
+body.dark {
+  background-color: #1e1f26;
+  color: #f2f2f2;
+}
+
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.layout {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+/* ============================
+   LINKS
+=============================== */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+
+.sidebar ul,
+.sidebar li {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 5px;
+}
+
+
+/* ============================
+   SIDEBAR
+=============================== */
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;              /* 🚫 impede que a sidebar encolha */
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+html.dark .sidebar,
+body.dark .sidebar {
+  background-color: #2b2f3a;
+  border-color: #444;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+/* ============================
+   MENU
+=============================== */
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+  margin-top: 15px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.toggle-icon {
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.menu-list {
+  list-style: none;
+  padding-left: 15px;
+  margin-top: 10px;
+  display: none;
+}
+
+.menu-list.show {
+  display: block;
+}
+
+.menu-list li {
+  margin: 8px 0;
+}
+
+.menu-list li a {
+  color: #333;
+  display: block;
+}
+
+html.dark .menu-list li a,
+body.dark .menu-list li a {
+  color: #ddd;
+}
+
+html.dark .menu-list li a:hover,
+body.dark .menu-list li a:hover {
+  color: #66b2ff;
+}
+
+/* ============================
+   CONTEÚDO PRINCIPAL
+=============================== */
+.content {
+  flex: 1;
+  padding: 10px;
+  background-color: #ffffff;
+  transition: background 0.3s;
+}
+
+html.dark .content,
+body.dark .content {
+  background-color: #1e1f26;
+  color: #f2f2f2;
+}
+
+h1, h2, h3 {
+  margin-bottom: 15px;
+  color: inherit;
+}
+
+/* ============================
+   FORMULÁRIOS E CAMPOS
+=============================== */
+form {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.05);
+  margin-top: 15px;
+  width: 100%;
+  /*max-width: 100%;*/
+}
+
+html.dark form,
+body.dark form {
+  background-color: #3c404b;
+  color: #fff;
+  border: 1px solid #555;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 15px;
+  transition: border-color 0.2s;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea,
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background-color: #444;
+  border: 1px solid #666;
+  color: #eee;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus,
+body.dark input:focus,
+body.dark select:focus,
+body.dark textarea:focus {
+  border-color: #66b2ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
+}
+
+/* ============================
+   BOTÕES (PADRÃO)
+=============================== */
+.btn,
+form button,
+.btn-login {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.25s ease-in-out;
+}
+
+.btn:hover,
+form button:hover,
+.btn-login:hover {
+  background-color: #0056b3;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #007bff;
+  border: 2px solid #007bff;
+  font-weight: 600;
+}
+
+.btn-outline:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+html.dark .btn,
+body.dark .btn {
+  background-color: #007bff;
+  color: #fff;
+}
+
+html.dark .btn:hover,
+body.dark .btn:hover {
+  background-color: #0056b3;
+}
+
+html.dark .btn-outline,
+body.dark .btn-outline {
+  color: #66b2ff;
+  border-color: #66b2ff;
+}
+
+html.dark .btn-outline:hover,
+body.dark .btn-outline:hover {
+  background-color: #66b2ff;
+  color: #fff;
+}
+
+/* ============================
+   ALERTAS
+=============================== */
+#alert-container {
+  z-index: 1055;
+}
+
+.alert {
+  border-radius: 6px;
+  font-size: 15px;
+  padding: 12px 16px;
+}
+
+html.dark .alert-success,
+body.dark .alert-success {
+  background-color: #155724;
+  color: #d4edda;
+  border-color: #19692c;
+}
+
+html.dark .alert-danger,
+body.dark .alert-danger {
+  background-color: #721c24;
+  color: #f8d7da;
+  border-color: #7f1d1d;
+}
+
+html.dark .alert-warning,
+body.dark .alert-warning {
+  background-color: #856404;
+  color: #fff3cd;
+  border-color: #856404;
+}
+
+/* ============================  
+   AJUSTES FINAIS TEMA ESCURO  
+=============================== */
+
+/* Estrutura base */
+html.dark,
+body.dark {
+  background-color: #1e1f26;
+  color: #f2f2f2;
+}
+
+/* Navegação e sidebar */
+html.dark nav,
+body.dark nav,
+html.dark .sidebar,
+body.dark .sidebar {
+  background-color: #2b2f3a;
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+/* Conteúdo principal */
+html.dark main,
+body.dark main,
+html.dark #main-content,
+body.dark #main-content,
+html.dark .content,
+body.dark .content,
+html.dark .container,
+body.dark .container {
+  background-color: #1e1f26 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Correção para elementos com .bg-white no modo escuro */
+html.dark .bg-white,
+body.dark .bg-white {
+  background-color: #2b2f3a !important;
+  color: #f2f2f2 !important;
+}
+
+/* Accordion */
+html.dark .accordion-item,
+body.dark .accordion-item {
+  background-color: #2b2f3a;
+  border-color: #444;
+}
+
+html.dark .accordion-button,
+body.dark .accordion-button {
+  background-color: #2b2f3a;
+  color: #f2f2f2;
+}
+
+html.dark .accordion-button:not(.collapsed) {
+  background-color: #1e1f26;
+  color: #fff;
+}
+
+html.dark .accordion-button:focus {
+  box-shadow: none;
+}
+
+/* Menu lateral */
+html.dark .list-group-item {
+  background-color: transparent;
+  color: #ccc;
+  border: none;
+}
+
+/* Botões */
+html.dark .btn-outline-secondary {
+  border-color: #888;
+  color: #ccc;
+}
+
+html.dark .btn-outline-secondary:hover {
+  background-color: #666;
+  color: #fff;
+}
+
+/* Tabelas */
+html.dark table,
+body.dark table,
+html.dark .table,
+body.dark .table {
+  background-color: #2b2f3a;
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+html.dark .table-striped tbody tr:nth-of-type(odd) {
+  background-color: #2f323c;
+}
+
+/* Inputs e campos */
+html.dark input,
+html.dark select,
+html.dark textarea,
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background-color: #444;
+  border: 1px solid #666;
+  color: #eee;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #66b2ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
+}
+
+/* Alertas */
+html.dark .alert-success {
+  background-color: #155724;
+  color: #d4edda;
+  border-color: #19692c;
+}
+
+html.dark .alert-danger {
+  background-color: #721c24;
+  color: #f8d7da;
+  border-color: #7f1d1d;
+}
+
+html.dark .alert-warning {
+  background-color: #856404;
+  color: #fff3cd;
+  border-color: #856404;
+}
+
+/* Bordas */
+html.dark .border-end,
+body.dark .border-end {
+  border-color: #444 !important;
+}
+
+.logout-confirmation-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 80px);
+  padding: 20px;
+}
+
+.logout-card {
+  background-color: #fff;
+  border-radius: 10px;
+  max-width: 400px;
+  width: 100%;
+}
+
+body.dark .logout-card {
+  background-color: #3c404b;
+  color: #f2f2f2;
+}
+
+/* ============================  
+   BOAS-VINDAS AJUSTADO  
+=============================== */
+.welcome-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #212529;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html.dark .welcome-card,
+body.dark .welcome-card {
+  background-color: rgba(33, 37, 41, 0.95);
+  color: #f2f2f2;
+}
+
+html.dark .welcome-card h1,
+html.dark .welcome-card h2,
+html.dark .welcome-card .lead,
+html.dark .welcome-card p {
+  color: #eaeaea;
+}
+
+html.dark .welcome-card hr {
+  border-color: #444;
+}
+
+html.dark .welcome-card .text-muted {
+  color: #bbb !important;
+}
+
+/* ============================  
+   AJUSTES DE TEXTO MUTED NO TEMA ESCURO  
+=============================== */
+html.dark .text-muted,
+body.dark .text-muted {
+  color: #bfc4ca !important; /* Um cinza claro com boa legibilidade */
+}
+
+/* ============================  
+   LISTA DE USUÁRIOS - MELHORIAS DE VISUAL  
+=============================== */
+.list-group-item {
+  background-color: transparent;
+  transition: background 0.2s ease-in-out;
+}
+
+html.dark .list-group-item {
+  background-color: #2a2d36;
+  border-color: #444;
+}
+
+html.dark .list-group-item:hover {
+  background-color: #323640;
+}
+
+/* ===== Nome de usuário (login) - estilo texto puro ===== */
+.form-control-plaintext {
+  display: block;
+  padding: 0.375rem 0;
+  margin-bottom: 0;
+  line-height: 1.5;
+  color: #212529;
+  background-color: transparent;
+  border: none !important;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+/* Tema escuro */
+html.dark .form-control-plaintext,
+body.dark .form-control-plaintext {
+  color: #f2f2f2;
+}
+
+/* ============================  
+   ESTILO PARA TEMA ESCURO - COMPONENTES DE CARTÕES
+=============================== */
+
+/* 🎴 Cartões (cards) em tema escuro */
+html.dark .card,
+body.dark .card {
+  background-color: #2b2f3a;  /* Fundo escuro para o card */
+  color: #f2f2f2;             /* Texto claro dentro do card */
+}
+
+/* 🧭 Cabeçalho do card */
+html.dark .card-header {
+  background-color: #1e1f26;  /* Fundo mais escuro para o cabeçalho */
+  color: #ddd;                /* Cor de texto clara e suave */
+}
+
+/* ✅ Rótulo dos checkboxes */
+html.dark .form-check-label {
+  color: #ddd;                /* Texto claro para legibilidade em fundo escuro */
+}
+
+.bg-custom {
+  background-color: #f8f9fa; /* cor neutra no tema claro */
+}
+
+/* ============================
+   FUNDO COM IMAGEM TRANSPARENTE
+=============================== */
+
+body {
+  position: relative;
+  z-index: 0;
+  background: none; /* Remove conflitos visuais */
+}
+
+/* Logo no topo esquerdo */
+.logo-top-left {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  z-index: 10;
+  max-height: 80px;
+}
+
+
+/* 🎯 Estiliza o card de login */
+.login-card {
+  border-radius: 1rem;  /* arredondado em todos os lados */
+  background-color: rgba(0, 0, 0, 0.6); /* fundo escuro translúcido */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  padding: 2rem;
+}
+
+/* 🎯 Botões de submenus em "Configurações" */
+#submenu-configuracoes button[data-bs-toggle="collapse"] {
+  background-color: transparent !important;
+  color: inherit !important;
+  border: none;
+  padding: 0;
+  font-weight: 200;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+#submenu-configuracoes button[data-bs-toggle="collapse"]:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ❌ Remove bolinhas dos submenus */
+#submenu-configuracoes ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+/* ✅ Itens dos submenus */
+#submenu-configuracoes .list-group-item {
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0.25rem 0.75rem;
+  margin: 0;
+  font-weight: normal;  /* 🔧 Aqui está o ajuste principal */
+  font-size: 0.925rem;
+  color: inherit;
+  border-radius: 0.3rem;
+  transition: background-color 0.2s ease;
+}
+
+/* ☀️ Hover no tema claro */
+#submenu-configuracoes .list-group-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 🌙 Estilo no tema escuro */
+html.dark #submenu-configuracoes .list-group-item {
+  color: #f0f0f0;
+  background-color: rgba(255, 255, 255, 0.015);
+}
+
+html.dark #submenu-configuracoes .list-group-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sair-link {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: normal;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-sair-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .btn-sair-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ✅ Estilo para o botão "Sair" do menu */
+
+
+.logout-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .logout-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Estilo para .card-body no tema escuro */
+html.dark body {
+  background-color: #1e1f26;
+  color: #f0f0f0;
+}
+
+html.dark .card,
+html.dark .card-body,
+html.dark .form-control,
+html.dark .form-select {
+  background-color: #2a2b33;
+  color: #fff;
+  border-color: #444;
+}
+
+/* ============================
+   CORREÇÃO TEMA ESCURO FUNDO
+=============================== */
+html.dark .card-body .mb-4,
+html.dark .bg-white,
+html.dark .card,
+html.dark .form,
+html.dark .container,
+html.dark .card-body,
+html.dark .form-control,
+html.dark .form-select {
+  background-color: #2a2b33 !important;
+  color: #f0f0f0 !important;
+  border-color: #444 !important;
+}
+
+html.dark .card-header.bg-light,
+body.dark .card-header.bg-light {
+  background-color: #2a2b33 !important;
+  color: #f0f0f0 !important;
+  border-bottom: 1px solid #444 !important;
+}
+
+
+
+.logout-link {
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.3rem 0;
+  color: #212529; /* Cor para tema claro */
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+
+html.dark .logout-link {
+  color: #f2f2f2; /* Tema escuro */
+}
+
+.logout-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .logout-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+
+
+/* ✅ Remove completamente o contorno do botão da lua */
+#theme-toggle {
+  outline: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+#theme-toggle:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.welcome-bar {
+  padding: 12px 16px;
+  border-bottom: 1px dashed #ccc;
+  font-size: 1rem;
+  border-radius: 6px;
+}
+
+html.dark .welcome-bar {
+  border-bottom: 1px dashed #444;
+  color: #f0f0f0;
+}
+
+/* Garante que o #main-content aceite ::before */
+body {
+  position: relative;
+  z-index: 0;
+}
+
+/* ✅ Fundo na tela de login */
+body[data-tela="login"]::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 80vh;
+  background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.50;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+/* ============================
+   MAIN CONTENT ESTABILIZADO
+=============================== */
+#main-content {
+  flex-grow: 1;
+  padding: 20px;
+  position: relative;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  transition: none !important;
+  min-height: 100%; /* ✅ garante altura mínima para evitar movimentos */
+}
+
+/* Conteúdo interno carregado via AJAX */
+#main-content > div {
+  max-width: 1200px;
+  margin: 0 auto; /* garante centralização */
+}
+
+/* 🌓 Suporte ao modo escuro */
+html.dark #main-content.bg-light {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 🖼️ Logo central na tela inicial */
+#main-content[data-tela="home"]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 125px);
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 80vh;
+  /*background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;*/
+  background-size: contain;
+  opacity: 0.5;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+
+/* 🌅 Tela de fundo da página inicial */
+#welcome-screen.home-background {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 80vh;  
+  background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.50;
+  z-index: -1;
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+/* 🎨 Estilo das abas (nav-tabs) ajustado para o tema do projeto */
+.nav-tabs .nav-link {
+  color: inherit;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-tabs .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  text-decoration: none;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.05); /* 🔸 leve destaque escuro */
+  color: inherit;
+  font-weight: 600;
+  border-bottom: 2px solid var(--bs-gray-600); /* ou #444 */
+}
+
+/* 🌙 Ajustes para o tema escuro */
+html.dark .nav-tabs .nav-link.active {
+  background-color: #2c2c2e;
+  border-bottom: 2px solid #666;
+}
+
+/* 📋 Lista de resultados do Select2 com scroll vertical */
+.select2-container--bootstrap-5 .select2-results__options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 🧩 Dropdown com largura flexível (herda do campo) */
+.select2-container--bootstrap-5 .select2-dropdown {
+  width: auto !important;
+  min-width: 100% !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 🔹 Campo padrão */
+.select2-container--bootstrap-5 .select2-selection {
+  display: flex;
+  align-items: center;
+  height: calc(2.25rem + 2px);
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #212529;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* 🔹 Campo pequeno (sm) */
+.select2-container--bootstrap-5.select2-sm .select2-selection {
+  height: calc(1.8125rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* 🔹 Campo grande (lg) */
+.select2-container--bootstrap-5.select2-lg .select2-selection {
+  height: calc(2.875rem + 2px);
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
+}
+
+/* 🌙 Tema escuro */
+html.dark .select2-container--bootstrap-5 .select2-selection {
+  background-color: #1e1f26;
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+/* 🌙 Escuro com foco */
+html.dark .select2-container--bootstrap-5 .select2-selection:focus {
+  border-color: #666;
+  box-shadow: 0 0 0 0.2rem rgba(200, 200, 200, 0.25);
+}
+
+/* ✅ Garante largura total */
+.select2-wrapper .select2-container,
+.select2-container--bootstrap-5 {
+  width: 100% !important;
+}
+
+/* 🌙 Tabelas no tema escuro */
+html.dark table,
+html.dark .table,
+html.dark .table thead th,
+html.dark .table td {
+  background-color: #2a2d3a;
+  color: #f2f2f2;
+  border-color: #444 !important;
+}
+
+/* 🔲 Cabeçalho da tabela no tema escuro */
+html.dark .table thead th {
+  background-color: #1f212c;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* 🔳 Linhas alternadas (se quiser) */
+html.dark .table-striped tbody tr:nth-of-type(odd) {
+  background-color: #2e303d;
+}
+
+/* 🌑 Ajusta o campo de busca no tema escuro */
+html.dark .form-control {
+  background-color: #2c2c2c; /* fundo escuro sutil */
+  color: #f2f2f2; /* texto branco para leitura */
+  border: 1px solid #555; /* borda mais visível no dark */
+}
+
+/* Corrige placeholder do campo no tema escuro */
+html.dark .form-control::placeholder {
+  color: #aaa; /* tom suave no placeholder */
+}
+
+/* ================================
+   🔍 Autocomplete NCM - Dropdown
+================================= */
+
+/* Estilo base do dropdown */
+.autocomplete-ncm-list {
+  border-radius: 0.375rem;
+  max-height: 220px;
+  overflow-y: auto;
+  width: 100%; /* Herda a largura do campo de entrada */
+  min-width: 240px;
+  max-width: 480px;
+  background-color: #fff;
+  color: #212529;
+  border: 1px solid #ced4da;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-size: 0.95rem;
+}
+
+/* Estilo dos itens */
+.autocomplete-ncm-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.autocomplete-ncm-item:hover {
+  background-color: #f1f1f1;
+}
+
+/* Tema escuro */
+html.dark .autocomplete-ncm-list {
+  background-color: #2c2f36;
+  color: #f8f9fa;
+  border-color: #444;
+  box-shadow: 0 0.25rem 0.5rem rgba(255, 255, 255, 0.05);
+}
+
+html.dark .autocomplete-ncm-item:hover {
+  background-color: #3c4049;
+}
+
+/* ✅ Resultado da importação de XML de NFe */
+#resultado-xml {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+#resultado-xml h5 {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  color: #0d6efd;
+}
+
+#resultado-xml ul {
+  padding-left: 1.25rem;
+}
+
+#resultado-xml li {
+  margin-bottom: 0.25rem;
+}
+
+/* 🌙 Compatível com tema escuro */
+html.dark #resultado-xml {
+  background-color: #2b2d3a;
+  border-color: #444;
+  color: #f2f2f2;
+}
+
+html.dark #resultado-xml h5 {
+  color: #66b2ff;
+}
+
+/* ============================
+   LAYOUT FLEX PRINCIPAL
+=============================== */
+.layout.d-flex {
+  display: flex;
+  flex-direction: row;         /* layout horizontal */
+  min-height: 100vh;           /* altura total da tela */
+  align-items: stretch;
+  width: 100%;                 /* garante largura total */
+  overflow-x: hidden;          /* impede deslocamento lateral */
+}
+
+/* 🟢 Mensagens instantâneas flutuantes no topo direito */
+#mensagens {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none; /* permite clicar em elementos atrás */
+}
+
+#mensagens .alert {
+  position: relative;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem 0.75rem 2.8rem;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  line-height: 1.4;
+  word-break: break-word;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  background-repeat: no-repeat;
+  background-position: 0.8rem center;
+  background-size: 22px 22px;
+  border-radius: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  pointer-events: auto; /* reativa clique no botão fechar */
+}
+
+/* 🟥 Erro */
+#mensagens .alert-danger,
+#mensagens .alert-error {
+  background-image: url('/static/icons/img_erro.png');
+  background-color: #ca323f;
+  color: #fff;
+  border-color: #a52828;
+}
+
+/* 🟩 Sucesso */
+#mensagens .alert-success {
+  background-image: url('/static/icons/img_sucesso.png');
+  background-color: #bce5cc;
+  color: #1e4634;
+  border-color: #97d5b4;
+}
+
+/* ⚠️ Warning/Info */
+#mensagens .alert-warning i,
+#mensagens .alert-info i {
+  margin-right: 0.5rem;
+}
+
+#mensagens .btn-close {
+  margin-left: auto;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+}
+
+
+/* Evita que o input aumente ou empurre conteúdo ao receber foco */
+input.form-control:focus {
+  box-shadow: none !important;
+  border-color: #6c757d !important;  /* ou a cor atual */
+  outline: none !important;
+  padding: 0.375rem 0.75rem !important; /* igual ao estado normal */
+  transition: none !important;
+}
+
+#filtro-notas-form input.form-control {
+  padding: 0.375rem 0.75rem;
+  height: auto;
+  transition: none;
+  box-shadow: none !important;
+}
+
+#main-content .card {
+  margin-top: 0 !important;
+  margin-bottom: 24px !important;
+}
+
+.container-fluid.py-4 {
+  margin-top: 0 !important;
+}
+
+/* ✅ Impede redimensionamento ou pulo do campo de busca por foco ou input */
+#busca-nota {
+  transition: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: 38px !important;
+  line-height: 1.5;
+  padding: 0.375rem 0.75rem;
+}
+
+/* ============================
+   AJUSTES ESPECÍFICOS PARA MODAIS DE SELEÇÃO DE EMPRESA (Solução Final)
+=============================== */
+
+/* Tema Escuro */
+html.dark .modal-selecao-empresa {
+  background-color: #2a2b33; /* Fundo do modal */
+  color: #f0f0f0; /* Cor do texto */
+  border-color: #444;
+}
+
+html.dark .modal-selecao-empresa .modal-header {
+  background-color: #1e1f26; /* Fundo do cabeçalho do modal */
+  color: #f0f0f0;
+  border-bottom-color: #444;
+}
+
+html.dark .modal-selecao-empresa .modal-body {
+  background-color: #2a2b33; /* Fundo do corpo do modal */
+  color: #f0f0f0;
+}
+
+html.dark .modal-selecao-empresa .modal-footer {
+  background-color: #1e1f26; /* Fundo do rodapé do modal */
+  color: #f0f0f0;
+  border-top-color: #444;
+}
+
+/* Inputs dentro de modais no tema escuro */
+html.dark .modal-selecao-empresa .form-control,
+html.dark .modal-selecao-empresa .form-select,
+html.dark .modal-selecao-empresa .form-control:focus,
+html.dark .modal-selecao-empresa .form-select:focus {
+  background-color: var(--bs-dark-input-bg, #444);
+  border-color: var(--bs-dark-input-border, #666);
+  color: var(--bs-dark-input-text, #eee);
+}
+
+html.dark .modal-selecao-empresa .form-control::placeholder {
+  color: var(--bs-dark-input-placeholder, #aaa);
+}
+
+/* Checkboxes dentro de modais no tema escuro */
+html.dark .modal-selecao-empresa .form-check-input {
+  background-color: #444; /* Fundo do checkbox */
+  border-color: #666; /* Borda do checkbox */
+}
+
+html.dark .modal-selecao-empresa .form-check-input:checked {
+  background-color: #0d6efd; /* Cor de fundo quando checado */
+  border-color: #0d6efd; /* Cor da borda quando checado */
+}
+
+/* Tabela de resultados da busca dentro do modal */
+html.dark .modal-selecao-empresa .table {
+  background-color: var(--bs-dark-table-bg, #2a2b33);
+  color: var(--bs-dark-table-text, #f0f0f0);
+  border-color: var(--bs-dark-table-border, #444);
+}
+
+html.dark .modal-selecao-empresa .table thead th {
+  background-color: #1f212c;
+  color: #ffffff;
+}
+
+html.dark .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) {
+  background-color: #2e303d;
+}
+
+html.dark .modal-selecao-empresa .list-group-item {
+  background-color: #2a2b33;
+  color: #f0f0f0;
+  border-color: #444;
+}
+
+html.dark .modal-selecao-empresa .list-group-item:hover {
+  background-color: #3c4049;
+}
+
+/* Tema Claro */
+html:not(.dark) .modal-selecao-empresa {
+  background-color: #fff; /* Fundo do modal */
+  color: #212529; /* Cor do texto */
+  border-color: #dee2e6;
+}
+
+html:not(.dark) .modal-selecao-empresa .modal-header {
+  background-color: transparent; /* Fundo do cabeçalho do modal */
+  color: #212529;
+  border-bottom-color: #dee2e6;
+}
+
+html:not(.dark) .modal-selecao-empresa .modal-body {
+  background-color: transparent; /* Fundo do corpo do modal */
+  color: #212529;
+}
+
+html:not(.dark) .modal-selecao-empresa .modal-footer {
+  background-color: transparent; /* Fundo do rodapé do modal */
+  color: #212529;
+  border-top-color: #dee2e6;
+}
+
+/* Inputs dentro de modais no tema claro */
+html:not(.dark) .modal-selecao-empresa .form-control,
+html:not(.dark) .modal-selecao-empresa .form-select,
+html:not(.dark) .modal-selecao-empresa .form-control:focus,
+html:not(.dark) .modal-selecao-empresa .form-select:focus {
+  background-color: #fff;
+  border-color: #ced4da;
+  color: #212529;
+}
+
+html:not(.dark) .modal-selecao-empresa .form-control::placeholder {
+  color: #6c757d;
+}
+
+/* Checkboxes dentro de modais no tema claro */
+html:not(.dark) .modal-selecao-empresa .form-check-input {
+  background-color: #fff; /* Fundo do checkbox */
+  border-color: #ced4da; /* Borda do checkbox */
+}
+
+html:not(.dark) .modal-selecao-empresa .form-check-input:checked {
+  background-color: #0d6efd; /* Cor de fundo quando checado */
+  border-color: #0d6efd; /* Cor da borda quando checado */
+}
+
+/* Tabela de resultados da busca dentro do modal no tema claro */
+html:not(.dark) .modal-selecao-empresa .table {
+  color: #212529; /* Cor do texto padrão para a tabela no tema claro */
+  border-color: #dee2e6;
+}
+
+html:not(.dark) .modal-selecao-empresa .table tbody tr > * {
+  background-color: #fff !important; /* Fundo branco para todas as células do corpo da tabela */
+  box-shadow: none !important; /* Remove o box-shadow que cria o fundo */
+  color: #212529 !important; /* Cor do texto escura para o tema claro */
+}
+
+html:not(.dark) .modal-selecao-empresa .table thead th {
+  background-color: #f8f9fa !important; /* Fundo claro para o cabeçalho da tabela */
+  color: #212529 !important; /* Cor do texto escura para o tema claro */
+  box-shadow: none !important; /* Remove o box-shadow do cabeçalho */
+}
+
+html:not(.dark) .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) > * {
+  background-color: #f2f2f2 !important; /* Um cinza bem claro para linhas zebradas */
+  box-shadow: none !important; /* Remove o box-shadow das linhas zebradas */
+  color: #212529 !important; /* Cor do texto escura para o tema claro */
+}
+
+html:not(.dark) .modal-selecao-empresa .list-group-item {
+  background-color: #fff;
+  color: #212529;
+  border-color: rgba(0, 0, 0, 0.125);
+}
+
+html:not(.dark) .modal-selecao-empresa .list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+
+/* Ajuste para rows e cols dentro de modais */
+.modal-body .row,
+.modal-body .col {
+  background-color: inherit; /* Garante que herdem o fundo do modal-body */
+}
+
+html.dark .modal-body .row,
+html.dark .modal-body .col {
+  background-color: inherit; /* Garante que herdem o fundo do modal-body no tema escuro */
+}
+
+

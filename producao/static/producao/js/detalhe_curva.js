@@ -1,17 +1,34 @@
 window.pageInitializers['detalhe_curva'] = function() {
-    const API_URL = '{% url "producao:api_atualizar_detalhe_curva" %}';
+    const identificadorTela = document.getElementById('identificador-tela');
+    const API_URL = identificadorTela ? identificadorTela.dataset.apiAtualizarUrl : '';
     const CSRF_TOKEN = $('input[name="csrfmiddlewaretoken"]').val();
 
-    // Função para buscar produtos de ração (simulada por enquanto)
-    // Em um cenário real, isso faria uma chamada AJAX para uma API de produtos
+    // Função para buscar produtos de ração via API
     async function fetchRacoes() {
-        // TODO: Implementar chamada AJAX real para buscar produtos de categoria 'Ração'
-        // Por enquanto, retorna um mock
-        return [
-            { id: 1, nome: 'Ração A' },
-            { id: 2, nome: 'Ração B' },
-            { id: 3, nome: 'Ração C' },
-        ];
+        const identificadorTela = document.getElementById('identificador-tela');
+        const racoesApiUrl = identificadorTela ? identificadorTela.dataset.apiRacoesUrl : '';
+
+        if (!racoesApiUrl) {
+            console.error('URL da API de rações não encontrada no identificador-tela.');
+            mostrarMensagem('danger', 'Erro: URL da API de rações não configurada.');
+            return [];
+        }
+
+        try {
+            const response = await fetch(racoesApiUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Erro ao buscar rações:', error);
+            mostrarMensagem('danger', 'Erro ao carregar lista de rações.');
+            return [];
+        }
     }
 
     $('.editable-racao').on('click', async function() {
@@ -38,17 +55,15 @@ window.pageInitializers['detalhe_curva'] = function() {
             $select.append($option);
         });
 
-        const $fillDownCheckbox = $('<input type="checkbox" id="fill-down-checkbox" class="ms-2"><label for="fill-down-checkbox" class="ms-1">Preencher para baixo</label>');
-
-        $cell.empty().append($select).append($fillDownCheckbox);
+        $cell.empty().append($select);
         $select.focus();
 
         // Salvar ao mudar a seleção
         $select.on('change', async function() {
             const newRacaoId = $(this).val() || null;
-            const fillDown = $fillDownCheckbox.is(':checked');
 
             try {
+                console.log("DEBUG: CSRF Token enviado:", CSRF_TOKEN);
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -58,24 +73,18 @@ window.pageInitializers['detalhe_curva'] = function() {
                     body: JSON.stringify({
                         detalhe_id: detalheId,
                         racao_id: newRacaoId,
-                        fill_down: fillDown,
                     }),
                 });
 
                 const data = await response.json();
 
-                if (data.sucesso) {
-                    mostrarMensagem('success', data.mensagem);
-                    // Atualizar a célula e, se fillDown, as células abaixo
-                    if (fillDown) {
-                        // Recarregar a página ou atualizar dinamicamente todas as células afetadas
-                        loadAjaxContent(window.location.pathname); // Recarrega a página para simplicidade
-                    } else {
-                        $cell.data('racao-id', newRacaoId);
-                        $cell.text($select.find('option:selected').text());
-                    }
+                if (data.success) {
+                    mostrarMensagem('success', data.message);
+                    // Atualizar a célula
+                    $cell.data('racao-id', newRacaoId);
+                    $cell.text($select.find('option:selected').text());
                 } else {
-                    mostrarMensagem('danger', data.mensagem);
+                    mostrarMensagem('danger', data.message);
                     // Reverter a célula para o estado anterior
                     $cell.text(racoes.find(r => r.id == currentRacaoId)?.nome || '-- Selecionar --');
                 }

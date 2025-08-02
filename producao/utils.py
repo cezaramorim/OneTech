@@ -26,7 +26,7 @@ class AjaxFormMixin:
 
         if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
-                'sucesso': True,
+                'success': True,
                 'message': message,
                 'redirect_url': str(self.get_success_url())
             })
@@ -35,7 +35,8 @@ class AjaxFormMixin:
     def form_invalid(self, form):
         app_messages = get_app_messages(self.request)
         if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'sucesso': False, 'erros': form.errors, 'message': app_messages.error('Erro ao salvar. Verifique os campos.')}, status=400)
+            message = app_messages.error('Erro ao salvar. Verifique os campos.')
+            return JsonResponse({'success': False, 'message': message, 'errors': form.errors}, status=400)
         app_messages.error('Erro ao salvar. Verifique os campos.')
         return super().form_invalid(form)
 
@@ -56,18 +57,21 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
             data = json.loads(request.body)
             ids = data.get('ids', [])
             if not ids:
-                return JsonResponse({'sucesso': False, 'message': app_messages.error('Nenhum item selecionado para exclusão.')}, status=400)
+                message = app_messages.error('Nenhum item selecionado para exclusão.')
+                return JsonResponse({'success': False, 'message': message}, status=400)
 
             deleted_count, _ = self.model.objects.filter(pk__in=ids).delete()
             
             message = app_messages.success_deleted(self.model._meta.verbose_name_plural, f"{deleted_count} selecionado(s)")
             
             return JsonResponse({
-                'sucesso': True, 
+                'success': True, 
                 'message': message,
                 'redirect_url': str(reverse_lazy(self.success_url_name))
             })
         except json.JSONDecodeError:
-            return JsonResponse({'sucesso': False, 'message': app_messages.error('Requisição JSON inválida.')}, status=400)
+            message = app_messages.error('Requisição JSON inválida.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
         except Exception as e:
-            return JsonResponse({'sucesso': False, 'message': app_messages.error(f'Ocorreu um erro inesperado: {e}')}, status=500)
+            message = app_messages.error(f'Ocorreu um erro inesperado: {e}')
+            return JsonResponse({'success': False, 'message': message}, status=500)

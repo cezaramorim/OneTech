@@ -1,11 +1,72 @@
 from django import forms
-from decimal import Decimal # Importar Decimal para o campo rendimento_perc
-from .models import Tanque, CurvaCrescimento, Lote, EventoManejo, AlimentacaoDiaria
+from decimal import Decimal
+from .models import (
+    Tanque, CurvaCrescimento, Lote, EventoManejo, AlimentacaoDiaria,
+    Unidade, Malha, TipoTela, LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Atividade
+)
+
+# --- Formulários de Suporte ---
+
+class UnidadeForm(forms.ModelForm):
+    class Meta:
+        model = Unidade
+        fields = '__all__'
+
+class MalhaForm(forms.ModelForm):
+    class Meta:
+        model = Malha
+        fields = '__all__'
+
+class TipoTelaForm(forms.ModelForm):
+    class Meta:
+        model = TipoTela
+        fields = '__all__'
+
+class LinhaProducaoForm(forms.ModelForm):
+    class Meta:
+        model = LinhaProducao
+        fields = '__all__'
+
+class FaseProducaoForm(forms.ModelForm):
+    class Meta:
+        model = FaseProducao
+        fields = '__all__'
+
+class StatusTanqueForm(forms.ModelForm):
+    class Meta:
+        model = StatusTanque
+        fields = '__all__'
+
+class TipoTanqueForm(forms.ModelForm):
+    class Meta:
+        model = TipoTanque
+        fields = '__all__'
+
+class AtividadeForm(forms.ModelForm):
+    class Meta:
+        model = Atividade
+        fields = '__all__'
+
+# --- Formulário Principal de Tanque ---
 
 class TanqueForm(forms.ModelForm):
     class Meta:
         model = Tanque
-        fields = '__all__'
+        fields = [ # Lista explícita para melhor controle da ordem
+            'nome', 'tag_tanque', 'ativo',
+            'unidade', 'linha_producao', 'fase', 'tipo_tanque', 
+            'status_tanque', 'sequencia',
+            'largura', 'comprimento', 'profundidade', 
+            'malha', 'tipo_tela',
+        ]
+
+# --- Formulário de Importação ---
+
+class TanqueImportForm(forms.Form):
+    arquivo_excel = forms.FileField(label="Selecione o arquivo Excel para importar tanques")
+
+
+# --- Formulários Existentes (sem alteração) ---
 
 class CurvaCrescimentoForm(forms.ModelForm):
     class Meta:

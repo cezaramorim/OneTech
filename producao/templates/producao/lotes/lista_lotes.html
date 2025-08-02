@@ -35,7 +35,7 @@
                     <tbody>
                         {% for lote in lotes %}
                         <tr data-id="{{ lote.pk }}">
-                            <td><input type="checkbox" class="selecionar-lote"></td>
+                            <td><input type="checkbox" class="selecionar-lote" value="{{ lote.pk }}"></td>
                             <td>{{ lote.nome }}</td>
                             <td>{{ lote.curva_crescimento.nome|default:"N/A" }}</td>
                             <td>{{ lote.fase_producao.nome|default:"N/A" }}</td>
@@ -56,4 +56,3 @@
         </div>
     </div>
 </div>
-<script src="{% static 'producao/js/lotes.js' %}"></script>

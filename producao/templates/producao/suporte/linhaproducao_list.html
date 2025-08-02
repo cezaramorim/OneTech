@@ -1,0 +1,58 @@
+<div id="identificador-tela" 
+     data-tela="lista_linhasproducao"
+     data-entidade-singular="linha de produção"
+     data-entidade-plural="linhas de produção"
+     data-url-editar="{% url 'producao:editar_linhaproducao' 0 %}"
+     data-url-excluir="{% url 'producao:excluir_linhaproducao_multiplo' %}"
+     data-seletor-checkbox=".check-linhaproducao"></div>
+
+<div class="container-fluid mt-4">
+    <h2>Linhas de Produção</h2>
+    <a href="{% url 'producao:criar_linhaproducao' %}" class="btn btn-primary mb-3 ajax-link">Nova Linha de Produção</a>
+    
+    <!-- 🛠️ Ações principais (padrão scripts.js) -->
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2">
+            <!-- ✏️ Editar -->
+            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
+                ✏️ Editar
+            </a>
+
+            <!-- ❌ Excluir -->
+            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
+                🗑️ Excluir
+            </button>
+        </div>
+    </div>
+
+    <div id="lista-linhasproducao">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" id="select-all-linhaproducao">
+                    </th>
+                    <th>Nome</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in object_list %}
+                <tr>
+                    <td>
+                        <input type="checkbox" class="check-linhaproducao" value="{{ item.pk }}">
+                    </td>
+                    <td>{{ item.nome }}</td>
+                    <td>
+                        <a href="{% url 'producao:editar_linhaproducao' item.pk %}" class="btn btn-sm btn-info ajax-link">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">Nenhuma linha de produção encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -239,6 +239,7 @@ def import_fiscal_data_view(request):
 
 @login_required
 def download_fiscal_template_view(request):
+    app_messages = get_app_messages(request)
     import_type = request.GET.get('type')
     
     if import_type == 'cfop':
@@ -248,7 +249,7 @@ def download_fiscal_template_view(request):
         headers = ['codigo', 'descricao', 'observacoes']
         filename = 'template_natureza_operacao.xlsx'
     else:
-        messages.error(request, 'Tipo de template inválido.')
+        app_messages.error('Tipo de template inválido.')
         return redirect('fiscal:import_fiscal_data')
 
     output = io.BytesIO()
@@ -279,29 +280,33 @@ def delete_fiscal_items(request):
     Espera um JSON com 'ids' (lista de IDs a serem excluídos) e 'item_type' ('cfop' ou 'natureza_operacao').
     """
     try:
-        # Carrega os dados JSON da requisição.
         data = json.loads(request.body)
         ids = data.get('ids', [])
-        item_type = data.get('item_type') # 'cfop' ou 'natureza_operacao'
+        item_type = data.get('item_type')
 
         if not ids:
-            return JsonResponse({'success': False, 'message': app_messages.error('Nenhum ID fornecido para exclusão.')}, status=400)
+            message = app_messages.error('Nenhum ID fornecido para exclusão.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
 
         with transaction.atomic():
-            # Realiza a exclusão com base no tipo de item.
             if item_type == 'cfop':
-                deleted_count, _ = Cfop.objects.filter(pk__in=ids).delete()
+                model = Cfop
                 model_name = "CFOP"
             elif item_type == 'natureza_operacao':
-                deleted_count, _ = NaturezaOperacao.objects.filter(pk__in=ids).delete()
+                model = NaturezaOperacao
                 model_name = "Natureza de Operação"
             else:
-                return JsonResponse({'success': False, 'message': app_messages.error('Tipo de item inválido.')}, status=400)
+                message = app_messages.error('Tipo de item inválido.')
+                return JsonResponse({'success': False, 'message': message}, status=400)
+            
+            deleted_count, _ = model.objects.filter(pk__in=ids).delete()
 
-        return JsonResponse({'success': True, 'message': app_messages.success_deleted(model_name, f'{deleted_count} selecionado(s)')})
+        message = app_messages.success_deleted(model_name, f'{deleted_count} selecionado(s)')
+        return JsonResponse({'success': True, 'message': message})
 
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': app_messages.error('Requisição inválida. JSON malformado.')}, status=400)
+        message = app_messages.error('Requisição inválida. JSON malformado.')
+        return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as e:
-        # Captura exceções gerais e retorna uma resposta de erro.
-        return JsonResponse({'success': False, 'message': app_messages.error(f'Erro ao excluir itens fiscais: {str(e)}')}, status=500)
+        message = app_messages.error(f'Erro ao excluir itens fiscais: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
