@@ -105,11 +105,11 @@ html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collaps
 }
 
 /* Layout com barra superior ativa */
-html body#page-body.layout-superior .navbar-superior {
+html body#page-body.layout_navbar .navbar-superior {
     display: flex !important; /* Show the top navbar */
 }
 
-html body#page-body.layout-superior .sidebar {
+html body#page-body.layout_navbar .sidebar {
     flex: 0 0 0 !important; /* Sidebar takes no space */
     width: 0 !important; /* Ensure width is zero */
     overflow: hidden !important; /* Hide content that overflows */
@@ -119,11 +119,11 @@ html body#page-body.layout-superior .sidebar {
 }
 
 /* Layout com menu lateral ativo (padrão) */
-html body#page-body.layout-lateral .navbar-superior {
+html body#page-body.layout_sidebar .navbar-superior {
     display: none !important; /* Hide the top navbar */
 }
 
-html body#page-body.layout-lateral .sidebar {
+html body#page-body.layout_sidebar .sidebar {
     flex: 0 0 250px !important; /* Restore sidebar width */
     width: 250px !important; /* Ensure width is 250px */
     padding: 20px !important; /* Restore sidebar padding */
@@ -144,7 +144,7 @@ html body#page-body.layout-lateral .sidebar {
 }
 
 /* Ajuste para o padding-top do main-content quando o layout superior está ativo */
-html body#page-body.layout-superior #main-content {
+html body#page-body.layout_navbar #main-content {
      padding-top: 50px !important; /* Aumenta o padding para compensar a navbar fixa */
 }
 

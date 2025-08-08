@@ -99,8 +99,8 @@ class EmpresaAvancadaForm(forms.ModelForm):
 
             'cnae_principal': forms.TextInput(attrs={'class': 'form-control'}),
             'cnae_secundario': forms.TextInput(attrs={'class': 'form-control'}),
-            'data_abertura': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'data_cadastro': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'data_abertura': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'data_cadastro': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
 
             'cep': forms.TextInput(attrs={'class': 'form-control mascara-cep', 'id': 'cep'}),
             'logradouro': forms.TextInput(attrs={'class': 'form-control','id': 'logradouro'}),

@@ -869,9 +869,9 @@ html.dark #resultado-xml h5 {
 /* 🟩 Sucesso */
 #mensagens .alert-success {
   background-image: url('/static/icons/img_sucesso.png');
-  background-color: #bce5cc;
-  color: #1e4634;
-  border-color: #97d5b4;
+  background-color: #00C31F;
+  color: #fff;
+  border-color: #009a18;
 }
 
 /* ⚠️ Warning/Info */

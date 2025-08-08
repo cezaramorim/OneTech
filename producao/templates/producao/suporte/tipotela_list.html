@@ -1,36 +1,58 @@
-<div id="identificador-tela" data-page="{{ data_page }}" data-tela="{{ data_tela }}">
-    <div class="container-fluid">
-        <h2 class="my-4">Lista de Tipos de Tela</h2>
+<div id="identificador-tela" 
+     data-tela="lista_tipotelas"
+     data-entidade-singular="tipo de tela"
+     data-entidade-plural="tipos de tela"
+     data-url-editar="{% url 'producao:editar_tipotela' pk=0 %}"
+     data-url-excluir="{% url 'producao:excluir_tipostela_multiplos' %}"
+     data-seletor-checkbox=".selecionar-tipotela">
+    <div class="container-fluid mt-4">
+        <h2>Tipos de Tela</h2>
+        <a href="{% url 'producao:cadastrar_tipotela' %}" class="btn btn-primary mb-3 ajax-link">Novo Tipo de Tela</a>
+        
+        <!-- 🛠️ Ações principais (padrão scripts.js) -->
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+            <div class="d-flex flex-wrap gap-2">
+                <!-- ✏️ Editar -->
+                <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
+                    ✏️ Editar
+                </a>
 
-        <div class="card shadow-sm mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Tipos de Tela Cadastrados</h5>
-                <a href="{% url 'producao:cadastrar_tipotela' %}" class="btn btn-primary ajax-link">Novo Tipo de Tela</a>
+                <!-- ❌ Excluir -->
+                <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
+                    🗑️ Excluir
+                </button>
             </div>
-            <div class="card-body">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tipo_tela in object_list %}
-                        <tr>
-                            <td>{{ tipo_tela.nome }}</td>
-                            <td>
-                                <a href="{% url 'producao:editar_tipotela' tipo_tela.pk %}" class="btn btn-sm btn-outline-primary ajax-link">Editar</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="2" class="text-center">Nenhum tipo de tela cadastrado.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        </div>
+
+        <div id="lista-tipostela">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="selecionar-todas-tipostela">
+                        </th>
+                        <th>Nome</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in object_list %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="selecionar-tipotela" value="{{ item.pk }}">
+                        </td>
+                        <td>{{ item.nome }}</td>
+                        <td>
+                            <a href="{% url 'producao:editar_tipotela' item.pk %}" class="btn btn-sm btn-info ajax-link">Editar</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3">Nenhum tipo de tela encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

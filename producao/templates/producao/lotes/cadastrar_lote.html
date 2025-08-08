@@ -1,15 +1,15 @@
-<div id="identificador-tela" data-tela="cadastrar_lote" class="d-none"></div>
-{% load static %}
-<div class="container-fluid mt-3">
-    <h2>{% if form.instance.pk %}Editar Lote{% else %}Cadastrar Novo Lote{% endif %}</h2>
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="post" class="form-ajax" action="">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="btn btn-primary">Salvar</button>
-                <a href="{% url 'producao:lista_lotes' %}" class="btn btn-secondary ajax-link">Cancelar</a>
-            </form>
+<div id="identificador-tela" data-tela="cadastrar_lote">
+    <div class="container-fluid mt-3">
+        <h2>{% if form.instance.pk %}Editar Lote{% else %}Cadastrar Novo Lote{% endif %}</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" class="form-ajax" action="">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <a href="{% url 'producao:lista_lotes' %}" class="btn btn-secondary ajax-link">Cancelar</a>
+                </form>
+            </div>
         </div>
     </div>
 </div>

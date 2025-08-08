@@ -1,5 +1,6 @@
 {% load static %}
-<div class="container-fluid">
+<nav class="navbar navbar-expand-lg navbar-superior">
+    <div class="container-fluid">
         <a href="{% url 'painel:home' %}" class="navbar-brand ajax-link">
             <img src="{% static 'icons/logo_sidbar.png' %}" alt="OneTech" style="max-height: 40px;">
         </a>
@@ -12,14 +13,14 @@
                 {% if item.children %}
                   <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle ajax-link" href="#" id="navbarDropdown-{{ forloop.counter }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                      {{ item.icon }} {{ item.name }}
+                      {{ item.icon|safe }} {{ item.name }}
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown-{{ forloop.counter }}">
                       {% for child in item.children %}
                         {% if child.children %}
                           <!-- Dropdown de segundo nível, se necessário -->
                           <li>
-                            <a class="dropdown-item" href="#">{{ child.icon }} {{ child.name }} &raquo;</a>
+                            <a class="dropdown-item" href="#">{{ child.icon|safe }} {{ child.name }} &raquo;</a>
                             <ul class="submenu dropdown-menu">
                               {% for grandchild in child.children %}
                                 <li><a class="dropdown-item ajax-link" href="{{ grandchild.url }}">{{ grandchild.name }}</a></li>
@@ -27,14 +28,14 @@
                             </ul>
                           </li>
                         {% else %}
-                          <li><a class="dropdown-item ajax-link" href="{{ child.url }}">{{ child.icon }} {{ child.name }}</a></li>
+                          <li><a class="dropdown-item ajax-link" href="{{ child.url }}">{{ child.icon|safe }} {{ child.name }}</a></li>
                         {% endif %}
                       {% endfor %}
                     </ul>
                   </li>
                 {% else %}
                   <li class="nav-item">
-                    <a class="nav-link" href="{{ item.url }}">{{ item.icon }} {{ item.name }}</a>
+                    <a class="nav-link ajax-link" href="{{ item.url }}">{{ item.icon|safe }} {{ item.name }}</a>
                   </li>
                 {% endif %}
               {% endfor %}
@@ -50,9 +51,15 @@
                         
                         <li><a class="dropdown-item" href="#" id="btn-alternar-tema-superior">Alternar Tema</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="logout-link-superior" href="{% url 'accounts:logout' %}">Sair</a></li>
+                        <li>
+                            <form id="logout-form-superior" method="post" action="{% url 'accounts:logout' %}" style="display: none;">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="">
+                            </form>
+                            <a class="dropdown-item" id="logout-link-superior" href="{% url 'accounts:logout' %}">Sair</a>
+                        </li>
                     </ul>
                 </li>
             </ul>
         </div>
     </div>
+</nav>

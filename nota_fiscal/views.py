@@ -23,6 +23,7 @@ from django.utils.text import slugify
 # Removido o @csrf_exempt por razões de segurança
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
+from common.utils import render_ajax_or_base
 from common.utils.formatters import converter_valor_br, converter_data_para_date, CustomDecimalEncoder
 from fiscal.calculos import aplicar_impostos_na_nota
 from empresas.models import EmpresaAvancada
@@ -84,12 +85,11 @@ def importar_xml_view(request):
     """Renderiza a página de upload de XML para importação de notas fiscais."""
     categorias = list(CategoriaProduto.objects.order_by("nome").values("id", "nome"))
     context = {
-        'categorias_disponiveis_json': json.dumps(categorias, ensure_ascii=False),
-        'content_template': 'partials/nota_fiscal/importar_xml.html',
+        'categorias': categorias,
         'data_page': 'importar_xml',
-        'api_processar_importacao_xml_url': reverse('nota_fiscal:api_processar_importacao_xml'),
+        'data_tela': 'importar_xml',
     }
-    return render(request, 'base.html', context)
+    return render_ajax_or_base(request, 'partials/nota_fiscal/importar_xml.html', context)
 
 
 @login_required
@@ -99,6 +99,7 @@ def importar_xml_nfe_view(request):
     Recebe um arquivo XML, faz o parsing e retorna um JSON estruturado para o frontend
     exibir o preview da nota e gerenciar a revisão de itens, incluindo aviso de duplicidade.
     """
+    app_messages = get_app_messages(request)
     print("--- Iniciando importação e parsing de XML ---")    
     print(f"DEBUG: Conteúdo de request.FILES: {request.FILES}")
     
@@ -144,7 +145,7 @@ def importar_xml_nfe_view(request):
         print("DEBUG: <infNFe> encontrado no XML.")
 
         # 3. Extração da Chave de Acesso e Verificação de Duplicidade
-        chave = infNFe.get('Id', '').replace('NFe', '') # Correção de '@Id' para 'Id' já aplicada
+        chave = infNFe.get('Id', '').replace('NFe', '')
         
         if not chave:
             print("ERRO: Não foi possível extrair a chave de acesso do XML.")
@@ -171,6 +172,8 @@ def importar_xml_nfe_view(request):
         produtos_lista = []
         itens_para_revisar = []
         det_list = infNFe.get('det', [])
+        if not isinstance(det_list, list):
+            det_list = [det_list]
         
         if not isinstance(det_list, list):
             det_list = [det_list]
@@ -255,261 +258,122 @@ def processar_importacao_xml_view(request):
     try:
         payload = json.loads(request.body.decode('utf-8'))
         chave = payload.get('chave_acesso')
-        force_update = payload.get('force_update', False) # Novo parâmetro
+        force_update = payload.get('force_update', False)
+        raw_payload = payload.get('raw_payload', {})
 
-        if not chave:
-            return JsonResponse({'success': False, 'message': app_messages.error('Chave de acesso não encontrada no payload.')}, status=400)
-        
+        if not chave or not raw_payload:
+            return JsonResponse({'success': False, 'message': app_messages.error('Dados essenciais (chave de acesso ou payload) não encontrados.')}, status=400)
+
+        infNFe = raw_payload.get('NFe', {}).get('infNFe', {})
+        if not infNFe:
+            return JsonResponse({'success': False, 'message': app_messages.error('Estrutura do XML inválida: <infNFe> não encontrado no raw_payload.')}, status=400)
+
         # Verifica se a nota fiscal já existe
         nota_existente = NotaFiscal.objects.filter(chave_acesso=chave).first()
-
         if nota_existente:
             if not force_update:
-                # Se a nota existe e não é para forçar atualização, retorna alerta para o frontend
-                message = app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" Chave "{nota_existente.chave_acesso}" já foi importada, deseja substituir os dados já salvos?')
+                message = app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" já foi importada. Deseja substituir os dados existentes?')
                 return JsonResponse({
-                    'success': True, # É um sucesso, mas com um aviso
-                    'message': message,
-                    'nota_existente': True,
-                    'nota_id': nota_existente.pk,
-                    'redirect_url': reverse('nota_fiscal:entradas_nota')
-                }, status=200) # Retorna 200 OK com flag para o frontend
+                    'success': True, 'message': message, 'nota_existente': True,
+                    'nota_id': nota_existente.pk, 'redirect_url': reverse('nota_fiscal:entradas_nota')
+                }, status=200)
             else:
-                # Se force_update é True, exclui a nota existente e seus relacionados
                 print(f"--- Excluindo nota fiscal existente (ID: {nota_existente.pk}) para atualização ---")
-                nota_existente.delete() # CASCADE delete cuidará dos itens, transportes, duplicatas e entradas
-                # A mensagem de sucesso será gerada no final da view, indicando atualização
+                nota_existente.delete()
 
-        # 1. Processar e salvar Emitente e Destinatário
-        emit_data = payload.get('emit', {})
-        dest_data = payload.get('dest', {})
-        
-        emitente = _get_or_create_empresa(emit_data, 'emit')
-        destinatario = _get_or_create_empresa(dest_data, 'dest')
+        # 1. Processar Empresas (Emitente e Destinatário)
+        emitente = _get_or_create_empresa(infNFe.get('emit', {}), 'emit')
+        destinatario = _get_or_create_empresa(infNFe.get('dest', {}), 'dest')
 
         # 2. Criar a Nota Fiscal principal
+        ide = infNFe.get('ide', {})
+        total = infNFe.get('total', {}).get('ICMSTot', {})
         nf = NotaFiscal.objects.create(
-            raw_payload=payload.get('raw_payload', {}),
+            raw_payload=raw_payload,
             chave_acesso=chave,
             created_by=request.user,
-            data_emissao=_parse_datetime(payload.get('data_emissao')),
-            data_saida=_parse_datetime(payload.get('data_saida')),
-            numero=payload.get('numero', ''),
-            natureza_operacao=payload.get('natureza_operacao', ''),
-            informacoes_adicionais=payload.get('informacoes_adicionais', ''),
-            valor_total_nota=Decimal(payload.get('valor_total_nota', '0')),
-            valor_total_produtos=Decimal(payload.get('valor_total_produtos', '0')),
-            valor_total_icms=Decimal(payload.get('valor_total_icms', '0')),
-            valor_total_pis=Decimal(payload.get('valor_total_pis', '0')),
-            valor_total_cofins=Decimal(payload.get('valor_total_cofins', '0')),
-            valor_total_desconto=Decimal(payload.get('valor_total_desconto', '0')),
+            data_emissao=_parse_datetime(ide.get('dhEmi') or ide.get('dEmi')),
+            data_saida=_parse_datetime(ide.get('dhSaiEnt') or ide.get('dSaiEnt')),
+            numero=ide.get('nNF', ''),
+            natureza_operacao=ide.get('natOp', ''),
+            informacoes_adicionais=infNFe.get('infAdic', {}).get('infCpl', ''),
+            valor_total_nota=Decimal(total.get('vNF', '0')),
+            valor_total_produtos=Decimal(total.get('vProd', '0')),
+            valor_total_icms=Decimal(total.get('vICMS', '0')),
+            valor_total_pis=Decimal(total.get('vPIS', '0')),
+            valor_total_cofins=Decimal(total.get('vCOFINS', '0')),
+            valor_total_desconto=Decimal(total.get('vDesc', '0')),
             emitente=emitente,
             destinatario=destinatario,
         )
         print(f"DEBUG: Nota Fiscal {nf.numero} (ID: {nf.pk}) criada.")
 
-        # Aplica os cálculos de impostos aos itens da nota fiscal
-        aplicar_impostos_na_nota(nf)
+        # Mapeamento de código de produto para categoria para acesso rápido
+        categorias_mapeadas = {str(p.get('codigo_produto')): p.get('categoria_id') for p in payload.get('itens_para_revisar', [])}
 
-        # 3. Processar Produtos e Itens da Nota
-        # Agrupar produtos por código para somar quantidades e valores, e calcular média ponderada do valor unitário
-        produtos_agrupados = {}
-        for prod_data_raw in payload.get('produtos', []):
-            codigo_item = prod_data_raw.get('codigo', '')
-            
-            quantidade_atual = Decimal(prod_data_raw.get('quantidade', '0'))
-            valor_total_atual = Decimal(prod_data_raw.get('valor_total', '0'))
-            desconto_atual = Decimal(prod_data_raw.get('desconto', '0'))
-            valor_unitario_atual = Decimal(prod_data_raw.get('valor_unitario', '0'))
+        # 3. PRÉ-PROCESSAMENTO AGREGADO PARA ATUALIZAÇÃO DE PRODUTOS
+        produtos_agregados = {}
+        det_list = infNFe.get('det', [])
+        if not isinstance(det_list, list):
+            det_list = [det_list]
 
-            if codigo_item not in produtos_agrupados:
-                produtos_agrupados[codigo_item] = {
-                    'first_prod_data': prod_data_raw, # Mantém os dados do primeiro item para campos gerais
-                    'quantities_and_unit_values': [], # Lista de (quantidade, valor_unitario) para média ponderada
+        for item_data in det_list:
+            prod_data = item_data.get('prod', {})
+            codigo_produto = prod_data.get('cProd')
+            if not codigo_produto: continue
+
+            quantidade = Decimal(prod_data.get('qCom', '0'))
+            valor_unitario = Decimal(prod_data.get('vUnCom', '0'))
+
+            if codigo_produto not in produtos_agregados:
+                produtos_agregados[codigo_produto] = {
                     'quantidade_total': Decimal('0'),
-                    'valor_total_item': Decimal('0'),
-                    'desconto_total': Decimal('0'),
+                    'valor_total_ponderado': Decimal('0'),
+                    'dados_primeiro_item': prod_data, # Guarda dados para criação do produto
+                    'categoria_id': categorias_mapeadas.get(codigo_produto)
                 }
             
-            produtos_agrupados[codigo_item]['quantities_and_unit_values'].append({
-                'quantidade': quantidade_atual,
-                'valor_unitario': valor_unitario_atual
-            })
-            produtos_agrupados[codigo_item]['quantidade_total'] += quantidade_atual
-            produtos_agrupados[codigo_item]['valor_total_item'] += valor_total_atual
-            produtos_agrupados[codigo_item]['desconto_total'] += desconto_atual
+            produtos_agregados[codigo_produto]['quantidade_total'] += quantidade
+            produtos_agregados[codigo_produto]['valor_total_ponderado'] += quantidade * valor_unitario
 
-        for codigo_item, aggregated_data in produtos_agrupados.items():
-            # Calcula a média ponderada para o valor_unitario
-            total_valor_x_quantidade = Decimal('0')
-            total_quantidade_para_media = Decimal('0')
+        # 4. SALVAMENTO (ITENS DA NOTA E PRODUTO MESTRE)
+        for item_data in det_list:
+            prod_data = item_data.get('prod', {})
+            codigo_produto = prod_data.get('cProd')
+            if not codigo_produto: continue
 
-            for item_entry in aggregated_data['quantities_and_unit_values']:
-                total_valor_x_quantidade += item_entry['valor_unitario'] * item_entry['quantidade']
-                total_quantidade_para_media += item_entry['quantidade']
+            # 4.1. Atualiza ou Cria o Produto Mestre
+            dados_agregados = produtos_agregados[codigo_produto]
+            produto_obj = _update_or_create_produto_mestre(
+                codigo_produto, dados_agregados, emitente
+            )
+
+            # 4.2. Cria o Item da Nota Fiscal (Fiel ao XML)
+            _create_item_nota_fiscal(nf, item_data, produto_obj)
             
-            if total_quantidade_para_media > 0:
-                aggregated_valor_unitario = total_valor_x_quantidade / total_quantidade_para_media
-            else:
-                # Se a quantidade total for zero, usa o valor unitário do primeiro item (ou zero)
-                aggregated_valor_unitario = Decimal(aggregated_data['first_prod_data'].get('vUnCom', '0')) # Use vUnCom do XML
-
-            prod_data_for_item_creation = aggregated_data['first_prod_data']
-            
-            # Extrair detalhes de impostos ANTES de criar/atualizar o produto e detalhes fiscais
-            imposto_detalhes = prod_data_for_item_creation.get('imposto_detalhes', {})
-            
-            produto = _get_or_create_produto(prod_data_for_item_creation, emitente)
-
-            # Cria ou atualiza os DetalhesFiscaisProduto
-            _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data_for_item_creation)
-
-            # --- Lógica de Conversão de Unidade e Quantidade ---
-            quantidade_xml = aggregated_data['quantidade_total']
-            valor_unitario_xml = aggregated_valor_unitario
-
-            # Garante que o objeto produto tenha os dados mais recentes do banco de dados
-            produto.refresh_from_db()
-
-            # A conversão agora usa o fator do próprio produto
-            fator_conversao = produto.fator_conversao if produto.fator_conversao > 0 else 1
-            
-            print(f"DEBUG: Fator de conversão lido do produto: {produto.fator_conversao}")
-            print(f"DEBUG: Fator de conversão usado no cálculo: {fator_conversao}")
-            print(f"DEBUG: Valores antes da conversão - quantidade_xml: {quantidade_xml}, valor_unitario_xml: {valor_unitario_xml}, fator_conversao: {fator_conversao}")
-
-            quantidade_para_estoque = quantidade_xml * fator_conversao
-            # Evita divisão por zero se o fator for 0
-            preco_para_estoque = valor_unitario_xml / fator_conversao if fator_conversao > 0 else valor_unitario_xml
-
-            if fator_conversao != 1:
-                print(f"DEBUG: Conversão aplicada para {produto.nome}: {quantidade_xml} (unidade compra) -> {quantidade_para_estoque} ({produto.unidade_medida_interna})")
-                print(f"DEBUG: Preço convertido para {produto.nome}: {valor_unitario_xml} (preço compra) -> {preco_para_estoque} (preço interno)")
-            # --- Fim da Lógica de Conversão ---
-            
-            # ICMS
-            icms_data = {}
-            for key, value in imposto_detalhes.get('ICMS', {}).items():
-                if isinstance(value, dict): # Pode ser ICMS00, ICMS40, etc.
-                    icms_data = value
-                    break
-            
-            # IPI
-            ipi_data = imposto_detalhes.get('IPI', {}).get('IPITrib', {}) or imposto_detalhes.get('IPI', {}).get('IPINT', {})
-
-            # PIS
-            pis_data = imposto_detalhes.get('PIS', {}).get('PISAliq', {}) or imposto_detalhes.get('PIS', {}).get('PISQtde', {}) or imposto_detalhes.get('PIS', {}).get('PISNT', {}) or imposto_detalhes.get('PIS', {}).get('PISOutr', {})
-
-            # COFINS
-            cofins_data = imposto_detalhes.get('COFINS', {}).get('COFINSAliq', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSQtde', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSNT', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSOutr', {})
-
-            # Get CST/CSOSN objects for ItemNotaFiscal
-            cst_icms_aplicado_obj = None
-            csosn_icms_aplicado_obj = None
-            cst_ipi_aplicado_obj = None
-            cst_pis_aplicado_obj = None
-            cst_cofins_aplicado_obj = None # Inicializa a variável aqui
-
-            cst_icms_code_aplicado = icms_data.get('CST', '')
-            csosn_icms_code_aplicado = icms_data.get('CSOSN', '')
-
-            if cst_icms_code_aplicado:
-                cst_icms_aplicado_obj, _ = CST.objects.get_or_create(
-                    codigo=cst_icms_code_aplicado,
-                    defaults={'descricao': f'CST {cst_icms_code_aplicado}'}
-                )
-            elif csosn_icms_code_aplicado:
-                csosn_icms_aplicado_obj, _ = CSOSN.objects.get_or_create(
-                    codigo=csosn_icms_code_aplicado,
-                    defaults={'descricao': f'CSOSN {csosn_icms_code_aplicado}'}
-                )
-
-            ipi_cst_code_aplicado = ipi_data.get('CST', '')
-            if ipi_cst_code_aplicado:
-                cst_ipi_aplicado_obj, _ = CST.objects.get_or_create(
-                    codigo=ipi_cst_code_aplicado,
-                    defaults={'descricao': f'CST {ipi_cst_code_aplicado}'}
-                )
-
-            pis_cst_code_aplicado = pis_data.get('CST', '')
-            if pis_cst_code_aplicado:
-                cst_pis_aplicado_obj, _ = CST.objects.get_or_create(
-                    codigo=pis_cst_code_aplicado,
-                    defaults={'descricao': f'CST {pis_cst_code_aplicado}'}
-                )
-
-            cofins_cst_code_aplicado = cofins_data.get('CST', '')
-            if cofins_cst_code_aplicado:
-                cst_cofins_aplicado_obj, _ = CST.objects.get_or_create(
-                    codigo=cofins_cst_code_aplicado,
-                    defaults={'descricao': f'CST {cofins_cst_code_aplicado}'}
-                )
-
-            item_nota, created = ItemNotaFiscal.objects.update_or_create(
+            # 4.3. Cria a Entrada de Produto
+            EntradaProduto.objects.create(
+                item_nota_fiscal=ItemNotaFiscal.objects.latest('id'), # Pega o último item criado
+                quantidade=Decimal(prod_data.get('qCom', '0')),
+                preco_unitario=Decimal(prod_data.get('vUnCom', '0')),
+                preco_total=Decimal(prod_data.get('vProd', '0')),
+                fornecedor=emitente,
                 nota_fiscal=nf,
-                codigo=codigo_item,
-                defaults={
-                    'produto': produto,
-                    'descricao': produto.nome, # Usa o nome do produto do banco de dados
-                    'unidade': prod_data_for_item_creation.get('uCom', ''),
-                    'quantidade': quantidade_xml, # Usa a quantidade ORIGINAL do XML
-                    'valor_unitario': valor_unitario_xml, # Usa o valor unitário ORIGINAL
-                    'valor_total': aggregated_data['valor_total_item'],
-                    'desconto': aggregated_data['desconto_total'],
-
-                    # Campos de impostos detalhados por item
-                    'base_calculo_icms': Decimal(icms_data.get('vBC', '0')),
-                    'aliquota_icms': Decimal(icms_data.get('pICMS', '0')),
-                    'valor_icms_desonerado': Decimal(icms_data.get('vICMSDeson', '0')),
-                    'motivo_desoneracao_icms': icms_data.get('motDesICMS', ''),
-                    'cst_icms_cst_aplicado': cst_icms_aplicado_obj,
-                    'cst_icms_csosn_aplicado': csosn_icms_aplicado_obj,
-
-                    'base_calculo_ipi': Decimal(ipi_data.get('vBC', '0')),
-                    'aliquota_ipi': Decimal(ipi_data.get('pIPI', '0')),
-                    'cst_ipi_aplicado': cst_ipi_aplicado_obj,
-
-                    'base_calculo_pis': Decimal(pis_data.get('vBC', '0')),
-                    'aliquota_pis': Decimal(pis_data.get('pPIS', '0')),
-                    'cst_pis_aplicado': cst_pis_aplicado_obj,
-
-                    'base_calculo_cofins': Decimal(cofins_data.get('vBC', '0')),
-                    'aliquota_cofins': Decimal(cofins_data.get('pCOFINS', '0')),
-                    'cst_cofins_aplicado': cst_cofins_aplicado_obj,
-                }
+                numero_nota=nf.numero,
             )
-            print(f"DEBUG: ItemNotaFiscal {'criado' if created else 'atualizado'}: {item_nota.codigo} (ID: {item_nota.pk})")
-            
-            # 4. Criar ou atualizar a Entrada de Produto no estoque com valores CONVERTIDOS
-            entrada_produto, created_entrada = EntradaProduto.objects.update_or_create(
-                item_nota_fiscal=item_nota,
-                defaults={
-                    'quantidade': quantidade_para_estoque, # Usa a quantidade CONVERTIDA
-                    'preco_unitario': preco_para_estoque, # Usa o preço CONVERTIDO
-                    'preco_total': aggregated_data['valor_total_item'], # O valor total do item permanece o mesmo
-                    'fornecedor': emitente, # Adiciona o fornecedor à EntradaProduto
-                    'nota_fiscal': nf, # Adiciona a nota fiscal à EntradaProduto
-                    'numero_nota': nf.numero, # Adiciona o número da nota à EntradaProduto
-                }
-            )
-            print(f"DEBUG: EntradaProduto {'criada' if created_entrada else 'atualizada'}: {entrada_produto.quantidade} {entrada_produto.item_nota_fiscal.produto.unidade_medida_interna} de {entrada_produto.item_nota_fiscal.produto.nome}")
 
-        # 5. Processar Transporte (se houver)
-        transp_data = payload.get('transporte', {})
+
+        # 5. Processar Transporte e Duplicatas
+        transp_data = infNFe.get('transp', {})
         if transp_data:
             _create_transporte(nf, transp_data)
 
-        # 6. Processar Duplicatas (se houver)
-        cobr_data = payload.get('cobranca', {})
+        cobr_data = infNFe.get('cobr', {})
         if cobr_data and 'dup' in cobr_data:
             _create_duplicatas(nf, cobr_data.get('dup', []))
 
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
-        # Determine the appropriate success message
-        if nota_existente and force_update:
-            message = app_messages.success_updated(nf)
-        else:
-            message = app_messages.success_imported(nf, source_type="XML")
+        message = app_messages.success_updated(nf) if nota_existente and force_update else app_messages.success_imported(nf, source_type="XML")
 
         return JsonResponse({
             'success': True,
@@ -535,8 +399,6 @@ def _get_or_create_empresa(data, tipo):
     is_cnpj = len(identificador_limpo) == 14
 
     lookup_field = 'cnpj' if is_cnpj else 'cpf'
-    lookup_value = identificador_limpo
-    
     ender_data = data.get('enderEmit', {}) if tipo == 'emit' else data.get('enderDest', {})
 
     defaults = {
@@ -555,164 +417,73 @@ def _get_or_create_empresa(data, tipo):
     }
 
     empresa, created = EmpresaAvancada.objects.update_or_create(
-        **{lookup_field: lookup_value},
+        **{lookup_field: identificador_limpo},
         defaults=defaults
     )
     print(f"Empresa ({tipo}) {'criada' if created else 'encontrada'}: {empresa}")
     return empresa
 
-def _get_or_create_produto(data, fornecedor):
-    """Cria ou atualiza um Produto a partir dos dados do XML, preservando campos existentes como categoria."""
-    print(f"--- Debug: _get_or_create_produto para dados: {data} ---")
-    
-    # O payload do item ('det') contém um dicionário 'prod' com os detalhes do produto.
-    prod_data = data.get('prod', {})
-
-    codigo_produto = prod_data.get('cProd')
-    if not codigo_produto:
-        # Lança um erro claro se o código do produto estiver ausente,
-        # em vez de deixar o banco de dados falhar com um erro de integridade.
-        raise ValueError("O código do produto ('cProd') está ausente nos dados do item.")
-
-    categoria_id = prod_data.get('categoria_id')  # Adicionado pelo frontend
-    categoria = get_object_or_404(CategoriaProduto, pk=categoria_id) if categoria_id else None
-
-    unidade_xml_sigla = prod_data.get('uCom', '')
-    unidade_fornecedor_obj, _ = UnidadeMedida.objects.get_or_create(
-        sigla=unidade_xml_sigla,
-        defaults={'descricao': f'Unidade {unidade_xml_sigla}'}
+def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor):
+    """Atualiza ou cria um registro na tabela mestre de Produtos."""
+    produto, created = Produto.objects.get_or_create(
+        codigo=codigo_produto,
+        defaults={
+            'nome': dados_agregados['dados_primeiro_item'].get('xProd', ''),
+            'fornecedor': fornecedor,
+            'controla_estoque': True,
+            'ativo': True,
+        }
     )
 
-    produto = Produto.objects.filter(codigo=codigo_produto).first()
+    # Atualiza o estoque
+    produto.estoque_atual += dados_agregados['quantidade_total']
+    
+    # Calcula o novo custo médio ponderado
+    if produto.preco_custo and produto.estoque_atual > dados_agregados['quantidade_total']:
+        valor_estoque_antigo = produto.preco_custo * (produto.estoque_atual - dados_agregados['quantidade_total'])
+        novo_custo_medio = (valor_estoque_antigo + dados_agregados['valor_total_ponderado']) / produto.estoque_atual
+        produto.preco_custo = novo_custo_medio
+    else:
+        # Se não há estoque anterior, o custo médio é o da nota
+        produto.preco_custo = dados_agregados['valor_total_ponderado'] / dados_agregados['quantidade_total']
 
-    if produto:  # Produto já existe
-        produto.refresh_from_db()
-        produto.nome = prod_data.get('xProd', produto.nome)
-        produto.preco_custo = Decimal(prod_data.get('vUnCom', produto.preco_custo))
-        produto.preco_venda = Decimal(prod_data.get('vUnCom', produto.preco_venda))
-        produto.preco_medio = Decimal(prod_data.get('vUnCom', produto.preco_medio))
-        produto.fornecedor = fornecedor
-        produto.unidade_fornecedor_padrao = unidade_fornecedor_obj
-        produto.controla_estoque = True
-        
-        if produto.categoria is None and categoria is not None:
-            produto.categoria = categoria
+    # Atualiza a categoria se foi informada
+    categoria_id = dados_agregados.get('categoria_id')
+    if categoria_id:
+        produto.categoria = CategoriaProduto.objects.get(pk=categoria_id)
 
-        produto.save(update_fields=[
-            'nome', 'preco_custo', 'preco_venda', 'preco_medio', 'fornecedor',
-            'unidade_fornecedor_padrao', 'categoria', 'controla_estoque'
-        ])
-        print(f"DEBUG: Produto existente atualizado: {produto.nome}")
-    else:  # Produto é novo
-        produto = Produto.objects.create(
-            codigo=codigo_produto,
-            nome=prod_data.get('xProd', ''),
-            preco_custo=Decimal(prod_data.get('vUnCom', '0')),
-            preco_venda=Decimal(prod_data.get('vUnCom', '0')),
-            preco_medio=Decimal(prod_data.get('vUnCom', '0')),
-            fornecedor=fornecedor,
-            unidade_medida_interna=None,
-            fator_conversao=Decimal('1'),
-            unidade_fornecedor_padrao=unidade_fornecedor_obj,
-            controla_estoque=True,
-            ativo=True,
-            categoria=categoria,
-        )
-        print(f"DEBUG: Novo produto criado: {produto.nome}")
-
+    produto.save()
+    print(f"Produto mestre {'criado' if created else 'atualizado'}: {produto.nome}")
     return produto
 
-def _get_or_create_detalhes_fiscais_produto(produto, imposto_detalhes, prod_data_for_item_creation):
-    """Cria ou atualiza os DetalhesFiscaisProduto para um produto."""
 
-    # Extrair dados fiscais
-    icms_data = {}
-    for key, value in imposto_detalhes.get('ICMS', {}).items():
-        if isinstance(value, dict): # Pode ser ICMS00, ICMS40, etc.
-            icms_data = value
-            break
-    
-    ipi_data = imposto_detalhes.get('IPI', {}).get('IPITrib', {}) or imposto_detalhes.get('IPI', {}).get('IPINT', {})
-    pis_data = imposto_detalhes.get('PIS', {}).get('PISAliq', {}) or imposto_detalhes.get('PIS', {}).get('PISQtde', {}) or imposto_detalhes.get('PIS', {}).get('PISNT', {}) or imposto_detalhes.get('PIS', {}).get('PISOutr', {})
-    cofins_data = imposto_detalhes.get('COFINS', {}).get('COFINSAliq', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSQtde', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSNT', {}) or imposto_detalhes.get('COFINS', {}).get('COFINSOutr', {})
+def _create_item_nota_fiscal(nota_fiscal, item_data, produto_obj):
+    """Cria um registro de ItemNotaFiscal fiel aos dados do XML."""
+    prod_data = item_data.get('prod', {})
+    imposto_data = item_data.get('imposto', {})
+    icms_data = imposto_data.get('ICMS', {}).get(next(iter(imposto_data.get('ICMS', {})), None), {})
+    ipi_data = imposto_data.get('IPI', {}).get('IPITrib', {}) or imposto_data.get('IPI', {}).get('IPINT', {})
+    pis_data = next(iter(imposto_data.get('PIS', {}).values()), {})
+    cofins_data = next(iter(imposto_data.get('COFINS', {}).values()), {})
 
-    # Tenta obter o NCM existente ou cria um novo
-    ncm_codigo = prod_data_for_item_creation.get('ncm', '')
-    ncm_obj = None
-    if ncm_codigo:
-        ncm_obj, created_ncm = NCM.objects.get_or_create(
-            codigo=ncm_codigo,
-            defaults={'descricao': f'NCM {ncm_codigo}'}
-        )
-
-    # Inicializa todos os objetos CST/CSOSN como None
-    cst_icms_obj = None
-    csosn_icms_obj = None
-    cst_ipi_obj = None
-    cst_pis_obj = None
-    cst_cofins_obj = None # Inicializa a variável aqui
-
-    # Get CST/CSOSN objects
-    cst_icms_code = icms_data.get('CST', '')
-    csosn_icms_code = icms_data.get('CSOSN', '')
-
-    if cst_icms_code:
-        cst_icms_obj, _ = CST.objects.get_or_create(
-            codigo=cst_icms_code,
-            defaults={'descricao': f'CST {cst_icms_code}'}
-        )
-    elif csosn_icms_code:
-        csosn_icms_obj, _ = CSOSN.objects.get_or_create(
-            codigo=csosn_icms_code,
-            defaults={'descricao': f'CSOSN {csosn_icms_code}'}
-        )
-
-    ipi_cst_code = ipi_data.get('CST', '')
-    if ipi_cst_code:
-        cst_ipi_obj, _ = CST.objects.get_or_create(
-            codigo=ipi_cst_code,
-            defaults={'descricao': f'CST {ipi_cst_code}'}
-        )
-
-    pis_cst_code = pis_data.get('CST', '')
-    if pis_cst_code:
-        cst_pis_obj, _ = CST.objects.get_or_create(
-            codigo=pis_cst_code,
-            defaults={'descricao': f'CST {pis_cst_code}'}
-        )
-
-    cofins_cst_code = cofins_data.get('CST', '')
-    if cofins_cst_code:
-        cst_cofins_obj, _ = CST.objects.get_or_create(
-            codigo=cofins_cst_code,
-            defaults={'descricao': f'CST {cofins_cst_code}'}
-        )
-
-    defaults = {
-        'cst_icms_cst': cst_icms_obj, # Assign to CST FK
-        'cst_icms_csosn': csosn_icms_obj, # Assign to CSOSN FK
-        'origem_mercadoria': icms_data.get('orig', ''),
-        'aliquota_icms_interna': Decimal(icms_data.get('pICMS', '0')),
-        'reducao_base_icms': Decimal(icms_data.get('pRedBC', '0')),
-        'cst_ipi': cst_ipi_obj,
-        'cst_pis': cst_pis_obj,
-        'cst_cofins': cst_cofins_obj, # Usando a variável corretamente inicializada
-        'cest': prod_data_for_item_creation.get('cest', ''), # CEST do XML
-        'ncm': ncm_obj, # NCM do XML
-        'cfop': prod_data_for_item_creation.get('cfop', ''), # CFOP do XML
-        'unidade_comercial': prod_data_for_item_creation.get('unidade', ''),
-        'quantidade_comercial': Decimal(prod_data_for_item_creation.get('quantidade', '0')),
-        'valor_unitario_comercial': Decimal(prod_data_for_item_creation.get('valor_unitario', '0')),
-        'codigo_produto_fornecedor': prod_data_for_item_creation.get('codigo', ''),
-    }
-
-    print(f"DEBUG: Defaults para DetalhesFiscaisProduto: {defaults}")
-    detalhes_fiscais, created = DetalhesFiscaisProduto.objects.update_or_create(
-        produto=produto,
-        defaults=defaults
+    item = ItemNotaFiscal.objects.create(
+        nota_fiscal=nota_fiscal,
+        produto=produto_obj,
+        codigo=prod_data.get('cProd'),
+        descricao=prod_data.get('xProd'),
+        ncm=prod_data.get('NCM'),
+        cfop=prod_data.get('CFOP'),
+        unidade=prod_data.get('uCom'),
+        quantidade=Decimal(prod_data.get('qCom', '0')),
+        valor_unitario=Decimal(prod_data.get('vUnCom', '0')),
+        valor_total=Decimal(prod_data.get('vProd', '0')),
+        desconto=Decimal(prod_data.get('vDesc', '0')),
+        base_calculo_icms=Decimal(icms_data.get('vBC', '0')),
+        aliquota_icms=Decimal(icms_data.get('pICMS', '0')),
+        # Adicione outros campos de impostos conforme necessário
     )
-    print(f"DEBUG: DetalhesFiscaisProduto {'criado' if created else 'atualizado'}: {detalhes_fiscais.pk}")
-    return detalhes_fiscais
+    print(f"Item da nota criado: {item.descricao}")
+    return item
 
 def _create_transporte(nf, data):
     """Cria o registro de TransporteNotaFiscal."""
@@ -796,12 +567,12 @@ def entradas_nota_view(request):
 
     return render(request, 'base.html', context)
 
-
 @login_required
 @require_GET
 def lancar_nota_manual_view(request):
     """
-    Renderiza a página para lançamento manual de notas fiscais.
+    Renderiza a página para lançamento manual de notas fiscais,
+    respondendo a requisições normais e AJAX.
     """
     categorias = list(CategoriaProduto.objects.order_by("nome").values("id", "nome"))
     empresas = list(EmpresaAvancada.objects.all().values(
@@ -813,15 +584,27 @@ def lancar_nota_manual_view(request):
         'empresas_disponiveis_json': json.dumps(empresas, ensure_ascii=False),
         'content_template': 'partials/nota_fiscal/lancar_nota_manual.html',
         'data_page': 'lancar_nota_manual',
+        'data_tela': 'lancar_nota_manual',
     }
+
+    # Se a requisição for AJAX, retorna apenas o template parcial (o "miolo").
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, context['content_template'], context)
+
+    # Para acesso direto via URL, retorna a página completa.
     return render(request, 'base.html', context)
 
+# Substitua a sua função editar_nota_view por esta:
+
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "POST"] )
 @transaction.atomic
 def editar_nota_view(request, pk):
+    """
+    Lida com a criação (GET) e o processamento (POST) do formulário de edição de Nota Fiscal,
+    respondendo a requisições normais e AJAX para a exibição do formulário.
+    """
     app_messages = get_app_messages(request)
-    """Lida com a edição de uma Nota Fiscal e seus dados relacionados."""
     nota = get_object_or_404(NotaFiscal, pk=pk)
 
     if request.method == 'POST':
@@ -839,30 +622,14 @@ def editar_nota_view(request, pk):
             app_messages.success_updated(nota)
             return redirect('nota_fiscal:entradas_nota')
         else:
-            # Se houver erros, exibe-os para o usuário
             app_messages.error("Foram encontrados erros no formulário. Por favor, corrija-os.")
-            print("\n--- Erros de Validação ---")
-            if form.errors:
-                print(f"Formulário principal: {form.errors}")
-            if item_formset.errors:
-                print(f"Formset de Itens: {item_formset.errors}")
-            if item_formset.non_form_errors():
-                print(f"Formset de Itens (erros não de campo): {item_formset.non_form_errors()}")
-            if duplicata_formset.errors:
-                print(f"Formset de Duplicatas: {duplicata_formset.errors}")
-            if duplicata_formset.non_form_errors():
-                print(f"Formset de Duplicatas (erros não de campo): {duplicata_formset.non_form_errors()}")
-            if transporte_formset.errors:
-                print(f"Formset de Transporte: {transporte_formset.errors}")
-            if transporte_formset.non_form_errors():
-                print(f"Formset de Transporte (erros não de campo): {transporte_formset.non_form_errors()}")
-            print("--------------------------")
-
-    else: # GET
-        form = NotaFiscalForm(instance=nota)
-        item_formset = ItemNotaFiscalFormSet(instance=nota, prefix='items')
-        duplicata_formset = DuplicataNotaFiscalFormSet(instance=nota, prefix='duplicatas')
-        transporte_formset = TransporteNotaFiscalFormSet(instance=nota, prefix='transporte')
+            # A lógica de printar erros para debug pode ser mantida aqui...
+            
+    # A lógica para GET começa aqui
+    form = NotaFiscalForm(instance=nota)
+    item_formset = ItemNotaFiscalFormSet(instance=nota, prefix='items')
+    duplicata_formset = DuplicataNotaFiscalFormSet(instance=nota, prefix='duplicatas')
+    transporte_formset = TransporteNotaFiscalFormSet(instance=nota, prefix='transporte')
 
     context = {
         'nota': nota,
@@ -872,7 +639,15 @@ def editar_nota_view(request, pk):
         'transporte_formset': transporte_formset,
         'content_template': 'partials/nota_fiscal/editar_nota.html',
         'data_page': 'editar_nota',
+        'data_tela': 'editar_nota',
     }
+
+    # Se a requisição for AJAX (vinda de um clique em 'Editar' na lista),
+    # renderiza apenas o template parcial.
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, context['content_template'], context)
+
+    # Para acesso direto via URL ou em caso de erro no POST, renderiza a página completa.
     return render(request, 'base.html', context)
 
 @login_required

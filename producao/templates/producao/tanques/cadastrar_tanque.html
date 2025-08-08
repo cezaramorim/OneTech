@@ -1,39 +1,39 @@
-<div class="container-fluid" data-tela="cadastrar_tanque">
-    <h2 class="my-4">{% if object %}Editar{% else %}Cadastrar{% endif %} Tanque</h2>
+<div id="identificador-tela" data-tela="cadastrar_tanque">
+    <div class="container-fluid">
+        <h2 class="my-4">{% if object %}Editar{% else %}Cadastrar{% endif %} Tanque</h2>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="post" action="" class="ajax-form">
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-4 form-group">{{ form.nome.label_tag }} {{ form.nome }}</div>
-                    <div class="col-md-4 form-group">{{ form.tag_tanque.label_tag }} {{ form.tag_tanque }}</div>
-                    <div class="col-md-4 form-group">{{ form.sequencia.label_tag }} {{ form.sequencia }}</div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-3 form-group">{{ form.unidade.label_tag }} {{ form.unidade }}</div>
-                    <div class="col-md-3 form-group">{{ form.linha_producao.label_tag }} {{ form.linha_producao }}</div>
-                    <div class="col-md-3 form-group">{{ form.fase.label_tag }} {{ form.fase }}</div>
-                    <div class="col-md-3 form-group">{{ form.status_tanque.label_tag }} {{ form.status_tanque }}</div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-3 form-group">{{ form.tipo_tanque.label_tag }} {{ form.tipo_tanque }}</div>
-                    <div class="col-md-3 form-group">{{ form.atividade.label_tag }} {{ form.atividade }}</div>
-                    <div class="col-md-3 form-group">{{ form.malha.label_tag }} {{ form.malha }}</div>
-                    <div class="col-md-3 form-group">{{ form.tipo_tela.label_tag }} {{ form.tipo_tela }}</div>
-                </div>
-                <hr class="my-4">
-                <div class="row">
-                    <div class="col-md-3 form-group">{{ form.largura.label_tag }} {{ form.largura }}</div>
-                    <div class="col-md-3 form-group">{{ form.comprimento.label_tag }} {{ form.comprimento }}</div>
-                    <div class="col-md-3 form-group">{{ form.profundidade.label_tag }} {{ form.profundidade }}</div>
-                    <div class="col-md-3 form-group">{{ form.altura.label_tag }} {{ form.altura }}</div>
-                </div>
-                <div class="mt-3 form-check">{{ form.ativo.label_tag }} {{ form.ativo }}</div>
-                <hr class="my-4">
-                <button type="submit" class="btn btn-success">Salvar</button>
-                <a href="{% url 'producao:lista_tanques' %}" class="btn btn-secondary ajax-link">Cancelar</a>
-            </form>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" action="" class="ajax-form">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-4 form-group">{{ form.nome.label_tag }} {{ form.nome }}</div>
+                        <div class="col-md-4 form-group">{{ form.tag_tanque.label_tag }} {{ form.tag_tanque }}</div>
+                        <div class="col-md-4 form-group">{{ form.sequencia.label_tag }} {{ form.sequencia }}</div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3 form-group">{{ form.unidade.label_tag }} {{ form.unidade }}</div>
+                        <div class="col-md-3 form-group">{{ form.linha_producao.label_tag }} {{ form.linha_producao }}</div>
+                        <div class="col-md-3 form-group">{{ form.fase.label_tag }} {{ form.fase }}</div>
+                        <div class="col-md-3 form-group">{{ form.status_tanque.label_tag }} {{ form.status_tanque }}</div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3 form-group">{{ form.tipo_tanque.label_tag }} {{ form.tipo_tanque }}</div>
+                        <div class="col-md-3 form-group">{{ form.malha.label_tag }} {{ form.malha }}</div>
+                        <div class="col-md-3 form-group">{{ form.tipo_tela.label_tag }} {{ form.tipo_tela }}</div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-md-3 form-group">{{ form.largura.label_tag }} {{ form.largura }}</div>
+                        <div class="col-md-3 form-group">{{ form.comprimento.label_tag }} {{ form.comprimento }}</div>
+                        <div class="col-md-3 form-group">{{ form.profundidade.label_tag }} {{ form.profundidade }}</div>
+                    </div>
+                    <div class="mt-3 form-check">{{ form.ativo.label_tag }} {{ form.ativo }}</div>
+                    <hr class="my-4">
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                    <a href="{% url 'producao:lista_tanques' %}" class="btn btn-secondary ajax-link">Cancelar</a>
+                </form>
+            </div>
         </div>
     </div>
 </div>

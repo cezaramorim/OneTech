@@ -36,7 +36,7 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endif %}
-                        <form method="POST" id="login-form" class="ajax-form">
+                        <form method="POST" id="login-form">
                             {% csrf_token %}
                             <div class="form-floating mb-3">
                                 <input class="form-control" id="inputUsername" type="text" name="username" placeholder=" " required>
