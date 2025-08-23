@@ -6,7 +6,8 @@ from django.urls import reverse
 from django.forms import inlineformset_factory
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import user_passes_test
+from accounts.utils.decorators import login_required_json
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm, DetalhesFiscaisProdutoForm
@@ -26,13 +27,13 @@ DetalhesFiscaisProdutoFormSet = inlineformset_factory(
 # =====================
 # PRODUTOS
 # =====================
-@login_required
+@login_required_json
 def lista_produtos_view(request):
     produtos = Produto.objects.all()
     return render_ajax_or_base(request, "partials/produtos/lista_produtos.html", {"produtos": produtos})
 
 
-@login_required
+@login_required_json
 def cadastrar_produto_view(request):
     app_messages = get_app_messages(request)
     if request.method == "POST":
@@ -55,7 +56,7 @@ def cadastrar_produto_view(request):
 
     return render_ajax_or_base(request, "partials/produtos/cadastrar_produto.html", {"form": form, "formset": formset})
 
-@login_required
+@login_required_json
 def editar_produto_view(request, pk):
     app_messages = get_app_messages(request)
     """
@@ -108,7 +109,7 @@ def editar_produto_view(request, pk):
 
 
 @require_POST
-@login_required
+@login_required_json
 def excluir_produtos_multiplos_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -135,7 +136,7 @@ def excluir_produtos_multiplos_view(request):
 # ======================
 # CATEGORIAS DE PRODUTOS
 # ======================
-@login_required
+@login_required_json
 def lista_categorias_view(request):
     categorias = CategoriaProduto.objects.all()
     return render_ajax_or_base(
@@ -148,7 +149,7 @@ def lista_categorias_view(request):
         }
     )
     
-@login_required
+@login_required_json
 def editar_categoria_view(request, pk):
     app_messages = get_app_messages(request)
     print(f"DEBUG: editar_categoria_view - PK recebido: {pk}")
@@ -183,7 +184,7 @@ def editar_categoria_view(request, pk):
     })
 
 @require_POST
-@login_required
+@login_required_json
 def excluir_categorias_view(request):
     app_messages = get_app_messages(request)
     """
@@ -208,7 +209,7 @@ def excluir_categorias_view(request):
         message = app_messages.error(f"Erro ao excluir categorias: {str(e)}")
         return JsonResponse({"success": False, "message": message}, status=500)
 
-@login_required
+@login_required_json
 def cadastrar_categoria_view(request):
     app_messages = get_app_messages(request)
     print("DEBUG: cadastrar_categoria_view acessada")
@@ -260,12 +261,12 @@ def categoria_list_api(request):
 # =====================
 # UNIDADES
 # =====================
-@login_required
+@login_required_json
 def lista_unidades_view(request):
     unidades = UnidadeMedida.objects.all()
     return render_ajax_or_base(request, "partials/produtos/lista_unidades.html", {"unidades": unidades})
 
-@login_required
+@login_required_json
 def cadastrar_unidade_view(request):
     app_messages = get_app_messages(request)
     if request.method == "POST":
@@ -278,7 +279,7 @@ def cadastrar_unidade_view(request):
         form = UnidadeMedidaForm()
     return render_ajax_or_base(request, "partials/produtos/cadastrar_unidade.html", {"form": form})
 
-@login_required
+@login_required_json
 def editar_unidade_view(request, pk):
     app_messages = get_app_messages(request)
     print("DEBUG: editar_unidade_view accessed for PK:", pk)
@@ -314,7 +315,7 @@ def editar_unidade_view(request, pk):
     })
 
 @require_POST
-@login_required
+@login_required_json
 def excluir_unidades_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -340,7 +341,7 @@ def excluir_unidades_view(request):
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
 
-@login_required
+@login_required_json
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manutencao_ncm_view(request):
     app_messages = get_app_messages(request)
@@ -374,6 +375,7 @@ def manutencao_ncm_view(request):
 
 
 
+@login_required_json
 def buscar_ncm_ajax(request):
     termo = request.GET.get('term', '')
     resultados = []
@@ -384,7 +386,7 @@ def buscar_ncm_ajax(request):
 
     return JsonResponse({"results": resultados})
 
-@login_required
+@login_required_json
 def api_racoes_list(request):
     """
     Retorna uma lista de produtos da categoria 'Ração' em formato JSON.
@@ -393,7 +395,7 @@ def api_racoes_list(request):
     return JsonResponse(list(racoes), safe=False)
 
 
-@login_required
+@login_required_json
 @user_passes_test(is_superuser_or_staff)
 def importar_ncm_manual_view(request):
     app_messages = get_app_messages(request)

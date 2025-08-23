@@ -1,5 +1,5 @@
 // ============================================================================
-// ARQUIVO scripts.js - VERSÃO FINAL COMPLETA E CORRIGIDA
+// ARQUIVO scripts.js - VERSÃO COM FETCH HELPER E CREDENCIAIS
 // ============================================================================
 
 // 🌙 Aplica o tema salvo no localStorage (antes do paint)
@@ -19,11 +19,44 @@ if (navbarInicial) {
 }
 
 // --- Funções de Utilidade Global ---
-// (Estas funções são declaradas no escopo global para serem acessíveis por todos os scripts)
 
 function getCSRFToken() {
     const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
     return cookie ? cookie.split('=')[1] : '';
+}
+
+// URL de login (pode vir do <body data-login-url="..."> ou cai no padrão)
+const LOGIN_URL = document.body?.dataset?.loginUrl || '/accounts/login/';
+
+// fetch com cookies + cabeçalhos padrão (AJAX)
+function fetchWithCreds(url, options = {}) {
+  const opts = { credentials: 'same-origin', ...options };
+  const headers = new Headers(opts.headers || {});
+  if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
+  if ((opts.method || 'GET').toUpperCase() !== 'GET' && !headers.has('X-CSRFToken')) {
+    headers.set('X-CSRFToken', getCSRFToken());
+  }
+  opts.headers = headers;
+  return fetch(url, opts);
+}
+
+// Heurística simples para detectar HTML de login devolvido no lugar do conteúdo pedido
+function isLikelyLoginHTML(html) {
+  if (!html) return false;
+  const s = html.toLowerCase();
+
+  // Marcadores explícitos (recomendado: adicione isso no template do login)
+  const hasExplicitMarker =
+    s.includes('id="login-form"') ||
+    s.includes('id="login-page"') ||           // se você colocar no <body id="login-page">
+    s.includes('data-page="login"');           // ou <body data-page="login">
+
+  // Heurística mais forte: precisa ter form com action para /accounts/login E campos username+password
+  const hasLoginAction = /<form[^>]+action=["'][^"']*\/accounts\/login\/?["'][^>]*>/i.test(s);
+  const hasUsername = /\bname=["']username["']/i.test(s);
+  const hasPassword = /\bname=["']password["']/i.test(s);
+
+  return hasExplicitMarker || (hasLoginAction && hasUsername && hasPassword);
 }
 
 function mostrarMensagem(type, message) {
@@ -56,38 +89,67 @@ function mostrarMensagem(type, message) {
 }
 
 function loadAjaxContent(url) {
-    console.log("🔁 loadAjaxContent: Carregando URL:", url);
-    const mainContent = document.getElementById("main-content");
-    if (!mainContent) {
-        console.error("❌ #main-content não encontrado. Recarregando a página.");
-        window.location.href = url;
-        return;
-    }
-    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-        .then(response => {
-            if (!response.ok) throw new Error(`Erro de rede: ${response.status} ${response.statusText}`);
-            return response.text();
-        })
-        .then(html => {
-            mainContent.innerHTML = html;
-            
-            // Re-executa os scripts do conteúdo carregado.
-            // Esta é a forma correta de garantir que os scripts de página funcionem.
-            Array.from(mainContent.querySelectorAll("script")).forEach( oldScript => {
-                const newScript = document.createElement("script");
-                Array.from(oldScript.attributes).forEach( attr => newScript.setAttribute(attr.name, attr.value) );
-                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                oldScript.parentNode.replaceChild(newScript, oldScript);
-            });
+  console.log(" loadAjaxContent: Carregando URL:", url);
+  const mainContent = document.getElementById("main-content");
+  if (!mainContent) {
+    console.error("❌ #main-content não encontrado. Recarregando a página.");
+    window.location.href = url;
+    return;
+  }
 
-            history.pushState({ ajaxUrl: url }, "", url);
-            document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
-            console.log("✅ Conteúdo do #main-content atualizado e scripts executados.");
-        })
-        .catch(error => {
-            console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
-            mostrarMensagem("danger", "Erro ao carregar a página.");
-        });
+  fetchWithCreds(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    .then(async (response) => {
+      if (response.status === 401) {
+        let data = null; try { data = await response.json(); } catch {}
+        window.location.href = data?.redirect_url || `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
+        return null;
+      }
+      if (response.redirected) { // servidor respondeu 302 → login
+        window.location.href = response.url;
+        return null;
+      }
+      if (response.status === 403) {
+        if (typeof mostrarMensagem === 'function') {
+          mostrarMensagem('danger', 'Você não tem permissão para acessar esta página.');
+        } else {
+          alert('Você não tem permissão para acessar esta página.');
+        }
+        return null; // não troca o main-content
+      }
+      const ct = response.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await response.json();
+        if (data?.redirect_url) { window.location.href = data.redirect_url; return null; }
+        throw new Error('JSON inesperado em loadAjaxContent.');
+      }
+      const html = await response.text();
+      if (isLikelyLoginHTML(html)) { // HTML da tela de login veio “embedado”
+        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
+        return null;
+      }
+      return html;
+    })
+    .then((html) => {
+      if (html == null) return; // já redirecionou
+      mainContent.innerHTML = html;
+
+      // reexecuta scripts embutidos (mantendo seu skip do scripts.js)
+      Array.from(mainContent.querySelectorAll("script")).forEach(oldScript => {
+        if (oldScript.src && oldScript.src.includes('scripts.js')) return;
+        const newScript = document.createElement("script");
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
+
+      history.pushState({ ajaxUrl: url }, "", url);
+      document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
+      console.log("✅ Conteúdo do #main-content atualizado e scripts executados.");
+    })
+    .catch(error => {
+      console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
+      mostrarMensagem("danger", "Erro ao carregar a página.");
+    });
 }
 
 function updateButtonStates(mainContent) {
@@ -131,7 +193,7 @@ function updateButtonStates(mainContent) {
 }
 
 function loadNavbar() {
-    fetch('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    fetchWithCreds('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(response => {
             if (!response.ok) {
                 // Log detalhado do erro
@@ -175,26 +237,20 @@ function adjustMainContentPadding() {
 }
 
 // --- Lógica de Inicialização e Bind de Eventos ---
-// TUDO que interage com o DOM deve estar dentro deste listener.
 document.addEventListener("DOMContentLoaded", () => {
     console.log("✅ DOM completamente carregado. Iniciando scripts.");
 
-    // 1. Carrega o Navbar
     if (document.getElementById('navbar-container')) {
         loadNavbar();
     }
 
-    // 2. Ajusta o layout inicial
     adjustMainContentPadding();
     const mainContentInitial = document.getElementById("main-content");
     if (mainContentInitial) {
         updateButtonStates(mainContentInitial);
     }
 
-    // 3. Anexa os listeners de eventos globais
     document.body.addEventListener("click", async (e) => {
-
-        // Botão de Logout
         const logoutLink = e.target.closest('#logout-link-superior');
         if (logoutLink) {
             e.preventDefault();
@@ -204,19 +260,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
             csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = getCSRFToken(); // Usa a função global
+            csrfInput.value = getCSRFToken();
             form.appendChild(csrfInput);
             document.body.appendChild(form);
             form.submit();
-            return; // Encerra a execução para este clique
+            return;
         }
 
-        // Botão de Alternar Tema
         const themeButton = e.target.closest('#btn-alternar-tema-superior');
         if (themeButton) {
             e.preventDefault();
             alternarTema();
-            return; // Encerra a execução para este clique
+            return;
         }
 
         const ajaxLink = e.target.closest(".ajax-link");
@@ -259,9 +314,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (result.isConfirmed) {
                 const ids = selectedItems.map(cb => cb.value);
                 const url = identificadorTela.dataset.urlExcluir;
-                fetch(url, {
+                fetchWithCreds(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ids: ids })
                 })
                 .then(response => response.json())
@@ -284,21 +339,30 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.addEventListener("submit", e => {
         const form = e.target.closest(".ajax-form");
         if (form) {
-            
             e.preventDefault();
-            
             const apiUrl = form.getAttribute("data-api-url") || form.action;
             const method = form.method;
             const formData = new FormData(form);
-            const headers = { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCSRFToken() };
 
-            fetch(apiUrl, { method, headers, body: formData })
-                .then(response => {
+            fetchWithCreds(apiUrl, { method, body: formData })
+                .then(async (response) => {
                     if (response.status === 401) {
-                        return response.json().then(data => {
-                            window.location.href = data.redirect_url;
-                            throw new Error('Sessão expirada.');
-                        });
+                        const data = await response.json().catch(() => ({}));
+                        window.location.href = data.redirect_url || `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
+                        throw new Error('Sessão expirada.');
+                    }
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        throw new Error('Redirecionado para login.');
+                    }
+                    const ct = response.headers.get('content-type') || '';
+                    if (ct.includes('text/html')) {
+                        const html = await response.text();
+                        if (isLikelyLoginHTML(html)) {
+                            window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
+                            throw new Error('Login requerido.');
+                        }
+                        throw new Error('HTML inesperado.');
                     }
                     return response.json();
                 })
@@ -315,7 +379,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 })
                 .catch(error => {
-                    if (error.message !== 'Sessão expirada.') {
+                    if (error.message !== 'Sessão expirada.' && error.message !== 'Redirecionado para login.' && error.message !== 'Login requerido.') {
                         console.error("❌ Erro na submissão do formulário AJAX:", error);
                         mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
                     }
@@ -344,3 +408,234 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+// === GERENCIAR CURVAS: bootstrap da página ===
+function initGerenciarCurvas() {
+  const raiz = document.querySelector('#gerenciar-curvas[data-page="gerenciar-curvas"]');
+  if (!raiz || raiz.dataset.bound === '1') return;
+  raiz.dataset.bound = '1';
+
+  const q = (sel, ctx = document) => ctx.querySelector(sel);
+  const qa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const toast = (type, text) => {
+    if (typeof window.mostrarMensagem === 'function') window.mostrarMensagem(type, text);
+    else console.log(`[${type.toUpperCase()}] ${text}`);
+  };
+  const toJSONorText = async (resp) => {
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return resp.json();
+    return resp.text();
+  };
+  const setDisabled = (el, disabled = true) => { if (el) el.disabled = disabled; };
+
+  const endpointBaseCurva = raiz.dataset.endpointCurvaBase || '/producao/api/curva/';
+  const endpointSufixoDet = raiz.dataset.endpointDetalheSufixo || 'detalhes/';
+
+  const listaCurvas = q('#lista-curvas', raiz);
+  const formCurva = q('#form-curva', raiz);
+  const formDetalhe = q('#form-ponto-crescimento', raiz);
+  const inputCurvaId = q('#curva-id', raiz);
+  const inputDetalheId = q('#detalhe-id', raiz);
+  const tabBtnPonto = q('#ponto-crescimento-tab', raiz);
+  const tabelaBody = q('#tabela-detalhes-body', raiz);
+  const btnNovaCurva = q('#btn-nova-curva', raiz);
+  const btnLimparCurva = q('[data-action="limpar-curva"]', formCurva);
+  const btnLimparDetalhe = q('[data-action="limpar-detalhe"]', formDetalhe);
+
+  function habilitarAbaPonto(habilitar = true) {
+    if (!tabBtnPonto) return;
+    tabBtnPonto.disabled = !habilitar;
+    tabBtnPonto.classList.toggle('disabled', !habilitar);
+    tabBtnPonto.setAttribute('aria-disabled', (!habilitar).toString());
+  }
+  function abrirAbaPonto() {
+    if (!tabBtnPonto) return;
+    new bootstrap.Tab(tabBtnPonto).show();
+  }
+
+  function limparTabela() {
+    tabelaBody.innerHTML = `<tr data-empty="true"><td colspan="8" class="text-center text-muted">Selecione uma curva para ver ou adicionar detalhes.</td></tr>`;
+  }
+  function limparFormCurva(keepId = false) {
+    if (!formCurva) return;
+    if (!keepId) inputCurvaId.value = '';
+    qa('input, select, textarea', formCurva).forEach(el => {
+      if (el === inputCurvaId) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
+    });
+  }
+  function limparFormDetalhe(keepId = false) {
+    if (!formDetalhe) return;
+    if (!keepId) inputDetalheId.value = '';
+    qa('input, select, textarea', formDetalhe).forEach(el => {
+      if (el === inputDetalheId) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
+    });
+  }
+
+  function renderLinhaDetalheJSON(d) {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-id', d.id);
+    tr.innerHTML = `
+      <td>${d.periodo_semana ?? ''}</td>
+      <td>${d.peso_inicial ?? ''}</td>
+      <td>${d.peso_final ?? ''}</td>
+      <td>${d.ganho_de_peso ?? ''}</td>
+      <td>${d.racao_nome ?? d.racao ?? ''}</td>
+      <td>${d.numero_tratos ?? ''}</td>
+      <td>${d.gpd ?? ''}</td>
+      <td>${d.tca ?? ''}</td>
+    `;
+    return tr;
+  }
+
+  function popularTelaComCurva(payload) {
+    const c = payload.curva || {};
+    inputCurvaId.value = c.id ?? '';
+    const map = {
+      'id_nome': c.nome, 'id_especie': c.especie, 'id_rendimento_perc': c.rendimento_perc,
+      'id_trato_perc_curva': c.trato_perc_curva, 'id_peso_pretendido': c.peso_pretendido,
+      'id_trato_sabados_perc': c.trato_sabados_perc, 'id_trato_domingos_perc': c.trato_domingos_perc,
+      'id_trato_feriados_perc': c.trato_feriados_perc,
+    };
+    Object.entries(map).forEach(([id, val]) => { if (q(`#${id}`, formCurva)) q(`#${id}`, formCurva).value = (val ?? ''); });
+    habilitarAbaPonto(true);
+    const detalhes = Array.isArray(payload.detalhes) ? payload.detalhes : [];
+    tabelaBody.innerHTML = '';
+    if (!detalhes.length) {
+      limparTabela();
+    } else {
+      const frag = document.createDocumentFragment();
+      detalhes.forEach(d => frag.appendChild(renderLinhaDetalheJSON(d)));
+      tabelaBody.appendChild(frag);
+    }
+    limparFormDetalhe(false);
+  }
+
+  async function carregarCurva(curvaId) {
+    if (!curvaId) return;
+    try {
+      const url = `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}`;
+      const resp = await fetchWithCreds(url, { method: 'GET' });
+      if (!resp.ok) throw new Error('Falha ao carregar a curva.');
+      const data = await resp.json();
+      popularTelaComCurva(data);
+      toast('success', 'Curva carregada.');
+    } catch (err) {
+      toast('danger', err.message || 'Erro ao carregar a curva.');
+      limparTabela();
+    }
+  }
+
+  if (listaCurvas) {
+    listaCurvas.addEventListener('click', (ev) => {
+      const li = ev.target.closest('li.list-group-item[data-id]');
+      if (!li) return;
+      qa('li.list-group-item', listaCurvas).forEach(x => x.classList.remove('active'));
+      li.classList.add('active');
+      carregarCurva(li.dataset.id);
+    });
+  }
+
+  if (btnNovaCurva) {
+    btnNovaCurva.addEventListener('click', () => {
+      qa('li.list-group-item', listaCurvas).forEach(x => x.classList.remove('active'));
+      limparFormCurva(false); limparFormDetalhe(false); limparTabela(); habilitarAbaPonto(false);
+      toast('info', 'Preencha o cabeçalho e salve para liberar os períodos.');
+    });
+  }
+
+  if (btnLimparCurva) btnLimparCurva.addEventListener('click', () => limparFormCurva(true));
+  if (btnLimparDetalhe) btnLimparDetalhe.addEventListener('click', () => limparFormDetalhe(false));
+
+  formCurva?.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const curvaId = inputCurvaId.value?.trim();
+    const isNovo = !curvaId;
+    const url = isNovo ? endpointBaseCurva : `${endpointBaseCurva}${curvaId}/`;
+    const fd = new FormData(formCurva);
+    try {
+      setDisabled(formCurva.querySelector('[type="submit"]'), true);
+      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
+      const data = await toJSONorText(resp);
+      if (!resp.ok || (data && data.success === false)) throw new Error((data && (data.message || data.error)) || 'Erro ao salvar a curva.');
+      if (isNovo) {
+        const novoId = (data && (data.id || data.curva_id || data.pk)) || null;
+        if (!novoId) toast('warning', 'Curva criada, mas não recebi o ID. Recarregue a lista se necessário.');
+        else { inputCurvaId.value = String(novoId); habilitarAbaPonto(true); toast('success', 'Curva criada. Agora adicione os períodos.'); }
+      } else toast('success', (data && data.message) || 'Cabeçalho da curva salvo.');
+    } catch (err) { toast('danger', err.message || 'Falha ao salvar a curva.');
+    } finally { setDisabled(formCurva.querySelector('[type="submit"]'), false); }
+  });
+
+  tabelaBody?.addEventListener('click', async (ev) => {
+    const tr = ev.target.closest('tr[data-id]');
+    if (!tr) return;
+    const curvaId = inputCurvaId.value?.trim();
+    const detalheId = tr.getAttribute('data-id');
+    if (!curvaId || !detalheId) return;
+    try {
+      const url = `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}${detalheId}/`;
+      const resp = await fetchWithCreds(url, { method: 'GET' });
+      if (!resp.ok) throw new Error('Falha ao carregar o detalhe.');
+      const d = await resp.json();
+      inputDetalheId.value = d.id ?? detalheId;
+      const map = {
+        'id_periodo_semana': d.periodo_semana, 'id_periodo_dias': d.periodo_dias, 'id_peso_inicial': d.peso_inicial,
+        'id_peso_final': d.peso_final, 'id_ganho_de_peso': d.ganho_de_peso, 'id_numero_tratos': d.numero_tratos,
+        'id_hora_inicio': d.hora_inicio, 'id_arracoamento_biomassa_perc': d.arracoamento_biomassa_perc,
+        'id_mortalidade_presumida_perc': d.mortalidade_presumida_perc, 'id_racao': d.racao, 'id_gpd': d.gpd, 'id_tca': d.tca
+      };
+      Object.entries(map).forEach(([id, val]) => { if (q(`#${id}`, formDetalhe)) q(`#${id}`, formDetalhe).value = (val ?? ''); });
+      abrirAbaPonto();
+    } catch (err) { toast('danger', err.message || 'Erro ao carregar o detalhe.'); }
+  });
+
+  formDetalhe?.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const curvaId = inputCurvaId.value?.trim();
+    const detalheId = inputDetalheId.value?.trim();
+    if (!curvaId) { toast('warning', 'Salve o cabeçalho da curva antes.'); return; }
+    const isNovo = !detalheId;
+    const url = isNovo ? `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}` : `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}${detalheId}/`;
+    const fd = new FormData(formDetalhe);
+    try {
+      setDisabled(formDetalhe.querySelector('[type="submit"]'), true);
+      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
+      const data = await toJSONorText(resp);
+      if (!resp.ok || (data && data.success === false)) throw new Error((data && (data.message || data.error)) || 'Erro ao salvar o detalhe.');
+      if (data && data.periodo) {
+        const d = data.periodo;
+        const trNova = renderLinhaDetalheJSON(d);
+        if (!isNovo) {
+          const alvo = tabelaBody.querySelector(`tr[data-id="${d.id || detalheId}"]`);
+          if (alvo) alvo.replaceWith(trNova);
+        } else {
+          const empty = tabelaBody.querySelector('tr[data-empty="true"]');
+          if (empty) empty.remove();
+          tabelaBody.appendChild(trNova);
+        }
+      }
+      if (isNovo) { limparFormDetalhe(false); toast('success', (data && data.message) || 'Período adicionado.');
+      } else toast('success', (data && data.message) || 'Período atualizado.');
+    } catch (err) { toast('danger', err.message || 'Falha ao salvar o detalhe.');
+    } finally { setDisabled(formDetalhe.querySelector('[type="submit"]'), false); }
+  });
+
+  const search = q('#search-curva', raiz);
+  search?.addEventListener('input', () => {
+    const filtro = (search.value || '').trim().toUpperCase();
+    qa('li.list-group-item', listaCurvas).forEach(li => {
+      const txt = (li.dataset.name || li.textContent || '').toUpperCase();
+      li.style.display = txt.includes(filtro) ? '' : 'none';
+    });
+  });
+}
+
+// Inicializa o módulo em ambos os cenários: carga inicial e carga via AJAX.
+document.addEventListener("DOMContentLoaded", initGerenciarCurvas);
+document.addEventListener("ajaxContentLoaded", initGerenciarCurvas);

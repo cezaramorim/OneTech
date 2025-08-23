@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 from accounts.views import login_view
+from django.views.generic.base import RedirectView
+from django.contrib.staticfiles.storage import staticfiles_storage
 
 def home_redirect_view(request):
     if request.user.is_authenticated:
@@ -47,4 +49,14 @@ urlpatterns = [
 
     # Integração NFe (Webhooks)
     path('integracao-nfe/', include('integracao_nfe.urls', namespace='integracao_nfe')),
+
+    #  Favicon sempre servido da pasta static/icons/
+    path(
+        "favicon.ico",
+        RedirectView.as_view(
+            url=staticfiles_storage.url("icons/favicon.ico"),
+            permanent=False
+        ),
+        name="favicon"
+    ),
 ]

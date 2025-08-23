@@ -1,7 +1,7 @@
 import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, View
+from django.views.generic import ListView, CreateView, UpdateView, DetailView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -10,6 +10,7 @@ import pandas as pd
 from io import BytesIO
 from datetime import time
 from django.contrib.auth.decorators import login_required, permission_required
+from accounts.utils.decorators import login_required_json
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
@@ -17,7 +18,7 @@ from .models import (
     FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade
 )
 from .forms import (
-    TanqueForm, CurvaCrescimentoForm, ImportarCurvaForm, LoteForm, 
+    TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
     EventoManejoForm, AlimentacaoDiariaForm, TanqueImportForm,
     UnidadeForm, MalhaForm, TipoTelaForm, LinhaProducaoForm, FaseProducaoForm,
     StatusTanqueForm, TipoTanqueForm, AtividadeForm
@@ -734,54 +735,171 @@ class ExcluirAlimentacaoMultiplaView(BulkDeleteView):
     success_url_name = 'producao:lista_alimentacao'
 
 
-# === API para Edição Interativa de Detalhes da Curva ===
+from django.views.decorators.http import require_http_methods
 
-class AtualizarDetalheCurvaAPIView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    permission_required = 'producao.change_curvacrescimentodetalhe'
-    raise_exception = True
+@login_required
+@permission_required('producao.view_curvacrescimento')
+def gerenciar_curvas(request):
+    """
+    Renderiza a página principal de gerenciamento de curvas,
+    já com os formulários e a lista inicial de curvas.
+    """
+    context = {
+        'curvas': CurvaCrescimento.objects.all().order_by('nome'),
+        'form_curva': CurvaCrescimentoForm(),
+        'form_detalhe': CurvaCrescimentoDetalheForm(),
+        'data_page': 'gerenciar-curvas', # Para o JS saber qual tela ativar
+        'data_tela': 'gerenciar_curvas',
+    }
+    return render_ajax_or_base(request, 'producao/curvas/gerenciar_curvas.html', context)
 
-    def handle_no_permission(self):
-        app_messages = get_app_messages(self.request)
-        message = app_messages.error("Você não tem permissão para realizar esta ação.")
-        return JsonResponse({'success': False, 'message': message}, status=403)
 
-    def post(self, request, *args, **kwargs):
-        app_messages = get_app_messages(request)
-        try:
-            data = json.loads(request.body)
-            detalhe_id = data.get('detalhe_id')
-            racao_id = data.get('racao_id')
-            fill_down = data.get('fill_down', False)
+# =========================================================================
+# API Views para Gerenciamento de Curvas (JSON)
+# =========================================================================
 
-            if not detalhe_id:
-                message = app_messages.error('ID do detalhe da curva não fornecido.')
-                return JsonResponse({'success': False, 'message': message}, status=400)
+# -----------------------------
+# Helpers de serialização
+# -----------------------------
 
-            detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id)
-            
-            racao_obj = None
-            if racao_id:
-                racao_obj = get_object_or_404(Produto, pk=racao_id)
-                if racao_obj.categoria and racao_obj.categoria.nome.lower() != 'ração':
-                    message = app_messages.error('Produto selecionado não é uma ração.')
-                    return JsonResponse({'success': False, 'message': message}, status=400)
-            
-            with transaction.atomic():
-                detalhe.racao = racao_obj
-                detalhe.save()
+def _to_float(x):
+    if x is None or x == "":
+        return None
+    try:
+        return float(x)
+    except (ValueError, TypeError):
+        return x
 
-                if fill_down:
-                    CurvaCrescimentoDetalhe.objects.filter(
-                        curva=detalhe.curva,
-                        periodo_semana__gt=detalhe.periodo_semana
-                    ).update(racao=racao_obj)
-            
-            message = app_messages.success_updated(detalhe, custom_message='Detalhe da curva atualizado com sucesso.')
-            return JsonResponse({'success': True, 'message': message})
+def serialize_curva(curva: CurvaCrescimento) -> dict:
+    return {
+        "id": curva.pk,
+        "nome": curva.nome,
+        "especie": curva.especie,
+        "rendimento_perc": _to_float(curva.rendimento_perc),
+        "trato_perc_curva": _to_float(curva.trato_perc_curva),
+        "peso_pretendido": _to_float(curva.peso_pretendido),
+        "trato_sabados_perc": _to_float(curva.trato_sabados_perc),
+        "trato_domingos_perc": _to_float(curva.trato_domingos_perc),
+        "trato_feriados_perc": _to_float(curva.trato_feriados_perc),
+    }
 
-        except json.JSONDecodeError:
-            message = app_messages.error('Requisição JSON inválida.')
-            return JsonResponse({'success': False, 'message': message}, status=400)
-        except Exception as e:
-            message = app_messages.error(f'Erro ao atualizar detalhe da curva: {str(e)}')
-            return JsonResponse({'success': False, 'message': message}, status=500)
+def serialize_detalhe(d: CurvaCrescimentoDetalhe) -> dict:
+    racao_nome = getattr(d.racao, "nome", str(d.racao)) if hasattr(d, "racao") and d.racao else None
+    
+    return {
+        "id": d.pk,
+        "periodo_semana": _to_float(d.periodo_semana),
+        "periodo_dias": _to_float(d.periodo_dias),
+        "peso_inicial": _to_float(d.peso_inicial),
+        "peso_final": _to_float(d.peso_final),
+        "ganho_de_peso": _to_float(d.ganho_de_peso),
+        "numero_tratos": _to_float(d.numero_tratos),
+        "hora_inicio": d.hora_inicio.strftime("%H:%M") if getattr(d, "hora_inicio", None) else None,
+        "arracoamento_biomassa_perc": _to_float(d.arracoamento_biomassa_perc),
+        "mortalidade_presumida_perc": _to_float(d.mortalidade_presumida_perc),
+        "racao": d.racao_id,
+        "racao_nome": racao_nome,
+        "gpd": _to_float(d.gpd),
+        "tca": _to_float(d.tca),
+    }
+
+# -----------------------------
+# Endpoints
+# -----------------------------
+
+@login_required_json
+@require_http_methods(["GET"])
+@permission_required('producao.view_curvacrescimento', raise_exception=True)
+def curva_com_detalhes_view(request, curva_id: int):
+    """
+    GET /producao/api/curva/<id>/detalhes/
+    """
+    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+    detalhes_qs = CurvaCrescimentoDetalhe.objects.filter(curva=curva).order_by("periodo_semana", "pk")
+    payload = {
+        "curva": serialize_curva(curva),
+        "detalhes": [serialize_detalhe(d) for d in detalhes_qs]
+    }
+    return JsonResponse(payload, status=200)
+
+@login_required_json
+@require_http_methods(["GET"])
+@permission_required('producao.view_curvacrescimento', raise_exception=True)
+def detalhe_view(request, curva_id: int, detalhe_id: int):
+    """
+    GET /producao/api/curva/<id>/detalhes/<detalhe_id>/
+    """
+    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+    detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id, curva=curva)
+    return JsonResponse(serialize_detalhe(detalhe), status=200)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.add_curvacrescimento', raise_exception=True)
+@transaction.atomic
+def curva_create_view(request):
+    """
+    POST /producao/api/curva/
+    """
+    form = CurvaCrescimentoForm(request.POST)
+    if form.is_valid():
+        curva = form.save()
+        return JsonResponse({"success": True, "id": curva.pk, "message": "Curva criada com sucesso."}, status=201)
+    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao criar curva."}, status=400)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.change_curvacrescimento', raise_exception=True)
+@transaction.atomic
+def curva_update_view(request, curva_id: int):
+    """
+    POST /producao/api/curva/<id>/
+    """
+    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+    form = CurvaCrescimentoForm(request.POST, instance=curva)
+    if form.is_valid():
+        form.save()
+        return JsonResponse({"success": True, "message": "Curva atualizada com sucesso."}, status=200)
+    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar curva."}, status=400)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.add_curvacrescimentodetalhe', raise_exception=True)
+@transaction.atomic
+def detalhe_create_view(request, curva_id: int):
+    """
+    POST /producao/api/curva/<id>/detalhes/
+    """
+    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+    form = CurvaCrescimentoDetalheForm(request.POST)
+    if form.is_valid():
+        detalhe = form.save(commit=False)
+        detalhe.curva = curva
+        detalhe.save()
+        return JsonResponse({
+            "success": True,
+            "message": "Período adicionado.",
+            "periodo": serialize_detalhe(detalhe)
+        }, status=201)
+    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao adicionar período."}, status=400)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.change_curvacrescimentodetalhe', raise_exception=True)
+@transaction.atomic
+def detalhe_update_view(request, curva_id: int, detalhe_id: int):
+    """
+    POST /producao/api/curva/<id>/detalhes/<detalhe_id>/
+    """
+    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+    detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id, curva=curva)
+    form = CurvaCrescimentoDetalheForm(request.POST, instance=detalhe)
+    if form.is_valid():
+        detalhe = form.save()
+        return JsonResponse({
+            "success": True,
+            "message": "Período atualizado.",
+            "periodo": serialize_detalhe(detalhe)
+        }, status=200)
+    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar período."}, status=400)
+

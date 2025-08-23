@@ -86,6 +86,11 @@ class CurvaCrescimento(models.Model):
     nome = models.CharField(max_length=255, unique=True, help_text="Nome único para a curva, ex: Curva Tilápia Verão 2025")
     especie = models.CharField(max_length=100, default='', help_text="Espécie do animal, ex: Tilápia")
     rendimento_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de rendimento da carcaça")
+    trato_perc_curva = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato da curva")
+    peso_pretendido = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Peso pretendido (em gramas)")
+    trato_sabados_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos sábados")
+    trato_domingos_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos domingos")
+    trato_feriados_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos feriados")
 
     class Meta:
         verbose_name = "Curva de Crescimento"

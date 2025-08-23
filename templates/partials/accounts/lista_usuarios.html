@@ -1,3 +1,4 @@
+<div class="container-fluid py-4">
 {% if perms.accounts.view_user %}
 {% load static %}
 
@@ -19,7 +20,7 @@
         <h2 class="h4 mb-4">Gerenciamento de Usuários</h2>
 
         <div class="card shadow-sm">
-          <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <a href="{% url 'accounts:criar_usuario' %}" class="btn btn-primary ajax-link">
                 <i class="bi bi-plus-lg me-1"></i> Novo Usuário
             </a>
@@ -104,3 +105,4 @@
   Você não tem permissão para acessar esta funcionalidade.
 </div>
 {% endif %}
+</div>

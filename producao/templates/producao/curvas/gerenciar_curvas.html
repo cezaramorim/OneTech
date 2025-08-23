@@ -1,0 +1,287 @@
+{% load static %}
+<div class="container-fluid" id="gerenciar-curvas"
+     data-page="gerenciar-curvas"
+     data-endpoint-curva-base="/producao/api/curva/"
+     data-endpoint-detalhe-sufixo="detalhes/">
+  <div class="row">
+    <!-- Coluna Esquerda: Lista de Curvas -->
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h5 class="card-title mb-0">Curvas de Crescimento</h5>
+          <button class="btn btn-sm btn-primary" id="btn-nova-curva" type="button"
+                  data-action="nova-curva">
+            Nova curva
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="input-group mb-3">
+            <input type="text" id="search-curva" class="form-control" placeholder="Buscar curva...">
+            <button class="btn btn-outline-secondary" type="button" data-action="buscar-curva">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+
+          <ul class="list-group list-group-flush" id="lista-curvas" role="listbox"
+              aria-label="Lista de curvas (clique para carregar)">
+            {% for curva in curvas %}
+              <li class="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                  data-id="{{ curva.pk }}" data-name="{{ curva.nome }}" role="option" tabindex="0"
+                  style="cursor:pointer">
+                <span class="texto-truncado">{{ curva.nome }}</span>
+                <i class="fas fa-chevron-right small text-muted"></i>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-muted">Nenhuma curva cadastrada.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna Direita: Formulários + Tabela -->
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" id="curva-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="cadastro-tab" data-bs-toggle="tab"
+                      data-bs-target="#cadastro" type="button" role="tab"
+                      aria-controls="cadastro" aria-selected="true">
+                Cadastro de Curva
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="ponto-crescimento-tab" data-bs-toggle="tab"
+                      data-bs-target="#ponto-crescimento" type="button" role="tab"
+                      aria-controls="ponto-crescimento" aria-selected="false" disabled>
+                Ponto de Crescimento
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="comportamento-tab" data-bs-toggle="tab"
+                      data-bs-target="#comportamento" type="button" role="tab"
+                      aria-controls="comportamento" aria-selected="false">
+                Comportamento
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card-body">
+          <div class="tab-content" id="curva-tabs-content">
+
+            <!-- Aba: Cadastro de Curva (cabeçalho) -->
+            <div class="tab-pane fade show active" id="cadastro" role="tabpanel" aria-labelledby="cadastro-tab">
+              <form id="form-curva" class="ajax-form needs-validation" novalidate
+                    data-api-url="" data-method="POST" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" id="curva-id" name="id" value="">
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label for="id_nome" class="form-label">Descrição</label>
+                    {{ form_curva.nome }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_especie" class="form-label">Espécie</label>
+                    {{ form_curva.especie }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_rendimento_perc" class="form-label">% Rend. da curva</label>
+                    {{ form_curva.rendimento_perc }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_trato_perc_curva" class="form-label">% Trato. da curva</label>
+                    {{ form_curva.trato_perc_curva }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_peso_pretendido" class="form-label">Peso Pretendido (g)</label>
+                    {{ form_curva.peso_pretendido }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label for="id_trato_sabados_perc" class="form-label">Trato aos Sábados (%)</label>
+                    {{ form_curva.trato_sabados_perc }}
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label for="id_trato_domingos_perc" class="form-label">Trato aos Domingos (%)</label>
+                    {{ form_curva.trato_domingos_perc }}
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label for="id_trato_feriados_perc" class="form-label">Trato aos Feriados (%)</label>
+                    {{ form_curva.trato_feriados_perc }}
+                  </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary" data-action="salvar-curva">
+                    Salvar
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" data-action="limpar-curva">
+                    Limpar
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Aba: Ponto de Crescimento (períodos) -->
+            <div class="tab-pane fade" id="ponto-crescimento" role="tabpanel" aria-labelledby="ponto-crescimento-tab">
+              <form id="form-ponto-crescimento" class="ajax-form needs-validation" novalidate
+                    data-api-url="" data-method="POST" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" id="detalhe-id" name="id" value="">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_periodo_semana" class="form-label">Período (Semana)</label>
+                    {{ form_detalhe.periodo_semana }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_periodo_dias" class="form-label">Período (Dias)</label>
+                    {{ form_detalhe.periodo_dias }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_peso_inicial" class="form-label">Peso Inicial (g)</label>
+                    {{ form_detalhe.peso_inicial }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_peso_final" class="form-label">Peso Final (g)</label>
+                    {{ form_detalhe.peso_final }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_ganho_de_peso" class="form-label">Ganho de Peso (g)</label>
+                    {{ form_detalhe.ganho_de_peso }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_numero_tratos" class="form-label">Nº Tratos</label>
+                    {{ form_detalhe.numero_tratos }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_hora_inicio" class="form-label">Hora Início</label>
+                    {{ form_detalhe.hora_inicio }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_arracoamento_biomassa_perc" class="form-label">% Arraç. Biomassa</label>
+                    {{ form_detalhe.arracoamento_biomassa_perc }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_mortalidade_presumida_perc" class="form-label">% Mortalidade Presumida</label>
+                    {{ form_detalhe.mortalidade_presumida_perc }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_racao" class="form-label">Ração</label>
+                    {{ form_detalhe.racao }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_gpd" class="form-label">GPD</label>
+                    {{ form_detalhe.gpd }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_tca" class="form-label">TCA</label>
+                    {{ form_detalhe.tca }}
+                  </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary" data-action="salvar-detalhe">
+                    Salvar Detalhe
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" data-action="limpar-detalhe">
+                    Limpar
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Aba: Comportamento (placeholder) -->
+            <div class="tab-pane fade" id="comportamento" role="tabpanel" aria-labelledby="comportamento-tab">
+              <div class="alert alert-info mb-0">
+                Em breve: visualizações e métricas de comportamento desta curva.
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Detalhes da Curva -->
+      <div class="card mt-4 shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h5 class="card-title mb-0">Detalhes da Curva (períodos)</h5>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">Clique numa linha para editar</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle" id="tabela-detalhes">
+              <thead>
+                <tr>
+                  <th style="min-width:110px">Período</th>
+                  <th style="min-width:110px">Peso Inicial</th>
+                  <th style="min-width:110px">Peso Final</th>
+                  <th style="min-width:120px">Ganho de Peso</th>
+                  <th style="min-width:140px">Ração</th>
+                  <th style="min-width:100px">Nº Tratos</th>
+                  <th style="min-width:90px">GPD</th>
+                  <th style="min-width:90px">TCA</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-detalhes-body">
+                <tr data-empty="true">
+                  <td colspan="8" class="text-center text-muted">
+                    Selecione uma curva para ver ou adicionar detalhes.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- área opcional de paginação/estatísticas -->
+          <div id="detalhes-footer" class="d-flex justify-content-end gap-2"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Identificador/contexto para o scripts.js -->
+  <div id="identificador-tela"
+       data-tela="gerenciar-curvas"
+       data-seletor-tabela="#tabela-detalhes-body"
+       data-form-curva="#form-curva"
+       data-form-detalhe="#form-ponto-crescimento"
+       data-tab-ponto="#ponto-crescimento-tab"
+       data-input-curva-id="#curva-id"
+       data-input-detalhe-id="#detalhe-id">
+  </div>
+</div>
+
+<style>
+  /* pequenos refinamentos visuais; mantém compatibilidade com tema claro/escuro existente */
+  #gerenciar-curvas .texto-truncado {
+    display: inline-block; max-width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #gerenciar-curvas .nav-tabs .nav-link[disabled] { opacity: .5; cursor: not-allowed; }
+</style>

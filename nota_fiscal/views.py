@@ -11,7 +11,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from common.messages_utils import get_app_messages
-from django.contrib.auth.decorators import login_required
+from accounts.utils.decorators import login_required_json
+from accounts.utils.decorators import login_required_json
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Q
@@ -79,7 +80,7 @@ def xml_to_dict(element):
 
 # --- Views Principais --- #
 
-@login_required
+@login_required_json
 @require_GET
 def importar_xml_view(request):
     """Renderiza a página de upload de XML para importação de notas fiscais."""
@@ -92,7 +93,7 @@ def importar_xml_view(request):
     return render_ajax_or_base(request, 'partials/nota_fiscal/importar_xml.html', context)
 
 
-@login_required
+@login_required_json
 @require_POST
 def importar_xml_nfe_view(request):
     """
@@ -243,7 +244,7 @@ def importar_xml_nfe_view(request):
         print(f"TRACEBACK COMPLETO:\n{full_traceback}") 
         message = app_messages.error(f'Ocorreu um erro no servidor ao processar o XML: {str(e)}')
         return JsonResponse({'success': False, 'message': message}, status=500)
-@login_required
+@login_required_json
 # @csrf_exempt REMOVIDO: `require_POST` já garante a proteção CSRF adequada para POST requests.
 @require_POST
 @transaction.atomic # Garante que todas as operações de banco de dados sejam atômicas
@@ -527,7 +528,7 @@ def _parse_datetime(dt_str, date_only=False):
 
 # --- Views de Listagem e Outras --- #
 
-@login_required
+@login_required_json
 @require_GET
 def entradas_nota_view(request):
     """Lista as notas fiscais de entrada com opção de busca e ordenação."""
@@ -567,7 +568,7 @@ def entradas_nota_view(request):
 
     return render(request, 'base.html', context)
 
-@login_required
+@login_required_json
 @require_GET
 def lancar_nota_manual_view(request):
     """
@@ -596,7 +597,7 @@ def lancar_nota_manual_view(request):
 
 # Substitua a sua função editar_nota_view por esta:
 
-@login_required
+@login_required_json
 @require_http_methods(["GET", "POST"] )
 @transaction.atomic
 def editar_nota_view(request, pk):
@@ -650,7 +651,7 @@ def editar_nota_view(request, pk):
     # Para acesso direto via URL ou em caso de erro no POST, renderiza a página completa.
     return render(request, 'base.html', context)
 
-@login_required
+@login_required_json
 @require_POST
 @transaction.atomic
 def excluir_notas_multiplo_view(request):

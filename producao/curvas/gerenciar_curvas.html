@@ -1,0 +1,47 @@
+{% load static %}
+
+<div id="identificador-tela" data-tela="gerenciar_curvas" data-page="gerenciar_curvas"></div>
+
+<div class="container-fluid py-5">
+    <div class="card shadow-lg border-0 p-4 text-center mb-4">
+        <h2>Gerenciamento de Curvas de Crescimento</h2>
+        <p>Selecione uma curva na lista para visualizar e gerenciar seus detalhes.</p>
+    </div>
+
+    <div class="row">
+        <!-- Coluna da Lista de Curvas -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Curvas Disponíveis</h5>
+                </div>
+                <ul class="list-group list-group-flush" id="lista-curvas">
+                    {% for curva in curvas %}
+                        <li class="list-group-item list-group-item-action" data-curva-id="{{ curva.pk }}">
+                            {{ curva.nome }} ({{ curva.especie }})
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">Nenhuma curva cadastrada.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Coluna de Detalhes da Curva -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0" id="detalhe-curva-titulo">Detalhes da Curva</h5>
+                </div>
+                <div class="card-body" id="detalhe-curva-conteudo">
+                    <p class="text-muted">Selecione uma curva na lista ao lado para ver seus detalhes aqui.</p>
+                    <!-- Conteúdo dos detalhes da curva será carregado aqui via AJAX -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/producao/gerenciar_curvas.js' %}"></script>
+{% endblock %}

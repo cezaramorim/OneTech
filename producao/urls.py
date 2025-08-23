@@ -58,6 +58,17 @@ urlpatterns = [
     path('curvas/download-template/', views.download_template_curva_view, name='download_template_curva'),
     path('curvas/<int:pk>/detalhe/', views.DetalheCurvaView.as_view(), name='detalhe_curva'),
 
+    # Gerenciador de Curvas Interativo
+    path('gerenciar-curvas/', views.gerenciar_curvas, name='gerenciar_curvas'),
+
+    # --- API JSON para o Gerenciador de Curvas ---
+    path('api/curva/', views.curva_create_view, name='api_curva_create'),
+    path('api/curva/<int:curva_id>/', views.curva_update_view, name='api_curva_update'),
+    path('api/curva/<int:curva_id>/detalhes/', views.curva_com_detalhes_view, name='api_curva_com_detalhes'),
+    path('api/curva/<int:curva_id>/detalhes/criar/', views.detalhe_create_view, name='api_detalhe_create'),
+    path('api/curva/<int:curva_id>/detalhes/<int:detalhe_id>/', views.detalhe_view, name='api_detalhe_get'),
+    path('api/curva/<int:curva_id>/detalhes/<int:detalhe_id>/atualizar/', views.detalhe_update_view, name='api_detalhe_update'),
+
     # Lotes
     path('lotes/', views.ListaLotesView.as_view(), name='lista_lotes'),
     path('lotes/cadastrar/', views.CadastrarLoteView.as_view(), name='cadastrar_lote'),
@@ -75,7 +86,4 @@ urlpatterns = [
     path('alimentacao/registrar/', views.RegistrarAlimentacaoView.as_view(), name='registrar_alimentacao'),
     path('alimentacao/<int:pk>/editar/', views.EditarAlimentacaoView.as_view(), name='editar_alimentacao'),
     path('alimentacao/excluir-multipla/', views.ExcluirAlimentacaoMultiplaView.as_view(), name='excluir_alimentacao_multipla'),
-
-    # API para Edição Interativa de Detalhes da Curva
-    path('api/curvas/detalhe/atualizar/', views.AtualizarDetalheCurvaAPIView.as_view(), name='api_atualizar_detalhe_curva'),
 ]

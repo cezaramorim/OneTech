@@ -4,7 +4,7 @@
 <div id="identificador-tela" data-tela="gerenciar_permissoes" class="d-none"></div>
 <div class="container-fluid py-4" data-page="{{ data_page }}">
     <div class="card shadow-lg border-0">
-        <div class="card-header p-3 bg-light border-bottom">
+        <div class="card-header p-3 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Gerenciar Permissões - {{ tipo_entidade }}: <strong>{% if tipo_entidade == 'Grupo' %}{{ entidade.name }}{% else %}{{ entidade.get_full_name|default:entidade.username }}{% endif %}</strong></h5>
                 <a href="{% if tipo_entidade == 'Grupo' %}{% url 'accounts:lista_grupos' %}{% else %}{% url 'accounts:lista_usuarios' %}{% endif %}" class="btn btn-outline-secondary btn-sm ajax-link">

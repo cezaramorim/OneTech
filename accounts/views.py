@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import user_passes_test, permission_required
+from accounts.utils.decorators import login_required_json
 from django.contrib.auth.models import Permission, Group, User
 from django.http import JsonResponse
 from django.contrib import messages
@@ -78,7 +79,7 @@ def login_view(request):
 
 
 
-@login_required
+@login_required_json
 def logout_view(request):
     # A verificação do método é importante para segurança
     if request.method == 'POST':
@@ -97,7 +98,7 @@ def logout_view(request):
     # Se não for POST, apenas redireciona para a página de login
     return redirect('accounts:login')
 
-@login_required
+@login_required_json
 def edit_profile_view(request):
     app_messages = get_app_messages(request)
     form = EditUserForm(request.POST or None, instance=request.user, request_user=request.user)
@@ -109,8 +110,8 @@ def edit_profile_view(request):
     context = {'form': form} if 'partials' in template else {'form': form, 'content_template': 'partials/accounts/edit_profile.html'}
     return render(request, template, context)
 
-@login_required
-@user_passes_test(is_super_or_group_admin)
+@login_required_json
+@permission_required('accounts.add_user', raise_exception=True)
 def criar_usuario(request):
     app_messages = get_app_messages(request)
     form = SignUpForm(request.POST or None)
@@ -150,7 +151,7 @@ def criar_usuario(request):
     })
 
 
-@login_required
+@login_required_json
 def lista_usuarios(request):
     usuarios = User.objects.all()
     template = 'partials/accounts/lista_usuarios.html' if request.headers.get('x-requested-with') == 'XMLHttpRequest' else 'base.html'
@@ -165,7 +166,7 @@ def lista_usuarios(request):
     return render(request, template, context)
 
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def editar_usuario(request, usuario_id):
     app_messages = get_app_messages(request)
@@ -214,7 +215,7 @@ def editar_usuario(request, usuario_id):
 
 import json
 
-@login_required
+@login_required_json
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_usuario_multiplo(request):
@@ -282,7 +283,7 @@ def _get_permissoes_context():
         
     return permissoes_agrupadas
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_grupo(request, group_id):
     app_messages = get_app_messages(request)
@@ -316,7 +317,7 @@ def gerenciar_permissoes_grupo(request, group_id):
     }
     return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes.html', context)
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_usuario(request, user_id):
     app_messages = get_app_messages(request)
@@ -353,7 +354,7 @@ def gerenciar_permissoes_usuario(request, user_id):
 
 
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def lista_grupos(request):
     grupos = Group.objects.prefetch_related('profile').all()
@@ -363,7 +364,7 @@ def lista_grupos(request):
         {'grupos': grupos}
     )
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def cadastrar_grupo(request):
     app_messages = get_app_messages(request)
@@ -388,7 +389,7 @@ def cadastrar_grupo(request):
         form = GroupForm()
     return render_ajax_or_base(request, 'partials/accounts/cadastrar_grupo.html', {'form': form})
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def editar_grupo(request, grupo_id):
     app_messages = get_app_messages(request)
@@ -420,13 +421,13 @@ def editar_grupo(request, grupo_id):
 
     return render_ajax_or_base(request, 'partials/accounts/editar_grupo.html', {'form': form, 'grupo': grupo})
 
-@login_required
+@login_required_json
 @user_passes_test(is_super_or_group_admin)
 def confirmar_exclusao_grupo(request, grupo_id):
     grupo = get_object_or_404(Group, id=grupo_id)
     return render_ajax_or_base(request, 'partials/accounts/confirmar_exclusao_grupo.html', {'grupo': grupo, 'data_tela': 'confirmar_exclusao_grupo'})
 
-@login_required
+@login_required_json
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo(request, grupo_id):
@@ -438,7 +439,7 @@ def excluir_grupo(request, grupo_id):
     app_messages.success_deleted("grupo", grupo.name)
     return redirect('accounts:lista_grupos')
 
-@login_required
+@login_required_json
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo_multiplo(request):
@@ -561,6 +562,7 @@ class CustomPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
     def render_to_response(self, context, **response_kwargs):
         return render_ajax_or_base(self.request, self.template_name, context)
 
+@login_required_json
 def get_navbar_content(request):
     context = dynamic_menu(request)
     print(f"DEBUG: Contexto do navbar: {context}")

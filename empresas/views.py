@@ -4,7 +4,8 @@ from django.contrib import messages
 from common.messages_utils import get_app_messages
 from .forms import EmpresaForm, CategoriaEmpresaForm
 from .models import Empresa, CategoriaEmpresa
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import permission_required
+from accounts.utils.decorators import login_required_json
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
 from common.utils import render_ajax_or_base
@@ -36,7 +37,7 @@ from .models import EmpresaAvancada
 
 # === Categorias ===
 
-@login_required
+@login_required_json
 @permission_required('empresas.view_categoriaempresa', raise_exception=True)
 def lista_categorias_view(request):
     categorias = CategoriaEmpresa.objects.all().order_by('nome')
@@ -45,7 +46,7 @@ def lista_categorias_view(request):
     })
 
 
-@login_required
+@login_required_json
 @permission_required('empresas.add_categoriaempresa', raise_exception=True)
 def categoria_form_view(request, pk=None):
     app_messages = get_app_messages(request)
@@ -83,7 +84,7 @@ def categoria_form_view(request, pk=None):
 
 
 @require_POST
-@login_required
+@login_required_json
 @permission_required('empresas.delete_categoriaempresa', raise_exception=True)
 def excluir_categorias_view(request):
     app_messages = get_app_messages(request)
@@ -108,7 +109,7 @@ def excluir_categorias_view(request):
 
 
 # === Nova Empresa (Unificada: Cadastro e Edição) ===
-@login_required
+@login_required_json
 @permission_required('empresas.add_empresaavancada', raise_exception=True)
 def empresa_avancada_form_view(request, pk=None):
     app_messages = get_app_messages(request)
@@ -171,7 +172,7 @@ def empresa_avancada_form_view(request, pk=None):
 
 #from empresas.forms import EmpresaAvancadaFiltroForm  # Form opcional para organizar filtros
 
-@login_required
+@login_required_json
 def lista_empresas_avancadas_view(request):
     """
     View que lista empresas avançadas com suporte a:
@@ -221,6 +222,7 @@ def lista_empresas_avancadas_view(request):
 
 
 
+@login_required_json
 @csrf_exempt
 @require_POST
 def atualizar_status_empresa_avancada(request, pk):
@@ -238,7 +240,7 @@ def atualizar_status_empresa_avancada(request, pk):
 
 
 @require_POST
-@login_required
+@login_required_json
 @permission_required('empresas.delete_empresaavancada', raise_exception=True)
 def excluir_empresas_avancadas_view(request):
     app_messages = get_app_messages(request)
