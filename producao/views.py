@@ -11,6 +11,7 @@ from io import BytesIO
 from datetime import time
 from django.contrib.auth.decorators import login_required, permission_required
 from accounts.utils.decorators import login_required_json
+from django.views.decorators.http import require_http_methods # Added import
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
@@ -734,6 +735,87 @@ class ExcluirAlimentacaoMultiplaView(BulkDeleteView):
     permission_required = 'producao.delete_alimentacaodiaria'
     success_url_name = 'producao:lista_alimentacao'
 
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import TanqueSerializer # Import the serializer
+
+# =========================================================================
+# API Views para Gerenciamento de Tanques (JSON)
+# =========================================================================
+
+@login_required_json
+@require_http_methods(["GET"])
+@permission_required('producao.view_tanque', raise_exception=True)
+def tanque_detail_api_view(request, pk: int):
+    """
+    GET /producao/api/tanque/<id>/
+    Retorna os detalhes de um tanque específico.
+    """
+    tanque = get_object_or_404(Tanque, pk=pk)
+    serializer = TanqueSerializer(tanque)
+    return JsonResponse(serializer.data, status=200)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.add_tanque', raise_exception=True)
+@transaction.atomic
+def tanque_create_api_view(request):
+    """
+    POST /producao/api/tanque/
+    Cria um novo tanque.
+    """
+    serializer = TanqueSerializer(data=request.POST)
+    if serializer.is_valid():
+        tanque = serializer.save()
+        return JsonResponse({
+            "success": True,
+            "id": tanque.pk,
+            "message": "Tanque criado com sucesso."
+        }, status=201)
+    return JsonResponse({
+        "success": False,
+        "errors": serializer.errors,
+        "message": "Erro ao criar tanque."
+    }, status=400)
+
+@login_required_json
+@require_http_methods(["POST"])
+@permission_required('producao.change_tanque', raise_exception=True)
+@transaction.atomic
+def tanque_update_api_view(request, pk: int):
+    """
+    POST /producao/api/tanque/<id>/
+    Atualiza um tanque existente.
+    """
+    tanque = get_object_or_404(Tanque, pk=pk)
+    serializer = TanqueSerializer(tanque, data=request.POST, partial=True) # partial=True allows partial updates
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({
+            "success": True,
+            "message": "Tanque atualizado com sucesso."
+        }, status=200)
+    return JsonResponse({
+        "success": False,
+        "errors": serializer.errors,
+        "message": "Erro ao atualizar tanque."
+    }, status=400)
+
+@login_required
+@permission_required('producao.view_tanque', raise_exception=True)
+def gerenciar_tanques_view(request):
+    """
+    Renderiza a página principal de gerenciamento de tanques.
+    """
+    context = {
+        'tanques': Tanque.objects.all().order_by('nome'),
+        'form_tanque': TanqueForm(),
+        'data_page': 'gerenciar-tanques',
+        'data_tela': 'gerenciar_tanques',
+    }
+    return render_ajax_or_base(request, 'producao/gerenciar_tanques.html', context)
 
 from django.views.decorators.http import require_http_methods
 

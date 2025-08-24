@@ -49,16 +49,41 @@ class AtividadeForm(forms.ModelForm):
 
 # --- Formulário Principal de Tanque ---
 
+ATIVO_CHOICES = [
+    (True, 'Sim'),
+    (False, 'Não'),
+]
+
 class TanqueForm(forms.ModelForm):
+    ativo = forms.ChoiceField(
+        choices=ATIVO_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Ativo"
+    )
+
     class Meta:
         model = Tanque
         fields = [ # Lista explícita para melhor controle da ordem
-            'nome', 'tag_tanque', 'ativo',
-            'unidade', 'linha_producao', 'fase', 'tipo_tanque', 
+            'nome', 'tag_tanque',
+            'unidade', 'linha_producao', 'fase', 'tipo_tanque',
             'status_tanque', 'sequencia',
-            'largura', 'comprimento', 'profundidade', 
-            'malha', 'tipo_tela',
+            'largura', 'comprimento', 'profundidade',
+            'malha', 'tipo_tela', 'ativo', # 'ativo' moved to explicit field
         ]
+        widgets = {
+            'largura': forms.TextInput(attrs={
+                'class': 'form-control',
+                'inputmode': 'decimal',
+            }),
+            'comprimento': forms.TextInput(attrs={
+                'class': 'form-control',
+                'inputmode': 'decimal',
+            }),
+            'profundidade': forms.TextInput(attrs={
+                'class': 'form-control',
+                'inputmode': 'decimal',
+            }),
+        }
 
 # --- Formulário de Importação ---
 

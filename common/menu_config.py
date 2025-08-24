@@ -35,7 +35,7 @@ MENU_ITEMS = [
         'name': 'Produção',
         'icon': '🐟',
         'children': [
-            {'name': 'Cadastrar Tanque', 'url_name': 'producao:cadastrar_tanque', 'required_perms': ['producao.add_tanque']},
+            {'name': 'Gerenciar Tanques', 'url_name': 'producao:gerenciar_tanques', 'required_perms': ['producao.view_tanque']},
             {'name': 'Lista de Tanques', 'url_name': 'producao:lista_tanques', 'required_perms': ['producao.view_tanque']},
             {'name': 'Importar Curva', 'url_name': 'producao:importar_curva', 'required_perms': ['producao.add_curva']},
             {'name': 'Cadastrar Curva', 'url_name': 'producao:cadastrar_curva', 'required_perms': ['producao.add_curva']},
