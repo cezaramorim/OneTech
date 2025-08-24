@@ -12,6 +12,7 @@ from datetime import time
 from django.contrib.auth.decorators import login_required, permission_required
 from accounts.utils.decorators import login_required_json
 from django.views.decorators.http import require_http_methods # Added import
+from .serializers import TanqueSerializer # Import the serializer
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
@@ -329,9 +330,13 @@ def importar_tanques_view(request):
                 # Normaliza nomes das colunas
                 df.columns = [c.strip().lower() for c in df.columns]
                 
-                required_cols = ['nome', 'unidade', 'linha_producao', 'fase', 'tipo_tanque', 'status_tanque']
+                required_cols = ['nome', 'unidade', 'linha_producao', 'fase', 'tipo_tanque', 'status_tanque', 'malha']
                 if not all(col in df.columns for col in required_cols):
                     raise ValueError("Colunas obrigatórias não encontradas. Verifique o template.")
+
+                # Contadores para a mensagem de sucesso
+                created_count = 0
+                updated_count = 0
 
                 with transaction.atomic():
                     for index, row in df.iterrows():
@@ -341,24 +346,51 @@ def importar_tanques_view(request):
                         fase, _ = FaseProducao.objects.get_or_create(nome__iexact=row['fase'], defaults={'nome': row['fase']})
                         tipo, _ = TipoTanque.objects.get_or_create(nome__iexact=row['tipo_tanque'], defaults={'nome': row['tipo_tanque']})
                         status, _ = StatusTanque.objects.get_or_create(nome__iexact=row['status_tanque'], defaults={'nome': row['status_tanque']})
-                        
-                        # Cria o tanque
-                        Tanque.objects.create(
-                            nome=row['nome'],
-                            unidade=unidade,
-                            linha_producao=linha,
-                            fase=fase,
-                            tipo_tanque=tipo,
-                            status_tanque=status,
-                            largura=row.get('largura', 0),
-                            comprimento=row.get('comprimento', 0),
-                            profundidade=row.get('profundidade', 0),
-                            sequencia=row.get('sequencia', 0),
-                            tag_tanque=row.get('tag_tanque', ''),
-                            # Adicione outros campos opcionais aqui
+                        malha, _ = Malha.objects.get_or_create(nome__iexact=row['malha'], defaults={'nome': row['malha']})
+
+                        # Calcula campos dimensionais
+                        largura_val = _to_decimal(row.get('largura', None))
+                        comprimento_val = _to_decimal(row.get('comprimento', None))
+                        profundidade_val = _to_decimal(row.get('profundidade', None))
+
+                        mq = None
+                        mc = None
+                        ha = None
+
+                        if largura_val is not None and comprimento_val is not None:
+                            mq = largura_val * comprimento_val
+                        if mq is not None and profundidade_val is not None:
+                            mc = mq * profundidade_val
+                        if mq is not None:
+                            ha = mq / Decimal("10000")
+
+                        # Atualiza ou cria o tanque
+                        tanque, created = Tanque.objects.update_or_create(
+                            nome=row['nome'], # Campo de busca
+                            defaults={
+                                'unidade': unidade,
+                                'linha_producao': linha,
+                                'fase': fase,
+                                'tipo_tanque': tipo,
+                                'status_tanque': status,
+                                'largura': _to_decimal(row.get('largura', None)),
+                                'comprimento': _to_decimal(row.get('comprimento', None)),
+                                'profundidade': _to_decimal(row.get('profundidade', None)),
+                                'sequencia': row.get('sequencia', 0),
+                                'tag_tanque': str(row.get('tag_tanque', '')).strip() if pd.notna(row.get('tag_tanque', '')) else '',
+                                'malha': malha,
+                                'metro_quadrado': mq,
+                                'metro_cubico': mc,
+                                'ha': ha,
+                                # Adicione outros campos opcionais aqui
+                            }
                         )
-                
-                message = app_messages.success_imported(None, source_type="Excel", count=len(df))
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                message = f"Importação concluída: {created_count} tanques criados, {updated_count} tanques atualizados."
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'success': True, 'message': message, 'redirect_url': redirect_url})
                 return redirect(redirect_url)
@@ -378,8 +410,8 @@ def importar_tanques_view(request):
 @permission_required('producao.view_tanque', raise_exception=True)
 def download_template_tanque_view(request):
     headers = [
-        'nome', 'tag_tanque', 'unidade', 'linha_producao', 'fase', 'tipo_tanque', 
-        'status_tanque', 'largura', 'comprimento', 'profundidade', 'altura', 'sequencia'
+        'nome', 'largura', 'profundidade', 'comprimento', 'unidade', 'fase',
+        'tipo_tanque', 'linha_producao', 'sequencia', 'malha', 'status_tanque', 'tag_tanque'
     ]
     df = pd.DataFrame(columns=headers)
     output = BytesIO()
@@ -736,72 +768,106 @@ class ExcluirAlimentacaoMultiplaView(BulkDeleteView):
     success_url_name = 'producao:lista_alimentacao'
 
 
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from .serializers import TanqueSerializer # Import the serializer
+from django.forms.models import model_to_dict
+from decimal import Decimal
 
-# =========================================================================
-# API Views para Gerenciamento de Tanques (JSON)
-# =========================================================================
+def _to_decimal(s):
+    if s is None: return None
+    s = str(s).strip().replace('.', '').replace(',', '.')
+    try: return Decimal(s)
+    except: return None
 
 @login_required_json
 @require_http_methods(["GET"])
-@permission_required('producao.view_tanque', raise_exception=True)
-def tanque_detail_api_view(request, pk: int):
-    """
-    GET /producao/api/tanque/<id>/
-    Retorna os detalhes de um tanque específico.
-    """
-    tanque = get_object_or_404(Tanque, pk=pk)
-    serializer = TanqueSerializer(tanque)
-    return JsonResponse(serializer.data, status=200)
+def tanque_detail(request, pk):
+    obj = get_object_or_404(Tanque, pk=pk)
+    d = model_to_dict(obj)
+    # normaliza formatos para o front
+    d["data_criacao"] = obj.data_criacao.strftime("%Y-%m-%d %H:%M:%S") if obj.data_criacao else ""
+    # garante numéricos como float
+    for f in ("largura","comprimento","profundidade","metro_quadrado","metro_cubico","ha"):
+        if f in d and d[f] is not None:
+            d[f] = float(d[f])
+    return JsonResponse(d, safe=False)
 
 @login_required_json
 @require_http_methods(["POST"])
-@permission_required('producao.add_tanque', raise_exception=True)
-@transaction.atomic
-def tanque_create_api_view(request):
-    """
-    POST /producao/api/tanque/
-    Cria um novo tanque.
-    """
-    serializer = TanqueSerializer(data=request.POST)
-    if serializer.is_valid():
-        tanque = serializer.save()
-        return JsonResponse({
-            "success": True,
-            "id": tanque.pk,
-            "message": "Tanque criado com sucesso."
-        }, status=201)
-    return JsonResponse({
-        "success": False,
-        "errors": serializer.errors,
-        "message": "Erro ao criar tanque."
-    }, status=400)
+def tanque_update(request, pk):
+    obj = get_object_or_404(Tanque, pk=pk)
+
+    obj.nome = request.POST.get("nome","")
+    obj.sequencia = request.POST.get("sequencia") or None
+    obj.tag_tanque = request.POST.get("tag_tanque") or ""
+
+    obj.largura = _to_decimal(request.POST.get("largura"))
+    obj.comprimento = _to_decimal(request.POST.get("comprimento"))
+    obj.profundidade = _to_decimal(request.POST.get("profundidade"))
+
+    # calculados (se vierem, usa; senão recalcula)
+    mq = _to_decimal(request.POST.get("metro_quadrado"))
+    mc = _to_decimal(request.POST.get("metro_cubico"))
+    ha = _to_decimal(request.POST.get("ha"))
+    if mq is None and obj.largura and obj.comprimento:
+        mq = obj.largura * obj.comprimento
+    if mc is None and mq is not None and obj.profundidade:
+        mc = mq * obj.profundidade
+    if ha is None and mq is not None:
+        ha = mq / Decimal("10000")
+    obj.metro_quadrado = mq
+    obj.metro_cubico = mc
+    obj.ha = ha
+
+    # FKs por *_id
+    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque"):
+        v = request.POST.get(f"{campo}")
+        if v: setattr(obj, f"{campo}_id", int(v))
+
+    ativo = request.POST.get("ativo")
+    if ativo is not None:
+        obj.ativo = ativo in ("1","true","True","on","True")
+
+    obj.save()
+    return JsonResponse({"success": True, "message": "Tanque atualizado com sucesso.", "id": obj.id})
 
 @login_required_json
 @require_http_methods(["POST"])
-@permission_required('producao.change_tanque', raise_exception=True)
-@transaction.atomic
-def tanque_update_api_view(request, pk: int):
-    """
-    POST /producao/api/tanque/<id>/
-    Atualiza um tanque existente.
-    """
-    tanque = get_object_or_404(Tanque, pk=pk)
-    serializer = TanqueSerializer(tanque, data=request.POST, partial=True) # partial=True allows partial updates
-    if serializer.is_valid():
-        serializer.save()
-        return JsonResponse({
-            "success": True,
-            "message": "Tanque atualizado com sucesso."
-        }, status=200)
-    return JsonResponse({
-        "success": False,
-        "errors": serializer.errors,
-        "message": "Erro ao atualizar tanque."
-    }, status=400)
+def tanque_create(request):
+    # reusa a lógica do update mudando a criação
+    novo = Tanque()
+    # preenche igual ao update (pode extrair para função comum se preferir)...
+    novo.nome = request.POST.get("nome","")
+    novo.sequencia = request.POST.get("sequencia") or None
+    novo.tag_tanque = request.POST.get("tag_tanque") or ""
+
+    novo.largura = _to_decimal(request.POST.get("largura"))
+    novo.comprimento = _to_decimal(request.POST.get("comprimento"))
+    novo.profundidade = _to_decimal(request.POST.get("profundidade"))
+
+    # calculados (se vierem, usa; senão recalcula)
+    mq = _to_decimal(request.POST.get("metro_quadrado"))
+    mc = _to_decimal(request.POST.get("metro_cubico"))
+    ha = _to_decimal(request.POST.get("ha"))
+    if mq is None and novo.largura and novo.comprimento:
+        mq = novo.largura * novo.comprimento
+    if mc is None and mq is not None and novo.profundidade:
+        mc = mq * novo.profundidade
+    if ha is None and mq is not None:
+        ha = mq / Decimal("10000")
+    novo.metro_quadrado = mq
+    novo.metro_cubico = mc
+    novo.ha = ha
+
+    # FKs por *_id
+    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque"):
+        v = request.POST.get(f"{campo}")
+        if v: setattr(novo, f"{campo}_id", int(v))
+
+    ativo = request.POST.get("ativo")
+    if ativo is not None:
+        novo.ativo = ativo in ("1","true","True","on","True")
+
+    novo.save()
+    return JsonResponse({"success": True, "message": "Tanque criado com sucesso.", "id": novo.id})
 
 @login_required
 @permission_required('producao.view_tanque', raise_exception=True)
@@ -926,8 +992,12 @@ def curva_create_view(request):
     form = CurvaCrescimentoForm(request.POST)
     if form.is_valid():
         curva = form.save()
-        return JsonResponse({"success": True, "id": curva.pk, "message": "Curva criada com sucesso."}, status=201)
-    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao criar curva."}, status=400)
+        app_messages = get_app_messages(request)
+        message = app_messages.success_created(curva)
+        return JsonResponse({"success": True, "id": curva.pk, "message": message, "curva_nome": curva.nome, "curva_especie": curva.especie}, status=201)
+    app_messages = get_app_messages(request)
+    message = app_messages.error("Erro ao criar curva.")
+    return JsonResponse({"success": False, "errors": form.errors, "message": message}, status=400)
 
 @login_required_json
 @require_http_methods(["POST"])
@@ -940,9 +1010,13 @@ def curva_update_view(request, curva_id: int):
     curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
     form = CurvaCrescimentoForm(request.POST, instance=curva)
     if form.is_valid():
-        form.save()
-        return JsonResponse({"success": True, "message": "Curva atualizada com sucesso."}, status=200)
-    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar curva."}, status=400)
+        curva = form.save()
+        app_messages = get_app_messages(request)
+        message = app_messages.success_updated(curva)
+        return JsonResponse({"success": True, "message": message, "curva_nome": curva.nome, "curva_especie": curva.especie}, status=200)
+    app_messages = get_app_messages(request)
+    message = app_messages.error("Erro ao atualizar curva.")
+    return JsonResponse({"success": False, "errors": form.errors, "message": message}, status=400)
 
 @login_required_json
 @require_http_methods(["POST"])

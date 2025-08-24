@@ -68,7 +68,7 @@ class TanqueForm(forms.ModelForm):
             'unidade', 'linha_producao', 'fase', 'tipo_tanque',
             'status_tanque', 'sequencia',
             'largura', 'comprimento', 'profundidade',
-            'malha', 'tipo_tela', 'ativo', # 'ativo' moved to explicit field
+            'malha', 'ativo', # 'ativo' moved to explicit field
         ]
         widgets = {
             'largura': forms.TextInput(attrs={

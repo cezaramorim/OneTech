@@ -73,9 +73,9 @@ urlpatterns = [
     path('gerenciar-tanques/', views.gerenciar_tanques_view, name='gerenciar_tanques'),
 
     # --- API JSON para o Gerenciador de Tanques ---
-    path('api/tanque/', views.tanque_create_api_view, name='api_tanque_create'),
-    path('api/tanque/<int:pk>/', views.tanque_detail_api_view, name='api_tanque_detail'),
-    path('api/tanque/<int:pk>/atualizar/', views.tanque_update_api_view, name='api_tanque_update'),
+    path('api/tanques/<int:pk>/', views.tanque_detail, name='api_tanque_detail'),
+    path('api/tanques/<int:pk>/atualizar/', views.tanque_update, name='api_tanque_update'),
+    path('api/tanques/', views.tanque_create, name='api_tanque_create'),
 
     # Lotes
     path('lotes/', views.ListaLotesView.as_view(), name='lista_lotes'),

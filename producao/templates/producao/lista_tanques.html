@@ -1,0 +1,35 @@
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>ID</th><th>nome</th><th>Data Criação</th>
+      <th>largura</th><th>profundidade</th><th>comprimento</th>
+      <th>m³</th><th>m²</th><th>Ha</th>
+      <th>unidade</th><th>fase</th><th>tipo_tanque</th>
+      <th>linha_producao</th><th>sequencia</th><th>Malha</th>
+      <th>status_tanque</th><th>tag_tanque</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tanques %}
+    <tr>
+      <td>{{ t.id }}</td>
+      <td>{{ t.nome }}</td>
+      <td>{{ t.data_criacao|date:"d/m/Y H:i" }}</td>
+      <td>{{ t.largura }}</td>
+      <td>{{ t.profundidade }}</td>
+      <td>{{ t.comprimento }}</td>
+      <td>{{ t.metro_cubico }}</td>
+      <td>{{ t.metro_quadrado }}</td>
+      <td>{{ t.ha }}</td>
+      <td>{{ t.unidade }}</td>
+      <td>{{ t.fase }}</td>
+      <td>{{ t.tipo_tanque }}</td>
+      <td>{{ t.linha_producao }}</td>
+      <td>{{ t.sequencia }}</td>
+      <td>{{ t.malha }}</td>
+      <td>{{ t.status_tanque }}</td>
+      <td>{{ t.tag_tanque }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -60,9 +60,20 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 message = app_messages.error('Nenhum item selecionado para exclusão.')
                 return JsonResponse({'success': False, 'message': message}, status=400)
 
-            deleted_count, _ = self.model.objects.filter(pk__in=ids).delete()
-            
-            message = app_messages.success_deleted(self.model._meta.verbose_name_plural, f"{deleted_count} selecionado(s)")
+            # Recupera os nomes dos objetos antes de excluí-los
+            objects_to_delete = self.model.objects.filter(pk__in=ids)
+            deleted_names = [str(obj) for obj in objects_to_delete] # Converte para string para pegar o __str__ do modelo
+
+            deleted_count, _ = objects_to_delete.delete()
+
+            if deleted_count > 0:
+                if len(deleted_names) == 1:
+                    message_detail = f"'{deleted_names[0]}'"
+                else:
+                    message_detail = f"'{', '.join(deleted_names)}'"
+                message = app_messages.success_deleted(self.model._meta.verbose_name_plural, message_detail)
+            else:
+                message = app_messages.error('Nenhum item foi excluído.') # Caso não encontre nenhum para excluir
             
             return JsonResponse({
                 'success': True, 

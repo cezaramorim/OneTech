@@ -20,6 +20,44 @@ if (navbarInicial) {
 
 // --- Funções de Utilidade Global ---
 
+// Detecta separador decimal e devolve Number seguro (aceita “1.234,56” e “1,234.56”)
+function toNumLocale(v) {
+  if (v == null) return 0;
+  v = String(v).trim();
+  if (!v) return 0;
+  v = v.replace(/[^\d,.\-]/g, '');
+  const lastComma = v.lastIndexOf(',');
+  const lastDot   = v.lastIndexOf('.');
+  let decSep = null;
+  if (lastComma === -1 && lastDot === -1) decSep = null;
+  else if (lastComma > lastDot) decSep = ',';
+  else decSep = '.';
+  if (decSep) {
+    const thouSep = decSep === ',' ? '.' : ',';
+    v = v.split(thouSep).join('');
+    v = v.replace(decSep, '.');
+  }
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Formata sempre com vírgula para a UI
+function formatBR(n, dec) {
+  const v = (Number.isFinite(n) ? n : 0).toFixed(dec ?? 2);
+  return v.replace('.', ',');
+}
+
+function parseSqlDatetime(s) {
+  if (!s) return null;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0));
+}
+function formatDateTimeBRsql(s) {
+  const d = parseSqlDatetime(s);
+  return d && !isNaN(d) ? d.toLocaleString('pt-BR') : (s || '');
+}
+
 function getCSRFToken() {
     const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
     return cookie ? cookie.split('=')[1] : '';
@@ -30,7 +68,7 @@ const LOGIN_URL = document.body?.dataset?.loginUrl || '/accounts/login/';
 
 // fetch com cookies + cabeçalhos padrão (AJAX)
 function fetchWithCreds(url, options = {}) {
-  const opts = { credentials: 'same-origin', ...options };
+  const opts = { credentials: 'include', ...options }; // Ensure credentials: 'include'
   const headers = new Headers(opts.headers || {});
   if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
   if ((opts.method || 'GET').toUpperCase() !== 'GET' && !headers.has('X-CSRFToken')) {
@@ -525,7 +563,7 @@ function initGerenciarCurvas() {
       if (!resp.ok) throw new Error('Falha ao carregar a curva.');
       const data = await resp.json();
       popularTelaComCurva(data);
-      toast('success', 'Curva carregada.');
+      toast('success', `Curva '${data.curva.nome}' carregada.`);
     } catch (err) {
       toast('danger', err.message || 'Erro ao carregar a curva.');
       limparTabela();
@@ -564,11 +602,38 @@ function initGerenciarCurvas() {
       const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
       const data = await toJSONorText(resp);
       if (!resp.ok || (data && data.success === false)) throw new Error((data && (data.message || data.error)) || 'Erro ao salvar a curva.');
-      if (isNovo) {
+      if (isNovo) { // Branch for new curve creation
         const novoId = (data && (data.id || data.curva_id || data.pk)) || null;
-        if (!novoId) toast('warning', 'Curva criada, mas não recebi o ID. Recarregue a lista se necessário.');
-        else { inputCurvaId.value = String(novoId); habilitarAbaPonto(true); toast('success', 'Curva criada. Agora adicione os períodos.'); }
-      } else toast('success', (data && data.message) || 'Cabeçalho da curva salvo.');
+        if (!novoId) { // If ID not received
+          toast('warning', 'Curva criada, mas não recebi o ID. Recarregue a lista se necessário.');
+        } else { // If ID received, add to list
+          inputCurvaId.value = String(novoId);
+          habilitarAbaPonto(true);
+          toast('success', 'Curva criada. Agora adicione os períodos.');
+
+          // Adiciona o novo item à lista lateral
+          const li = document.createElement('li');
+          li.className =
+            'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
+          li.dataset.id = String(novoId);
+          li.dataset.name = data.curva_nome || 'Sem nome';
+          li.style.cursor = 'pointer';
+          li.innerHTML =
+            `<span class="texto-truncado">${li.dataset.name}</span>` +
+            `<i class="fas fa-chevron-right small text-muted"></i>`;
+          document.querySelector('#lista-curvas')?.appendChild(li);
+        }
+      } else { // This is the ELSE branch for if (isNovo) - meaning it's an update
+        toast('success', (data && data.message) || 'Cabeçalho da curva salvo.');
+        // Atualiza o nome na lista lateral
+        const li = listaCurvas.querySelector(`li[data-id="${curvaId}"]`);
+        if (li && data.curva_nome) {
+          li.dataset.name = data.curva_nome;
+          li.innerHTML =
+            `<span class="texto-truncado">${data.curva_nome}</span>` +
+            `<i class="fas fa-chevron-right small text-muted"></i>`;
+        }
+      }
     } catch (err) { toast('danger', err.message || 'Falha ao salvar a curva.');
     } finally { setDisabled(formCurva.querySelector('[type="submit"]'), false); }
   });
@@ -664,385 +729,256 @@ document.addEventListener("ajaxContentLoaded", initGerenciarCurvas);
 
 // === GERENCIAR TANQUES ===
 function initGerenciarTanques() {
-  var raiz = document.querySelector('#gerenciar-tanques[data-page="gerenciar-tanques"]');
-  if (!raiz || raiz.dataset.bound === '1') return;
-  raiz.dataset.bound = '1';
+  const raiz  = document.querySelector('#gerenciar-tanques[data-page="gerenciar-tanques"]');
+  if (!raiz) return;
 
-  var endpointBase = (raiz.dataset.endpointBase || '/producao/api/tanque/').replace(/\/+$/, '/');
-  var form = raiz.querySelector('#form-tanque');
-  var inputId = raiz.querySelector('#tanque-id');
-  var lista = raiz.querySelector('#lista-tanques');
-  var salvarBtn = raiz.querySelector('#btn-salvar-tanque') || raiz.querySelector('[data-action="salvar-tanque"]') || (form ? form.querySelector('[type="submit"]') : null);
+  const form  = raiz.querySelector('#form-tanque');
+  const lista = raiz.querySelector('#lista-tanques');
 
-  var toast = function(t, m) { if (window.mostrarMensagem) mostrarMensagem(t, m); else console.log('[' + t + '] ' + m); };
-  var setDisabled = function(el, d) { if (el) el.disabled = !!d; };
+  const inputId = raiz.querySelector('#tanque-id'); // hidden (real id p/ POST)
 
-  // a) Helpers para formatação BR e data
-  function formatBR(n, dec) {
-    const v = (Number.isFinite(n) ? n : 0).toFixed(dec ?? 2);
-    return v.replace('.', ','); // apenas vírgula na UI
-  }
+  // campos de exibição somente-leitura
+  const elIdVis       = raiz.querySelector('#id_id');
+  const elDataCriacao = raiz.querySelector('#id_data_criacao');
 
-  // "2025-08-01 23:35:53.738408" -> Date local -> "dd/mm/aaaa HH:mm:ss"
-  function parseSqlDatetime(s) {
-    if (!s) return null;
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
-    if (!m) return null;
-    return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0));
-  }
-  function formatDateTimeBRsql(s) {
-    const d = parseSqlDatetime(s);
-    return d && !isNaN(d) ? d.toLocaleString('pt-BR') : (s || '');
-  }
+  // dimensões (editáveis)
+  const elLarg = raiz.querySelector('#id_largura');
+  const elComp = raiz.querySelector('#id_comprimento');
+  const elProf = raiz.querySelector('#id_profundidade');
 
-  // --- util fetch com credenciais (from original) ---
-  function apiFetch(url, opts) {
-    opts = opts || {};
-    var headers = new Headers(opts.headers || {});
-    if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
-    if ((opts.method || 'GET').toUpperCase() !== 'GET' && !headers.has('X-CSRFToken') && typeof getCSRFToken === 'function') {
-      headers.set('X-CSRFToken', getCSRFToken());
-    }
-    opts.headers = headers;
-    opts.credentials = 'same-origin';
-    return fetch(url, opts).then(function(resp) {
-      if (resp.status === 401) {
-        return resp.json().catch(function() { return {}; }).then(function(data) {
-          var login = (window.LOGIN_URL || '/accounts/login/') + '?next=' + encodeURIComponent(window.location.pathname);
-          window.location.href = data.redirect_url || login;
-          throw new Error('401');
-        });
-      }
-      if (resp.redirected) {
-        window.location.href = resp.url;
-        throw new Error('redirect');
-      }
-      if (resp.status === 403) {
-        toast('danger', 'Você não tem permissão para executar esta ação.');
-        throw new Error('403');
-      }
-      return resp;
-    });
-  }
+  // calculados (readonly na UI)
+  const elArea   = raiz.querySelector('#id_metro_quadrado');
+  const elVolume = raiz.querySelector('#id_metro_cubico');
+  const elHa     = raiz.querySelector('#id_ha');
 
-  // --- tenta /<id>/ e /<id>/atualizar/ para editar; / para criar (from original) ---
-  function postTanqueSmart(id, fd) {
-    var urls = id ? [endpointBase + id + '/atualizar/', endpointBase + id + '/'] : [endpointBase];
-    var i = 0;
-    function tentar() {
-      var url = urls[i];
-      return apiFetch(url, { method: 'POST', body: fd }).then(function(resp) {
-        var ct = (resp.headers.get('content-type') || '').toLowerCase();
-        var isJson = ct.indexOf('application/json') !== -1;
-        if (resp.ok && isJson) {
-          return { resp: resp, urlTried: url };
-        }
-        if ((resp.status === 405 || resp.status === 404 || !isJson) && i < urls.length - 1) {
-          i++;
-          return tentar();
-        }
-        return { resp: resp, urlTried: url };
-      });
-    }
-    return tentar();
-  }
+  // busca e botões
+  const search = raiz.querySelector('#search-tanque, [data-role="busca-tanque"]');
+  const btnNovo = raiz.querySelector('#btn-novo-tanque,[data-action="novo-tanque"]');
+  const btnSalvar = raiz.querySelector('[data-action="salvar-tanque"]');
 
-  // ====== START OF USER PATCH ======
+  // endpoints
+  const API_BASE = '/producao/api/tanques/';
 
-  // ====== CAMPOS CALCULADOS: Área (m²), Volume (m³), Hectares (ha) ======
-  function pickField(selectors) {
-    for (var i = 0; i < selectors.length; i++) {
-      var el = form.querySelector(selectors[i]);
-      if (el) return el;
-    }
-    return null;
-  }
-
-  // b) Pegar referências dos campos (ID/Data/Dimensões/Calculados)
-  var elIdVis       = pickField(['#id_id', '#id_pk', '#tanque-id-display']);
-  var elDataCriacao = pickField(['#id_data_criacao', '#id_criado_em']);
-
-  var elLarg = pickField(['#id_largura', '#id_largura_m', '#id_largura_metros']);
-  var elComp = pickField(['#id_comprimento', '#id_comprimento_m', '#id_comprimento_metros']);
-  var elProf = pickField(['#id_profundidade', '#id_profundidade_m', '#id_profundidade_metros']);
-
-  var elArea   = pickField(['#id_metro_quadrado', '#id_area_m2', '#id_area']);
-  var elVolume = pickField(['#id_metro_cubico',   '#id_volume_m3', '#id_volume']);
-  var elHa     = pickField(['#id_ha',             '#id_hectares_ha', '#id_hectares']);
-
-  function toNumLocale(v) {
-    if (v == null) return 0;
-    v = String(v).trim();
-    if (!v) return 0;
-
-    // mantém apenas dígitos, vírgula, ponto e sinal
-    v = v.replace(/[^\d,.\-]/g, '');
-
-    const lastComma = v.lastIndexOf(',');
-    const lastDot   = v.lastIndexOf('.');
-    let decSep = null;
-
-    if (lastComma === -1 && lastDot === -1) {
-      decSep = null; // inteiro puro
-    } else if (lastComma > lastDot) {
-      decSep = ',';  // vírgula é o decimal
-    } else {
-      decSep = '.';  // ponto é o decimal
-    }
-
-    if (decSep) {
-      const thouSep = decSep === ',' ? '.' : ',';
-      // remove separadores de milhar
-      v = v.split(thouSep).join('');
-      // normaliza decimal para ponto
-      v = v.replace(decSep, '.');
-    }
-
-    const n = parseFloat(v);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function format(v, dec) {
-    var num = isFinite(v) ? v : 0;
-    return num.toFixed(dec);
-  }
+  // ---------- helpers ----------
   function computeFromInputs() {
-    const L = toNumLocale(elLarg && elLarg.value);
-    const C = toNumLocale(elComp && elComp.value);
-    const P = toNumLocale(elProf && elProf.value);
-    const area = L * C;        // m²
-    const volume = area * P;   // m³
-    const ha = area / 10000;   // ha
+    const L = toNumLocale(elLarg?.value);
+    const C = toNumLocale(elComp?.value);
+    const P = toNumLocale(elProf?.value);
+    const area = L * C;
+    const volume = area * P;
+    const ha = area / 10000;
     return { L, C, P, area, volume, ha };
   }
+
   function recalcDimensoes() {
-    if (!form) return;
-    var r = computeFromInputs();
+    const r = computeFromInputs();
     if (elArea)   elArea.value   = formatBR(r.area,   2);
     if (elVolume) elVolume.value = formatBR(r.volume, 3);
     if (elHa)     elHa.value     = formatBR(r.ha,     4);
   }
 
-  [elLarg, elComp, elProf].forEach(function(el) {
+  function setBR(el, val, dec) {
     if (!el) return;
-    el.addEventListener('input', recalcDimensoes);
-    el.addEventListener('change', recalcDimensoes);
-  });
-
-  // Helper para post (from user patch)
-  function _postTanqueComFD(fd) {
-    var id = (inputId && inputId.value ? inputId.value : '').trim();
-    setDisabled(salvarBtn, true);
-    return postTanqueSmart(id, fd).then(function(result) {
-      var resp = result.resp;
-      var ct = (resp.headers.get('content-type') || '').toLowerCase();
-      if (resp.ok && ct.indexOf('application/json') !== -1) {
-        return resp.json().then(function(data) {
-          // --- success logic from original salvarTanque ---
-          var nomeEl = form.querySelector('#id_nome');
-          var nome = (nomeEl && nomeEl.value) ? nomeEl.value : 'Sem nome';
-          if (!id && (data.id || data.pk)) {
-            var novoId = String(data.id || data.pk);
-            if (inputId) inputId.value = novoId;
-            if (lista) {
-              var li = document.createElement('li');
-              li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-              li.setAttribute('data-id', novoId);
-              li.setAttribute('data-name', nome);
-              li.innerHTML = '<span class="texto-truncado">' + nome + '</span><i class="fas fa-chevron-right small text-muted"></i>';
-              lista.appendChild(li);
-            }
-          } else if (id && lista) {
-            var liExist = lista.querySelector('li[data-id="' + id + '"]');
-            if (liExist) {
-              liExist.setAttribute('data-name', nome);
-              var txt = liExist.querySelector('.texto-truncado');
-              if (txt) txt.textContent = nome;
-            }
-          }
-          // --- end of success logic ---
-          toast('success', data.message || 'Salvo com sucesso.');
-          setDisabled(salvarBtn, false);
-          return data;
-        });
-      }
-      return resp.text().then(function(txt) {
-        console.error('DEBUG: Não-JSON ao salvar:', { url: result.urlTried, status: resp.status, body: txt.slice(0, 300) });
-        toast('danger', 'Servidor retornou HTML em vez de JSON ao salvar.');
-        setDisabled(salvarBtn, false);
-        throw new Error('save-non-json');
-      });
-    }).catch(function(err) {
-      setDisabled(salvarBtn, false);
-      if (err && err.message !== 'save-non-json') toast('danger', err.message || 'Erro ao salvar.');
-      throw err;
-    });
+    if (val == null || val === '') { el.value = ''; return; }
+    el.value = formatBR(toNumLocale(val), dec);
   }
 
-  // ====== AJUSTE NO salvarTanque: garantir que os 3 campos vão no FormData ======
-  function salvarTanque() {
+  function resetFormTanque(clearId=true) {
     if (!form) return;
-    recalcDimensoes(); // Garante que a UI está com os valores calculados mais recentes
+    if (clearId && inputId) inputId.value = '';
 
-    const fd = new FormData(form);
-    const r = computeFromInputs(); // Pega os valores puros (numéricos) dos inputs
-
-    // Sobrepõe os valores de dimensão e calculados no FormData,
-    // garantindo que eles usem PONTO como separador decimal para o backend.
-    fd.set((elLarg?.name || 'largura'), r.L.toFixed(2));
-    fd.set((elComp?.name || 'comprimento'), r.C.toFixed(2));
-    fd.set((elProf?.name || 'profundidade'), r.P.toFixed(2));
-    
-    fd.set((elArea?.name   || 'metro_quadrado'), r.area.toFixed(2));
-    fd.set((elVolume?.name || 'metro_cubico'),   r.volume.toFixed(3));
-    fd.set((elHa?.name     || 'ha'),             r.ha.toFixed(4));
-
-    // Garante que os aliases (nomes alternativos) também estão corretos
-    fd.set('area_m2', r.area.toFixed(2));
-    fd.set('volume_m3', r.volume.toFixed(3));
-    fd.set('hectares_ha', r.ha.toFixed(4));
-
-    // Remove campos visuais que não devem ser enviados
-    fd.delete('id');
-    fd.delete('data_criacao');
-
-    return _postTanqueComFD(fd);
-  }
-
-  // ====== AJUSTE NO mapTanqueToForm: preencher e já recalcular ======
-  function mapTanqueToForm(d) {
-    if (!form || !d) return;
-
-    // Etapa 1: Mapeamento direto da API para os campos do formulário.
-    // Isso garante que todos os dados, incluindo largura, comprimento e profundidade, sejam populados.
-    var mapa = {
-      'id_nome': d.nome,
-      'id_tag_tanque': d.tag_tanque,
-      'id_sequencia': d.sequencia,
-      'id_unidade': d.unidade,
-      'id_linha_producao': d.linha_producao,
-      'id_fase': d.fase,
-      'id_tipo_tanque': d.tipo_tanque,
-      'id_status_tanque': d.status_tanque,
-      'id_malha': d.malha,
-      'id_tipo_tela': d.tipo_tela,
-      'id_largura': d.largura,           // Restaurado
-      'id_comprimento': d.comprimento, // Restaurado
-      'id_profundidade': d.profundidade // Restaurado
-    };
-
-    Object.keys(mapa).forEach(function(id) {
-      var el = form.querySelector('#' + id);
-      if (!el) return;
-      var val = mapa[id];
-      if (el.tagName === 'SELECT') {
-        el.value = (val == null ? '' : String(val));
-      } else {
-        el.value = (val == null ? '' : val);
-      }
+    Array.from(form.querySelectorAll('input,select,textarea')).forEach(el=>{
+      // preserva somente-leitura/disabled
+      if (el.readOnly || el.disabled) return;
+      if (clearId && el === inputId) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
     });
 
-    var ativoEl = form.querySelector('#id_ativo');
-    if (ativoEl) {
-      if (ativoEl.type === 'checkbox') { ativoEl.checked = !!d.ativo; }
-      else { ativoEl.value = d.ativo ? 'True' : 'False'; }
-    }
+    if (elIdVis) elIdVis.value = '';
+    if (elDataCriacao) elDataCriacao.value = '';
 
-    // Etapa 2: Popula os campos somente leitura de ID e Data de Criação.
-    if (elIdVis) {
-      elIdVis.value = (d.id != null ? String(d.id) : '');
-      elIdVis.readOnly = true; elIdVis.disabled = true;
-    }
-    if (elDataCriacao) {
-      // Popula o campo de data de criação usando o campo correto da API.
-      elDataCriacao.value = formatDateTimeBRsql(d.data_criacao);
-      elDataCriacao.readOnly = true; elDataCriacao.disabled = true;
-    }
+    recalcDimensoes();
+    form.querySelector('#id_nome')?.focus();
+  }
 
-    // Etapa 3: Re-formata os campos de dimensão para exibir com vírgula (BR).
-    function setBR(el, val, dec) {
-      if (!el) return;
-      if (val == null || val === '') { el.value = ''; return; }
-      const num = toNumLocale(val);
-      el.value = formatBR(Number.isFinite(num) ? num : toNumLocale(String(val)), dec);
-    }
+  async function carregarTanque(id) {
+    if (!id) return;
+    const url = `${API_BASE}${id}/`;
+    const resp = await fetchWithCreds(url);
+    if (!resp.ok) { alert('Falha ao carregar tanque'); return; }
+    const d = await resp.json();
+
+    // popula hidden real
+    if (inputId) inputId.value = d.id;
+
+    // somente leitura de exibição
+    if (elIdVis)       { elIdVis.value = String(d.id || ''); elIdVis.readOnly = true; elIdVis.disabled = true; }
+    if (elDataCriacao) { elDataCriacao.value = formatDateTimeBRsql(d.data_criacao); elDataCriacao.readOnly = true; elDataCriacao.disabled = true; }
+
+    // dimensões com vírgula
     setBR(elLarg, d.largura, 2);
     setBR(elComp, d.comprimento, 2);
     setBR(elProf, d.profundidade, 2);
 
-    // Etapa 4: Calcula e exibe os campos derivados (Área, Volume, Hectares) com vírgula.
-    const r = computeFromInputs();
-    if (elArea)   elArea.value   = r.area   > 0 ? formatBR(r.area,   2) : formatBR(toNumLocale(d.metro_quadrado ?? d.area_m2 ?? d.area), 2);
-    if (elVolume) elVolume.value = r.volume > 0 ? formatBR(r.volume, 3) : formatBR(toNumLocale(d.metro_cubico   ?? d.volume_m3 ?? d.volume), 3);
-    if (elHa)     elHa.value     = r.ha     > 0 ? formatBR(r.ha,     4) : formatBR(toNumLocale(d.ha             ?? d.hectares_ha ?? d.hectares), 4);
-  };
+    // outros campos comuns
+    const elNome = raiz.querySelector('#id_nome');
+    if (elNome) elNome.value = d.nome || '';
 
-  // ====== END OF USER PATCH INTEGRATION ======
+    const elSeq = raiz.querySelector('#id_sequencia');
+    if (elSeq) elSeq.value = (d.sequencia ?? '');
 
-  // --- Submit do form (sem optional chaining) ---
-  if (form) {
-    form.addEventListener('submit', function(ev) {
-      ev.preventDefault();
-      salvarTanque();
-    });
-  }
+    const elTag = raiz.querySelector('#id_tag_tanque');
+    if (elTag) elTag.value = d.tag_tanque || '';
 
-  // --- Click do botão Salvar (fallback robusto) ---
-  if (salvarBtn) {
-    salvarBtn.addEventListener('click', function(ev) {
-      ev.preventDefault();
-      salvarTanque();
-    });
-  }
+    // selects (usar value por id)
+    const selUnid = raiz.querySelector('#id_unidade');
+    if (selUnid) selUnid.value = d.unidade_id || d.unidade || '';
 
-  // === busca dados do tanque e preenche o formulário ===
-  function carregarTanque(id) {
-    if (!id) return;
-    return apiFetch(endpointBase + id + '/', { method: 'GET' })
-      .then(function(resp) {
-        if (!resp.ok) throw new Error('Falha ao carregar o tanque.');
-        return resp.json();
-      })
-      .then(function(data) {
-        if (inputId) inputId.value = String(data.id || id);
-        mapTanqueToForm(data); // This now calls the patched version
-        toast('success', 'Tanque carregado.');
-      })
-      .catch(function(err) {
-        toast('danger', err.message || 'Erro ao carregar o tanque.');
-      });
-  }
+    const selFase = raiz.querySelector('#id_fase');
+    if (selFase) selFase.value = d.fase_id || d.fase || '';
 
-  // === clique na lista: seleciona o item e carrega o form ===
-  if (lista) {
-    lista.addEventListener('click', function(e) {
-      var li = e.target.closest('li.list-group-item[data-id]');
-      if (!li) return;
-      Array.prototype.forEach.call(lista.querySelectorAll('li.list-group-item'), function(x) {
-        x.classList.remove('active');
-      });
-      li.classList.add('active');
-      carregarTanque(li.getAttribute('data-id'));
-    });
-  }
+    const selTipo = raiz.querySelector('#id_tipo_tanque');
+    if (selTipo) selTipo.value = d.tipo_tanque_id || d.tipo_tanque || '';
 
-  // === busca dinâmica da lista (#search-tanque) sem recarregar ===
-  (function bindBuscaTanques() {
-    var search = raiz.querySelector('#search-tanque');
-    if (!search || !lista) return;
+    const selLinha = raiz.querySelector('#id_linha_producao');
+    if (selLinha) selLinha.value = d.linha_producao_id || d.linha_producao || '';
 
-    function filtrar() {
-      var filtro = (search.value || '').trim().toUpperCase();
-      Array.prototype.forEach.call(lista.querySelectorAll('li.list-group-item'), function(li) {
-        var txt = ((li.getAttribute('data-name') || li.textContent) || '').toUpperCase();
-        li.style.display = txt.indexOf(filtro) !== -1 ? '' : 'none';
-      });
+    const selMalha = raiz.querySelector('#id_malha');
+    if (selMalha) selMalha.value = d.malha_id || d.malha || '';
+
+    const selStatus = raiz.querySelector('#id_status_tanque');
+    if (selStatus) selStatus.value = d.status_tanque_id || d.status_tanque || '';
+    const elAtivo = raiz.querySelector('#id_ativo');
+    if (elAtivo) {
+        elAtivo.value = (String(d.ativo) === '1' || d.ativo === true) ? 'True' : 'False';
     }
 
+    // calculados: preferir cálculo local
+    recalcDimensoes();
+  }
+
+  async function salvarTanque() {
+    if (!form) return;
+
+    // revalida e garante calculados em ponto no POST
+    recalcDimensoes();
+    const r = computeFromInputs();
+
+    const fd = new FormData(form);
+
+    // remove id/data_criacao visuais se por acaso tiverem name
+    fd.delete('id');
+    fd.delete('data_criacao');
+
+    // força calculados (padrão de names – ajuste se seus names forem outros)
+    fd.set( (elArea?.name   || 'metro_quadrado'), r.area.toFixed(2) );
+    fd.set( (elVolume?.name || 'metro_cubico'),   r.volume.toFixed(3) );
+    fd.set( (elHa?.name     || 'ha'),             r.ha.toFixed(4) );
+
+    const id = (inputId?.value || '').trim();
+    const url = id ? `${API_BASE}${id}/atualizar/` : API_BASE; // POST em ambos
+
+    const btn = btnSalvar || form.querySelector('[type="submit"]');
+    btn && (btn.disabled = true);
+    try {
+      const resp = await fetchWithCreds(url, { method:'POST', body: fd });
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('json')) {
+        const body = await resp.text().catch(()=> '');
+        throw new Error(`Servidor retornou ${resp.status} ${resp.statusText}.`);
+      }
+      const data = await resp.json();
+      if (!resp.ok || data.success === false) {
+        throw new Error(data.message || 'Falha ao salvar.');
+      }
+
+      // atualiza/insere na lista
+      const nome = form.querySelector('#id_nome')?.value || 'Sem nome';
+      if (!id && (data.id || data.pk)) {
+        const novoId = String(data.id || data.pk);
+        if (inputId) inputId.value = novoId;
+
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+        li.dataset.id = novoId;
+        li.dataset.name = nome;
+        li.innerHTML = `<span class="texto-truncado">${nome}</span><i class="fas fa-chevron-right small text-muted"></i>`;
+        lista?.appendChild(li);
+      } else if (id) {
+        const li = lista?.querySelector(`li[data-id="${id}"]`);
+        if (li) { li.dataset.name = nome; li.querySelector('.texto-truncado')?.replaceChildren(document.createTextNode(nome)); }
+      }
+
+      mostrarMensagem('success', data.message || 'Salvo com sucesso.');
+    } catch (err) {
+      mostrarMensagem('danger', err.message || 'Erro ao salvar.');
+    } finally {
+      btn && (btn.disabled = false);
+    }
+  }
+
+  // ---------- binds ----------
+  // recalcular em tempo real
+  [elLarg, elComp, elProf].forEach(el=>{
+    el?.addEventListener('input', recalcDimensoes);
+    el?.addEventListener('change', recalcDimensoes);
+  });
+  recalcDimensoes();
+
+  // clique na lista
+  lista?.addEventListener('click', (e)=>{
+    const li = e.target.closest('li.list-group-item');
+    if (!li) return;
+    lista.querySelectorAll('li.list-group-item.active').forEach(x=>x.classList.remove('active'));
+    li.classList.add('active');
+    carregarTanque(li.dataset.id);
+  });
+
+  // busca dinâmica
+  (function bindBuscaTanques(){
+    if (!lista) { console.log("DEBUG: Lista de tanques não encontrada."); return; }
+    if (!search) { console.log("DEBUG: Campo de busca não encontrado."); return; }
+    
+    console.log("DEBUG: bindBuscaTanques inicializado.");
+
+    function filtrar(){
+      const filtro = (search.value || '').trim().toUpperCase();
+      console.log("DEBUG: Filtro atual:", filtro);
+      lista.querySelectorAll('li.list-group-item').forEach(li=>{
+        const txt = ((li.getAttribute('data-name') || li.textContent) || '').toUpperCase();
+        const isVisible = txt.includes(filtro);
+        li.style.display = isVisible ? '' : 'none';
+        // Toggle d-flex class to ensure visibility is correctly applied
+        if (isVisible) {
+            li.classList.add('d-flex');
+        } else {
+            li.classList.remove('d-flex');
+        }
+        console.log("DEBUG: Item:", txt, " - Filtro:", filtro, " - isVisible:", isVisible, " - li.style.display (after set):", li.style.display, " - li.classList (after set):", li.classList.value, " - li.id:", li.id, " - li.dataset.id:", li.dataset.id);
+      });
+    }
     search.addEventListener('input', filtrar);
-    search.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
-    filtrar();
+    search.addEventListener('keydown', (e)=> { if (e.key === 'Enter') e.preventDefault(); });
+    filtrar(); // Initial filter in case of pre-filled search
   })();
+
+  // botão novo
+  btnNovo?.addEventListener('click', (e)=> {
+    e.preventDefault();
+    lista?.querySelectorAll('li.list-group-item.active').forEach(li=>li.classList.remove('active'));
+    resetFormTanque(true);
+  });
+
+  // salvar
+  btnSalvar?.addEventListener('click', (e)=> {
+    e.preventDefault();
+    salvarTanque();
+  });
+
+  // não autocarregar nada por padrão
+  resetFormTanque(true);
 }
 
 // liga em carga inicial e via AJAX (igual às curvas)
