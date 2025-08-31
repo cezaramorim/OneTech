@@ -2,6 +2,8 @@
 
 {% block content %}
 <div class="container-fluid mt-3" data-page="povoamento-lotes">
+  <div id="identificador-tela" data-tela="povoamento-lotes"></div>
+
   <h3>Povoamento de Lotes</h3>
 
   <div class="card shadow-sm mb-4">
@@ -10,14 +12,14 @@
       <div class="row g-3">
         <div class="col-md-3">
           <label class="form-label">Tipo de Origem</label>
-          <select class="form-select" data-role="tipo-origem">
+          <select class="form-select form-select-sm" data-role="tipo-origem">
             <option value="Avulsa">Avulsa</option>
           </select>
         </div>
 
         <div class="col-md-3">
           <label class="form-label">Tipo Tanque</label>
-          <select class="form-select" data-role="tipo-tanque">
+          <select class="form-select form-select-sm" data-role="tipo-tanque">
             <option value="Tanque Vazio">Tanque Vazio</option>
             <option value="Tanque Povoado">Tanque Povoado</option>
           </select>
@@ -25,17 +27,21 @@
 
         <div class="col-md-3" data-container="curva-crescimento">
           <label class="form-label">Curva de Crescimento</label>
-          <select class="form-select select2-search" data-role="curva-crescimento">
-            <option value="">Selecione...</option>
-            {% for curva in curvas %}
-              <option value="{{ curva.pk }}">{{ curva.nome }}</option>
-            {% endfor %}
-          </select>
+          <div class="select2-wrapper">
+            <select class="form-select form-select-sm select2-search" data-role="curva-crescimento">
+              <option value="">Selecione...</option>
+              {% for curva in curvas %}
+                <option value="{{ curva.pk }}">{{ curva.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
 
         <div class="col-md-3">
           <label class="form-label">Tanque</label>
-          <select class="form-select select2-search" data-role="tanque"></select>
+          <div class="select2-wrapper">
+            <select class="form-select form-select-sm select2-search" data-role="tanque"></select>
+          </div>
         </div>
       </div>
 
@@ -72,15 +78,15 @@
       <div class="row g-3 mb-3">
         <div class="col-md-3">
           <label>Data Inicial</label>
-          <input type="date" class="form-control" data-filter="data_inicial">
+          <input type="date" class="form-control form-control-sm" data-filter="data_inicial">
         </div>
         <div class="col-md-3">
           <label>Data Final</label>
-          <input type="date" class="form-control" data-filter="data_final">
+          <input type="date" class="form-control form-control-sm" data-filter="data_final">
         </div>
         <div class="col-md-3">
           <label>Status</label>
-          <select class="form-select" data-filter="status">
+          <select class="form-select form-select-sm" data-filter="status">
             <option value="">Todos</option>
             {% for value, label in tipos_evento %}
             <option value="{{ value }}">{{ label }}</option>
@@ -107,19 +113,12 @@
 
 {% block extra_js %}
 <script>
-  // Define o contexto de dados específico da página
-  if (typeof DJANGO_CONTEXT === 'undefined') {
-    var DJANGO_CONTEXT = {}; // Declare it if it doesn't exist
-  }
-  // Assign properties to the existing or newly declared object
-  DJANGO_CONTEXT.tanques = {{ tanques_json|safe }};
-  DJANGO_CONTEXT.fases =   {% if fases   %}{{ fases|jsonify|safe   }}{% else %}[]{% endif %};
-  DJANGO_CONTEXT.linhas =  {% if linhas  %}{{ linhas|jsonify|safe  }}{% else %}[]{% endif %};
-
-  // Chama o inicializador global para esta página, passando o contexto.
-  // A função em si está definida no scripts.js
-  if (typeof window.init_povoamento_lotes === 'function') {
-    window.init_povoamento_lotes(DJANGO_CONTEXT);
-  }
+  // Define o contexto de dados específico da página no escopo da janela (window)
+  // para que o script global possa acessá-lo quando for inicializado.
+  window.DJANGO_CONTEXT = {
+    tanques: {{ tanques_json|safe }},
+    fases:   {% if fases   %}{{ fases|jsonify|safe   }}{% else %}[]{% endif %},
+    linhas:  {% if linhas  %}{{ linhas|jsonify|safe  }}{% else %}[]{% endif %}
+  };
 </script>
 {% endblock %}
