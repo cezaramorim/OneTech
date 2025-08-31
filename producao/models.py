@@ -227,44 +227,86 @@ class EventoManejo(models.Model):
     def __str__(self):
         return f"{self.tipo_evento} - {self.lote.nome} em {self.data_evento}"
 
+    def _liberar_tanque_se_vazio(self, lote):
+        """Verifica se um lote ficou vazio e, em caso afirmativo, libera o tanque."""
+        if lote.quantidade_atual <= 0:
+            lote.ativo = False
+            tanque_a_liberar = lote.tanque_atual
+            if tanque_a_liberar:
+                try:
+                    status_livre = StatusTanque.objects.get(nome__iexact='Livre')
+                    tanque_a_liberar.status_tanque = status_livre
+                    tanque_a_liberar.save(update_fields=['status_tanque'])
+                except StatusTanque.DoesNotExist:
+                    # Idealmente, logar um erro aqui. Por enquanto, a falha é silenciosa
+                    # para não interromper o fluxo principal por um status faltante.
+                    pass
+            lote.tanque_atual = None
+            lote.save(update_fields=['ativo', 'tanque_atual'])
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        
+        lote = self.lote
+
         if self.tipo_evento == 'Povoamento':
-            self.lote.quantidade_atual = self.quantidade
-            self.lote.peso_medio_atual = self.peso_medio
-            self.lote.tanque_atual = self.tanque_destino
-            self.lote.save()
+            lote.quantidade_atual = self.quantidade
+            lote.peso_medio_atual = self.peso_medio
+            lote.tanque_atual = self.tanque_destino
+            lote.save()
+
         elif self.tipo_evento == 'Transferencia':
-            # Lógica para Transferência
-            # Se o lote está sendo transferido para um novo tanque
-            if self.tanque_destino and self.lote.tanque_atual != self.tanque_destino:
-                self.lote.tanque_atual = self.tanque_destino
-            # A quantidade e peso médio do lote são atualizados com base no evento
-            self.lote.quantidade_atual = self.quantidade
-            self.lote.peso_medio_atual = self.peso_medio
-            self.lote.save()
+            tanque_origem = lote.tanque_atual
+            tanque_destino = self.tanque_destino
+
+            # Atualiza o lote com a nova localização e dados do evento
+            lote.tanque_atual = tanque_destino
+            lote.quantidade_atual = self.quantidade
+            lote.peso_medio_atual = self.peso_medio
+            lote.save()
+
+            # Libera o tanque de origem
+            if tanque_origem:
+                try:
+                    status_livre = StatusTanque.objects.get(nome__iexact='Livre')
+                    tanque_origem.status_tanque = status_livre
+                    tanque_origem.save(update_fields=['status_tanque'])
+                except StatusTanque.DoesNotExist:
+                    pass # Falha silenciosa
+
         elif self.tipo_evento == 'Classificacao':
-            # Lógica para Classificação
-            # A classificação pode resultar na divisão do lote ou na remoção de parte dele.
-            # Por simplicidade, vamos considerar que a quantidade e peso médio do evento
-            # representam o que *resta* no lote principal após a classificação.
-            self.lote.quantidade_atual = self.quantidade
-            self.lote.peso_medio_atual = self.peso_medio
-            self.lote.save()
+            # Lógica para Classificação/Reforço de Lote: Adiciona animais a um lote existente.
+            lote_alvo = lote
+            
+            quantidade_evento = self.quantidade or Decimal('0')
+            peso_medio_evento = self.peso_medio or Decimal('0')
+            quantidade_lote = lote_alvo.quantidade_atual or Decimal('0')
+            peso_medio_lote = lote_alvo.peso_medio_atual or Decimal('0')
+
+            if quantidade_evento > 0:
+                biomassa_existente = quantidade_lote * peso_medio_lote
+                biomassa_adicionada = quantidade_evento * peso_medio_evento
+                
+                nova_quantidade = quantidade_lote + quantidade_evento
+                nova_biomassa = biomassa_existente + biomassa_adicionada
+                
+                if nova_quantidade > 0:
+                    lote_alvo.peso_medio_atual = nova_biomassa / nova_quantidade
+                else:
+                    lote_alvo.peso_medio_atual = peso_medio_evento
+
+                lote_alvo.quantidade_atual = nova_quantidade
+                lote_alvo.save()
+
         elif self.tipo_evento == 'Despesca':
-            # Lógica para Despesca
-            # A despesca remove peixes do lote.
-            self.lote.quantidade_atual -= self.quantidade
-            # O peso médio pode ser recalculado se houver uma amostra do peso dos peixes restantes.
-            # Por enquanto, manteremos o peso médio do evento como o peso dos peixes despescados.
-            # Se o peso médio do lote precisar ser atualizado, seria necessário um cálculo mais complexo
-            # baseado na biomassa restante e quantidade.
-            self.lote.save()
+            lote.quantidade_atual -= (self.quantidade or Decimal('0'))
+            lote.save()
+            self._liberar_tanque_se_vazio(lote)
+
         elif self.tipo_evento == 'Mortalidade':
-            # Lógica para Mortalidade
-            # Diminui a quantidade de peixes no lote.
-            self.lote.quantidade_atual -= self.quantidade
-            self.lote.save()
+            lote.quantidade_atual -= (self.quantidade or Decimal('0'))
+            lote.save()
+            self._liberar_tanque_se_vazio(lote)
         # O tipo 'Outro' não exige atualização automática do lote, mas pode ser usado para registros diversos.
 
 class AlimentacaoDiaria(models.Model):

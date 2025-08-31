@@ -43,6 +43,7 @@ MENU_ITEMS = [
             {'name': 'Gerenciar Curvas', 'url_name': 'producao:gerenciar_curvas', 'required_perms': ['producao.view_curvacrescimento']},
             {'name': 'Cadastrar Lote', 'url_name': 'producao:cadastrar_lote', 'required_perms': ['producao.add_lote']},
             {'name': 'Lista de Lotes', 'url_name': 'producao:lista_lotes', 'required_perms': ['producao.view_lote']},
+            {'name': 'Povoamento de Lotes', 'url_name': 'producao:povoamento_lotes', 'required_perms': ['producao.add_lote']},
             {'name': 'Registrar Evento', 'url_name': 'producao:registrar_evento', 'required_perms': ['producao.add_evento']},
             {'name': 'Lista de Eventos', 'url_name': 'producao:lista_eventos', 'required_perms': ['producao.view_evento']},
             {'name': 'Registrar Alimentação', 'url_name': 'producao:registrar_alimentacao', 'required_perms': ['producao.add_alimentacao']},

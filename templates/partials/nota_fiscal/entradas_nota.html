@@ -11,7 +11,8 @@
        data-url-editar="{% url 'nota_fiscal:editar_nota' 0 %}"
        data-url-excluir="{% url 'nota_fiscal:excluir_nota_multiplo' %}"
        data-seletor-checkbox=".checkbox-nota"
-       class="d-none"></div>
+       data-seletor-pai="#select-all-nota">
+  </div>
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <a id="btn-editar" class="btn btn-info me-2" role="button">Editar</a>

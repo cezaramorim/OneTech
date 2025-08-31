@@ -80,7 +80,7 @@ def categoria_form_view(request, pk=None):
     context = {
         'form': form,
     }
-    return render(request, 'base.html', {'content_template': 'partials/nova_empresa/categoria_form.html', **context})
+    return render_ajax_or_base(request, 'partials/nova_empresa/categoria_form.html', context)
 
 
 @require_POST

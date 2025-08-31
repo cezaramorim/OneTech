@@ -699,6 +699,33 @@ html.dark .select2-container--bootstrap-5 .select2-selection {
   border-color: #444;
 }
 
+/* Correção para o texto renderizado do Select2 no tema escuro */
+html.dark .select2-container--bootstrap-5 .select2-selection__rendered {
+  background-color: inherit; /* Herda do pai para garantir consistência */
+  color: #f2f2f2; /* Garante a cor do texto clara */
+}
+
+/* Correção para o placeholder do Select2 no tema escuro */
+html.dark .select2-container--bootstrap-5 .select2-selection__placeholder {
+  color: #aaa; /* Cor mais clara para o placeholder */
+}
+
+/* Correção para os resultados do Select2 no tema escuro */
+html.dark .select2-container--bootstrap-5 .select2-results__option {
+  background-color: #2b2f3a; /* Fundo escuro para as opções */
+  color: #f2f2f2; /* Texto claro para as opções */
+}
+
+html.dark .select2-container--bootstrap-5 .select2-results__option--highlighted {
+  background-color: #007bff; /* Cor de destaque para a opção selecionada */
+  color: #fff;
+}
+
+html.dark .select2-container--bootstrap-5 .select2-dropdown {
+  background-color: #2b2f3a; /* Fundo escuro para o dropdown */
+  border-color: #444;
+}
+
 /* 🌙 Escuro com foco */
 html.dark .select2-container--bootstrap-5 .select2-selection:focus {
   border-color: #666;

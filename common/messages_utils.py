@@ -88,6 +88,11 @@ class AppMessages:
         messages.error(self.request, message)
         return message
 
+    def success_process(self, message_text):
+        """Mensagem para um processo em lote bem-sucedido."""
+        messages.success(self.request, message_text)
+        return message_text
+
     # Adicione outros tipos de mensagens conforme necessário (ex: confirmation_sent, validation_error)
 
 # Função auxiliar para obter a instância de AppMessages na view

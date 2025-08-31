@@ -4,7 +4,8 @@
     data-entidade-plural="lotes"
     data-url-editar="{% url 'producao:editar_lote' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_lotes_multiplos' %}"
-    data-seletor-checkbox=".selecionar-lote">
+    data-seletor-checkbox=".check-lote"
+     data-seletor-pai="#select-all-lotes"></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Lista de Lotes</h2>
         <div>
@@ -20,7 +21,7 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selecionar-todos-lotes"></th>
+                            <th><input type="checkbox" id="select-all-lotes"></th>
                             <th>Nome</th>
                             <th>Curva de Crescimento</th>
                             <th>Fase de Produção</th>
@@ -34,7 +35,7 @@
                     <tbody>
                         {% for lote in lotes %}
                         <tr data-id="{{ lote.pk }}">
-                            <td><input type="checkbox" class="selecionar-lote" value="{{ lote.pk }}"></td>
+                            <td><input type="checkbox" class="check-lote" value="{{ lote.pk }}"></td>
                             <td>{{ lote.nome }}</td>
                             <td>{{ lote.curva_crescimento.nome|default:"N/A" }}</td>
                             <td>{{ lote.fase_producao.nome|default:"N/A" }}</td>

@@ -5,7 +5,8 @@
     data-entidade-plural="tanques"
     data-url-editar="{% url 'producao:editar_tanque' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_tanques_multiplos' %}"
-    data-seletor-checkbox=".selecionar-tanque">
+    data-seletor-checkbox=".check-tanque"
+     data-seletor-pai="#select-all-tanques"></div>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Lista de Tanques</h2>
@@ -23,7 +24,7 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selecionar-todos-tanques"></th>
+                            <th><input type="checkbox" id="select-all-tanques"></th>
                             <th>ID</th>
                             <th>Nome</th>
                             <th>Tag</th>
@@ -40,7 +41,7 @@
                     <tbody>
                         {% for tanque in tanques %}
                         <tr data-id="{{ tanque.pk }}">
-                            <td><input type="checkbox" class="selecionar-tanque" value="{{ tanque.pk }}"></td>
+                            <td><input type="checkbox" class="check-tanque" value="{{ tanque.pk }}"></td>
                             <td>{{ tanque.id }}</td>
                             <td><a href="{% url 'producao:editar_tanque' tanque.pk %}" class="ajax-link">{{ tanque.nome }}</a></td>
                             <td>{{ tanque.tag_tanque|default:"-" }}</td>

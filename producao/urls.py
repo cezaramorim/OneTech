@@ -27,7 +27,7 @@ urlpatterns = [
     path('linhas-producao/', views.LinhaProducaoListView.as_view(), name='lista_linhasproducao'),
     path('linhas-producao/cadastrar/', views.LinhaProducaoCreateView.as_view(), name='criar_linhaproducao'),
     path('linhas-producao/<int:pk>/editar/', views.LinhaProducaoUpdateView.as_view(), name='editar_linhaproducao'),
-    path('linhas-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.LinhaProducao), name='excluir_linhaproducao_multiplo'),
+    path('linhas-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.LinhaProducao, success_url_name='producao:lista_linhasproducao'), name='excluir_linhaproducao_multiplo'),
 
     # Fases de Produção
     path('fases-producao/', views.FaseProducaoListView.as_view(), name='lista_fasesproducao'),
@@ -82,6 +82,11 @@ urlpatterns = [
     path('lotes/cadastrar/', views.CadastrarLoteView.as_view(), name='cadastrar_lote'),
     path('lotes/<int:pk>/editar/', views.EditarLoteView.as_view(), name='editar_lote'),
     path('lotes/excluir-multiplos/', views.ExcluirLotesMultiplosView.as_view(), name='excluir_lotes_multiplos'),
+
+    # Povoamento de Lotes
+    path('povoamento/', views.povoamento_lotes_view, name='povoamento_lotes'),
+    path('api/povoamento/historico/', views.historico_povoamento_view, name='povoamento_historico_api'),
+    path('api/tanque/<int:tanque_id>/lote-ativo/', views.get_active_lote_for_tanque_api, name='api_get_lote_ativo_por_tanque'),
 
     # Eventos de Manejo
     path('eventos/', views.ListaEventosView.as_view(), name='lista_eventos'),

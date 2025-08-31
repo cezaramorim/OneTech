@@ -1,0 +1,125 @@
+{% load static producao_tags %}
+
+{% block content %}
+<div class="container-fluid mt-3" data-page="povoamento-lotes">
+  <h3>Povoamento de Lotes</h3>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header">Inserção de Povoamentos</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Tipo de Origem</label>
+          <select class="form-select" data-role="tipo-origem">
+            <option value="Avulsa">Avulsa</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Tipo Tanque</label>
+          <select class="form-select" data-role="tipo-tanque">
+            <option value="Tanque Vazio">Tanque Vazio</option>
+            <option value="Tanque Povoado">Tanque Povoado</option>
+          </select>
+        </div>
+
+        <div class="col-md-3" data-container="curva-crescimento">
+          <label class="form-label">Curva de Crescimento</label>
+          <select class="form-select select2-search" data-role="curva-crescimento">
+            <option value="">Selecione...</option>
+            {% for curva in curvas %}
+              <option value="{{ curva.pk }}">{{ curva.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Tanque</label>
+          <select class="form-select select2-search" data-role="tanque"></select>
+        </div>
+      </div>
+
+      <div class="text-end mt-3">
+        <button class="btn btn-primary" data-action="adicionar-linha">Adicionar Linha</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header">Listagem de Povoamentos a Processar</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Ação</th><th>Tanque</th><th>Grupo Origem</th><th>Curva</th>
+              <th>Data Lanç.</th><th>Nome Lote</th><th>Qtd.</th><th>Peso Médio</th>
+              <th>Fase</th><th>Tamanho</th><th>Linha</th>
+            </tr>
+          </thead>
+          <tbody data-container="listagem-body"></tbody>
+        </table>
+      </div>
+      <div class="text-end mt-3">
+        <button class="btn btn-success" data-action="processar">Processar Povoamentos</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header">Lançamentos Pendentes / Histórico</div>
+    <div class="card-body">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label>Data Inicial</label>
+          <input type="date" class="form-control" data-filter="data_inicial">
+        </div>
+        <div class="col-md-3">
+          <label>Data Final</label>
+          <input type="date" class="form-control" data-filter="data_final">
+        </div>
+        <div class="col-md-3">
+          <label>Status</label>
+          <select class="form-select" data-filter="status">
+            <option value="">Todos</option>
+            {% for value, label in tipos_evento %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-info w-100" data-action="buscar-historico">Buscar</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>ID</th><th>Data</th><th>Lote</th><th>Tanque</th><th>Qtd.</th><th>Peso Médio</th><th>Status</th></tr>
+          </thead>
+          <tbody data-container="historico-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Define o contexto de dados específico da página
+  if (typeof DJANGO_CONTEXT === 'undefined') {
+    var DJANGO_CONTEXT = {}; // Declare it if it doesn't exist
+  }
+  // Assign properties to the existing or newly declared object
+  DJANGO_CONTEXT.tanques = {{ tanques_json|safe }};
+  DJANGO_CONTEXT.fases =   {% if fases   %}{{ fases|jsonify|safe   }}{% else %}[]{% endif %};
+  DJANGO_CONTEXT.linhas =  {% if linhas  %}{{ linhas|jsonify|safe  }}{% else %}[]{% endif %};
+
+  // Chama o inicializador global para esta página, passando o contexto.
+  // A função em si está definida no scripts.js
+  if (typeof window.init_povoamento_lotes === 'function') {
+    window.init_povoamento_lotes(DJANGO_CONTEXT);
+  }
+</script>
+{% endblock %}

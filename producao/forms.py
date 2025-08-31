@@ -157,3 +157,26 @@ class CurvaCrescimentoDetalheForm(forms.ModelForm):
             'tca': forms.NumberInput(attrs={'id': 'id_tca'}),
         }
 
+
+class PovoamentoForm(forms.Form):
+    tipo_tanque = forms.CharField()
+    curva_id = forms.IntegerField(required=False)
+    tanque_id = forms.IntegerField()
+    grupo_origem = forms.CharField()
+    data_lancamento = forms.DateField(input_formats=['%Y-%m-%d'])
+    nome_lote = forms.CharField(max_length=255, required=False)
+    quantidade = forms.DecimalField(min_value=0.01, max_digits=10, decimal_places=2)
+    peso_medio = forms.DecimalField(min_value=0.01, max_digits=10, decimal_places=2)
+    fase_id = forms.IntegerField()
+    tamanho = forms.CharField(required=False)
+    linha_id = forms.IntegerField()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("tipo_tanque") == "Tanque Vazio":
+            if not cleaned_data.get("nome_lote"):
+                self.add_error("nome_lote", "O campo 'Nome Lote' é obrigatório.")
+            if not cleaned_data.get("curva_id"):
+                self.add_error("curva_id", "O campo 'Curva de Crescimento' é obrigatório.")
+        return cleaned_data
+

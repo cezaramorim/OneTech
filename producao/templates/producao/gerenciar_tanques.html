@@ -23,95 +23,104 @@
         {% csrf_token %}
         <input type="hidden" id="tanque-id" name="id">
 
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label class="form-label">ID</label>
-            <input id="id_id" class="form-control" readonly disabled>
-          </div>
-          <div class="col-md-5">
-            <label class="form-label">Data Criação</label>
-            <input id="id_data_criacao" class="form-control" readonly disabled>
-          </div>
-        </div>
-
-        <div class="row g-3 mt-1">
-          <div class="col-md-6">
-            <label class="form-label">Nome</label>
-            {{ form_tanque.nome }}
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Sequência</label>
-            {{ form_tanque.sequencia }}
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Tag</label>
-            {{ form_tanque.tag_tanque }}
-          </div>
+        <!-- LINHA 1: ID, Nome e Status -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-2">
+                <label class="form-label">ID</label>
+                <input id="id_id" class="form-control" readonly disabled>
+            </div>
+            <div class="col-md-7">
+                <label class="form-label">Nome</label>
+                {{ form_tanque.nome }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                {{ form_tanque.status_tanque }}
+            </div>
         </div>
 
         <hr>
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Largura</label>
-            {{ form_tanque.largura }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Comprimento</label>
-            {{ form_tanque.comprimento }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Profundidade</label>
-            {{ form_tanque.profundidade }}
-          </div>
 
-          <div class="col-md-4">
-            <label class="form-label">Área (m²)</label>
-            <input id="id_metro_quadrado" name="metro_quadrado" class="form-control" readonly>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Volume (m³)</label>
-            <input id="id_metro_cubico" name="metro_cubico" class="form-control" readonly>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Hectares (ha)</label>
-            <input id="id_ha" name="ha" class="form-control" readonly>
-          </div>
+        <!-- BLOCO DE DIMENSÕES (Inalterado) -->
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Largura</label>
+                {{ form_tanque.largura }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Comprimento</label>
+                {{ form_tanque.comprimento }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Profundidade</label>
+                {{ form_tanque.profundidade }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Área (m²)</label>
+                <input id="id_metro_quadrado" name="metro_quadrado" class="form-control" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Volume (m³)</label>
+                <input id="id_metro_cubico" name="metro_cubico" class="form-control" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Hectares (ha)</label>
+                <input id="id_ha" name="ha" class="form-control" readonly>
+            </div>
         </div>
 
         <hr>
+
+        <!-- BLOCO DE RELACIONAMENTOS (Reordenado) -->
         <div class="row g-3">
-          <!-- selects com value = *_id -->
-          <div class="col-md-4">
-            <label class="form-label">Unidade</label>
-            {{ form_tanque.unidade }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Fase</label>
-            {{ form_tanque.fase }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Tipo Tanque</label>
-            {{ form_tanque.tipo_tanque }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Linha Produção</label>
-            {{ form_tanque.linha_producao }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Malha</label>
-            {{ form_tanque.malha }}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Status</label>
-            {{ form_tanque.status_tanque }}
-          </div>
+            <div class="col-md-4">
+                <label class="form-label">Unidade</label>
+                {{ form_tanque.unidade }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Fase</label>
+                {{ form_tanque.fase }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Tipo Tanque</label>
+                {{ form_tanque.tipo_tanque }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Linha Produção</label>
+                {{ form_tanque.linha_producao }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Sequência</label>
+                {{ form_tanque.sequencia }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Malha</label>
+                {{ form_tanque.malha }}
+            </div>
         </div>
 
-        <div class="mt-3 d-flex gap-2">
-          <button class="btn btn-primary" data-action="salvar-tanque">Salvar</button>
-          <button class="btn btn-secondary" id="btn-novo-tanque">Novo</button>
+        <hr>
+
+        <!-- LINHA FINAL: Tag e Data de Criação -->
+        <div class="row g-3 mt-3">
+            <div class="col-md-6">
+                <label class="form-label">Tag</label>
+                {{ form_tanque.tag_tanque }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Data Criação</label>
+                <input id="id_data_criacao" class="form-control" readonly disabled>
+            </div>
         </div>
-      </form>
+
+        <!-- BOTÕES DE AÇÃO -->
+        <div class="mt-4 d-flex gap-2">
+            <button class="btn btn-primary" data-action="salvar-tanque">Salvar</button>
+            <button class="btn btn-secondary" id="btn-novo-tanque">Novo</button>
+        </div>
+    </form>
+
     </div>
   </div>
 </div>

@@ -4,6 +4,9 @@ config/connection.py
 # Ambientes virtuais
 venv/
 config/.env
+.env
+.vector_store_id
+.assistant_id
 
 # Arquivos Python cache
 __pycache__/

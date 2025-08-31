@@ -23,7 +23,7 @@ from .forms import (
     TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
     EventoManejoForm, AlimentacaoDiariaForm, TanqueImportForm,
     UnidadeForm, MalhaForm, TipoTelaForm, LinhaProducaoForm, FaseProducaoForm,
-    StatusTanqueForm, TipoTanqueForm, AtividadeForm
+    StatusTanqueForm, TipoTanqueForm, AtividadeForm, PovoamentoForm
 )
 from .utils import AjaxFormMixin, BulkDeleteView
 from common.utils import render_ajax_or_base
@@ -283,6 +283,8 @@ class ListaTanquesView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
     def render_to_response(self, context, **response_kwargs):
         context['termo_busca'] = self.request.GET.get('termo_tanque', '').strip()
+        context['data_page'] = 'lista_tanques'
+        context['data_tela'] = 'lista_tanques'
         return render_ajax_or_base(self.request, self.template_name, context)
 
 
@@ -327,36 +329,46 @@ def importar_tanques_view(request):
         if form.is_valid():
             try:
                 df = pd.read_excel(request.FILES['arquivo_excel'])
-                # Normaliza nomes das colunas
                 df.columns = [c.strip().lower() for c in df.columns]
-                
-                required_cols = ['nome', 'unidade', 'linha_producao', 'fase', 'tipo_tanque', 'status_tanque', 'malha']
+
+                required_cols = ['nome', 'unidade', 'linha_producao', 'fase', 'tipo_tanque',
+                                 'status_tanque', 'malha']
                 if not all(col in df.columns for col in required_cols):
                     raise ValueError("Colunas obrigatórias não encontradas. Verifique o template.")
 
-                # Contadores para a mensagem de sucesso
                 created_count = 0
                 updated_count = 0
 
                 with transaction.atomic():
                     for index, row in df.iterrows():
-                        # Busca ou cria objetos relacionados
-                        unidade, _ = Unidade.objects.get_or_create(nome__iexact=row['unidade'], defaults={'nome': row['unidade']})
-                        linha, _ = LinhaProducao.objects.get_or_create(nome__iexact=row['linha_producao'], defaults={'nome': row['linha_producao']})
-                        fase, _ = FaseProducao.objects.get_or_create(nome__iexact=row['fase'], defaults={'nome': row['fase']})
-                        tipo, _ = TipoTanque.objects.get_or_create(nome__iexact=row['tipo_tanque'], defaults={'nome': row['tipo_tanque']})
-                        status, _ = StatusTanque.objects.get_or_create(nome__iexact=row['status_tanque'], defaults={'nome': row['status_tanque']})
-                        malha, _ = Malha.objects.get_or_create(nome__iexact=row['malha'], defaults={'nome': row['malha']})
+                        # --- Função auxiliar para tratar FKs ---
+                        def get_fk_object(model, nome_valor):
+                            if pd.notna(nome_valor) and str(nome_valor).strip():
+                                obj, _ = model.objects.get_or_create(nome__iexact=str(nome_valor).strip(), defaults={'nome': str(nome_valor).strip()})
+                                return obj
+                            return None
 
-                        # Calcula campos dimensionais
-                        largura_val = _to_decimal(row.get('largura', None))
-                        comprimento_val = _to_decimal(row.get('comprimento', None))
-                        profundidade_val = _to_decimal(row.get('profundidade', None))
+                        # --- Trata FKs, prevenindo criação de "nan" ---
+                        unidade = get_fk_object(Unidade, row.get('unidade'))
+                        linha = get_fk_object(LinhaProducao, row.get('linha_producao'))
+                        fase = get_fk_object(FaseProducao, row.get('fase'))
+                        tipo = get_fk_object(TipoTanque, row.get('tipo_tanque'))
+                        status = get_fk_object(StatusTanque, row.get('status_tanque'))
+                        malha = get_fk_object(Malha, row.get('malha'))
 
+                        # --- Trata campos numéricos, convertendo NaN para None ---
+                        largura_val = _to_decimal(row.get('largura')) if pd.notna(row.get('largura')) else None
+                        comprimento_val = _to_decimal(row.get('comprimento')) if pd.notna(row.get('comprimento')) else None
+                        profundidade_val = _to_decimal(row.get('profundidade')) if pd.notna(row.get('profundidade')) else None
+                        sequencia_val = int(row['sequencia']) if pd.notna(row.get('sequencia')) else None
+
+                        # --- Trata campo de texto, convertendo NaN para string vazia ---
+                        tag_val = str(row.get('tag_tanque', '')).strip() if pd.notna(row.get('tag_tanque')) else ''
+
+                        # --- Recalcula campos dimensionais ---
                         mq = None
                         mc = None
                         ha = None
-
                         if largura_val is not None and comprimento_val is not None:
                             mq = largura_val * comprimento_val
                         if mq is not None and profundidade_val is not None:
@@ -364,25 +376,24 @@ def importar_tanques_view(request):
                         if mq is not None:
                             ha = mq / Decimal("10000")
 
-                        # Atualiza ou cria o tanque
+                        # --- Atualiza ou cria o tanque com valores limpos ---
                         tanque, created = Tanque.objects.update_or_create(
-                            nome=row['nome'], # Campo de busca
+                            nome=row['nome'],
                             defaults={
                                 'unidade': unidade,
                                 'linha_producao': linha,
                                 'fase': fase,
                                 'tipo_tanque': tipo,
                                 'status_tanque': status,
-                                'largura': _to_decimal(row.get('largura', None)),
-                                'comprimento': _to_decimal(row.get('comprimento', None)),
-                                'profundidade': _to_decimal(row.get('profundidade', None)),
-                                'sequencia': row.get('sequencia', 0),
-                                'tag_tanque': str(row.get('tag_tanque', '')).strip() if pd.notna(row.get('tag_tanque', '')) else '',
                                 'malha': malha,
+                                'largura': largura_val,
+                                'comprimento': comprimento_val,
+                                'profundidade': profundidade_val,
+                                'sequencia': sequencia_val,
+                                'tag_tanque': tag_val,
                                 'metro_quadrado': mq,
                                 'metro_cubico': mc,
                                 'ha': ha,
-                                # Adicione outros campos opcionais aqui
                             }
                         )
                         if created:
@@ -403,9 +414,8 @@ def importar_tanques_view(request):
                 return render(request, template, {'form': form})
     else:
         form = TanqueImportForm()
-    
-    return render_ajax_or_base(request, template, {'form': form})
 
+    return render_ajax_or_base(request, template, {'form': form})
 @login_required
 @permission_required('producao.view_tanque', raise_exception=True)
 def download_template_tanque_view(request):
@@ -769,13 +779,31 @@ class ExcluirAlimentacaoMultiplaView(BulkDeleteView):
 
 
 from django.forms.models import model_to_dict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 def _to_decimal(s):
-    if s is None: return None
-    s = str(s).strip().replace('.', '').replace(',', '.')
-    try: return Decimal(s)
-    except: return None
+    if s is None:
+        return None
+    val = str(s).strip()
+    if not val:
+        return None
+    
+    # Detecta se o formato é brasileiro (ex: "1.234,56")
+    # A heurística é a presença de vírgula como último separador.
+    last_comma = val.rfind(',')
+    last_dot = val.rfind('.')
+    
+    if last_comma > last_dot:
+        # Formato brasileiro: "1.234,56" -> "1234.56"
+        val = val.replace('.', '').replace(',', '.')
+    # Se for formato americano ("1,234.56"), removemos apenas a vírgula
+    elif last_dot > last_comma:
+        val = val.replace(',', '')
+        
+    try:
+        return Decimal(val)
+    except InvalidOperation:
+        return None
 
 @login_required_json
 @require_http_methods(["GET"])
@@ -1058,4 +1086,176 @@ def detalhe_update_view(request, curva_id: int, detalhe_id: int):
             "periodo": serialize_detalhe(detalhe)
         }, status=200)
     return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar período."}, status=400)
+
+
+# === Povoamento de Lotes ===
+
+@login_required
+@permission_required('producao.add_lote', raise_exception=True)
+def povoamento_lotes_view(request):
+    app_messages = get_app_messages(request)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            povoamentos = data.get('povoamentos', [])
+            if not povoamentos:
+                return JsonResponse({'success': False, 'message': app_messages.custom_error('Nenhum dado de povoamento recebido.')}, status=400)
+
+            with transaction.atomic():
+                for item in povoamentos:
+                    form = PovoamentoForm(item)
+                    if not form.is_valid():
+                        # Retorna o primeiro erro de validação encontrado
+                        primeiro_erro = next(iter(form.errors.values()))[0]
+                        return JsonResponse({'success': False, 'message': f'Erro na validação: {primeiro_erro}'}, status=400)
+
+                    cleaned_data = form.cleaned_data
+                    tanque = get_object_or_404(Tanque, pk=cleaned_data['tanque_id'])
+
+                    # Lógica de decisão baseada na existência de um lote ativo no tanque
+                    lote_ativo_existe = Lote.objects.filter(tanque_atual=tanque, ativo=True).exists()
+
+                    if lote_ativo_existe:
+                        # TANQUE JÁ POVOADO: Adiciona a um lote existente (Reforço)
+                        try:
+                            lote_existente = Lote.objects.get(tanque_atual=tanque, ativo=True)
+                            
+                            # Cria o evento de classificação para adicionar ao lote
+                            EventoManejo.objects.create(
+                                tipo_evento='Classificacao', 
+                                lote=lote_existente,
+                                tanque_destino=tanque,
+                                data_evento=cleaned_data['data_lancamento'],
+                                quantidade=cleaned_data['quantidade'],
+                                peso_medio=cleaned_data['peso_medio'],
+                                observacoes=f"Reforço ao lote existente. Origem: {cleaned_data.get('grupo_origem', 'N/A')}"
+                            )
+
+                        except Lote.MultipleObjectsReturned:
+                            return JsonResponse({'success': False, 'message': f"Erro de Dados: Múltiplos lotes ativos encontrados no tanque '{tanque.nome}'. Corrija o cadastro."}, status=400)
+                        # O caso DoesNotExist é coberto pelo .exists() acima, então não deve ocorrer.
+
+                    else:
+                        # TANQUE LIVRE: Cria um novo lote
+                        novo_lote = Lote.objects.create(
+                            nome=cleaned_data['nome_lote'],
+                            curva_crescimento_id=cleaned_data.get('curva_id'),
+                            fase_producao_id=cleaned_data.get('fase_id'),
+                            tanque_atual=tanque,
+                            quantidade_inicial=cleaned_data['quantidade'],
+                            peso_medio_inicial=cleaned_data['peso_medio'],
+                            data_povoamento=cleaned_data['data_lancamento'],
+                            ativo=True,
+                            # Garante que os campos atuais comecem com os valores iniciais
+                            quantidade_atual=cleaned_data['quantidade'],
+                            peso_medio_atual=cleaned_data['peso_medio']
+                        )
+                        EventoManejo.objects.create(
+                            tipo_evento='Povoamento',
+                            lote=novo_lote,
+                            tanque_destino=tanque,
+                            data_evento=cleaned_data['data_lancamento'],
+                            quantidade=cleaned_data['quantidade'],
+                            peso_medio=cleaned_data['peso_medio']
+                        )
+                        
+                        # Atualiza o status do tanque para 'Em uso' para consistência visual
+                        try:
+                            status_em_uso = StatusTanque.objects.get(nome__iexact='Em uso')
+                            if tanque.status_tanque != status_em_uso:
+                                tanque.status_tanque = status_em_uso
+                                tanque.save(update_fields=['status_tanque'])
+                        except StatusTanque.DoesNotExist:
+                            # A transação será revertida, alertando sobre a configuração incompleta.
+                            raise Exception("O status 'Em uso' não foi encontrado. Por favor, cadastre-o em 'Status de Tanque' para continuar.")
+            
+            success_message = app_messages.success_process(f'{len(povoamentos)} povoamento(s) processado(s) com sucesso!')
+            return JsonResponse({'success': True, 'message': success_message})
+
+        except Exception as e:
+            error_message = app_messages.error(f'Ocorreu um erro inesperado: {e}')
+            return JsonResponse({'success': False, 'message': error_message}, status=500)
+
+    # Prepara dados enriquecidos para o frontend
+    tanques = Tanque.objects.select_related('status_tanque').order_by('nome')
+    lotes_ativos_tanque_ids = set(Lote.objects.filter(ativo=True, tanque_atual__isnull=False).values_list('tanque_atual_id', flat=True))
+
+    tanques_data = []
+    for tanque in tanques:
+        tanques_data.append({
+            'pk': tanque.pk,
+            'nome': tanque.nome,
+            'status_nome': tanque.status_tanque.nome.lower() if tanque.status_tanque else '',
+            'tem_lote_ativo': tanque.pk in lotes_ativos_tanque_ids
+        })
+
+    context = {
+        'curvas': CurvaCrescimento.objects.order_by('nome'),
+        'tanques_json': json.dumps(tanques_data),
+        'fases': list(FaseProducao.objects.values('pk', 'nome')),
+        'linhas': list(LinhaProducao.objects.values('pk', 'nome')),
+        'tipos_evento': EventoManejo.TIPO_EVENTO_CHOICES, # Adiciona os tipos de evento
+        'data_page': 'povoamento-lotes'
+    }
+    return render_ajax_or_base(request, 'producao/povoamento_lotes.html', context)
+
+@login_required_json
+@login_required_json
+@login_required_json
+def historico_povoamento_view(request):
+    """Filtra e retorna o histórico de eventos de manejo."""
+    try:
+        # Filtros da query string
+        data_inicial = request.GET.get('data_inicial')
+        data_final = request.GET.get('data_final')
+        status = request.GET.get('status') # Retrieve the status parameter
+
+        eventos = EventoManejo.objects.select_related(
+            'lote', 'tanque_destino'
+        ).order_by('-data_evento', '-id')
+
+        if data_inicial:
+            eventos = eventos.filter(data_evento__gte=data_inicial)
+        if data_final:
+            eventos = eventos.filter(data_evento__lte=data_final)
+        
+        # Add the status filter
+        if status:
+            eventos = eventos.filter(tipo_evento=status)
+
+        eventos = eventos[:100] # Limita a 100 registros para performance
+
+        data = [
+            {
+                'id': evento.id,
+                'data': evento.data_evento.strftime('%d/%m/%Y'),
+                'lote': evento.lote.nome,
+                'tanque': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
+                'quantidade': f'{evento.quantidade:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.'),
+                'peso_medio': f'{evento.peso_medio:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.'),
+                'tipo_evento': evento.get_tipo_evento_display(),
+            }
+            for evento in eventos
+        ]
+
+        return JsonResponse({'success': True, 'historico': data})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao buscar histórico: {e}'}, status=500)
+    
+@login_required_json
+@require_http_methods(["GET"])
+def get_active_lote_for_tanque_api(request, tanque_id):
+    """
+    API endpoint para buscar o lote ativo de um tanque específico.
+    Retorna o nome e ID do lote se encontrado.
+    """
+    try:
+        lote = Lote.objects.get(tanque_atual_id=tanque_id, ativo=True)
+        return JsonResponse({'success': True, 'lote': {'id': lote.id, 'nome': lote.nome}})
+    except Lote.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Nenhum lote ativo encontrado.'}, status=404)
+    except Lote.MultipleObjectsReturned:
+        return JsonResponse({'success': False, 'message': 'Múltiplos lotes ativos encontrados.'}, status=409) # 409 Conflict
+
 

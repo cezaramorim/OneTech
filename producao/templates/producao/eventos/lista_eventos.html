@@ -4,7 +4,8 @@
     data-entidade-plural="eventos de manejo"
     data-url-editar="{% url 'producao:editar_evento' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_eventos_multiplos' %}"
-    data-seletor-checkbox=".selecionar-evento">
+    data-seletor-checkbox=".check-evento"
+     data-seletor-pai="#select-all-eventos"></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Lista de Eventos de Manejo</h2>
         <div>
@@ -20,7 +21,7 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selecionar-todos-eventos"></th>
+                            <th><input type="checkbox" id="select-all-eventos"></th>
                             <th>Tipo de Evento</th>
                             <th>Lote</th>
                             <th>Tanque Origem</th>
@@ -35,7 +36,7 @@
                     <tbody>
                         {% for evento in eventos %}
                         <tr data-id="{{ evento.pk }}">
-                            <td><input type="checkbox" class="selecionar-evento" value="{{ evento.pk }}"></td>
+                            <td><input type="checkbox" class="check-evento" value="{{ evento.pk }}"></td>
                             <td>{{ evento.get_tipo_evento_display }}</td>
                             <td>{{ evento.lote.nome|default:"N/A" }}</td>
                             <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>

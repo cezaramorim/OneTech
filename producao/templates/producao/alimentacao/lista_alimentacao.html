@@ -4,7 +4,8 @@
     data-entidade-plural="alimentações diárias"
     data-url-editar="{% url 'producao:editar_alimentacao' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_alimentacao_multipla' %}"
-    data-seletor-checkbox=".selecionar-alimentacao">
+    data-seletor-checkbox=".check-alimentacao"
+    data-seletor-pai="#select-all-alimentacao"></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Lista de Alimentações Diárias</h2>
         <div>
@@ -20,7 +21,7 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selecionar-todas-alimentacoes"></th>
+                            <th><input type="checkbox" id="select-all-alimentacao"></th>
                             <th>Lote</th>
                             <th>Produto Ração</th>
                             <th>Data Alimentação</th>
@@ -32,7 +33,7 @@
                     <tbody>
                         {% for alimentacao in alimentacoes %}
                         <tr data-id="{{ alimentacao.pk }}">
-                            <td><input type="checkbox" class="selecionar-alimentacao" value="{{ alimentacao.pk }}"></td>
+                            <td><input type="checkbox" class="check-alimentacao" value="{{ alimentacao.pk }}"></td>
                             <td>{{ alimentacao.lote.nome|default:"N/A" }}</td>
                             <td>{{ alimentacao.produto_racao.nome|default:"N/A" }}</td>
                             <td>{{ alimentacao.data_alimentacao|date:"d/m/Y" }}</td>
