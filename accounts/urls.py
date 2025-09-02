@@ -11,7 +11,7 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('logout-auto/', views.logout_automatico_view, name='logout_automatico'),
-    path('get-navbar/', views.get_navbar_content, name='get_navbar_content'),
+    path('get-navbar/', views.get_navbar, name='get_navbar'),
 
     # === RECUPERAÇÃO DE SENHA ===
     path('password_reset/', views.password_reset_request_view, name='password_reset'),  # View customizada

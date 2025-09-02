@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Tanque, CurvaCrescimento, Lote, EventoManejo, AlimentacaoDiaria
 
 app_name = 'producao'
 
@@ -27,25 +28,25 @@ urlpatterns = [
     path('linhas-producao/', views.LinhaProducaoListView.as_view(), name='lista_linhasproducao'),
     path('linhas-producao/cadastrar/', views.LinhaProducaoCreateView.as_view(), name='criar_linhaproducao'),
     path('linhas-producao/<int:pk>/editar/', views.LinhaProducaoUpdateView.as_view(), name='editar_linhaproducao'),
-    path('linhas-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.LinhaProducao, success_url_name='producao:lista_linhasproducao'), name='excluir_linhaproducao_multiplo'),
+    path('linhas-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=LinhaProducao, success_url_name='producao:lista_linhasproducao'), name='excluir_linhaproducao_multiplo'),
 
     # Fases de Produção
     path('fases-producao/', views.FaseProducaoListView.as_view(), name='lista_fasesproducao'),
     path('fases-producao/cadastrar/', views.FaseProducaoCreateView.as_view(), name='criar_faseproducao'),
     path('fases-producao/<int:pk>/editar/', views.FaseProducaoUpdateView.as_view(), name='editar_faseproducao'),
-    path('fases-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.FaseProducao), name='excluir_faseproducao_multiplo'),
+    path('fases-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=FaseProducao), name='excluir_faseproducao_multiplo'),
 
     # Status de Tanque
     path('status-tanque/', views.StatusTanqueListView.as_view(), name='lista_statustanque'),
     path('status-tanque/cadastrar/', views.StatusTanqueCreateView.as_view(), name='criar_statustanque'),
     path('status-tanque/<int:pk>/editar/', views.StatusTanqueUpdateView.as_view(), name='editar_statustanque'),
-    path('status-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.StatusTanque), name='excluir_statustanque_multiplo'),
+    path('status-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=StatusTanque), name='excluir_statustanque_multiplo'),
 
     # Tipos de Tanque
     path('tipos-tanque/', views.TipoTanqueListView.as_view(), name='lista_tipostanque'),
     path('tipos-tanque/cadastrar/', views.TipoTanqueCreateView.as_view(), name='criar_tipotanque'),
     path('tipos-tanque/<int:pk>/editar/', views.TipoTanqueUpdateView.as_view(), name='editar_tipotanque'),
-    path('tipos-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=views.TipoTanque), name='excluir_tipotanque_multiplo'),
+    path('tipos-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=TipoTanque), name='excluir_tipotanque_multiplo'),
 
     
 
@@ -93,6 +94,10 @@ urlpatterns = [
     path('eventos/registrar/', views.RegistrarEventoView.as_view(), name='registrar_evento'),
     path('eventos/<int:pk>/editar/', views.EditarEventoView.as_view(), name='editar_evento'),
     path('eventos/excluir-multiplos/', views.ExcluirEventosMultiplosView.as_view(), name='excluir_eventos_multiplos'),
+    path('eventos/gerenciar/', views.gerenciar_eventos_view, name='gerenciar_eventos'),
+    path('api/eventos/mortalidade/', views.api_mortalidade_lotes_ativos, name='api_mortalidade_lotes_ativos'),
+    path('api/eventos/mortalidade/processar/', views.processar_mortalidade_api, name='api_processar_mortalidade'),
+    path('api/registrar-mortalidade/', views.registrar_mortalidade_api, name='api_registrar_mortalidade'),
 
     # Alimentação Diária
     path('alimentacao/', views.ListaAlimentacaoView.as_view(), name='lista_alimentacao'),

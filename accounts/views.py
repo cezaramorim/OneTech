@@ -562,8 +562,27 @@ class CustomPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
     def render_to_response(self, context, **response_kwargs):
         return render_ajax_or_base(self.request, self.template_name, context)
 
+import logging
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+
+logger = logging.getLogger(__name__)
+
 @login_required_json
-def get_navbar_content(request):
-    context = dynamic_menu(request)
-    print(f"DEBUG: Contexto do navbar: {context}")
-    return render(request, 'layout_switcher/navbar.html', context)
+def get_navbar(request):
+    try:
+        # Se você tem um builder de menu, chame aqui. Ex:
+        # from core.services.nav_builder import build_nav_for_user
+        # context = {"dynamic_menu_items": build_nav_for_user(request.user)}
+        context = {}  # mínimo, se preferir
+        html = render_to_string("layout_switcher/navbar.html", context, request=request)
+        return HttpResponse(html)
+    except Exception:
+        logger.exception("Falha ao renderizar navbar; devolvendo fallback.")
+        return HttpResponse(
+            '<nav class="navbar-superior">'
+            '<a class="ajax-link" href="/painel/">Início</a>'
+            '</nav>',
+            status=200
+        )

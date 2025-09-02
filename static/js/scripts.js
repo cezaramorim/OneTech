@@ -2,7 +2,7 @@
 // ARQUIVO scripts.js - VERSÃO COM FETCH HELPER E CREDENCIAIS
 // ============================================================================
 
-// 🌙 Aplica o tema salvo no localStorage (antes do paint)
+//  Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
 const isDarkInit = temaSalvo === "dark";
 if (isDarkInit) {
@@ -138,7 +138,7 @@ function loadAjaxContent(url) {
   fetchWithCreds(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
     .then(async (response) => {
       if (response.status === 401) {
-        let data = null; try { data = await response.json(); } catch {}
+        let data = null; try { data = await response.json(); } catch {} 
         window.location.href = data?.redirect_url || `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
         return null;
       }
@@ -1230,11 +1230,13 @@ document.addEventListener("DOMContentLoaded", () => {
     initGerenciarCurvas();
     initGerenciarTanques();
     initPovoamentoLotes();
+    initGerenciarEventos();
 });
 document.addEventListener("ajaxContentLoaded", () => {
     initGerenciarCurvas();
     initGerenciarTanques();
     initPovoamentoLotes();
+    initGerenciarEventos();
 });
 
 // Listener de delegação de eventos unificado para checkboxes
@@ -1290,3 +1292,255 @@ document.body.addEventListener('change', function(e) {
         updateButtonStates(mainContent);
     }
 });
+
+
+function initGerenciarEventos() {
+  const ROOT_SEL = "#gerenciar-eventos";
+  const TBL_SEL  = "#tabela-mortalidade tbody";
+  const API_URL  = "/producao/api/eventos/mortalidade/";
+
+  console.log("DEBUG: initGerenciarEventos: Searching for root element:", ROOT_SEL);
+  const root = document.querySelector(ROOT_SEL);
+  if (!root) {
+    console.log("DEBUG: initGerenciarEventos: Root element NOT found. Exiting.");
+    return; // Se a tela não está na página, não faz nada
+  }
+  console.log("DEBUG: initGerenciarEventos: Root element found:", root);
+  if (root.dataset.bound === "1") {
+    console.log("DEBUG: initGerenciarEventos: Root already bound. Exiting.");
+    return; // Já inicializado
+  }
+  root.dataset.bound = "1";
+
+  console.log("✅ initGerenciarEventos() executado.");
+
+  // ---- helpers ----
+  const q  = (sel, ctx=root) => ctx.querySelector(sel);
+  const qa = (sel, ctx=root) => Array.from(ctx.querySelectorAll(sel));
+
+  function sanitize(v) {
+    if (!v) return "";
+    const s = String(v).trim().toLowerCase();
+    return (s === "todas" || s === "todos") ? "" : v;
+  }
+
+  function setLoading() {
+    const tbody = q(TBL_SEL);
+    if (tbody) tbody.innerHTML =
+      `<tr><td colspan=\"99\" class=\"text-center\"><span class=\"badge bg-primary\">Carregando dados...</span></td></tr>`;
+  }
+  function setError(msg) {
+    const tbody = q(TBL_SEL);
+    if (tbody) tbody.innerHTML =
+      `<tr><td colspan=\"99\" class=\"text-center\"><span class=\"badge bg-danger\">${msg || "Erro ao carregar"}</span></td></tr>`;
+  }
+  function render(items) {
+    const tbody = q(TBL_SEL);
+    if (!tbody) return;
+    if (!items || !items.length) {
+      tbody.innerHTML = `<tr><td colspan=\"99\" class=\"text-center\">Nenhum lote ativo na data.</td></tr>`;
+      return;
+    }
+    const rows = items.map(it => `
+      <tr data-lote=\"${it.lote_id}\">
+        <td>${it.tanque}</td>
+        <td>${it.lote}</td>
+        <td>${it.data_inicio}</td>
+        <td class=\"text-end\">${it.qtd_atual}</td>
+        <td class=\"text-end\">${it.peso_medio_g}</td>
+        <td class=\"text-end\">${it.biomassa_kg}</td>
+        <td class="text-end"><input type="text" pattern="[0-9]*" inputmode="numeric" class="form-control form-control-sm input-mort" value="${it.qtd_mortalidade || ''}"></td>
+        <td class="text-end">0.00</td>
+      </tr>
+    `).join("");
+    tbody.innerHTML = rows;
+    updateTotaisMortalidade(); // Chamada inicial para calcular os totais
+  }
+
+  async function carregarMortalidade() {
+    try {
+      const unidade = sanitize(q("#filtro-unidade")?.value);
+      const linha   = sanitize(q("#filtro-linha")?.value);
+      const fase    = sanitize(q("#filtro-fase")?.value);
+      const data    = q("#filtro-data")?.value;
+
+      const params = new URLSearchParams();
+      if (unidade) params.set("unidade", unidade);
+      if (linha)   params.set("linha_producao", linha);
+      if (fase)    params.set("fase", fase);
+
+      setLoading();
+      const url = `${API_URL}?${params.toString()}`;
+      const doFetch = (window.fetchWithCreds || window.fetch).bind(window);
+      const resp = await doFetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "include" });
+
+      console.log("DEBUG API RESPONSE: Status:", resp.status, resp.statusText);
+      console.log("DEBUG API RESPONSE: Content-Type:", resp.headers.get("content-type"));
+
+      if (!resp.ok) {
+        console.error("DEBUG API ERROR: Falha API mortalidade:", resp.status, resp.statusText);
+        setError("Falha na API (Status: " + resp.status + ")");
+        return;
+      }
+
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (!ct.includes("application/json")) {
+        console.error("DEBUG API ERROR: Conteúdo inesperado (não JSON):");
+        const text = await resp.text();
+        console.error("DEBUG API ERROR: Resposta não JSON (primeiros 500 chars):", text.slice(0, 500));
+        if (typeof window.isLikelyLoginHTML === "function" && window.isLikelyLoginHTML(text)) {
+          window.location.href = `/accounts/login/?next=${encodeURIComponent(window.location.pathname)}`;
+          return;
+        }
+        setError("Resposta inesperada do servidor");
+        return;
+      }
+
+      const dataJson = await resp.json();
+      console.log("DEBUG API RESPONSE: Dados JSON recebidos:", dataJson); // ESTE É O LOG CHAVE
+      const items = Array.isArray(dataJson) ? dataJson : (dataJson.results || []);
+      render(items);
+    } catch (err) {
+      console.error("Erro JS ao carregar mortalidade:", err);
+      setError("Erro inesperado no JavaScript");
+    }
+  }
+
+  // Liga os eventos
+  ["#filtro-unidade", "#filtro-linha", "#filtro-fase", "#filtro-data"].forEach(sel => {
+    const el = q(sel);
+    if (el) el.addEventListener("change", carregarMortalidade);
+  });
+
+  qa('[data-bs-toggle="tab"]').forEach(el => {
+    el.addEventListener("shown.bs.tab", (e) => {
+      const target = e.target?.getAttribute("data-bs-target");
+      if (target === "#pane-mortalidade") carregarMortalidade();
+    });
+  });
+
+  // Carga inicial
+  carregarMortalidade();
+
+  // Adiciona listener para cálculo dinâmico da mortalidade
+  const tabelaMortalidadeBody = q(TBL_SEL);
+  if (tabelaMortalidadeBody) {
+    tabelaMortalidadeBody.addEventListener('input', (e) => {
+      if (e.target.classList.contains('input-mort')) {
+        console.log("DEBUG: Input de mortalidade alterado.");
+        const inputQtdMort = e.target;
+        const row = inputQtdMort.closest('tr');
+        
+        const qtdMortalidade = parseFloat(inputQtdMort.value) || 0;
+        const pesoMedioLote = parseFloat(row.children[4].textContent) || 0; // Coluna do Peso Médio (g)
+        
+        const biomassaMortalidadeKg = (qtdMortalidade * pesoMedioLote) / 1000;
+        
+        // Atualiza a célula da Biomassa Mortalidade (última coluna)
+        row.children[7].textContent = biomassaMortalidadeKg.toFixed(2);
+
+        // Atualiza os totais (se existirem)
+        updateTotaisMortalidade();
+      }
+    });
+  }
+
+  // Adiciona listener para o botão Processar Lançamentos
+  const btnProcessarMortalidade = q("#btn-processar-mortalidade");
+  if (btnProcessarMortalidade) {
+      btnProcessarMortalidade.addEventListener("click", async () => {
+          console.log("DEBUG: Botão Processar Lançamentos clicado.");
+          const tbody = q(TBL_SEL);
+          if (!tbody) {
+              mostrarMensagem("danger", "Tabela de mortalidade não encontrada.");
+              return;
+          }
+
+          const lancamentos = [];
+          tbody.querySelectorAll("tr").forEach(row => {
+              const loteId = row.dataset.lote;
+              const inputQtdMort = row.querySelector(".input-mort");
+              const qtdMortalidade = parseFloat(inputQtdMort?.value) || 0;
+              const biomassaRetirada = parseFloat(row.children[7].textContent) || 0; // Agora é a 8ª coluna (índice 7)
+
+              if (loteId && qtdMortalidade > 0) { // Apenas processa lançamentos com quantidade > 0
+                  lancamentos.push({
+                      lote_id: loteId,
+                      quantidade_mortalidade: qtdMortalidade,
+                      biomassa_retirada: biomassaRetirada
+                  });
+              }
+          });
+
+          if (lancamentos.length === 0) {
+              mostrarMensagem("warning", "Nenhum lançamento de mortalidade para processar.");
+              return;
+          }
+
+          // Desabilitar botão e mostrar spinner
+          btnProcessarMortalidade.disabled = true;
+          btnProcessarMortalidade.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+
+          try {
+              const response = await fetchWithCreds(`${API_URL}processar/`, { // Usando o API_URL base + /processar/
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ lancamentos: lancamentos }),
+              });
+
+              const result = await response.json();
+
+              if (response.ok) {
+                  mostrarMensagem("success", result.message || "Lançamentos processados com sucesso!");
+                  carregarMortalidade(); // Recarrega a tabela após o sucesso
+              } else {
+                  mostrarMensagem("danger", result.message || "Erro ao processar lançamentos.");
+              }
+          } catch (error) {
+              console.error("Erro ao enviar lançamentos de mortalidade:", error);
+              mostrarMensagem("danger", "Erro de comunicação ao processar lançamentos.");
+          } finally {
+              // Reabilitar botão
+              btnProcessarMortalidade.disabled = false;
+              btnProcessarMortalidade.innerHTML = 'Processar Lançamentos';
+          }
+      });
+  }
+}
+
+function updateTotaisMortalidade() {
+  console.log("DEBUG: updateTotaisMortalidade() chamada.");
+  const tabelaMortalidadeBody = document.querySelector("#tabela-mortalidade tbody");
+  if (!tabelaMortalidadeBody) {
+    console.log("DEBUG: tbody da tabela de mortalidade não encontrado.");
+    return;
+  }
+
+  let totalQtd = 0;
+  let totalBiomassa = 0;
+
+  tabelaMortalidadeBody.querySelectorAll('tr').forEach(row => {
+    const inputQtdMort = row.querySelector('.input-mort');
+    if (inputQtdMort) {
+      const qtd = parseFloat(inputQtdMort.value) || 0;
+      const biomassa = parseFloat(row.children[7].textContent) || 0; // Biomassa Mortalidade (kg)
+      console.log(`DEBUG: Linha - Qtd: ${qtd}, Biomassa: ${biomassa}`);
+      totalQtd += qtd;
+      totalBiomassa += biomassa;
+    }
+  });
+
+  const totalQtdElement = document.getElementById('total-mortalidade-qtd');
+  const totalBiomassaElement = document.getElementById('total-mortalidade-biomassa');
+
+  if (totalQtdElement) {
+    totalQtdElement.textContent = totalQtd;
+    console.log("DEBUG: Total Qtd atualizado para:", totalQtd);
+  }
+  if (totalBiomassaElement) {
+    totalBiomassaElement.textContent = totalBiomassa.toFixed(2);
+    console.log("DEBUG: Total Biomassa atualizado para:", totalBiomassa.toFixed(2));
+  }
+}

@@ -1,0 +1,142 @@
+{% load static %}
+
+<div id="gerenciar-eventos" data-page="gerenciar-eventos" class="container-fluid mt-3" data-tela="gerenciar_eventos">
+    <div id="identificador-tela" data-tela="gerenciar_eventos"></div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Registrar Eventos de Produção</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- Filtros -->
+                <div class="col-md-2">
+                    <label for="filtro-unidade" class="form-label">Unidade</label>
+                    <select id="filtro-unidade" class="form-select">
+                        <option value="">Todas</option>
+                        {% for unidade in unidades %}
+                            <option value="{{ unidade.pk }}">{{ unidade.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filtro-linha" class="form-label">Linha de Produção</label>
+                    <select id="filtro-linha" class="form-select">
+                        <option value="">Todas</option>
+                        {% for linha in linhas_producao %}
+                            <option value="{{ linha.pk }}">{{ linha.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filtro-fase" class="form-label">Fase de Produção</label>
+                    <select id="filtro-fase" class="form-select">
+                        <option value="">Todas</option>
+                        {% for fase in fases_producao %}
+                            <option value="{{ fase.pk }}">{{ fase.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filtro-data" class="form-label">Data Lançamento</label>
+                    <input type="date" id="filtro-data" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="filtro-tanque" class="form-label">Buscar Tanque</label>
+                    <input type="text" id="filtro-tanque" class="form-control" placeholder="Digite o número ou nome do tanque...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Abas de Navegação -->
+    <ul class="nav nav-tabs" id="eventosTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="mortalidade-tab" data-bs-toggle="tab" data-bs-target="#pane-mortalidade" type="button" role="tab" aria-controls="pane-mortalidade" aria-selected="true">Mortalidade</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="despesca-tab" data-bs-toggle="tab" data-bs-target="#pane-despesca" type="button" role="tab" aria-controls="pane-despesca" aria-selected="false">Despesca</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="transferencia-tab" data-bs-toggle="tab" data-bs-target="#pane-transferencia" type="button" role="tab" aria-controls="pane-transferencia" aria-selected="false">Transferência</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="classificacao-tab" data-bs-toggle="tab" data-bs-target="#pane-classificacao" type="button" role="tab" aria-controls="pane-classificacao" aria-selected="false">Classificação</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="biometrias-tab" data-bs-toggle="tab" data-bs-target="#pane-biometrias" type="button" role="tab" aria-controls="pane-biometrias" aria-selected="false">Biometrias</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="parametros-tab" data-bs-toggle="tab" data-bs-target="#pane-parametros" type="button" role="tab" aria-controls="pane-parametros" aria-selected="false">Parâmetros</button>
+        </li>
+    </ul>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="eventosTabContent">
+
+        <!-- Aba Mortalidade -->
+        <div class="tab-pane fade show active" id="pane-mortalidade" role="tabpanel" aria-labelledby="mortalidade-tab">
+            <div class="card shadow-sm mt-3">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabela-mortalidade">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Tanque</th>
+                                    <th scope="col">Lote</th>
+                                    <th scope="col">Data Início</th>
+                                    <th scope="col">Qtd. Atual</th>
+                                    <th scope="col">Peso Médio (g)</th>
+                                    <th scope="col">Biomassa (g)</th>
+                                    <th scope="col" style="width: 150px;">Qtd. Mortalidade</th>
+                                    <th scope="col">Biomassa Retirada (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Linhas serão inseridas via JavaScript -->
+                                <tr>
+                                    <td colspan="9" class="text-center"><span class="badge bg-primary">Carregando dados...</span></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="6">Total Quantidade</td>
+                                    <td id="total-mortalidade-qtd" class="text-end">0</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6">Total Biomassa (kg)</td>
+                                    <td id="total-mortalidade-biomassa" class="text-end">0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-primary" id="btn-processar-mortalidade">Processar Lançamentos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abas em Construção -->
+        <div class="tab-pane fade" id="pane-despesca" role="tabpanel" aria-labelledby="despesca-tab">
+            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+        </div>
+        <div class="tab-pane fade" id="pane-transferencia" role="tabpanel" aria-labelledby="transferencia-tab">
+            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+        </div>
+        <div class="tab-pane fade" id="pane-classificacao" role="tabpanel" aria-labelledby="classificacao-tab">
+            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+        </div>
+        <div class="tab-pane fade" id="pane-biometrias" role="tabpanel" aria-labelledby="biometrias-tab">
+            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+        </div>
+        <div class="tab-pane fade" id="pane-parametros" role="tabpanel" aria-labelledby="parametros-tab">
+            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+        </div>
+
+    </div>
+
+</div>
+

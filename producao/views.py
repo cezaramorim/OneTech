@@ -6,13 +6,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
+from django.utils import timezone
 import pandas as pd
 from io import BytesIO
 from datetime import time
 from django.contrib.auth.decorators import login_required, permission_required
-from accounts.utils.decorators import login_required_json
-from django.views.decorators.http import require_http_methods # Added import
-from .serializers import TanqueSerializer # Import the serializer
+from django.views.decorators.http import require_http_methods
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
@@ -320,6 +319,7 @@ class ExcluirTanquesMultiplosView(BulkDeleteView):
 @login_required
 @permission_required('producao.add_tanque', raise_exception=True)
 def importar_tanques_view(request):
+    from decimal import Decimal
     app_messages = get_app_messages(request)
     template = 'producao/tanques/importar_tanques.html'
     redirect_url = reverse('producao:lista_tanques')
@@ -805,7 +805,7 @@ def _to_decimal(s):
     except InvalidOperation:
         return None
 
-@login_required_json
+@login_required
 @require_http_methods(["GET"])
 def tanque_detail(request, pk):
     obj = get_object_or_404(Tanque, pk=pk)
@@ -818,7 +818,7 @@ def tanque_detail(request, pk):
             d[f] = float(d[f])
     return JsonResponse(d, safe=False)
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 def tanque_update(request, pk):
     obj = get_object_or_404(Tanque, pk=pk)
@@ -857,7 +857,7 @@ def tanque_update(request, pk):
     obj.save()
     return JsonResponse({"success": True, "message": "Tanque atualizado com sucesso.", "id": obj.id})
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 def tanque_create(request):
     # reusa a lógica do update mudando a criação
@@ -873,7 +873,7 @@ def tanque_create(request):
 
     # calculados (se vierem, usa; senão recalcula)
     mq = _to_decimal(request.POST.get("metro_quadrado"))
-    mc = _to_decimal(request.POST.get("metro_cubico"))
+    mc = _to_decimal(request.POST.get('metro_cubico'))
     ha = _to_decimal(request.POST.get("ha"))
     if mq is None and novo.largura and novo.comprimento:
         mq = novo.largura * novo.comprimento
@@ -911,7 +911,6 @@ def gerenciar_tanques_view(request):
     }
     return render_ajax_or_base(request, 'producao/gerenciar_tanques.html', context)
 
-from django.views.decorators.http import require_http_methods
 
 @login_required
 @permission_required('producao.view_curvacrescimento')
@@ -983,7 +982,7 @@ def serialize_detalhe(d: CurvaCrescimentoDetalhe) -> dict:
 # Endpoints
 # -----------------------------
 
-@login_required_json
+@login_required
 @require_http_methods(["GET"])
 @permission_required('producao.view_curvacrescimento', raise_exception=True)
 def curva_com_detalhes_view(request, curva_id: int):
@@ -998,7 +997,7 @@ def curva_com_detalhes_view(request, curva_id: int):
     }
     return JsonResponse(payload, status=200)
 
-@login_required_json
+@login_required
 @require_http_methods(["GET"])
 @permission_required('producao.view_curvacrescimento', raise_exception=True)
 def detalhe_view(request, curva_id: int, detalhe_id: int):
@@ -1009,7 +1008,7 @@ def detalhe_view(request, curva_id: int, detalhe_id: int):
     detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id, curva=curva)
     return JsonResponse(serialize_detalhe(detalhe), status=200)
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 @permission_required('producao.add_curvacrescimento', raise_exception=True)
 @transaction.atomic
@@ -1027,7 +1026,7 @@ def curva_create_view(request):
     message = app_messages.error("Erro ao criar curva.")
     return JsonResponse({"success": False, "errors": form.errors, "message": message}, status=400)
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 @permission_required('producao.change_curvacrescimento', raise_exception=True)
 @transaction.atomic
@@ -1046,7 +1045,7 @@ def curva_update_view(request, curva_id: int):
     message = app_messages.error("Erro ao atualizar curva.")
     return JsonResponse({"success": False, "errors": form.errors, "message": message}, status=400)
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 @permission_required('producao.add_curvacrescimentodetalhe', raise_exception=True)
 @transaction.atomic
@@ -1067,7 +1066,7 @@ def detalhe_create_view(request, curva_id: int):
         }, status=201)
     return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao adicionar período."}, status=400)
 
-@login_required_json
+@login_required
 @require_http_methods(["POST"])
 @permission_required('producao.change_curvacrescimentodetalhe', raise_exception=True)
 @transaction.atomic
@@ -1199,9 +1198,7 @@ def povoamento_lotes_view(request):
     }
     return render_ajax_or_base(request, 'producao/povoamento_lotes.html', context)
 
-@login_required_json
-@login_required_json
-@login_required_json
+@login_required
 def historico_povoamento_view(request):
     """Filtra e retorna o histórico de eventos de manejo."""
     try:
@@ -1243,7 +1240,7 @@ def historico_povoamento_view(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Erro ao buscar histórico: {e}'}, status=500)
     
-@login_required_json
+@login_required
 @require_http_methods(["GET"])
 def get_active_lote_for_tanque_api(request, tanque_id):
     """
@@ -1259,3 +1256,220 @@ def get_active_lote_for_tanque_api(request, tanque_id):
         return JsonResponse({'success': False, 'message': 'Múltiplos lotes ativos encontrados.'}, status=409) # 409 Conflict
 
 
+@login_required
+@permission_required('producao.add_eventomanejo', raise_exception=True)
+def gerenciar_eventos_view(request):
+    """
+    Renderiza a página principal de gerenciamento de eventos de produção.
+    """
+    context = {
+        'unidades': Unidade.objects.all().order_by('nome'),
+        'linhas_producao': LinhaProducao.objects.all().order_by('nome'),
+        'fases_producao': FaseProducao.objects.all().order_by('nome'),
+        'data_page': 'gerenciar-eventos',
+        'data_tela': 'gerenciar_eventos',
+    }
+    return render_ajax_or_base(request, 'producao/eventos/gerenciar_eventos.html', context)
+
+@login_required
+@require_http_methods(["GET"])
+@permission_required('producao.view_lote', raise_exception=True)
+def get_lotes_ativos_api(request):
+    lotes = Lote.objects.filter(ativo=True).select_related(
+        'tanque_atual__unidade', 
+        'tanque_atual__linha_producao', 
+        'fase_producao'
+    ).order_by('tanque_atual__nome')
+    
+    # Filtros
+    unidade_id = request.GET.get('unidade')
+    linha_id = request.GET.get('linha_producao')
+    fase_id = request.GET.get('fase_producao')
+    tanque_nome = request.GET.get('tanque')
+
+    if unidade_id:
+        lotes = lotes.filter(tanque_atual__unidade_id=unidade_id)
+    if linha_id:
+        lotes = lotes.filter(tanque_atual__linha_producao_id=linha_id)
+    if fase_id:
+        lotes = lotes.filter(fase_producao_id=fase_id)
+    if tanque_nome:
+        lotes = lotes.filter(tanque_atual__nome__icontains=tanque_nome)
+
+    data = {
+        'lotes': [
+            {
+                'lote_id': lote.id,
+                'lote_nome': lote.nome,
+                'tanque_id': lote.tanque_atual.id if lote.tanque_atual else None,
+                'tanque_nome': lote.tanque_atual.nome if lote.tanque_atual else 'N/A',
+                'data_inicio': lote.data_povoamento,
+                'qtd_atual': lote.quantidade_atual,
+                'peso_medio_atual': lote.peso_medio_atual,
+                'biomassa_atual': lote.biomassa_atual,
+            }
+            for lote in lotes
+        ]
+    }
+    return JsonResponse(data)
+
+@login_required
+@require_http_methods(["POST"])
+@permission_required('producao.add_eventomanejo', raise_exception=True)
+@transaction.atomic
+def registrar_mortalidade_api(request):
+    app_messages = get_app_messages(request)
+    try:
+        data = json.loads(request.body)
+        lancamentos = data.get('lancamentos', [])
+
+        if not lancamentos:
+            message = app_messages.error("Nenhum lançamento recebido.")
+            return JsonResponse({'success': False, 'message': message}, status=400)
+
+        for item in lancamentos:
+            lote = get_object_or_404(Lote, pk=item['lote_id'])
+            EventoManejo.objects.create(
+                tipo_evento='Mortalidade',
+                lote=lote,
+                tanque_origem=lote.tanque_atual,
+                tanque_destino=None,
+                data_evento=item['data_evento'],
+                quantidade=item['quantidade'],
+                peso_medio=item['peso_medio']
+            )
+        
+        message = app_messages.success_process(f'{len(lancamentos)} lançamento(s) de mortalidade registrado(s) com sucesso.')
+        return JsonResponse({'success': True, 'message': message})
+    except Exception as e:
+        message = app_messages.error(f'Erro ao registrar mortalidade: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=400)
+
+@login_required
+@require_http_methods(["POST"])
+@permission_required('producao.add_eventomanejo', raise_exception=True)
+@transaction.atomic
+def processar_mortalidade_api(request):
+    app_messages = get_app_messages(request)
+    try:
+        data = json.loads(request.body)
+        lancamentos = data.get('lancamentos', [])
+
+        if not lancamentos:
+            message = app_messages.error("Nenhum lançamento de mortalidade recebido para processar.")
+            return JsonResponse({'success': False, 'message': message}, status=400)
+
+        processed_count = 0
+        for item in lancamentos:
+            lote_id = item.get('lote_id')
+            quantidade_mortalidade = item.get('quantidade_mortalidade')
+            biomassa_retirada = item.get('biomassa_retirada')
+
+            if not lote_id or quantidade_mortalidade is None:
+                continue
+
+            lote = get_object_or_404(Lote, pk=lote_id)
+
+            EventoManejo.objects.create(
+                tipo_evento='Mortalidade',
+                lote=lote,
+                tanque_origem=lote.tanque_atual,
+                tanque_destino=None,
+                data_evento=timezone.now().date(),
+                quantidade=quantidade_mortalidade,
+                peso_medio=lote.peso_medio_atual,
+                observacoes=f"Mortalidade registrada. Biomassa retirada: {biomassa_retirada:.2f} kg.",
+                tipo_movimento='Mortes' # <--- Adicionar esta linha
+            )
+
+            lote.quantidade_atual = lote.quantidade_atual - quantidade_mortalidade
+            if lote.quantidade_atual < 0:
+                lote.quantidade_atual = 0
+            
+            lote.save()
+            processed_count += 1
+        
+        message = app_messages.success_process(f'{processed_count} lançamento(s) de mortalidade processado(s) com sucesso.')
+        return JsonResponse({'success': True, 'message': message})
+
+    except json.JSONDecodeError:
+        message = app_messages.error("Requisição inválida: JSON malformado.")
+        return JsonResponse({'success': False, 'message': message}, status=400)
+    except Exception as e:
+        message = app_messages.error(f'Erro ao processar lançamentos de mortalidade: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=400)
+
+# producao/views.py
+from datetime import datetime
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.db.models import Q, F, Value, IntegerField
+from django.db.models.functions import Coalesce
+
+@login_required
+def api_mortalidade_lotes_ativos(request):
+    """
+    Retorna tanques com lotes ativos na data informada, aplicando filtros de
+    unidade/linha/fase. Considera 'ativo' se data_inicio <= data_ref e
+    (data_baixa IS NULL ou data_baixa >= data_ref).
+    """
+    # Import local: evita ciclos (producao.views <-> producao.models etc.)
+    from .models import Lote  # ajuste se seu model tiver outro nome/caminho
+
+    def _parse_data(s):
+        if not s:
+            return None
+        for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except ValueError:
+                pass
+        return None
+
+    def _not_all(v):
+        if not v:
+            return False
+        vl = str(v).strip().lower()
+        return vl not in ("todas", "todos", "")
+
+    unidade_id = request.GET.get("unidade")
+    linha_id   = request.GET.get("linha_producao")
+    fase_id    = request.GET.get("fase")
+    data_str   = request.GET.get("data")
+
+    data_ref = _parse_data(data_str) or datetime.today().date()
+
+    # Base: lotes ativos
+    qs = (Lote.objects
+          .select_related("tanque_atual", "tanque_atual__unidade", "tanque_atual__linha_producao", "tanque_atual__fase")
+          .filter(ativo=True, quantidade_atual__gt=0)
+    )
+
+    if _not_all(unidade_id):
+        qs = qs.filter(tanque_atual__unidade_id=unidade_id)
+    if _not_all(linha_id):
+        qs = qs.filter(tanque_atual__linha_producao_id=linha_id)
+    if _not_all(fase_id):
+        qs = qs.filter(tanque_atual__fase_id=fase_id)
+
+    results = []
+    for lote in qs.order_by("tanque_atual__nome", "id"):
+        peso_medio_g = float(lote.peso_medio_atual or 0)
+        qtd_atual    = int(lote.quantidade_atual or 0)
+        biomassa_kg  = (peso_medio_g / 1000.0) * qtd_atual
+
+        results.append({
+            "tanque": getattr(lote.tanque_atual, "nome", str(lote.tanque_atual_id)),
+            "lote_id": lote.id,
+            "lote": lote.nome,
+            "data_inicio": lote.data_povoamento.strftime("%d/%m/%Y") if lote.data_povoamento else "",
+            "qtd_atual": qtd_atual,
+            "peso_medio_g": round(peso_medio_g, 2),
+            "biomassa_kg": round(biomassa_kg, 2),
+            # campos do dia (para usuário preencher na UI)
+            "qtd_mortalidade": 0,
+            "peso_medio_dia_g": "-",
+            "biomassa_mort_kg": 0.00,
+        })
+
+    return JsonResponse({"results": results})

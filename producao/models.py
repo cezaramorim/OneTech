@@ -208,6 +208,13 @@ class EventoManejo(models.Model):
         ('Outro', 'Outro'),
     ]
     tipo_evento = models.CharField(max_length=50, choices=TIPO_EVENTO_CHOICES)
+
+    tipo_movimento = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        help_text="Indica se o evento representa uma entrada ou saída de peixes."
+    )
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='eventos_manejo')
     tanque_origem = models.ForeignKey(Tanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='eventos_origem')
     tanque_destino = models.ForeignKey(Tanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='eventos_destino')
