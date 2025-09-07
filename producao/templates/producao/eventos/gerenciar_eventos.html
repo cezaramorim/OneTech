@@ -11,6 +11,18 @@
             <div class="row g-3">
                 <!-- Filtros -->
                 <div class="col-md-2">
+                  <label for="aba-evento-select" class="form-label">Tipo Evento</label>
+                  <select id="aba-evento-select" class="form-select">
+                    <option value="" selected>Selecione</option>
+                    <option value="mortalidade">Mortalidade</option>
+                    <option value="despesca">Despesca</option>
+                    <option value="transferencia">Transferência</option>
+                    <option value="classificacao">Classificação</option>
+                    <option value="biometrias">Biometrias</option>
+                    <option value="parametros">Parâmetros</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
                     <label for="filtro-unidade" class="form-label">Unidade</label>
                     <select id="filtro-unidade" class="form-select">
                         <option value="">Todas</option>
@@ -41,18 +53,18 @@
                     <label for="filtro-data" class="form-label">Data Lançamento</label>
                     <input type="date" id="filtro-data" class="form-control">
                 </div>
-                <div class="col-md-4">
-                    <label for="filtro-tanque" class="form-label">Buscar Tanque</label>
-                    <input type="text" id="filtro-tanque" class="form-control" placeholder="Digite o número ou nome do tanque...">
+                <div class="col-md-2">
+                    <label for="filtro-busca" class="form-label">Buscar</label>
+                    <input type="text" id="filtro-busca" class="form-control" placeholder="Lote, tanque, etc...">
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Abas de Navegação -->
-    <ul class="nav nav-tabs" id="eventosTab" role="tablist">
+    <!-- Abas de Navegação (Oculto, controlado via JS) -->
+    <ul class="nav nav-tabs d-none" id="eventosTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="mortalidade-tab" data-bs-toggle="tab" data-bs-target="#pane-mortalidade" type="button" role="tab" aria-controls="pane-mortalidade" aria-selected="true">Mortalidade</button>
+            <button class="nav-link" id="mortalidade-tab" data-bs-toggle="tab" data-bs-target="#pane-mortalidade" type="button" role="tab" aria-controls="pane-mortalidade" aria-selected="false">Mortalidade</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="despesca-tab" data-bs-toggle="tab" data-bs-target="#pane-despesca" type="button" role="tab" aria-controls="pane-despesca" aria-selected="false">Despesca</button>
@@ -71,72 +83,116 @@
         </li>
     </ul>
 
-    <!-- Conteúdo das Abas -->
-    <div class="tab-content" id="eventosTabContent">
-
-        <!-- Aba Mortalidade -->
-        <div class="tab-pane fade show active" id="pane-mortalidade" role="tabpanel" aria-labelledby="mortalidade-tab">
-            <div class="card shadow-sm mt-3">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="tabela-mortalidade">
-                            <thead>
+    <!-- Container da Visão Inicial (Últimos Eventos) -->
+    <div id="visao-inicial-eventos">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Últimos Eventos Registrados</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Lote</th>
+                                <th>Tanque Origem</th>
+                                <th>Tanque Destino</th>
+                                <th class="text-end">Quantidade</th>
+                                <th class="text-end">Peso Médio</th>
+                                <th>Obs.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-ultimos-eventos-body">
+                            {% for evento in ultimos_eventos %}
                                 <tr>
-                                    <th scope="col">Tanque</th>
-                                    <th scope="col">Lote</th>
-                                    <th scope="col">Data Início</th>
-                                    <th scope="col">Qtd. Atual</th>
-                                    <th scope="col">Peso Médio (g)</th>
-                                    <th scope="col">Biomassa (g)</th>
-                                    <th scope="col" style="width: 150px;">Qtd. Mortalidade</th>
-                                    <th scope="col">Biomassa Retirada (kg)</th>
+                                    <td>{{ evento.data_evento|date:"d/m/Y" }}</td>
+                                    <td>{{ evento.get_tipo_evento_display }}</td>
+                                    <td>{{ evento.lote.nome|default:"N/A" }}</td>
+                                    <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
+                                    <td>{{ evento.tanque_destino.nome|default:"N/A" }}</td>
+                                    <td class="text-end">{{ evento.quantidade|default:"-" }}</td>
+                                    <td class="text-end">{{ evento.peso_medio|default:"-" }}</td>
+                                    <td>{{ evento.observacoes|truncatechars:30 }}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Linhas serão inseridas via JavaScript -->
+                            {% empty %}
                                 <tr>
-                                    <td colspan="9" class="text-center"><span class="badge bg-primary">Carregando dados...</span></td>
+                                    <td colspan="8" class="text-center">Nenhum evento registrado ainda.</td>
                                 </tr>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="6">Total Quantidade</td>
-                                    <td id="total-mortalidade-qtd" class="text-end">0</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="6">Total Biomassa (kg)</td>
-                                    <td id="total-mortalidade-biomassa" class="text-end">0.00</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    <div class="d-flex justify-content-end mt-3">
-                        <button class="btn btn-primary" id="btn-processar-mortalidade">Processar Lançamentos</button>
-                    </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-primary" id="btn-mostrar-mais-eventos" data-offset="20">Mostrar mais...</button>
                 </div>
             </div>
         </div>
-
-        <!-- Abas em Construção -->
-        <div class="tab-pane fade" id="pane-despesca" role="tabpanel" aria-labelledby="despesca-tab">
-            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
-        </div>
-        <div class="tab-pane fade" id="pane-transferencia" role="tabpanel" aria-labelledby="transferencia-tab">
-            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
-        </div>
-        <div class="tab-pane fade" id="pane-classificacao" role="tabpanel" aria-labelledby="classificacao-tab">
-            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
-        </div>
-        <div class="tab-pane fade" id="pane-biometrias" role="tabpanel" aria-labelledby="biometrias-tab">
-            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
-        </div>
-        <div class="tab-pane fade" id="pane-parametros" role="tabpanel" aria-labelledby="parametros-tab">
-            <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
-        </div>
-
     </div>
 
+    <!-- Container das Abas de Eventos (Oculto por padrão) -->
+    <div id="conteudo-abas-eventos" class="d-none">
+        <div class="tab-content" id="eventosTabContent">
+            <!-- Aba Mortalidade -->
+            <div class="tab-pane fade" id="pane-mortalidade" role="tabpanel" aria-labelledby="mortalidade-tab">
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="tabela-mortalidade">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Tanque</th>
+                                        <th scope="col">Lote</th>
+                                        <th scope="col">Data Início</th>
+                                        <th scope="col">Qtd. Atual</th>
+                                        <th scope="col">Peso Médio (g)</th>
+                                        <th scope="col">Biomassa (g)</th>
+                                        <th scope="col" style="width: 150px;">Qtd. Mortalidade</th>
+                                        <th scope="col">Biomassa Retirada (Kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Linhas serão inseridas via JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6">Total Quantidade</td>
+                                        <td id="total-mortalidade-qtd" class="text-end">0</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="6">Total Biomassa (kg)</td>
+                                        <td id="total-mortalidade-biomassa" class="text-end">0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-primary" id="btn-processar-mortalidade">Processar Lançamentos</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abas em Construção -->
+            <div class="tab-pane fade" id="pane-despesca" role="tabpanel" aria-labelledby="despesca-tab">
+                <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+            </div>
+            <div class="tab-pane fade" id="pane-transferencia" role="tabpanel" aria-labelledby="transferencia-tab">
+                <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+            </div>
+            <div class="tab-pane fade" id="pane-classificacao" role="tabpanel" aria-labelledby="classificacao-tab">
+                <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+            </div>
+            <div class="tab-pane fade" id="pane-biometrias" role="tabpanel" aria-labelledby="biometrias-tab">
+                <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+            </div>
+            <div class="tab-pane fade" id="pane-parametros" role="tabpanel" aria-labelledby="parametros-tab">
+                <div class="card shadow-sm mt-3"><div class="card-body">Em construção...</div></div>
+            </div>
+        </div>
+    </div>
 </div>
 

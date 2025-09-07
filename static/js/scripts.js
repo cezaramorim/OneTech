@@ -847,6 +847,11 @@ function initGerenciarTanques() {
 
     const selStatus = raiz.querySelector('#id_status_tanque');
     if (selStatus) selStatus.value = d.status_tanque_id || d.status_tanque || '';
+
+    const selTipoTela = raiz.querySelector('#id_tipo_tela');
+    if (selTipoTela) {
+        selTipoTela.value = d.tipo_tela || '';
+    }
     const elAtivo = raiz.querySelector('#id_ativo');
     if (elAtivo) {
         elAtivo.value = (String(d.ativo) === '1' || d.ativo === true) ? 'True' : 'False';
@@ -976,6 +981,31 @@ function initGerenciarTanques() {
 
   // não autocarregar nada por padrão
   resetFormTanque(true);
+
+  // ---------- Ajuste de altura da lista ----------
+  function adjustListHeight() {
+    if (!form || !lista) return;
+    const formRect = form.getBoundingClientRect();
+    const formTop = formRect.top;
+    const formBottom = formRect.top + form.offsetHeight; // Usar offsetHeight para altura real do elemento
+
+    // Calcula a altura disponível para a lista, considerando o offset do topo do formulário
+    // e uma margem inferior para evitar que a lista fique colada no rodapé
+    const availableHeight = formBottom - formTop; // Altura total do formulário
+
+    // Ajusta a altura da lista, subtraindo o espaço ocupado pelo campo de busca e botão "Novo"
+    // e uma margem para que a lista não fique exatamente do mesmo tamanho do formulário
+    const searchAndButtonContainer = raiz.querySelector('.d-flex.mb-2');
+    const searchAndButtonHeight = searchAndButtonContainer ? searchAndButtonContainer.offsetHeight : 0;
+    const finalHeight = availableHeight - searchAndButtonHeight - 20; // 20px de margem extra
+
+    lista.style.maxHeight = `${finalHeight}px`;
+    lista.style.overflowY = 'auto';
+  }
+
+  // Ajusta a altura da lista ao carregar e ao redimensionar a janela
+  adjustListHeight();
+  window.addEventListener('resize', adjustListHeight);
 }
 
 function initPovoamentoLotes() {
@@ -1296,218 +1326,281 @@ document.body.addEventListener('change', function(e) {
 
 function initGerenciarEventos() {
   const ROOT_SEL = "#gerenciar-eventos";
-  const TBL_SEL  = "#tabela-mortalidade tbody";
-  const API_URL  = "/producao/api/eventos/mortalidade/";
-
-  console.log("DEBUG: initGerenciarEventos: Searching for root element:", ROOT_SEL);
   const root = document.querySelector(ROOT_SEL);
-  if (!root) {
-    console.log("DEBUG: initGerenciarEventos: Root element NOT found. Exiting.");
-    return; // Se a tela não está na página, não faz nada
-  }
-  console.log("DEBUG: initGerenciarEventos: Root element found:", root);
-  if (root.dataset.bound === "1") {
-    console.log("DEBUG: initGerenciarEventos: Root already bound. Exiting.");
-    return; // Já inicializado
+  if (!root || root.dataset.bound === "1") {
+    return;
   }
   root.dataset.bound = "1";
 
   console.log("✅ initGerenciarEventos() executado.");
 
-  // ---- helpers ----
-  const q  = (sel, ctx=root) => ctx.querySelector(sel);
-  const qa = (sel, ctx=root) => Array.from(ctx.querySelectorAll(sel));
+  const q = (sel, ctx = root) => ctx.querySelector(sel);
+  const qa = (sel, ctx = root) => Array.from(ctx.querySelectorAll(sel));
 
-  function sanitize(v) {
-    if (!v) return "";
-    const s = String(v).trim().toLowerCase();
-    return (s === "todas" || s === "todos") ? "" : v;
+  function debounce(func, delay) {
+      let timeout;
+      return function(...args) {
+          const context = this;
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(context, args), delay);
+      };
   }
 
-  function setLoading() {
-    const tbody = q(TBL_SEL);
-    if (tbody) tbody.innerHTML =
-      `<tr><td colspan=\"99\" class=\"text-center\"><span class=\"badge bg-primary\">Carregando dados...</span></td></tr>`;
+  const visaoInicial = q("#visao-inicial-eventos");
+  const conteudoAbas = q("#conteudo-abas-eventos");
+  const selectAba = q('#aba-evento-select');
+  const btnMostrarMais = q("#btn-mostrar-mais-eventos");
+  const tabelaUltimosEventosBody = q("#tabela-ultimos-eventos-body");
+  
+  // Seletores de Filtro
+  const filtroBusca = q("#filtro-busca");
+  const filtroUnidade = q("#filtro-unidade");
+  const filtroLinha = q("#filtro-linha");
+  const filtroFase = q("#filtro-fase");
+  const filtroData = q("#filtro-data");
+
+  function toggleView(showAbas) {
+    visaoInicial.classList.toggle('d-none', showAbas);
+    conteudoAbas.classList.toggle('d-none', !showAbas);
   }
-  function setError(msg) {
-    const tbody = q(TBL_SEL);
-    if (tbody) tbody.innerHTML =
-      `<tr><td colspan=\"99\" class=\"text-center\"><span class=\"badge bg-danger\">${msg || "Erro ao carregar"}</span></td></tr>`;
-  }
-  function render(items) {
-    const tbody = q(TBL_SEL);
-    if (!tbody) return;
-    if (!items || !items.length) {
-      tbody.innerHTML = `<tr><td colspan=\"99\" class=\"text-center\">Nenhum lote ativo na data.</td></tr>`;
+
+  function showTabBySlug(slug) {
+    if (!slug) {
+      toggleView(false);
       return;
     }
-    const rows = items.map(it => `
-      <tr data-lote=\"${it.lote_id}\">
-        <td>${it.tanque}</td>
-        <td>${it.lote}</td>
-        <td>${it.data_inicio}</td>
-        <td class=\"text-end\">${it.qtd_atual}</td>
-        <td class=\"text-end\">${it.peso_medio_g}</td>
-        <td class=\"text-end\">${it.biomassa_kg}</td>
-        <td class="text-end"><input type="text" pattern="[0-9]*" inputmode="numeric" class="form-control form-control-sm input-mort" value="${it.qtd_mortalidade || ''}"></td>
-        <td class="text-end">0.00</td>
-      </tr>
-    `).join("");
-    tbody.innerHTML = rows;
-    updateTotaisMortalidade(); // Chamada inicial para calcular os totais
+    const btn = q(`[data-bs-toggle="tab"][data-bs-target="#pane-${slug}"]`);
+    if (btn && window.bootstrap?.Tab) {
+      toggleView(true);
+      new bootstrap.Tab(btn).show();
+    }
+  }
+
+  function activePaneSlug() {
+    const active = q('#conteudo-abas-eventos .tab-pane.active');
+    return active ? active.id.replace('pane-', '') : null;
+  }
+
+  function loadActivePane(reset = false) {
+    const slug = activePaneSlug();
+    if (!slug) {
+        carregarUltimosEventos(true);
+    } else if (slug === 'mortalidade') {
+      carregarMortalidade();
+    }
+  }
+
+  async function carregarUltimosEventos(reset = false) {
+    let offset = reset ? 0 : parseInt(btnMostrarMais.dataset.offset || '0', 10);
+    
+    const params = new URLSearchParams({
+        offset,
+        termo: filtroBusca.value.trim(),
+        unidade: filtroUnidade.value,
+        linha_producao: filtroLinha.value,
+        fase: filtroFase.value,
+        data: filtroData.value
+    });
+
+    btnMostrarMais.disabled = true;
+    btnMostrarMais.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Carregando...';
+
+    if (reset) {
+        tabelaUltimosEventosBody.innerHTML = `<tr><td colspan="8" class="text-center"><span class="spinner-border spinner-border-sm"></span> Buscando...</td></tr>`;
+    }
+
+    try {
+      const url = `/producao/api/ultimos-eventos/?${params.toString()}`;
+      const response = await (window.fetchWithCreds || fetch)(url);
+      const data = await response.json();
+
+      if (reset) {
+          tabelaUltimosEventosBody.innerHTML = '';
+      }
+
+      if (data.success && data.eventos.length > 0) {
+        const newRows = data.eventos.map(evento => `
+          <tr>
+            <td>${evento.data_evento}</td>
+            <td>${evento.tipo_evento}</td>
+            <td>${evento.lote}</td>
+            <td>${evento.tanque_origem}</td>
+            <td>${evento.tanque_destino}</td>
+            <td class="text-end">${evento.quantidade}</td>
+            <td class="text-end">${evento.peso_medio}</td>
+            <td>${evento.observacoes}</td>
+          </tr>
+        `).join('');
+        tabelaUltimosEventosBody.insertAdjacentHTML('beforeend', newRows);
+        btnMostrarMais.dataset.offset = offset + data.eventos.length;
+        
+        if (data.eventos.length < 20) {
+          btnMostrarMais.classList.add('d-none');
+        } else {
+          btnMostrarMais.classList.remove('d-none');
+        }
+      } else {
+        btnMostrarMais.classList.add('d-none');
+        if (reset) {
+            tabelaUltimosEventosBody.innerHTML = `<tr><td colspan="8" class="text-center">Nenhum evento encontrado para a busca.</td></tr>`;
+        }
+        if (!data.success) {
+            mostrarMensagem('danger', data.message || 'Erro ao carregar eventos.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar eventos:', error);
+      mostrarMensagem('danger', 'Erro de comunicação ao buscar eventos.');
+    } finally {
+      btnMostrarMais.disabled = false;
+      btnMostrarMais.innerHTML = 'Mostrar mais...';
+    }
   }
 
   async function carregarMortalidade() {
+    const TBL_SEL = "#tabela-mortalidade tbody";
+    const API_URL = "/producao/api/eventos/mortalidade/";
+    const tbody = q(TBL_SEL);
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="99" class="text-center"><span class="badge bg-primary">Carregando dados...</span></td></tr>`;
+    
     try {
-      const unidade = sanitize(q("#filtro-unidade")?.value);
-      const linha   = sanitize(q("#filtro-linha")?.value);
-      const fase    = sanitize(q("#filtro-fase")?.value);
-      const data    = q("#filtro-data")?.value;
+        const params = new URLSearchParams({
+            unidade: filtroUnidade.value,
+            linha_producao: filtroLinha.value,
+            fase: filtroFase.value,
+            termo: filtroBusca.value.trim(),
+            data: filtroData.value
+        });
+        const url = `${API_URL}?${params.toString()}`;
+        const response = await (window.fetchWithCreds || fetch)(url);
+        const data = await response.json();
 
-      const params = new URLSearchParams();
-      if (unidade) params.set("unidade", unidade);
-      if (linha)   params.set("linha_producao", linha);
-      if (fase)    params.set("fase", fase);
-
-      setLoading();
-      const url = `${API_URL}?${params.toString()}`;
-      const doFetch = (window.fetchWithCreds || window.fetch).bind(window);
-      const resp = await doFetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "include" });
-
-      console.log("DEBUG API RESPONSE: Status:", resp.status, resp.statusText);
-      console.log("DEBUG API RESPONSE: Content-Type:", resp.headers.get("content-type"));
-
-      if (!resp.ok) {
-        console.error("DEBUG API ERROR: Falha API mortalidade:", resp.status, resp.statusText);
-        setError("Falha na API (Status: " + resp.status + ")");
-        return;
-      }
-
-      const ct = (resp.headers.get("content-type") || "").toLowerCase();
-      if (!ct.includes("application/json")) {
-        console.error("DEBUG API ERROR: Conteúdo inesperado (não JSON):");
-        const text = await resp.text();
-        console.error("DEBUG API ERROR: Resposta não JSON (primeiros 500 chars):", text.slice(0, 500));
-        if (typeof window.isLikelyLoginHTML === "function" && window.isLikelyLoginHTML(text)) {
-          window.location.href = `/accounts/login/?next=${encodeURIComponent(window.location.pathname)}`;
-          return;
+        if (data.results && data.results.length > 0) {
+            tbody.innerHTML = data.results.map(it => `
+              <tr data-lote="${it.lote_id}">
+                <td>${it.tanque}</td>
+                <td>${it.lote}</td>
+                <td>${it.data_inicio}</td>
+                <td class="text-end">${it.qtd_atual}</td>
+                <td class="text-end">${it.peso_medio_g}</td>
+                <td class="text-end">${it.biomassa_kg}</td>
+                <td class="text-end"><input type="text" pattern="[0-9]*" inputmode="numeric" class="form-control form-control-sm input-mort" value="${it.qtd_mortalidade || ''}" data-peso-medio="${it.peso_medio_g}"></td>
+                <td class="text-end" data-biomassa-retirada>${formatBR((it.qtd_mortalidade * it.peso_medio_g) / 1000, 2)}</td>
+              </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="99" class="text-center">Nenhum lote ativo encontrado para os filtros selecionados.</td></tr>`;
         }
-        setError("Resposta inesperada do servidor");
-        return;
-      }
 
-      const dataJson = await resp.json();
-      console.log("DEBUG API RESPONSE: Dados JSON recebidos:", dataJson); // ESTE É O LOG CHAVE
-      const items = Array.isArray(dataJson) ? dataJson : (dataJson.results || []);
-      render(items);
-    } catch (err) {
-      console.error("Erro JS ao carregar mortalidade:", err);
-      setError("Erro inesperado no JavaScript");
+        // Adiciona listener para atualização dinâmica da biomassa retirada
+        qa('.input-mort', tbody).forEach(input => {
+            input.addEventListener('input', (e) => {
+                const row = e.target.closest('tr');
+                const qtdMortalidade = parseFloat(e.target.value) || 0;
+                const pesoMedioG = parseFloat(e.target.dataset.pesoMedio) || 0;
+                const biomassaRetiradaKg = (qtdMortalidade * pesoMedioG) / 1000;
+                
+                row.querySelector('[data-biomassa-retirada]').textContent = formatBR(biomassaRetiradaKg, 2);
+                updateTotaisMortalidade();
+            });
+        });
+        updateTotaisMortalidade(); // Atualiza totais na carga inicial
+
+    } catch (error) {
+        console.error("Erro ao carregar mortalidade:", error);
+        tbody.innerHTML = `<tr><td colspan="99" class="text-center"><span class="badge bg-danger">Erro ao carregar dados</span></td></tr>`;
     }
   }
 
-  // Liga os eventos
-  ["#filtro-unidade", "#filtro-linha", "#filtro-fase", "#filtro-data"].forEach(sel => {
-    const el = q(sel);
-    if (el) el.addEventListener("change", carregarMortalidade);
+  // --- Event Listeners ---
+  const debouncedLoad = debounce(() => loadActivePane(true), 400);
+
+  selectAba?.addEventListener('change', (e) => {
+    showTabBySlug(e.target.value);
+  });
+
+  btnMostrarMais?.addEventListener('click', () => carregarUltimosEventos(false));
+
+  [filtroBusca, filtroUnidade, filtroLinha, filtroFase, filtroData].forEach(filtro => {
+      filtro?.addEventListener('input', (e) => {
+          // Nao acionar busca em cada digitação de data, apenas no change
+          if (e.target.type === 'date' && e.type === 'input') return;
+          debouncedLoad();
+      });
+      if (filtro?.type === 'date') {
+          filtro.addEventListener('change', debouncedLoad);
+      }
   });
 
   qa('[data-bs-toggle="tab"]').forEach(el => {
-    el.addEventListener("shown.bs.tab", (e) => {
-      const target = e.target?.getAttribute("data-bs-target");
-      if (target === "#pane-mortalidade") carregarMortalidade();
-    });
+    el.addEventListener("shown.bs.tab", () => loadActivePane(true));
   });
 
-  // Carga inicial
-  carregarMortalidade();
+  // Listener para o botão Processar Lançamentos (Mortalidade)
+  const btnProcessarMortalidade = q('#btn-processar-mortalidade');
+  if (btnProcessarMortalidade) {
+    btnProcessarMortalidade.addEventListener('click', async () => {
+      const lancamentos = [];
+      const dataEvento = filtroData.value; // Data do filtro
 
-  // Adiciona listener para cálculo dinâmico da mortalidade
-  const tabelaMortalidadeBody = q(TBL_SEL);
-  if (tabelaMortalidadeBody) {
-    tabelaMortalidadeBody.addEventListener('input', (e) => {
-      if (e.target.classList.contains('input-mort')) {
-        console.log("DEBUG: Input de mortalidade alterado.");
-        const inputQtdMort = e.target;
-        const row = inputQtdMort.closest('tr');
-        
-        const qtdMortalidade = parseFloat(inputQtdMort.value) || 0;
-        const pesoMedioLote = parseFloat(row.children[4].textContent) || 0; // Coluna do Peso Médio (g)
-        
-        const biomassaMortalidadeKg = (qtdMortalidade * pesoMedioLote) / 1000;
-        
-        // Atualiza a célula da Biomassa Mortalidade (última coluna)
-        row.children[7].textContent = biomassaMortalidadeKg.toFixed(2);
+      if (!dataEvento) {
+        mostrarMensagem('warning', 'Por favor, selecione uma data de lançamento.');
+        return;
+      }
 
-        // Atualiza os totais (se existirem)
-        updateTotaisMortalidade();
+      qa('#tabela-mortalidade tbody tr').forEach(row => {
+        const loteId = row.dataset.lote;
+        const qtdMortalidade = toNumLocale(row.querySelector('.input-mort').value);
+        const biomassaRetirada = toNumLocale(row.querySelector('[data-biomassa-retirada]').textContent);
+
+        if (qtdMortalidade > 0) {
+          lancamentos.push({
+            lote_id: loteId,
+            quantidade_mortalidade: qtdMortalidade,
+            biomassa_retirada: biomassaRetirada,
+          });
+        }
+      });
+
+      if (lancamentos.length === 0) {
+        mostrarMensagem('warning', 'Nenhum lançamento de mortalidade para processar.');
+        return;
+      }
+
+      btnProcessarMortalidade.disabled = true;
+      btnProcessarMortalidade.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+
+      try {
+        const response = await fetchWithCreds('/producao/api/eventos/mortalidade/processar/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lancamentos, data_evento: dataEvento })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          mostrarMensagem('success', result.message);
+          carregarMortalidade(); // Recarrega a tabela para refletir as mudanças
+          carregarUltimosEventos(true); // Recarrega a lista de últimos eventos
+          // Opcional: limpar filtroData.value = '';
+        } else {
+          mostrarMensagem('danger', result.message || 'Erro ao processar mortalidade.');
+        }
+      } catch (error) {
+        console.error('Erro ao processar mortalidade:', error);
+        mostrarMensagem('danger', 'Erro de comunicação ao processar mortalidade.');
+      } finally {
+        btnProcessarMortalidade.disabled = false;
+        btnProcessarMortalidade.innerHTML = 'Processar Lançamentos';
       }
     });
   }
 
-  // Adiciona listener para o botão Processar Lançamentos
-  const btnProcessarMortalidade = q("#btn-processar-mortalidade");
-  if (btnProcessarMortalidade) {
-      btnProcessarMortalidade.addEventListener("click", async () => {
-          console.log("DEBUG: Botão Processar Lançamentos clicado.");
-          const tbody = q(TBL_SEL);
-          if (!tbody) {
-              mostrarMensagem("danger", "Tabela de mortalidade não encontrada.");
-              return;
-          }
-
-          const lancamentos = [];
-          tbody.querySelectorAll("tr").forEach(row => {
-              const loteId = row.dataset.lote;
-              const inputQtdMort = row.querySelector(".input-mort");
-              const qtdMortalidade = parseFloat(inputQtdMort?.value) || 0;
-              const biomassaRetirada = parseFloat(row.children[7].textContent) || 0; // Agora é a 8ª coluna (índice 7)
-
-              if (loteId && qtdMortalidade > 0) { // Apenas processa lançamentos com quantidade > 0
-                  lancamentos.push({
-                      lote_id: loteId,
-                      quantidade_mortalidade: qtdMortalidade,
-                      biomassa_retirada: biomassaRetirada
-                  });
-              }
-          });
-
-          if (lancamentos.length === 0) {
-              mostrarMensagem("warning", "Nenhum lançamento de mortalidade para processar.");
-              return;
-          }
-
-          // Desabilitar botão e mostrar spinner
-          btnProcessarMortalidade.disabled = true;
-          btnProcessarMortalidade.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-
-          try {
-              const response = await fetchWithCreds(`${API_URL}processar/`, { // Usando o API_URL base + /processar/
-                  method: "POST",
-                  headers: {
-                      "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ lancamentos: lancamentos }),
-              });
-
-              const result = await response.json();
-
-              if (response.ok) {
-                  mostrarMensagem("success", result.message || "Lançamentos processados com sucesso!");
-                  carregarMortalidade(); // Recarrega a tabela após o sucesso
-              } else {
-                  mostrarMensagem("danger", result.message || "Erro ao processar lançamentos.");
-              }
-          } catch (error) {
-              console.error("Erro ao enviar lançamentos de mortalidade:", error);
-              mostrarMensagem("danger", "Erro de comunicação ao processar lançamentos.");
-          } finally {
-              // Reabilitar botão
-              btnProcessarMortalidade.disabled = false;
-              btnProcessarMortalidade.innerHTML = 'Processar Lançamentos';
-          }
-      });
-  }
+  // --- Estado Inicial ---
+  toggleView(false);
+  carregarUltimosEventos(true); // Carrega a lista inicial com filtros vazios
 }
 
 function updateTotaisMortalidade() {
@@ -1524,8 +1617,8 @@ function updateTotaisMortalidade() {
   tabelaMortalidadeBody.querySelectorAll('tr').forEach(row => {
     const inputQtdMort = row.querySelector('.input-mort');
     if (inputQtdMort) {
-      const qtd = parseFloat(inputQtdMort.value) || 0;
-      const biomassa = parseFloat(row.children[7].textContent) || 0; // Biomassa Mortalidade (kg)
+      const qtd = toNumLocale(inputQtdMort.value) || 0;
+      const biomassa = toNumLocale(row.querySelector('[data-biomassa-retirada]').textContent) || 0; // Biomassa Mortalidade (kg)
       console.log(`DEBUG: Linha - Qtd: ${qtd}, Biomassa: ${biomassa}`);
       totalQtd += qtd;
       totalBiomassa += biomassa;
@@ -1536,11 +1629,11 @@ function updateTotaisMortalidade() {
   const totalBiomassaElement = document.getElementById('total-mortalidade-biomassa');
 
   if (totalQtdElement) {
-    totalQtdElement.textContent = totalQtd;
+    totalQtdElement.textContent = formatBR(totalQtd, 0); // Quantidade total pode ser inteira
     console.log("DEBUG: Total Qtd atualizado para:", totalQtd);
   }
   if (totalBiomassaElement) {
-    totalBiomassaElement.textContent = totalBiomassa.toFixed(2);
+    totalBiomassaElement.textContent = formatBR(totalBiomassa, 2);
     console.log("DEBUG: Total Biomassa atualizado para:", totalBiomassa.toFixed(2));
   }
 }

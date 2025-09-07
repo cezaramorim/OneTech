@@ -57,32 +57,45 @@ ATIVO_CHOICES = [
 class TanqueForm(forms.ModelForm):
     ativo = forms.ChoiceField(
         choices=ATIVO_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-control'}),
+        widget=forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado form-control-sm
         label="Ativo"
     )
 
     class Meta:
         model = Tanque
         fields = [ # Lista explícita para melhor controle da ordem
-            'nome', 'tag_tanque',
+            'nome',
             'unidade', 'linha_producao', 'fase', 'tipo_tanque',
-            'status_tanque', 'sequencia',
+            'status_tanque',
+            'sequencia',
             'largura', 'comprimento', 'profundidade',
-            'malha', 'ativo', # 'ativo' moved to explicit field
+            'malha', 'ativo',
+            'tipo_tela', # <--- tipo_tela aqui
+            'tag_tanque', # <--- tag_tanque movido para o final
         ]
         widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'sequencia': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'tag_tanque': forms.TextInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
             'largura': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'form-control form-control-sm', # Adicionado form-control-sm
                 'inputmode': 'decimal',
             }),
             'comprimento': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'form-control form-control-sm', # Adicionado form-control-sm
                 'inputmode': 'decimal',
             }),
             'profundidade': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'form-control form-control-sm', # Adicionado form-control-sm
                 'inputmode': 'decimal',
             }),
+            'unidade': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'fase': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'tipo_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'linha_producao': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'malha': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'status_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'tipo_tela': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
         }
 
 # --- Formulário de Importação ---

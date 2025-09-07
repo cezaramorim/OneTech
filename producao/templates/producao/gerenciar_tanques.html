@@ -3,8 +3,8 @@
   <div class="row g-3">
     <div class="col-md-4">
       <div class="d-flex mb-2">
-        <input id="search-tanque" class="form-control me-2" placeholder="Buscar tanques..." />
-        <button id="btn-novo-tanque" class="btn btn-secondary">Novo</button>
+        <input id="search-tanque" class="form-control form-control-custom-sm me-2" placeholder="Buscar tanques..." />
+        <button id="btn-novo-tanque" class="btn btn-secondary btn-sm">Novo</button>
       </div>
       <ul id="lista-tanques" class="list-group">
         {% for t in tanques %}
@@ -27,7 +27,7 @@
         <div class="row g-3 mb-3">
             <div class="col-md-2">
                 <label class="form-label">ID</label>
-                <input id="id_id" class="form-control" readonly disabled>
+                <input id="id_id" class="form-control form-control-sm" readonly disabled>
             </div>
             <div class="col-md-7">
                 <label class="form-label">Nome</label>
@@ -58,15 +58,15 @@
 
             <div class="col-md-4">
                 <label class="form-label">Área (m²)</label>
-                <input id="id_metro_quadrado" name="metro_quadrado" class="form-control" readonly>
+                <input id="id_metro_quadrado" name="metro_quadrado" class="form-control form-control-sm" readonly>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Volume (m³)</label>
-                <input id="id_metro_cubico" name="metro_cubico" class="form-control" readonly>
+                <input id="id_metro_cubico" name="metro_cubico" class="form-control form-control-sm" readonly>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Hectares (ha)</label>
-                <input id="id_ha" name="ha" class="form-control" readonly>
+                <input id="id_ha" name="ha" class="form-control form-control-sm" readonly>
             </div>
         </div>
 
@@ -102,15 +102,19 @@
 
         <hr>
 
-        <!-- LINHA FINAL: Tag e Data de Criação -->
+        <!-- LINHA FINAL: Tipo Tela, Tag e Data de Criação -->
         <div class="row g-3 mt-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label class="form-label">Tipo Tela</label>
+                {{ form_tanque.tipo_tela }}
+            </div>
+            <div class="col-md-4">
                 <label class="form-label">Tag</label>
                 {{ form_tanque.tag_tanque }}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label">Data Criação</label>
-                <input id="id_data_criacao" class="form-control" readonly disabled>
+                <input id="id_data_criacao" class="form-control form-control-sm" readonly disabled>
             </div>
         </div>
 

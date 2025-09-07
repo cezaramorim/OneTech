@@ -816,6 +816,9 @@ def tanque_detail(request, pk):
     for f in ("largura","comprimento","profundidade","metro_quadrado","metro_cubico","ha"):
         if f in d and d[f] is not None:
             d[f] = float(d[f])
+    # Adiciona o ID do tipo_tela ao dicionário para o frontend
+    d["tipo_tela"] = obj.tipo_tela_id if obj.tipo_tela else None
+
     return JsonResponse(d, safe=False)
 
 @login_required
@@ -846,7 +849,7 @@ def tanque_update(request, pk):
     obj.ha = ha
 
     # FKs por *_id
-    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque"):
+    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque","tipo_tela"):
         v = request.POST.get(f"{campo}")
         if v: setattr(obj, f"{campo}_id", int(v))
 
@@ -886,7 +889,7 @@ def tanque_create(request):
     novo.ha = ha
 
     # FKs por *_id
-    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque"):
+    for campo in ("unidade","fase","tipo_tanque","linha_producao","malha","status_tanque","tipo_tela"):
         v = request.POST.get(f"{campo}")
         if v: setattr(novo, f"{campo}_id", int(v))
 
@@ -1121,13 +1124,14 @@ def povoamento_lotes_view(request):
                             
                             # Cria o evento de classificação para adicionar ao lote
                             EventoManejo.objects.create(
-                                tipo_evento='Classificacao', 
+                                tipo_evento='Povoamento', 
                                 lote=lote_existente,
                                 tanque_destino=tanque,
                                 data_evento=cleaned_data['data_lancamento'],
                                 quantidade=cleaned_data['quantidade'],
                                 peso_medio=cleaned_data['peso_medio'],
-                                observacoes=f"Reforço ao lote existente. Origem: {cleaned_data.get('grupo_origem', 'N/A')}"
+                                observacoes=f"Reforço ao lote existente. Origem: {cleaned_data.get('grupo_origem', 'N/A')}",
+                                tipo_movimento='Entrada' # Adicionado para povoamento/reforço
                             )
 
                         except Lote.MultipleObjectsReturned:
@@ -1155,7 +1159,8 @@ def povoamento_lotes_view(request):
                             tanque_destino=tanque,
                             data_evento=cleaned_data['data_lancamento'],
                             quantidade=cleaned_data['quantidade'],
-                            peso_medio=cleaned_data['peso_medio']
+                            peso_medio=cleaned_data['peso_medio'],
+                            tipo_movimento='Entrada' # Adicionado para povoamento inicial
                         )
                         
                         # Atualiza o status do tanque para 'Em uso' para consistência visual
@@ -1262,10 +1267,15 @@ def gerenciar_eventos_view(request):
     """
     Renderiza a página principal de gerenciamento de eventos de produção.
     """
+    ultimos_eventos = EventoManejo.objects.select_related(
+        'lote', 'tanque_origem', 'tanque_destino'
+    ).order_by('-data_evento', '-id')[:20]
+
     context = {
         'unidades': Unidade.objects.all().order_by('nome'),
         'linhas_producao': LinhaProducao.objects.all().order_by('nome'),
         'fases_producao': FaseProducao.objects.all().order_by('nome'),
+        'ultimos_eventos': ultimos_eventos,
         'data_page': 'gerenciar-eventos',
         'data_tela': 'gerenciar_eventos',
     }
@@ -1313,6 +1323,68 @@ def get_lotes_ativos_api(request):
     }
     return JsonResponse(data)
 
+
+@login_required
+@require_http_methods(["GET"])
+@permission_required('producao.view_eventomanejo', raise_exception=True)
+def api_ultimos_eventos(request):
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = 20
+
+        # Filtros
+        termo = request.GET.get('termo', '').strip()
+        unidade_id = request.GET.get('unidade')
+        linha_id = request.GET.get('linha_producao')
+        fase_id = request.GET.get('fase')
+        
+        eventos = EventoManejo.objects.select_related(
+            'lote__tanque_atual', 'tanque_origem', 'tanque_destino'
+        ).order_by('-data_evento', '-id')
+
+        if termo:
+            eventos = eventos.filter(
+                Q(lote__nome__icontains=termo) |
+                Q(tanque_origem__nome__icontains=termo) |
+                Q(tanque_destino__nome__icontains=termo) |
+                Q(tipo_evento__icontains=termo)
+            )
+        
+        # Aplica filtros de dropdown se eles forem fornecidos e não forem "todos"
+        if unidade_id and unidade_id.lower() not in ['', 'todas', 'todos']:
+            # Filtra baseado no tanque de origem OU no tanque do lote
+            eventos = eventos.filter(
+                Q(lote__tanque_atual__unidade_id=unidade_id) | Q(tanque_origem__unidade_id=unidade_id)
+            )
+        if linha_id and linha_id.lower() not in ['', 'todas', 'todos']:
+            eventos = eventos.filter(
+                Q(lote__tanque_atual__linha_producao_id=linha_id) | Q(tanque_origem__linha_producao_id=linha_id)
+            )
+        if fase_id and fase_id.lower() not in ['', 'todas', 'todos']:
+            eventos = eventos.filter(lote__fase_producao_id=fase_id)
+
+        eventos = eventos.distinct()[offset:offset+limit]
+
+        data = [
+            {
+                'id': evento.id,
+                'data_evento': evento.data_evento.strftime('%d/%m/%Y'),
+                'tipo_evento': evento.get_tipo_evento_display(),
+                'lote': evento.lote.nome if evento.lote else 'N/A',
+                'tanque_origem': evento.tanque_origem.nome if evento.tanque_origem else 'N/A',
+                'tanque_destino': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
+                'quantidade': f'{evento.quantidade:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.') if evento.quantidade is not None else '-',
+                'peso_medio': f'{evento.peso_medio:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.') if evento.peso_medio is not None else '-',
+                'observacoes': evento.observacoes or ''
+            }
+            for evento in eventos
+        ]
+        
+        return JsonResponse({'success': True, 'eventos': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao buscar eventos: {e}'}, status=500)
+
+
 @login_required
 @require_http_methods(["POST"])
 @permission_required('producao.add_eventomanejo', raise_exception=True)
@@ -1354,9 +1426,17 @@ def processar_mortalidade_api(request):
     try:
         data = json.loads(request.body)
         lancamentos = data.get('lancamentos', [])
+        data_evento_str = data.get('data_evento')
 
         if not lancamentos:
             message = app_messages.error("Nenhum lançamento de mortalidade recebido para processar.")
+            return JsonResponse({'success': False, 'message': message}, status=400)
+
+        # Converter a string da data para um objeto date
+        try:
+            data_evento = datetime.strptime(data_evento_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            message = app_messages.error("Formato de data inválido.")
             return JsonResponse({'success': False, 'message': message}, status=400)
 
         processed_count = 0
@@ -1375,11 +1455,11 @@ def processar_mortalidade_api(request):
                 lote=lote,
                 tanque_origem=lote.tanque_atual,
                 tanque_destino=None,
-                data_evento=timezone.now().date(),
+                data_evento=data_evento, # <--- USAR A DATA DO USUÁRIO AQUI
                 quantidade=quantidade_mortalidade,
                 peso_medio=lote.peso_medio_atual,
                 observacoes=f"Mortalidade registrada. Biomassa retirada: {biomassa_retirada:.2f} kg.",
-                tipo_movimento='Mortes' # <--- Adicionar esta linha
+                tipo_movimento='Morte' # <--- Adicionar esta linha
             )
 
             lote.quantidade_atual = lote.quantidade_atual - quantidade_mortalidade
@@ -1436,6 +1516,7 @@ def api_mortalidade_lotes_ativos(request):
     linha_id   = request.GET.get("linha_producao")
     fase_id    = request.GET.get("fase")
     data_str   = request.GET.get("data")
+    termo      = request.GET.get("termo", '').strip()
 
     data_ref = _parse_data(data_str) or datetime.today().date()
 
@@ -1451,6 +1532,9 @@ def api_mortalidade_lotes_ativos(request):
         qs = qs.filter(tanque_atual__linha_producao_id=linha_id)
     if _not_all(fase_id):
         qs = qs.filter(tanque_atual__fase_id=fase_id)
+    
+    if termo:
+        qs = qs.filter(Q(nome__icontains=termo) | Q(tanque_atual__nome__icontains=termo))
 
     results = []
     for lote in qs.order_by("tanque_atual__nome", "id"):

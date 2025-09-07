@@ -98,6 +98,7 @@ urlpatterns = [
     path('api/eventos/mortalidade/', views.api_mortalidade_lotes_ativos, name='api_mortalidade_lotes_ativos'),
     path('api/eventos/mortalidade/processar/', views.processar_mortalidade_api, name='api_processar_mortalidade'),
     path('api/registrar-mortalidade/', views.registrar_mortalidade_api, name='api_registrar_mortalidade'),
+    path('api/ultimos-eventos/', views.api_ultimos_eventos, name='api_ultimos_eventos'),
 
     # Alimentação Diária
     path('alimentacao/', views.ListaAlimentacaoView.as_view(), name='lista_alimentacao'),

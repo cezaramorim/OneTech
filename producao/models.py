@@ -148,6 +148,7 @@ class Tanque(models.Model):
     linha_producao = models.ForeignKey('producao.LinhaProducao', on_delete=models.SET_NULL, null=True, blank=True)
     malha = models.ForeignKey('producao.Malha', on_delete=models.SET_NULL, null=True, blank=True)
     status_tanque = models.ForeignKey('producao.StatusTanque', on_delete=models.SET_NULL, null=True, blank=True)
+    tipo_tela = models.ForeignKey('producao.TipoTela', on_delete=models.SET_NULL, null=True, blank=True)
 
     sequencia = models.PositiveIntegerField(null=True, blank=True)
     tag_tanque = models.CharField(max_length=100, blank=True)
@@ -253,68 +254,6 @@ class EventoManejo(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        
-        lote = self.lote
-
-        if self.tipo_evento == 'Povoamento':
-            lote.quantidade_atual = self.quantidade
-            lote.peso_medio_atual = self.peso_medio
-            lote.tanque_atual = self.tanque_destino
-            lote.save()
-
-        elif self.tipo_evento == 'Transferencia':
-            tanque_origem = lote.tanque_atual
-            tanque_destino = self.tanque_destino
-
-            # Atualiza o lote com a nova localização e dados do evento
-            lote.tanque_atual = tanque_destino
-            lote.quantidade_atual = self.quantidade
-            lote.peso_medio_atual = self.peso_medio
-            lote.save()
-
-            # Libera o tanque de origem
-            if tanque_origem:
-                try:
-                    status_livre = StatusTanque.objects.get(nome__iexact='Livre')
-                    tanque_origem.status_tanque = status_livre
-                    tanque_origem.save(update_fields=['status_tanque'])
-                except StatusTanque.DoesNotExist:
-                    pass # Falha silenciosa
-
-        elif self.tipo_evento == 'Classificacao':
-            # Lógica para Classificação/Reforço de Lote: Adiciona animais a um lote existente.
-            lote_alvo = lote
-            
-            quantidade_evento = self.quantidade or Decimal('0')
-            peso_medio_evento = self.peso_medio or Decimal('0')
-            quantidade_lote = lote_alvo.quantidade_atual or Decimal('0')
-            peso_medio_lote = lote_alvo.peso_medio_atual or Decimal('0')
-
-            if quantidade_evento > 0:
-                biomassa_existente = quantidade_lote * peso_medio_lote
-                biomassa_adicionada = quantidade_evento * peso_medio_evento
-                
-                nova_quantidade = quantidade_lote + quantidade_evento
-                nova_biomassa = biomassa_existente + biomassa_adicionada
-                
-                if nova_quantidade > 0:
-                    lote_alvo.peso_medio_atual = nova_biomassa / nova_quantidade
-                else:
-                    lote_alvo.peso_medio_atual = peso_medio_evento
-
-                lote_alvo.quantidade_atual = nova_quantidade
-                lote_alvo.save()
-
-        elif self.tipo_evento == 'Despesca':
-            lote.quantidade_atual -= (self.quantidade or Decimal('0'))
-            lote.save()
-            self._liberar_tanque_se_vazio(lote)
-
-        elif self.tipo_evento == 'Mortalidade':
-            lote.quantidade_atual -= (self.quantidade or Decimal('0'))
-            lote.save()
-            self._liberar_tanque_se_vazio(lote)
-        # O tipo 'Outro' não exige atualização automática do lote, mas pode ser usado para registros diversos.
 
 class AlimentacaoDiaria(models.Model):
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='alimentacoes_diarias')
