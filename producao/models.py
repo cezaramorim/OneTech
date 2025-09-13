@@ -163,6 +163,31 @@ class Tanque(models.Model):
     def __str__(self):
         return f'{self.id} - {self.nome}'
 
+    def verificar_e_liberar_status(self, lote_sendo_deletado=None):
+        """
+        Verifica se o tanque não tem mais lotes ativos e, se for o caso,
+        atualiza seu status para 'Livre'.
+        O parâmetro 'lote_sendo_deletado' é usado para excluir um lote
+        que está em processo de exclusão do queryset de verificação.
+        """
+        # Monta a query para verificar lotes ativos no tanque
+        lotes_ativos_no_tanque = self.lotes_no_tanque.filter(ativo=True)
+
+        # Se um lote está sendo deletado, excluímos ele da contagem
+        if lote_sendo_deletado:
+            lotes_ativos_no_tanque = lotes_ativos_no_tanque.exclude(pk=lote_sendo_deletado.pk)
+
+        # Se não houver mais nenhum lote ativo...
+        if not lotes_ativos_no_tanque.exists():
+            try:
+                status_livre = StatusTanque.objects.get(nome__iexact='Livre')
+                if self.status_tanque != status_livre:
+                    self.status_tanque = status_livre
+                    self.save(update_fields=['status_tanque'])
+            except StatusTanque.DoesNotExist:
+                # Falha silenciosamente se o status 'Livre' não existir
+                pass
+
 class Lote(models.Model):
     nome = models.CharField(max_length=255)
     curva_crescimento = models.ForeignKey(CurvaCrescimento, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes')
@@ -194,78 +219,66 @@ class Lote(models.Model):
         return Decimal('0.0') # Retorna Decimal para consistência
 
     def recalcular_estado_atual(self):
-        # Inicializa com os valores do povoamento inicial
+        tanque_original = self.tanque_atual
+
         povoamento_inicial_evento = self.eventos_manejo.filter(tipo_evento='Povoamento').order_by('data_evento', 'id').first()
-        
+
         if not povoamento_inicial_evento:
             self.quantidade_atual = Decimal('0')
             self.peso_medio_atual = Decimal('0')
-            self.ativo = False
-            self.tanque_atual = None
-            self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
-            return
+        else:
+            current_quantidade = povoamento_inicial_evento.quantidade
+            current_peso_medio = povoamento_inicial_evento.peso_medio
+            current_tanque = povoamento_inicial_evento.tanque_destino
 
-        current_quantidade = povoamento_inicial_evento.quantidade
-        current_peso_medio = povoamento_inicial_evento.peso_medio
-        current_tanque = povoamento_inicial_evento.tanque_destino
+            eventos_subsequentes = self.eventos_manejo.filter(
+                data_evento__gte=povoamento_inicial_evento.data_evento
+            ).exclude(id=povoamento_inicial_evento.id).order_by('data_evento', 'id')
 
-        # Itera sobre os eventos subsequentes para agregar
-        eventos_subsequentes = self.eventos_manejo.filter(
-            data_evento__gte=povoamento_inicial_evento.data_evento
-        ).exclude(id=povoamento_inicial_evento.id).order_by('data_evento', 'id')
+            for evento in eventos_subsequentes:
+                if evento.tipo_evento == 'Povoamento':
+                    quantidade_evento = evento.quantidade or Decimal('0')
+                    peso_medio_evento = evento.peso_medio or Decimal('0')
+                    if quantidade_evento > 0:
+                        biomassa_existente = current_quantidade * current_peso_medio
+                        biomassa_adicionada = quantidade_evento * peso_medio_evento
+                        nova_quantidade = current_quantidade + quantidade_evento
+                        nova_biomassa = biomassa_existente + biomassa_adicionada
+                        if nova_quantidade > 0:
+                            current_peso_medio = nova_biomassa / nova_quantidade
+                        else:
+                            current_peso_medio = peso_medio_evento
+                        current_quantidade = nova_quantidade
+                elif evento.tipo_evento in ['Mortalidade', 'Despesca']:
+                    current_quantidade -= (evento.quantidade or Decimal('0'))
+                elif evento.tipo_evento == 'Transferencia':
+                    current_quantidade = evento.quantidade
+                    current_peso_medio = evento.peso_medio
+                    current_tanque = evento.tanque_destino
 
-        for evento in eventos_subsequentes:
-            if evento.tipo_evento == 'Povoamento': # Reforço de lote
-                quantidade_evento = evento.quantidade or Decimal('0')
-                peso_medio_evento = evento.peso_medio or Decimal('0')
-
-                if quantidade_evento > 0:
-                    biomassa_existente = current_quantidade * current_peso_medio
-                    biomassa_adicionada = quantidade_evento * peso_medio_evento
-                    
-                    nova_quantidade = current_quantidade + quantidade_evento
-                    nova_biomassa = biomassa_existente + biomassa_adicionada
-                    
-                    if nova_quantidade > 0:
-                        current_peso_medio = nova_biomassa / nova_quantidade
-                    else:
-                        current_peso_medio = peso_medio_evento
-
-                    current_quantidade = nova_quantidade
-            elif evento.tipo_evento == 'Mortalidade' or evento.tipo_evento == 'Despesca':
-                current_quantidade -= (evento.quantidade or Decimal('0'))
-                if current_quantidade < 0:
-                    current_quantidade = Decimal('0')
-            elif evento.tipo_evento == 'Transferencia':
-                current_quantidade = evento.quantidade
-                current_peso_medio = evento.peso_medio
-                current_tanque = evento.tanque_destino
-
-        self.quantidade_atual = current_quantidade
-        self.peso_medio_atual = current_peso_medio
-        self.tanque_atual = current_tanque
+            self.quantidade_atual = current_quantidade if current_quantidade >= 0 else Decimal('0')
+            self.peso_medio_atual = current_peso_medio
+            self.tanque_atual = current_tanque
 
         if self.quantidade_atual <= 0:
             self.ativo = False
-            try:
-                status_livre = StatusTanque.objects.get(nome__iexact='Livre')
-                if self.tanque_atual and self.tanque_atual.status_tanque != status_livre:
-                    self.tanque_atual.status_tanque = status_livre
-                    self.tanque_atual.save(update_fields=['status_tanque'])
-            except StatusTanque.DoesNotExist:
-                pass
             self.tanque_atual = None
         else:
             self.ativo = True
+
+        self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
+
+        if self.ativo and self.tanque_atual:
             try:
                 status_em_uso = StatusTanque.objects.get(nome__iexact='Em uso')
-                if self.tanque_atual and self.tanque_atual.status_tanque != status_em_uso:
+                if self.tanque_atual.status_tanque != status_em_uso:
                     self.tanque_atual.status_tanque = status_em_uso
                     self.tanque_atual.save(update_fields=['status_tanque'])
             except StatusTanque.DoesNotExist:
                 pass
 
-        self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
+        if tanque_original and tanque_original != self.tanque_atual:
+            tanque_original.verificar_e_liberar_status()
 
     class Meta:
         verbose_name = "Lote"

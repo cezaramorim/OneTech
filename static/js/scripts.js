@@ -750,37 +750,32 @@ document.addEventListener("ajaxContentLoaded", initGerenciarCurvas);
 
 // === GERENCIAR TANQUES ===
 function initGerenciarTanques() {
-  const raiz  = document.querySelector('#gerenciar-tanques[data-page="gerenciar-tanques"]');
+  const raiz = document.querySelector('#gerenciar-tanques[data-page="gerenciar-tanques"]');
   if (!raiz) return;
 
-  const form  = raiz.querySelector('#form-tanque');
+  // Técnica para garantir que os listeners não sejam duplicados
+  if (raiz.abortController) {
+    raiz.abortController.abort();
+  }
+  raiz.abortController = new AbortController();
+  const signal = raiz.abortController.signal;
+
+  const form = raiz.querySelector('#form-tanque');
   const lista = raiz.querySelector('#lista-tanques');
-
-  const inputId = raiz.querySelector('#tanque-id'); // hidden (real id p/ POST)
-
-  // campos de exibição somente-leitura
-  const elIdVis       = raiz.querySelector('#id_id');
+  const inputId = raiz.querySelector('#tanque-id');
+  const elIdVis = raiz.querySelector('#id_id');
   const elDataCriacao = raiz.querySelector('#id_data_criacao');
-
-  // dimensões (editáveis)
   const elLarg = raiz.querySelector('#id_largura');
   const elComp = raiz.querySelector('#id_comprimento');
   const elProf = raiz.querySelector('#id_profundidade');
-
-  // calculados (readonly na UI)
-  const elArea   = raiz.querySelector('#id_metro_quadrado');
+  const elArea = raiz.querySelector('#id_metro_quadrado');
   const elVolume = raiz.querySelector('#id_metro_cubico');
-  const elHa     = raiz.querySelector('#id_ha');
-
-  // busca e botões
+  const elHa = raiz.querySelector('#id_ha');
   const search = raiz.querySelector('#search-tanque, [data-role="busca-tanque"]');
   const btnNovo = raiz.querySelector('#btn-novo-tanque,[data-action="novo-tanque"]');
   const btnSalvar = raiz.querySelector('[data-action="salvar-tanque"]');
-
-  // endpoints
   const API_BASE = '/producao/api/tanques/';
 
-  // ---------- helpers ----------
   function computeFromInputs() {
     const L = toNumLocale(elLarg?.value);
     const C = toNumLocale(elComp?.value);
@@ -793,33 +788,32 @@ function initGerenciarTanques() {
 
   function recalcDimensoes() {
     const r = computeFromInputs();
-    if (elArea)   elArea.value   = formatBR(r.area,   2);
+    if (elArea) elArea.value = formatBR(r.area, 2);
     if (elVolume) elVolume.value = formatBR(r.volume, 3);
-    if (elHa)     elHa.value     = formatBR(r.ha,     4);
+    if (elHa) elHa.value = formatBR(r.ha, 4);
   }
 
   function setBR(el, val, dec) {
     if (!el) return;
-    if (val == null || val === '') { el.value = ''; return; }
+    if (val == null || val === '') {
+      el.value = '';
+      return;
+    }
     el.value = formatBR(toNumLocale(val), dec);
   }
 
-  function resetFormTanque(clearId=true) {
+  function resetFormTanque(clearId = true) {
     if (!form) return;
     if (clearId && inputId) inputId.value = '';
-
-    Array.from(form.querySelectorAll('input,select,textarea')).forEach(el=>{
-      // preserva somente-leitura/disabled
+    Array.from(form.querySelectorAll('input,select,textarea')).forEach(el => {
       if (el.readOnly || el.disabled) return;
       if (clearId && el === inputId) return;
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
       else if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else el.value = '';
     });
-
     if (elIdVis) elIdVis.value = '';
     if (elDataCriacao) elDataCriacao.value = '';
-
     recalcDimensoes();
     form.querySelector('#id_nome')?.focus();
   }
@@ -828,104 +822,83 @@ function initGerenciarTanques() {
     if (!id) return;
     const url = `${API_BASE}${id}/`;
     const resp = await fetchWithCreds(url);
-    if (!resp.ok) { alert('Falha ao carregar tanque'); return; }
+    if (!resp.ok) {
+      alert('Falha ao carregar tanque');
+      return;
+    }
     const d = await resp.json();
-
-    // popula hidden real
     if (inputId) inputId.value = d.id;
-
-    // somente leitura de exibição
-    if (elIdVis)       { elIdVis.value = String(d.id || ''); elIdVis.readOnly = true; elIdVis.disabled = true; }
-    if (elDataCriacao) { elDataCriacao.value = formatDateTimeBRsql(d.data_criacao); elDataCriacao.readOnly = true; elDataCriacao.disabled = true; }
-
-    // dimensões com vírgula
+    if (elIdVis) {
+      elIdVis.value = String(d.id || '');
+      elIdVis.readOnly = true;
+      elIdVis.disabled = true;
+    }
+    if (elDataCriacao) {
+      elDataCriacao.value = formatDateTimeBRsql(d.data_criacao);
+      elDataCriacao.readOnly = true;
+      elDataCriacao.disabled = true;
+    }
     setBR(elLarg, d.largura, 2);
     setBR(elComp, d.comprimento, 2);
     setBR(elProf, d.profundidade, 2);
-
-    // outros campos comuns
     const elNome = raiz.querySelector('#id_nome');
     if (elNome) elNome.value = d.nome || '';
-
     const elSeq = raiz.querySelector('#id_sequencia');
     if (elSeq) elSeq.value = (d.sequencia ?? '');
-
     const elTag = raiz.querySelector('#id_tag_tanque');
     if (elTag) elTag.value = d.tag_tanque || '';
-
-    // selects (usar value por id)
     const selUnid = raiz.querySelector('#id_unidade');
     if (selUnid) selUnid.value = d.unidade_id || d.unidade || '';
-
     const selFase = raiz.querySelector('#id_fase');
     if (selFase) selFase.value = d.fase_id || d.fase || '';
-
     const selTipo = raiz.querySelector('#id_tipo_tanque');
     if (selTipo) selTipo.value = d.tipo_tanque_id || d.tipo_tanque || '';
-
     const selLinha = raiz.querySelector('#id_linha_producao');
     if (selLinha) selLinha.value = d.linha_producao_id || d.linha_producao || '';
-
     const selMalha = raiz.querySelector('#id_malha');
     if (selMalha) selMalha.value = d.malha_id || d.malha || '';
-
     const selStatus = raiz.querySelector('#id_status_tanque');
     if (selStatus) selStatus.value = d.status_tanque_id || d.status_tanque || '';
-
     const selTipoTela = raiz.querySelector('#id_tipo_tela');
     if (selTipoTela) {
-        selTipoTela.value = d.tipo_tela || '';
+      selTipoTela.value = d.tipo_tela || '';
     }
     const elAtivo = raiz.querySelector('#id_ativo');
     if (elAtivo) {
-        elAtivo.value = (String(d.ativo) === '1' || d.ativo === true) ? 'True' : 'False';
+      elAtivo.value = (String(d.ativo) === '1' || d.ativo === true) ? 'True' : 'False';
     }
-
-    // calculados: preferir cálculo local
     recalcDimensoes();
   }
 
   async function salvarTanque() {
     if (!form) return;
-
-    // revalida e garante calculados em ponto no POST
     recalcDimensoes();
     const r = computeFromInputs();
-
     const fd = new FormData(form);
-
-    // remove id/data_criacao visuais se por acaso tiverem name
     fd.delete('id');
     fd.delete('data_criacao');
-
-    // força calculados (padrão de names – ajuste se seus names forem outros)
-    fd.set( (elArea?.name   || 'metro_quadrado'), r.area.toFixed(2) );
-    fd.set( (elVolume?.name || 'metro_cubico'),   r.volume.toFixed(3) );
-    fd.set( (elHa?.name     || 'ha'),             r.ha.toFixed(4) );
-
+    fd.set((elArea?.name || 'metro_quadrado'), r.area.toFixed(2));
+    fd.set((elVolume?.name || 'metro_cubico'), r.volume.toFixed(3));
+    fd.set((elHa?.name || 'ha'), r.ha.toFixed(4));
     const id = (inputId?.value || '').trim();
-    const url = id ? `${API_BASE}${id}/atualizar/` : API_BASE; // POST em ambos
-
+    const url = id ? `${API_BASE}${id}/atualizar/` : API_BASE;
     const btn = btnSalvar || form.querySelector('[type="submit"]');
     btn && (btn.disabled = true);
     try {
-      const resp = await fetchWithCreds(url, { method:'POST', body: fd });
+      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
       const ct = resp.headers.get('content-type') || '';
       if (!ct.includes('json')) {
-        const body = await resp.text().catch(()=> '');
+        const body = await resp.text().catch(() => '');
         throw new Error(`Servidor retornou ${resp.status} ${resp.statusText}.`);
       }
       const data = await resp.json();
       if (!resp.ok || data.success === false) {
         throw new Error(data.message || 'Falha ao salvar.');
       }
-
-      // atualiza/insere na lista
       const nome = form.querySelector('#id_nome')?.value || 'Sem nome';
       if (!id && (data.id || data.pk)) {
         const novoId = String(data.id || data.pk);
         if (inputId) inputId.value = novoId;
-
         const li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
         li.dataset.id = novoId;
@@ -934,9 +907,11 @@ function initGerenciarTanques() {
         lista?.appendChild(li);
       } else if (id) {
         const li = lista?.querySelector(`li[data-id="${id}"]`);
-        if (li) { li.dataset.name = nome; li.querySelector('.texto-truncado')?.replaceChildren(document.createTextNode(nome)); }
+        if (li) {
+          li.dataset.name = nome;
+          li.querySelector('.texto-truncado')?.replaceChildren(document.createTextNode(nome));
+        }
       }
-
       mostrarMensagem('success', data.message || 'Salvo com sucesso.');
     } catch (err) {
       mostrarMensagem('danger', err.message || 'Erro ao salvar.');
@@ -945,91 +920,70 @@ function initGerenciarTanques() {
     }
   }
 
-  // ---------- binds ----------
-  // recalcular em tempo real
-  [elLarg, elComp, elProf].forEach(el=>{
-    el?.addEventListener('input', recalcDimensoes);
-    el?.addEventListener('change', recalcDimensoes);
+  [elLarg, elComp, elProf].forEach(el => {
+    el?.addEventListener('input', recalcDimensoes, { signal });
+    el?.addEventListener('change', recalcDimensoes, { signal });
   });
   recalcDimensoes();
 
-  // clique na lista
-  lista?.addEventListener('click', (e)=>{
+  lista?.addEventListener('click', (e) => {
     const li = e.target.closest('li.list-group-item');
     if (!li) return;
-    lista.querySelectorAll('li.list-group-item.active').forEach(x=>x.classList.remove('active'));
+    lista.querySelectorAll('li.list-group-item.active').forEach(x => x.classList.remove('active'));
     li.classList.add('active');
     carregarTanque(li.dataset.id);
-  });
+  }, { signal });
 
-  // busca dinâmica
-  (function bindBuscaTanques(){
-    if (!lista) { console.log("DEBUG: Lista de tanques não encontrada."); return; }
-    if (!search) { console.log("DEBUG: Campo de busca não encontrado."); return; }
-    
-    console.log("DEBUG: bindBuscaTanques inicializado.");
-
-    function filtrar(){
+  (function bindBuscaTanques() {
+    if (!lista || !search) return;
+    function filtrar() {
       const filtro = (search.value || '').trim().toUpperCase();
-      console.log("DEBUG: Filtro atual:", filtro);
-      lista.querySelectorAll('li.list-group-item').forEach(li=>{
+      lista.querySelectorAll('li.list-group-item').forEach(li => {
         const txt = ((li.getAttribute('data-name') || li.textContent) || '').toUpperCase();
         const isVisible = txt.includes(filtro);
         li.style.display = isVisible ? '' : 'none';
-        // Toggle d-flex class to ensure visibility is correctly applied
         if (isVisible) {
-            li.classList.add('d-flex');
+          li.classList.add('d-flex');
         } else {
-            li.classList.remove('d-flex');
+          li.classList.remove('d-flex');
         }
-        console.log("DEBUG: Item:", txt, " - Filtro:", filtro, " - isVisible:", isVisible, " - li.style.display (after set):", li.style.display, " - li.classList (after set):", li.classList.value, " - li.id:", li.id, " - li.dataset.id:", li.dataset.id);
       });
     }
-    search.addEventListener('input', filtrar);
-    search.addEventListener('keydown', (e)=> { if (e.key === 'Enter') e.preventDefault(); });
-    filtrar(); // Initial filter in case of pre-filled search
+    search.addEventListener('input', filtrar, { signal });
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') e.preventDefault();
+    }, { signal });
+    filtrar();
   })();
 
-  // botão novo
-  btnNovo?.addEventListener('click', (e)=> {
+  btnNovo?.addEventListener('click', (e) => {
     e.preventDefault();
-    lista?.querySelectorAll('li.list-group-item.active').forEach(li=>li.classList.remove('active'));
+    lista?.querySelectorAll('li.list-group-item.active').forEach(li => li.classList.remove('active'));
     resetFormTanque(true);
-  });
+  }, { signal });
 
-  // salvar
-  btnSalvar?.addEventListener('click', (e)=> {
+  btnSalvar?.addEventListener('click', (e) => {
     e.preventDefault();
     salvarTanque();
-  });
+  }, { signal });
 
-  // não autocarregar nada por padrão
   resetFormTanque(true);
 
-  // ---------- Ajuste de altura da lista ----------
   function adjustListHeight() {
     if (!form || !lista) return;
     const formRect = form.getBoundingClientRect();
     const formTop = formRect.top;
-    const formBottom = formRect.top + form.offsetHeight; // Usar offsetHeight para altura real do elemento
-
-    // Calcula a altura disponível para a lista, considerando o offset do topo do formulário
-    // e uma margem inferior para evitar que a lista fique colada no rodapé
-    const availableHeight = formBottom - formTop; // Altura total do formulário
-
-    // Ajusta a altura da lista, subtraindo o espaço ocupado pelo campo de busca e botão "Novo"
-    // e uma margem para que a lista não fique exatamente do mesmo tamanho do formulário
+    const formBottom = formRect.top + form.offsetHeight;
+    const availableHeight = formBottom - formTop;
     const searchAndButtonContainer = raiz.querySelector('.d-flex.mb-2');
     const searchAndButtonHeight = searchAndButtonContainer ? searchAndButtonContainer.offsetHeight : 0;
-    const finalHeight = availableHeight - searchAndButtonHeight - 20; // 20px de margem extra
-
+    const finalHeight = availableHeight - searchAndButtonHeight - 20;
     lista.style.maxHeight = `${finalHeight}px`;
     lista.style.overflowY = 'auto';
   }
 
-  // Ajusta a altura da lista ao carregar e ao redimensionar a janela
   adjustListHeight();
-  window.addEventListener('resize', adjustListHeight);
+  window.addEventListener('resize', adjustListHeight, { signal });
 }
 
 function initPovoamentoLotes() {

@@ -34,19 +34,19 @@ urlpatterns = [
     path('fases-producao/', views.FaseProducaoListView.as_view(), name='lista_fasesproducao'),
     path('fases-producao/cadastrar/', views.FaseProducaoCreateView.as_view(), name='criar_faseproducao'),
     path('fases-producao/<int:pk>/editar/', views.FaseProducaoUpdateView.as_view(), name='editar_faseproducao'),
-    path('fases-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=FaseProducao), name='excluir_faseproducao_multiplo'),
+    path('fases-producao/excluir-multiplos/', views.BulkDeleteView.as_view(model=FaseProducao, success_url_name='producao:lista_fasesproducao'), name='excluir_faseproducao_multiplo'),
 
     # Status de Tanque
     path('status-tanque/', views.StatusTanqueListView.as_view(), name='lista_statustanque'),
     path('status-tanque/cadastrar/', views.StatusTanqueCreateView.as_view(), name='criar_statustanque'),
     path('status-tanque/<int:pk>/editar/', views.StatusTanqueUpdateView.as_view(), name='editar_statustanque'),
-    path('status-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=StatusTanque), name='excluir_statustanque_multiplo'),
+    path('status-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=StatusTanque, success_url_name='producao:lista_statustanque'), name='excluir_statustanque_multiplo'),
 
     # Tipos de Tanque
     path('tipos-tanque/', views.TipoTanqueListView.as_view(), name='lista_tipostanque'),
     path('tipos-tanque/cadastrar/', views.TipoTanqueCreateView.as_view(), name='criar_tipotanque'),
     path('tipos-tanque/<int:pk>/editar/', views.TipoTanqueUpdateView.as_view(), name='editar_tipotanque'),
-    path('tipos-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=TipoTanque), name='excluir_tipotanque_multiplo'),
+    path('tipos-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=TipoTanque, success_url_name='producao:lista_tipostanque'), name='excluir_tipotanque_multiplo'),
 
     
 
