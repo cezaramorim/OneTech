@@ -9,7 +9,10 @@ from .models import (
     Tanque,
     Lote,
     EventoManejo,
-    AlimentacaoDiaria
+    # Novos modelos de arraçoamento
+    LoteDiario,
+    ArracoamentoSugerido,
+    ArracoamentoRealizado
 )
 
 admin.site.register(LinhaProducao)
@@ -28,4 +31,9 @@ class TanqueAdmin(admin.ModelAdmin):
     )
 admin.site.register(Lote)
 admin.site.register(EventoManejo)
-admin.site.register(AlimentacaoDiaria)
+
+
+# Registro dos novos modelos
+admin.site.register(LoteDiario)
+admin.site.register(ArracoamentoSugerido)
+admin.site.register(ArracoamentoRealizado)

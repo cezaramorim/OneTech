@@ -44,10 +44,10 @@ MENU_ITEMS = [
             {'name': 'Cadastrar Lote', 'url_name': 'producao:cadastrar_lote', 'required_perms': ['producao.add_lote']},
             {'name': 'Lista de Lotes', 'url_name': 'producao:lista_lotes', 'required_perms': ['producao.view_lote']},
             {'name': 'Povoamento de Lotes', 'url_name': 'producao:povoamento_lotes', 'required_perms': ['producao.add_lote']},
+            {'name': 'Arraçoamento Diário', 'url_name': 'producao:arracoamento_diario', 'required_perms': ['producao.view_arracoamentosugerido']},
             {'name': 'Gerenciar Eventos', 'url_name': 'producao:gerenciar_eventos', 'required_perms': ['producao.add_eventomanejo']},
             {'name': 'Lista de Eventos', 'url_name': 'producao:lista_eventos', 'required_perms': ['producao.view_eventomanejo']},
-            {'name': 'Registrar Alimentação', 'url_name': 'producao:registrar_alimentacao', 'required_perms': ['producao.add_alimentacaodiaria']},
-            {'name': 'Lista de Alimentações', 'url_name': 'producao:lista_alimentacao', 'required_perms': ['producao.view_alimentacaodiaria']},
+            
             {'name': 'Unidades', 'url_name': 'producao:lista_unidades', 'required_perms': ['producao.view_unidade']},
             {'name': 'Malhas', 'url_name': 'producao:lista_malhas', 'required_perms': ['producao.view_malha']},
             {'name': 'Tipos de Tela', 'url_name': 'producao:lista_tipotelas', 'required_perms': ['producao.view_tipotela']},

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 from produto.models import Produto # Importa o modelo Produto do app produto
 from django.core.validators import MinValueValidator
@@ -192,6 +193,80 @@ class Lote(models.Model):
                 return (self.peso_medio_atual - self.peso_medio_inicial) / dias_cultivo
         return Decimal('0.0') # Retorna Decimal para consistência
 
+    def recalcular_estado_atual(self):
+        # Inicializa com os valores do povoamento inicial
+        povoamento_inicial_evento = self.eventos_manejo.filter(tipo_evento='Povoamento').order_by('data_evento', 'id').first()
+        
+        if not povoamento_inicial_evento:
+            self.quantidade_atual = Decimal('0')
+            self.peso_medio_atual = Decimal('0')
+            self.ativo = False
+            self.tanque_atual = None
+            self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
+            return
+
+        current_quantidade = povoamento_inicial_evento.quantidade
+        current_peso_medio = povoamento_inicial_evento.peso_medio
+        current_tanque = povoamento_inicial_evento.tanque_destino
+
+        # Itera sobre os eventos subsequentes para agregar
+        eventos_subsequentes = self.eventos_manejo.filter(
+            data_evento__gte=povoamento_inicial_evento.data_evento
+        ).exclude(id=povoamento_inicial_evento.id).order_by('data_evento', 'id')
+
+        for evento in eventos_subsequentes:
+            if evento.tipo_evento == 'Povoamento': # Reforço de lote
+                quantidade_evento = evento.quantidade or Decimal('0')
+                peso_medio_evento = evento.peso_medio or Decimal('0')
+
+                if quantidade_evento > 0:
+                    biomassa_existente = current_quantidade * current_peso_medio
+                    biomassa_adicionada = quantidade_evento * peso_medio_evento
+                    
+                    nova_quantidade = current_quantidade + quantidade_evento
+                    nova_biomassa = biomassa_existente + biomassa_adicionada
+                    
+                    if nova_quantidade > 0:
+                        current_peso_medio = nova_biomassa / nova_quantidade
+                    else:
+                        current_peso_medio = peso_medio_evento
+
+                    current_quantidade = nova_quantidade
+            elif evento.tipo_evento == 'Mortalidade' or evento.tipo_evento == 'Despesca':
+                current_quantidade -= (evento.quantidade or Decimal('0'))
+                if current_quantidade < 0:
+                    current_quantidade = Decimal('0')
+            elif evento.tipo_evento == 'Transferencia':
+                current_quantidade = evento.quantidade
+                current_peso_medio = evento.peso_medio
+                current_tanque = evento.tanque_destino
+
+        self.quantidade_atual = current_quantidade
+        self.peso_medio_atual = current_peso_medio
+        self.tanque_atual = current_tanque
+
+        if self.quantidade_atual <= 0:
+            self.ativo = False
+            try:
+                status_livre = StatusTanque.objects.get(nome__iexact='Livre')
+                if self.tanque_atual and self.tanque_atual.status_tanque != status_livre:
+                    self.tanque_atual.status_tanque = status_livre
+                    self.tanque_atual.save(update_fields=['status_tanque'])
+            except StatusTanque.DoesNotExist:
+                pass
+            self.tanque_atual = None
+        else:
+            self.ativo = True
+            try:
+                status_em_uso = StatusTanque.objects.get(nome__iexact='Em uso')
+                if self.tanque_atual and self.tanque_atual.status_tanque != status_em_uso:
+                    self.tanque_atual.status_tanque = status_em_uso
+                    self.tanque_atual.save(update_fields=['status_tanque'])
+            except StatusTanque.DoesNotExist:
+                pass
+
+        self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
+
     class Meta:
         verbose_name = "Lote"
         verbose_name_plural = "Lotes"
@@ -235,54 +310,113 @@ class EventoManejo(models.Model):
     def __str__(self):
         return f"{self.tipo_evento} - {self.lote.nome} em {self.data_evento}"
 
-    def _liberar_tanque_se_vazio(self, lote):
-        """Verifica se um lote ficou vazio e, em caso afirmativo, libera o tanque."""
-        if lote.quantidade_atual <= 0:
-            lote.ativo = False
-            tanque_a_liberar = lote.tanque_atual
-            if tanque_a_liberar:
-                try:
-                    status_livre = StatusTanque.objects.get(nome__iexact='Livre')
-                    tanque_a_liberar.status_tanque = status_livre
-                    tanque_a_liberar.save(update_fields=['status_tanque'])
-                except StatusTanque.DoesNotExist:
-                    # Idealmente, logar um erro aqui. Por enquanto, a falha é silenciosa
-                    # para não interromper o fluxo principal por um status faltante.
-                    pass
-            lote.tanque_atual = None
-            lote.save(update_fields=['ativo', 'tanque_atual'])
-
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-class AlimentacaoDiaria(models.Model):
-    lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='alimentacoes_diarias')
-    produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='alimentacoes_consumidas')
-    data_alimentacao = models.DateField()
-    quantidade_racao = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+
+
+
+# =========================================================================
+# NOVOS MODELOS PARA O SISTEMA DE ARRAÇOAMENTO (v2 - PROATIVO)
+# =========================================================================
+
+
+
+
+class LoteDiario(models.Model):
+    """
+    Armazena um snapshot diário consolidado do estado e performance de um lote.
+    É pré-populado com projeções e depois atualizado com dados reais.
+    """
+    # --- Chaves e Data de Referência ---
+    lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='historico_diario')
+    data_evento = models.DateField(help_text="A data de referência para este registro diário.")
+
+    # --- Dados Projetados/Sugeridos ---
+    racao_sugerida = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_sugeridos')
+    racao_sugerida_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    quantidade_projetada = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    peso_medio_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Peso em gramas")
+    biomassa_projetada = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="em kg")
+    gpd_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPD Projetado (g)")
+    gpt_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPT Projetado (g)")
+    conversao_alimentar_projetada = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="Conversão Alimentar Projetada")
+
+    # --- Dados Reais (Pós-Evento) ---
+    racao_realizada = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_realizados')
+    racao_realizada_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    quantidade_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    peso_medio_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Peso em gramas")
+    biomassa_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="em kg")
+    gpd_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPD Real (g)")
+    gpt_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPT Real (g)")
+    conversao_alimentar_real = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="Conversão Alimentar Real")
+
+    # --- Auditoria e Observações ---
     observacoes = models.TextField(blank=True, null=True)
-
-    @property
-    def custo_racao(self):
-        if self.produto_racao and self.produto_racao.preco_custo:
-            return self.quantidade_racao * self.produto_racao.preco_custo
-        return Decimal('0.0') # Retorna Decimal para consistência
-
-    @property
-    def tca(self):
-        # TCA (Taxa de Conversão Alimentar) = Ração Consumida / Ganho de Peso
-        # Esta é uma implementação simplificada para um único evento de alimentação.
-        # Uma TCA mais precisa exigiria a soma da ração consumida e o ganho de peso
-        # de um lote ao longo de um período, o que envolveria consultas mais complexas.
-        if self.lote and self.lote.biomassa_inicial and self.lote.biomassa_atual and self.quantidade_racao:
-            ganho_peso = self.lote.biomassa_atual - self.lote.biomassa_inicial
-            if ganho_peso > 0:
-                return self.quantidade_racao / ganho_peso
-        return Decimal('0.0') # Retorna Decimal para consistência
+    data_lancamento = models.DateTimeField(auto_now_add=True)
+    data_edicao = models.DateTimeField(auto_now=True)
+    usuario_lancamento = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_criados')
+    usuario_edicao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_editados')
 
     class Meta:
-        verbose_name = "Alimentação Diária"
-        verbose_name_plural = "Alimentações Diárias"
+        verbose_name = "Histórico Diário do Lote"
+        verbose_name_plural = "Históricos Diários dos Lotes"
+        unique_together = ('lote', 'data_evento')
+        ordering = ['lote', '-data_evento']
 
     def __str__(self):
-        return f"Alimentação do Lote {self.lote.nome} em {self.data_alimentacao}"
+        return f"Histórico de {self.lote.nome} em {self.data_evento.strftime('%d/%m/%Y')}"
+
+
+class ArracoamentoSugerido(models.Model):
+    """
+    Armazena a transação de uma sugestão de arraçoamento gerada pelo sistema.
+    O status é controlado pelo usuário para indicar pendências.
+    """
+    STATUS_CHOICES = [
+        ('Pendente', 'Pendente'),
+        ('Aprovado', 'Aprovado'),
+        ('Rejeitado', 'Rejeitado'),
+    ]
+    lote_diario = models.OneToOneField(LoteDiario, on_delete=models.CASCADE, related_name='sugestao')
+    produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True)
+    quantidade_kg = models.DecimalField(max_digits=10, decimal_places=3)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pendente')
+    data_sugestao = models.DateTimeField(auto_now_add=True)
+    usuario_sugestao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sugestoes_criadas')
+
+    class Meta:
+        verbose_name = "Sugestão de Arraçoamento"
+        verbose_name_plural = "Sugestões de Arraçoamento"
+        ordering = ['-data_sugestao']
+
+    def __str__(self):
+        return f"Sugestão para {self.lote_diario} - {self.quantidade_kg} kg"
+
+
+class ArracoamentoRealizado(models.Model):
+    """
+    Registra a transação de um arraçoamento que foi efetivamente realizado,
+    seja a partir de uma sugestão aprovada ou de um lançamento manual.
+    """
+    lote_diario = models.ForeignKey(LoteDiario, on_delete=models.CASCADE, related_name='realizacoes')
+    produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, help_text="Ração efetivamente utilizada.")
+    quantidade_kg = models.DecimalField(max_digits=10, decimal_places=3)
+    data_realizacao = models.DateTimeField()
+    observacoes = models.TextField(blank=True, null=True)
+    
+    # Auditoria
+    data_lancamento = models.DateTimeField(auto_now_add=True)
+    data_edicao = models.DateTimeField(auto_now=True)
+    usuario_lancamento = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='arracoamentos_lancados')
+    usuario_edicao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='arracoamentos_editados')
+
+    class Meta:
+        verbose_name = "Arraçoamento Realizado"
+        verbose_name_plural = "Arraçoamentos Realizados"
+        ordering = ['-data_realizacao']
+
+    def __str__(self):
+        return f"Realizado para {self.lote_diario} - {self.quantidade_kg} kg"
+

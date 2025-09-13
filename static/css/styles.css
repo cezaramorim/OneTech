@@ -947,6 +947,28 @@ input.form-control:focus {
 }
 
 /* ============================
+   ESTILO PARA MODAIS GENÉRICOS NO TEMA ESCURO
+=============================== */
+html.dark .modal-content {
+  background-color: #2b2f3a; /* Mesmo fundo dos cards */
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+html.dark .modal-header {
+  border-bottom-color: #444;
+}
+
+html.dark .modal-footer {
+  border-top-color: #444;
+}
+
+/* Ajusta a cor do botão de fechar (X) no header do modal */
+html.dark .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ============================
    AJUSTES ESPECÍFICOS PARA MODAIS DE SELEÇÃO DE EMPRESA (Solução Final)
 =============================== */
 

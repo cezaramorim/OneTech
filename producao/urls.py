@@ -1,6 +1,6 @@
 from django.urls import path
-from . import views
-from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Tanque, CurvaCrescimento, Lote, EventoManejo, AlimentacaoDiaria
+from . import views, views_arracoamento
+from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Tanque, CurvaCrescimento, Lote, EventoManejo
 
 app_name = 'producao'
 
@@ -100,9 +100,13 @@ urlpatterns = [
     path('api/registrar-mortalidade/', views.registrar_mortalidade_api, name='api_registrar_mortalidade'),
     path('api/ultimos-eventos/', views.api_ultimos_eventos, name='api_ultimos_eventos'),
 
-    # Alimentação Diária
-    path('alimentacao/', views.ListaAlimentacaoView.as_view(), name='lista_alimentacao'),
-    path('alimentacao/registrar/', views.RegistrarAlimentacaoView.as_view(), name='registrar_alimentacao'),
-    path('alimentacao/<int:pk>/editar/', views.EditarAlimentacaoView.as_view(), name='editar_alimentacao'),
-    path('alimentacao/excluir-multipla/', views.ExcluirAlimentacaoMultiplaView.as_view(), name='excluir_alimentacao_multipla'),
+    # Arraçoamento (Sugestões e Aprovações)
+    path('arracoamento/diario/', views.arracoamento_diario_view, name='arracoamento_diario'),
+    path('api/arracoamento/sugestoes/', views_arracoamento.api_sugestoes_arracoamento, name='api_sugestoes_arracoamento'),
+    path('api/arracoamento/aprovar/', views_arracoamento.api_aprovar_arracoamento, name='api_aprovar_arracoamento'),
+    path('api/linhas-producao/', views.api_linhas_producao_list, name='api_linhas_producao_list'),
+    path('api/arracoamento/realizado/<int:pk>/delete/', views_arracoamento.api_delete_arracoamento_realizado, name='api_delete_arracoamento_realizado'),
+    path('api/arracoamento/realizado/bulk-delete/', views_arracoamento.api_bulk_delete_arracoamento_realizado, name='api_bulk_delete_arracoamento_realizado'),
+    path('api/arracoamento/realizado/<int:pk>/', views_arracoamento.api_get_arracoamento_realizado, name='api_get_arracoamento_realizado'), # GET for detail
+    path('api/arracoamento/realizado/<int:pk>/update/', views_arracoamento.api_update_arracoamento_realizado, name='api_update_arracoamento_realizado'), # POST for update
 ]

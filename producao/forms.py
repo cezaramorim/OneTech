@@ -1,7 +1,7 @@
 from django import forms
 from decimal import Decimal
 from .models import (
-    Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, EventoManejo, AlimentacaoDiaria,
+    Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, EventoManejo,
     Unidade, Malha, TipoTela, LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Atividade
 )
 
@@ -131,10 +131,7 @@ class EventoManejoForm(forms.ModelForm):
         model = EventoManejo
         fields = '__all__'
 
-class AlimentacaoDiariaForm(forms.ModelForm):
-    class Meta:
-        model = AlimentacaoDiaria
-        fields = '__all__'
+
 
 class ImportarCurvaForm(forms.Form):
     nome = forms.CharField(max_length=255, label="Nome da Curva")

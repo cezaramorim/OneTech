@@ -1,0 +1,131 @@
+<div class="container-fluid p-4" data-page="arracoamento-diario">
+    <!-- Div de identificação unificada e corrigida -->
+    <div id="identificador-tela"
+         data-tela="arracoamento-diario"
+         data-seletor-checkbox=".sugestao-checkbox"
+         data-url-editar="{% url 'producao:api_get_arracoamento_realizado' pk=0 %}"
+         data-url-excluir="{% url 'producao:api_bulk_delete_arracoamento_realizado' %}"
+         data-entidade-singular="lançamento"
+         data-entidade-plural="lançamentos">
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-utensils me-2"></i>Arraçoamento Diário
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Filtros -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <label for="data-arraçoamento" class="form-label">Data</label>
+                    <input type="date" id="data-arraçoamento" class="form-control" value="{{ today|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="filtro-linha-producao" class="form-label">Linha de Produção</label>
+                    <select id="filtro-linha-producao" class="form-select">
+                        <option value="">Todas</option>
+                        <!-- Opções serão carregadas via JS -->
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button id="btn-buscar-sugestoes" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Buscar Sugestões
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela de Sugestões -->
+            <div id="loading-spinner" class="text-center my-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+
+            <div id="tabela-sugestoes-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 3%;"><input type="checkbox" id="selecionar-todos-sugestoes"></th>
+                            <th scope="col">Lote</th>
+                            <th scope="col" style="min-width: 120px;">Tanque</th>
+                            <th scope="col">Qtd. Lote</th>
+                            <th scope="col">Peso Médio</th>
+                            <th scope="col" style="min-width: 120px;">Linha Prod.</th>
+                            <th scope="col">Seq.</th>
+                            <th scope="col">Ração Sugerida</th>
+                            <th scope="col">Ração Realizada</th>
+                            <th scope="col">Qtd. Sugerida (kg)</th>
+                            <th scope="col">Qtd. Real (kg)</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-sugestoes">
+                        <!-- Linhas serão inseridas via JavaScript -->
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">Nenhuma sugestão carregada.</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td colspan="8" class="text-end">Totais:</td>
+                            <td id="total-sugerido" class="text-center">0.00</td>
+                            <td id="total-real" class="text-center">0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Ações -->
+            <div class="mt-3">
+                <button id="btn-aprovar-selecionados" class="btn btn-success" disabled>
+                    <i class="fas fa-check me-2"></i>Aprovar Selecionados
+                </button>
+                <!-- Botões de ação genéricos -->
+                <button id="btn-editar" class="btn btn-info ms-2" disabled data-bs-toggle="modal" data-bs-target="#modalEdicao" data-action="editar">
+                    <i class="fas fa-edit me-2"></i>Editar
+                </button>
+                <button id="btn-excluir" class="btn btn-danger ms-2" disabled data-action="excluir">
+                    <i class="fas fa-trash-alt me-2"></i>Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição (estrutura básica) -->
+<div class="modal fade" id="modalEdicao" tabindex="-1" aria-labelledby="modalEdicaoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEdicaoLabel">Editar Lançamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEdicao" class="ajax-form" data-api-url="" method="POST" data-skip-global="1">
+          {% csrf_token %}
+          <input type="hidden" id="edit-id" name="id">
+          <div class="mb-3">
+            <label for="edit-lote-nome" class="form-label">Lote</label>
+            <input type="text" class="form-control" id="edit-lote-nome" disabled>
+          </div>
+          <div class="mb-3">
+            <label for="edit-produto-racao-nome" class="form-label">Ração</label>
+            <input type="text" class="form-control" id="edit-produto-racao-nome" disabled>
+          </div>
+          <div class="mb-3">
+            <label for="edit-quantidade-kg" class="form-label">Quantidade (kg)</label>
+            <input type="number" class="form-control" id="edit-quantidade-kg" name="quantidade_kg" step="0.01">
+          </div>
+          <div class="mb-3">
+            <label for="edit-observacoes" class="form-label">Observações</label>
+            <textarea class="form-control" id="edit-observacoes" name="observacoes" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

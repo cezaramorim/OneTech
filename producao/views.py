@@ -12,15 +12,19 @@ from io import BytesIO
 from datetime import time
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_http_methods
+import logging
+
+# Configuração básica de logging para exibir mensagens no console
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
-    EventoManejo, AlimentacaoDiaria, Unidade, Malha, TipoTela,
+    EventoManejo, Unidade, Malha, TipoTela,
     FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade
 )
 from .forms import (
     TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
-    EventoManejoForm, AlimentacaoDiariaForm, TanqueImportForm,
+    EventoManejoForm, TanqueImportForm,
     UnidadeForm, MalhaForm, TipoTelaForm, LinhaProducaoForm, FaseProducaoForm,
     StatusTanqueForm, TipoTanqueForm, AtividadeForm, PovoamentoForm
 )
@@ -724,58 +728,7 @@ class ExcluirEventosMultiplosView(BulkDeleteView):
     success_url_name = 'producao:lista_eventos'
 
 
-# === Alimentação Diária ===
 
-class ListaAlimentacaoView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    model = AlimentacaoDiaria
-    template_name = 'producao/alimentacao/lista_alimentacao.html'
-    context_object_name = 'alimentacoes'
-    permission_required = 'producao.view_alimentacaodiaria'
-    raise_exception = True
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        termo = self.request.GET.get('termo_alimentacao', '').strip()
-        if termo:
-            qs = qs.filter(
-                Q(lote__nome__icontains=termo) |
-                Q(produto_racao__nome__icontains=termo)
-            )
-        return qs
-
-    def render_to_response(self, context, **response_kwargs):
-        context['termo_busca'] = self.request.GET.get('termo_alimentacao', '').strip()
-        return render_ajax_or_base(self.request, self.template_name, context)
-
-
-class RegistrarAlimentacaoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
-    model = AlimentacaoDiaria
-    form_class = AlimentacaoDiariaForm
-    template_name = 'producao/alimentacao/registrar_alimentacao.html'
-    success_url = reverse_lazy('producao:lista_alimentacao')
-    permission_required = 'producao.add_alimentacaodiaria'
-    raise_exception = True
-
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
-
-
-class EditarAlimentacaoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, UpdateView):
-    model = AlimentacaoDiaria
-    form_class = AlimentacaoDiariaForm
-    template_name = 'producao/alimentacao/editar_alimentacao.html'
-    success_url = reverse_lazy('producao:lista_alimentacao')
-    permission_required = 'producao.change_alimentacaodiaria'
-    raise_exception = True
-
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
-
-
-class ExcluirAlimentacaoMultiplaView(BulkDeleteView):
-    model = AlimentacaoDiaria
-    permission_required = 'producao.delete_alimentacaodiaria'
-    success_url_name = 'producao:lista_alimentacao'
 
 
 from django.forms.models import model_to_dict
@@ -972,7 +925,7 @@ def serialize_detalhe(d: CurvaCrescimentoDetalhe) -> dict:
         "peso_final": _to_float(d.peso_final),
         "ganho_de_peso": _to_float(d.ganho_de_peso),
         "numero_tratos": _to_float(d.numero_tratos),
-        "hora_inicio": d.hora_inicio.strftime("%H:%M") if getattr(d, "hora_inicio", None) else None,
+        "hora_inicio": d.hora_inicio.strftime("%H:%M") if d.hora_inicio else None,
         "arracoamento_biomassa_perc": _to_float(d.arracoamento_biomassa_perc),
         "mortalidade_presumida_perc": _to_float(d.mortalidade_presumida_perc),
         "racao": d.racao_id,
@@ -1074,20 +1027,34 @@ def detalhe_create_view(request, curva_id: int):
 @permission_required('producao.change_curvacrescimentodetalhe', raise_exception=True)
 @transaction.atomic
 def detalhe_update_view(request, curva_id: int, detalhe_id: int):
-    """
-    POST /producao/api/curva/<id>/detalhes/<detalhe_id>/
-    """
-    curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
-    detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id, curva=curva)
-    form = CurvaCrescimentoDetalheForm(request.POST, instance=detalhe)
-    if form.is_valid():
-        detalhe = form.save()
-        return JsonResponse({
-            "success": True,
-            "message": "Período atualizado.",
-            "periodo": serialize_detalhe(detalhe)
-        }, status=200)
-    return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar período."}, status=400)
+    logging.info(f"--- Iniciando detalhe_update_view para detalhe_id: {detalhe_id} ---")
+    logging.info(f"Dados do POST recebidos: {request.POST}")
+    try:
+        curva = get_object_or_404(CurvaCrescimento, pk=curva_id)
+        detalhe = get_object_or_404(CurvaCrescimentoDetalhe, pk=detalhe_id, curva=curva)
+        form = CurvaCrescimentoDetalheForm(request.POST, instance=detalhe)
+        
+        if form.is_valid():
+            logging.info("Formulário é válido. Salvando...")
+            detalhe = form.save()
+            logging.info(f"Formulário salvo com sucesso. ID da ração no objeto salvo: {detalhe.racao_id}")
+            
+            logging.info("Iniciando serialização...")
+            periodo_serializado = serialize_detalhe(detalhe)
+            logging.info(f"Serialização concluída com sucesso: {periodo_serializado}")
+            
+            return JsonResponse({
+                "success": True,
+                "message": "Período atualizado.",
+                "periodo": periodo_serializado
+            }, status=200)
+        else:
+            logging.error(f"Formulário inválido. Erros: {form.errors.as_json()}")
+            return JsonResponse({"success": False, "errors": form.errors, "message": "Erro ao atualizar período."}, status=400)
+            
+    except Exception as e:
+        logging.exception("Ocorreu uma exceção não tratada na view detalhe_update_view")
+        return JsonResponse({"success": False, "message": f"Erro inesperado no servidor: {str(e)}"}, status=500)
 
 
 # === Povoamento de Lotes ===
@@ -1134,6 +1101,9 @@ def povoamento_lotes_view(request):
                                 tipo_movimento='Entrada' # Adicionado para povoamento/reforço
                             )
 
+                            # Recalcula o estado do lote após o reforço
+                            lote_existente.recalcular_estado_atual()
+
                         except Lote.MultipleObjectsReturned:
                             return JsonResponse({'success': False, 'message': f"Erro de Dados: Múltiplos lotes ativos encontrados no tanque '{tanque.nome}'. Corrija o cadastro."}, status=400)
                         # O caso DoesNotExist é coberto pelo .exists() acima, então não deve ocorrer.
@@ -1148,10 +1118,7 @@ def povoamento_lotes_view(request):
                             quantidade_inicial=cleaned_data['quantidade'],
                             peso_medio_inicial=cleaned_data['peso_medio'],
                             data_povoamento=cleaned_data['data_lancamento'],
-                            ativo=True,
-                            # Garante que os campos atuais comecem com os valores iniciais
-                            quantidade_atual=cleaned_data['quantidade'],
-                            peso_medio_atual=cleaned_data['peso_medio']
+                            ativo=True
                         )
                         EventoManejo.objects.create(
                             tipo_evento='Povoamento',
@@ -1163,15 +1130,19 @@ def povoamento_lotes_view(request):
                             tipo_movimento='Entrada' # Adicionado para povoamento inicial
                         )
                         
-                        # Atualiza o status do tanque para 'Em uso' para consistência visual
+                        # Recalcula o estado do lote, que também vai cuidar de atualizar o status do tanque
+                        novo_lote.recalcular_estado_atual()
+
+                        # --- INÍCIO DA NOVA INTEGRAÇÃO ---
+                        from .utils import projetar_ciclo_de_vida_lote
+                        import logging
                         try:
-                            status_em_uso = StatusTanque.objects.get(nome__iexact='Em uso')
-                            if tanque.status_tanque != status_em_uso:
-                                tanque.status_tanque = status_em_uso
-                                tanque.save(update_fields=['status_tanque'])
-                        except StatusTanque.DoesNotExist:
-                            # A transação será revertida, alertando sobre a configuração incompleta.
-                            raise Exception("O status 'Em uso' não foi encontrado. Por favor, cadastre-o em 'Status de Tanque' para continuar.")
+                            projetar_ciclo_de_vida_lote(novo_lote)
+                        except Exception as e:
+                            # Logar o erro de projeção, mas não impedir o sucesso do povoamento.
+                            # É crucial que o povoamento não falhe se a projeção tiver um problema.
+                            logging.error(f"Erro ao projetar o ciclo de vida para o novo lote {novo_lote.id}: {e}")
+                        # --- FIM DA NOVA INTEGRAÇÃO ---
             
             success_message = app_messages.success_process(f'{len(povoamentos)} povoamento(s) processado(s) com sucesso!')
             return JsonResponse({'success': True, 'message': success_message})
@@ -1462,11 +1433,7 @@ def processar_mortalidade_api(request):
                 tipo_movimento='Morte' # <--- Adicionar esta linha
             )
 
-            lote.quantidade_atual = lote.quantidade_atual - quantidade_mortalidade
-            if lote.quantidade_atual < 0:
-                lote.quantidade_atual = 0
-            
-            lote.save()
+            lote.recalcular_estado_atual()
             processed_count += 1
         
         message = app_messages.success_process(f'{processed_count} lançamento(s) de mortalidade processado(s) com sucesso.')
@@ -1557,3 +1524,26 @@ def api_mortalidade_lotes_ativos(request):
         })
 
     return JsonResponse({"results": results})
+
+
+@login_required
+@permission_required('producao.view_arracoamentosugerido', raise_exception=True)
+def arracoamento_diario_view(request):
+    """
+    Renderiza a página de arraçoamento diário.
+    """
+    context = {
+        'today': timezone.now().date(),
+        'data_page': 'arracoamento-diario',
+        'data_tela': 'arracoamento_diario',
+    }
+    return render_ajax_or_base(request, 'producao/arracoamento_diario.html', context)
+
+@login_required
+@require_http_methods(["GET"])
+def api_linhas_producao_list(request):
+    """
+    Retorna uma lista de linhas de produção em formato JSON.
+    """
+    linhas = LinhaProducao.objects.all().values('id', 'nome').order_by('nome')
+    return JsonResponse(list(linhas), safe=False)

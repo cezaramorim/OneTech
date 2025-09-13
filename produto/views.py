@@ -417,3 +417,11 @@ def importar_ncm_manual_view(request):
     except Exception as e:
         message = app_messages.error(f"Erro ao importar NCM: {str(e)}")
         return JsonResponse({"success": False, "message": message}, status=500)
+
+@login_required_json
+def api_racoes_list(request):
+    """
+    Retorna uma lista de produtos da categoria 'Ração' em formato JSON.
+    """
+    racoes = Produto.objects.filter(categoria__nome__iexact='Ração').values('id', 'nome').order_by('nome')
+    return JsonResponse(list(racoes), safe=False)

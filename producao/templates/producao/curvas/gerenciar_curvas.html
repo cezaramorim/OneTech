@@ -134,8 +134,8 @@
 
             <!-- Aba: Ponto de Crescimento (períodos) -->
             <div class="tab-pane fade" id="ponto-crescimento" role="tabpanel" aria-labelledby="ponto-crescimento-tab">
-              <form id="form-ponto-crescimento" class="ajax-form needs-validation" novalidate
-                    data-api-url="" data-method="POST" autocomplete="off">
+              <form id="form-ponto-crescimento" class="ajax-form needs-validation" method="POST" novalidate
+                    data-api-url="" data-method="POST" autocomplete="off" data-skip-global="1">
                 {% csrf_token %}
                 <input type="hidden" id="detalhe-id" name="id" value="">
                 <div class="row">
