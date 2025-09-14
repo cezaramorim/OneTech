@@ -29,7 +29,9 @@
   
   <!--  Estilo Customizado -->
   <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-  <link rel="stylesheet" href="{% static 'layout_switcher/css/switcher.css' %}">
+  <link href="{% static 'css/navbar.css' %}" rel="stylesheet" />
+  
+  
 </head>
 <body class="{% if request.user.is_authenticated %}logged-in{% endif %}" id="page-body" data-login-url="{% url 'accounts:login' %}">
   <script>window.pageInitializers = {};</script> <!-- ✅ Garante que o objeto global exista -->
@@ -86,5 +88,25 @@
     // alert("base.html script executado!");
   </script>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const navbarContainer = document.getElementById('navbar-container');
+      const mainContent = document.getElementById('main-content');
+
+      if (navbarContainer) {
+        console.log('Navbar Container Height:', navbarContainer.offsetHeight, 'px');
+        console.log('Navbar Container OffsetTop:', navbarContainer.offsetTop, 'px');
+      } else {
+        console.log('Navbar Container not found.');
+      }
+
+      if (mainContent) {
+        console.log('Main Content Height:', mainContent.offsetHeight, 'px');
+        console.log('Main Content OffsetTop:', mainContent.offsetTop, 'px');
+      } else {
+        console.log('Main Content not found.');
+      }
+    });
+  </script>
 </body>
 </html>

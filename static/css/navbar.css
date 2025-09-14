@@ -1,6 +1,5 @@
 /* Base styles for the top navbar */
 .navbar-superior {
-    /* display: none; Hidden by default */
     background-color: #fff; /* Light theme default */
     border-bottom: 1px solid #ddd;
     position: fixed; /* Make it stick to the top */
@@ -10,17 +9,12 @@
     z-index: 1030; /* Ensure it's above other content */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: subtle shadow */
     transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
-    min-height: 40px; /* Altura mínima para alinhar com o logo */
+    min-height: 30px; /* Altura mínima para alinhar com o logo */
     padding: 0 1rem; /* Ajusta o preenchimento horizontal */
 }
 
-.sidebar {
-    /* display: flex; Sidebar is visible by default */
-    flex-direction: column; /* Ensure content stacks vertically */
-}
-
 .navbar-superior .navbar-brand img {
-    max-height: 40px; /* Garante que o logo não ultrapasse a altura da barra */
+    max-height: 30px; /* Garante que o logo não ultrapasse a altura da barra */
 }
 
 .navbar-superior .navbar-nav {
@@ -28,8 +22,8 @@
 }
 
 .navbar-superior .nav-link {
-    padding-top: 0.1rem; /* Reduz o preenchimento vertical dos links */
-    padding-bottom: 0.1rem;
+    padding-top: 0.05rem; /* Reduz o preenchimento vertical dos links */
+    padding-bottom: 0.05rem;
 }
 
 html.dark .navbar-superior {
@@ -104,33 +98,6 @@ html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collaps
     color: #ffffff; /* Cor de texto quando expandido */
 }
 
-/* Layout com barra superior ativa */
-html body#page-body.layout_navbar .navbar-superior {
-    display: flex !important; /* Show the top navbar */
-}
-
-html body#page-body.layout_navbar .sidebar {
-    flex: 0 0 0 !important; /* Sidebar takes no space */
-    width: 0 !important; /* Ensure width is zero */
-    overflow: hidden !important; /* Hide content that overflows */
-    padding: 0 !important; /* Remove padding */
-    display: none !important; /* Explicitly hide the sidebar */
-    transition: flex 0.3s ease, width 0.3s ease, padding 0.3s ease; /* Smooth transition */
-}
-
-/* Layout com menu lateral ativo (padrão) */
-html body#page-body.layout_sidebar .navbar-superior {
-    display: none !important; /* Hide the top navbar */
-}
-
-html body#page-body.layout_sidebar .sidebar {
-    flex: 0 0 250px !important; /* Restore sidebar width */
-    width: 250px !important; /* Ensure width is 250px */
-    padding: 20px !important; /* Restore sidebar padding */
-    display: flex !important; /* Explicitly show the sidebar */
-    transition: flex 0.3s ease, width 0.3s ease, padding 0.3s ease; /* Smooth transition */
-}
-
 /* Estilo da seta indicadora */
 .navbar-superior .dropdown-menu .submenu-arrow {
     display: inline-block;
@@ -142,9 +109,3 @@ html body#page-body.layout_sidebar .sidebar {
 .navbar-superior .dropdown-menu a[aria-expanded="true"] .submenu-arrow {
     transform: rotate(90deg);
 }
-
-/* Ajuste para o padding-top do main-content quando o layout superior está ativo */
-html body#page-body.layout_navbar #main-content {
-     padding-top: 50px !important; /* Aumenta o padding para compensar a navbar fixa */
-}
-

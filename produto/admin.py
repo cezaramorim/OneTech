@@ -34,22 +34,4 @@ class ProdutoAdmin(admin.ModelAdmin):
             'fields': ('ativo', 'data_cadastro', 'observacoes')
         }),
     )
-
-
-# Estrutura do menu lateral (painel) deve incluir:
-# Produtos
-# ├── Listar Produtos
-# ├── Categorias de Produto
-# └── Unidades de Medida
-
-# No HTML do menu lateral (ex: base.html ou sidebar.html):
-# <li class="nav-item">
-#   <a class="nav-link" data-url="/produtos/" href="#">
-#     <i class="bi bi-box-seam"></i> Produtos
-#   </a>
-#   <ul class="submenu">
-#     <li><a href="#" data-url="/produtos/">Listar Produtos</a></li>
-#     <li><a href="#" data-url="/produtos/categorias/">Categorias de Produto</a></li>
-#     <li><a href="#" data-url="/produtos/unidades/">Unidades de Medida</a></li>
-#   </ul>
-# </li>
+    

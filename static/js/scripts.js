@@ -298,7 +298,7 @@ function adjustMainContentPadding() {
     const navbarSuperior = document.querySelector('.navbar-superior');
     const mainContent = document.getElementById('main-content');
     if (navbarSuperior && mainContent) {
-        mainContent.style.paddingTop = `${navbarSuperior.offsetHeight}px`;
+        mainContent.style.paddingTop = `${navbarSuperior.offsetHeight + 10}px`;
     }
 }
 

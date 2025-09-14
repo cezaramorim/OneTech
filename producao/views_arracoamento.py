@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils import timezone
+import logging
 
 from .models import Lote, LoteDiario, ArracoamentoSugerido, ArracoamentoRealizado, LinhaProducao
 from .utils import sugerir_para_lote
@@ -19,51 +20,95 @@ def api_sugestoes_arracoamento(request):
     Gera e retorna sugestões de arraçoamento para todos os lotes ativos
     para uma data específica, evitando duplicatas.
     """
+    logging.info("Iniciando api_sugestoes_arracoamento.")
     try:
         data_str = request.GET.get('data', date.today().isoformat())
         data_alvo = datetime.strptime(data_str, '%Y-%m-%d').date()
         linha_producao_id = request.GET.get('linha_producao_id')
+        logging.info(f"Data alvo: {data_alvo}, Linha Produção ID: {linha_producao_id}")
     except (ValueError, TypeError):
+        logging.error("Formato de data inválido na requisição.")
         return JsonResponse({'success': False, 'message': 'Formato de data inválido. Use AAAA-MM-DD.'}, status=400)
 
     erros = []
 
-    # 1. Identifica lotes que já possuem um registro LoteDiario para a data alvo.
-    lotes_com_registro_diario_ids = LoteDiario.objects.filter(
-        data_evento=data_alvo
-    ).values_list('lote_id', flat=True)
-
-    # 2. Busca lotes elegíveis que ainda não têm registro diário.
-    lotes_a_processar = Lote.objects.filter(
+    # 1. Busca todos os lotes ativos elegíveis para a data alvo.
+    lotes_elegibles = Lote.objects.filter(
         ativo=True,
         quantidade_atual__gt=0,
         data_povoamento__lte=data_alvo
-    ).exclude(id__in=lotes_com_registro_diario_ids)
-
+    )
     if linha_producao_id:
-        lotes_a_processar = lotes_a_processar.filter(tanque_atual__linha_producao_id=linha_producao_id)
+        lotes_elegibles = lotes_elegibles.filter(tanque_atual__linha_producao_id=linha_producao_id)
+    
+    logging.info(f"Lotes elegíveis para processamento: {[l.id for l in lotes_elegibles]}")
 
-    # 3. Cria LoteDiario e ArracoamentoSugerido atomicamente para os novos lotes.
-    if lotes_a_processar.exists():
-        with transaction.atomic():
-            for lote in lotes_a_processar:
-                resultado = sugerir_para_lote(lote)
-                if 'error' not in resultado:
-                    lote_diario = LoteDiario.objects.create(
-                        lote=lote,
-                        data_evento=data_alvo,
-                        quantidade_real=lote.quantidade_atual,
-                        peso_medio_real=lote.peso_medio_atual,
-                        biomassa_real=lote.biomassa_atual / Decimal('1000')
-                    )
+    # 2. Processa cada lote para garantir que LoteDiario e ArracoamentoSugerido existam/sejam atualizados.
+    with transaction.atomic():
+        for lote in lotes_elegibles:
+            logging.info(f"Processando lote {lote.id} ({lote.nome})...")
+            
+            # Obter ou criar LoteDiario para a data alvo
+            lote_diario, created_ld = LoteDiario.objects.get_or_create(
+                lote=lote,
+                data_evento=data_alvo,
+                defaults={
+                    'quantidade_projetada': lote.quantidade_atual, # Usar valores atuais como projeção inicial
+                    'peso_medio_projetado': lote.peso_medio_atual,
+                    'biomassa_projetada': lote.biomassa_atual / Decimal('1000'),
+                    'quantidade_real': lote.quantidade_atual, # Inicializa com real para o dia
+                    'peso_medio_real': lote.peso_medio_atual,
+                    'biomassa_real': lote.biomassa_atual / Decimal('1000'),
+                }
+            )
+            if not created_ld:
+                # Se já existia, atualiza os campos de projeção/real com os valores atuais do lote
+                # Isso é importante caso o lote tenha sido atualizado após a criação do LoteDiario
+                lote_diario.quantidade_projetada = lote.quantidade_atual
+                lote_diario.peso_medio_projetado = lote.peso_medio_atual
+                lote_diario.biomassa_projetada = lote.biomassa_atual / Decimal('1000')
+                if lote_diario.quantidade_real is None: # Só atualiza se ainda não houver um valor real
+                    lote_diario.quantidade_real = lote.quantidade_atual
+                    lote_diario.peso_medio_real = lote.peso_medio_atual
+                    lote_diario.biomassa_real = lote.biomassa_atual / Decimal('1000')
+                lote_diario.save()
+            
+            # Gerar sugestão de arraçoamento
+            resultado_sugestao = sugerir_para_lote(lote)
+            
+            if 'error' not in resultado_sugestao:
+                # Atualizar LoteDiario com a ração sugerida
+                lote_diario.racao_sugerida = resultado_sugestao['produto_racao']
+                lote_diario.racao_sugerida_kg = resultado_sugestao['quantidade_kg']
+                lote_diario.save()
+
+                # Gerenciar ArracoamentoSugerido para o LoteDiario
+                try:
+                    arracoamento_sugerido = ArracoamentoSugerido.objects.get(lote_diario=lote_diario)
+                    if arracoamento_sugerido.status == 'Pendente':
+                        # Se existe e está pendente, atualiza
+                        arracoamento_sugerido.produto_racao = resultado_sugestao['produto_racao']
+                        arracoamento_sugerido.quantidade_kg = resultado_sugestao['quantidade_kg']
+                        arracoamento_sugerido.save()
+                        logging.info(f"ArracoamentoSugerido existente (Pendente) atualizado para lote {lote.id}.")
+                    else:
+                        # Se existe e não está pendente (ex: Aprovado), não faz nada.
+                        # Não queremos sobrescrever um registro já aprovado com uma nova sugestão.
+                        logging.info(f"ArracoamentoSugerido existente (Status: {arracoamento_sugerido.status}) para lote {lote.id}. Não será atualizado.")
+                except ArracoamentoSugerido.DoesNotExist:
+                    # Se não existe, cria um novo
                     ArracoamentoSugerido.objects.create(
                         lote_diario=lote_diario,
-                        produto_racao=resultado['produto_racao'],
-                        quantidade_kg=resultado['quantidade_kg'],
+                        produto_racao=resultado_sugestao['produto_racao'],
+                        quantidade_kg=resultado_sugestao['quantidade_kg'],
                         status='Pendente'
                     )
-                else:
-                    erros.append(f"Lote {lote.nome}: {resultado['error']}")
+                    logging.info(f"Novo ArracoamentoSugerido criado para lote {lote.id}.")
+                
+                logging.info(f"Sugestão gerada/atualizada para lote {lote.id}. Quantidade: {resultado_sugestao['quantidade_kg']} kg")
+            else:
+                erros.append(f"Lote {lote.nome}: {resultado_sugestao['error']}")
+                logging.warning(f"Erro ao sugerir arraçoamento para lote {lote.id}: {resultado_sugestao['error']}")
 
     # 4. Busca todas as sugestões para a data (incluindo as recém-criadas).
     sugestoes_qs = ArracoamentoSugerido.objects.filter(

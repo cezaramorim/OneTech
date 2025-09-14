@@ -93,6 +93,7 @@ from decimal import Decimal
 from .models import Lote, LoteDiario, CurvaCrescimentoDetalhe
 from datetime import date, timedelta, timedelta
 from decimal import Decimal
+import logging
 
 def projetar_ciclo_de_vida_lote(lote: Lote):
     """
@@ -273,7 +274,9 @@ def get_detalhe_curva_para_peso(lote: Lote):
     """
     Encontra o detalhe da curva de crescimento correspondente ao peso médio atual do lote.
     """
+    logging.info(f"Iniciando get_detalhe_curva_para_peso para lote {lote.id} (Peso: {lote.peso_medio_atual}).")
     if not lote.curva_crescimento:
+        logging.warning(f"Lote {lote.id} não possui curva de crescimento associada.")
         return None
     
     peso_medio_g = lote.peso_medio_atual
@@ -284,13 +287,18 @@ def get_detalhe_curva_para_peso(lote: Lote):
         peso_inicial__lte=peso_medio_g,
         peso_final__gt=peso_medio_g
     ).first()
-
-    # Fallback: se o peso for exatamente o peso final de uma faixa ou maior que a última faixa,
-    # pega a última faixa aplicável.
-    if not detalhe:
+    
+    if detalhe:
+        logging.info(f"Detalhe encontrado (primeira tentativa) para lote {lote.id}: Período {detalhe.periodo_semana}.")
+    else:
+        logging.info(f"Nenhum detalhe encontrado (primeira tentativa) para lote {lote.id}. Tentando fallback.")
         detalhe = lote.curva_crescimento.detalhes.filter(
             peso_inicial__lte=peso_medio_g
         ).order_by('-peso_inicial').first()
+        if detalhe:
+            logging.info(f"Detalhe encontrado (fallback) para lote {lote.id}: Período {detalhe.periodo_semana}.")
+        else:
+            logging.warning(f"Nenhum detalhe da curva encontrado (fallback) para o peso {peso_medio_g}g do lote {lote.id}.")
 
     return detalhe
 
@@ -299,83 +307,32 @@ def sugerir_para_lote(lote: Lote) -> dict:
     Gera uma sugestão de arraçoamento completa para um lote específico,
     baseado DIRETAMENTE na sua curva de crescimento.
     """
+    logging.info(f"Iniciando sugerir_para_lote para lote {lote.id} (Qtd: {lote.quantidade_atual}, Peso: {lote.peso_medio_atual}).")
     if not lote.ativo or lote.quantidade_atual <= 0:
+        logging.warning(f"Lote {lote.id} inválido (ativo={lote.ativo}, quantidade_atual={lote.quantidade_atual}).")
         return {'error': 'Lote inválido.'}
 
     detalhe_curva = get_detalhe_curva_para_peso(lote)
+    logging.info(f"Resultado de get_detalhe_curva_para_peso para lote {lote.id}: {detalhe_curva.periodo_semana if detalhe_curva else 'Nenhum detalhe encontrado'}")
 
     if not detalhe_curva:
+        logging.warning(f"Nenhum detalhe da curva de crescimento encontrado para o peso {lote.peso_medio_atual}g do lote {lote.id}.")
         return {'error': f'Nenhum ponto de crescimento na curva corresponde ao peso de {lote.peso_medio_atual}g.'}
 
     percentual_pv = detalhe_curva.arracoamento_biomassa_perc
     produto_racao = detalhe_curva.racao
 
     if not percentual_pv or percentual_pv <= 0:
+        logging.warning(f"Percentual de arraçoamento inválido ({percentual_pv}) para detalhe da curva do lote {lote.id}.")
         return {'error': f'O ponto de crescimento para {lote.peso_medio_atual}g não tem um percentual de arraçoamento definido.'}
     
     if not produto_racao:
+        logging.warning(f"Ração não definida para detalhe da curva do lote {lote.id}.")
         return {'error': f'O ponto de crescimento para {lote.peso_medio_atual}g não tem uma ração definida.'}
 
     biomassa_kg = lote.biomassa_atual / Decimal('1000')
     quantidade_sugerida_kg = biomassa_kg * (percentual_pv / Decimal('100'))
-
-    return {
-        'lote': lote,
-        'produto_racao': produto_racao,
-        'quantidade_kg': quantidade_sugerida_kg.quantize(Decimal('0.001')),
-        'biomassa_kg': biomassa_kg,
-        'percentual_pv': percentual_pv
-    }
-
-def get_detalhe_curva_para_peso(lote: Lote):
-    """
-    Encontra o detalhe da curva de crescimento correspondente ao peso médio atual do lote.
-    """
-    if not lote.curva_crescimento:
-        return None
-    
-    peso_medio_g = lote.peso_medio_atual
-    
-    # A consulta agora busca o detalhe que engloba o peso médio.
-    # A lógica é: peso_inicial <= peso_medio < peso_final
-    detalhe = lote.curva_crescimento.detalhes.filter(
-        peso_inicial__lte=peso_medio_g,
-        peso_final__gt=peso_medio_g
-    ).first()
-
-    # Fallback: se o peso for exatamente o peso final de uma faixa ou maior que a última faixa,
-    # pega a última faixa aplicável.
-    if not detalhe:
-        detalhe = lote.curva_crescimento.detalhes.filter(
-            peso_inicial__lte=peso_medio_g
-        ).order_by('-peso_inicial').first()
-
-    return detalhe
-
-def sugerir_para_lote(lote: Lote) -> dict:
-    """
-    Gera uma sugestão de arraçoamento completa para um lote específico,
-    baseado DIRETAMENTE na sua curva de crescimento.
-    """
-    if not lote.ativo or lote.quantidade_atual <= 0:
-        return {'error': 'Lote inválido.'}
-
-    detalhe_curva = get_detalhe_curva_para_peso(lote)
-
-    if not detalhe_curva:
-        return {'error': f'Nenhum ponto de crescimento na curva corresponde ao peso de {lote.peso_medio_atual}g.'}
-
-    percentual_pv = detalhe_curva.arracoamento_biomassa_perc
-    produto_racao = detalhe_curva.racao
-
-    if not percentual_pv or percentual_pv <= 0:
-        return {'error': f'O ponto de crescimento para {lote.peso_medio_atual}g não tem um percentual de arraçoamento definido.'}
-    
-    if not produto_racao:
-        return {'error': f'O ponto de crescimento para {lote.peso_medio_atual}g não tem uma ração definida.'}
-
-    biomassa_kg = lote.biomassa_atual / Decimal('1000')
-    quantidade_sugerida_kg = biomassa_kg * (percentual_pv / Decimal('100'))
+    logging.info(f"Sugestão calculada para lote {lote.id}: {quantidade_sugerida_kg} kg de {produto_racao.nome if produto_racao else 'N/A'}.")
 
     return {
         'lote': lote,

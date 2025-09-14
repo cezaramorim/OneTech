@@ -576,7 +576,7 @@ def get_navbar(request):
         # from core.services.nav_builder import build_nav_for_user
         # context = {"dynamic_menu_items": build_nav_for_user(request.user)}
         context = {}  # mínimo, se preferir
-        html = render_to_string("layout_switcher/navbar.html", context, request=request)
+        html = render_to_string("partials/navbar.html", context, request=request)
         return HttpResponse(html)
     except Exception:
         logger.exception("Falha ao renderizar navbar; devolvendo fallback.")
