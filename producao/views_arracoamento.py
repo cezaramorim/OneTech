@@ -18,7 +18,7 @@ from .utils import sugerir_para_lote
 def api_sugestoes_arracoamento(request):
     """
     Gera e retorna sugestões de arraçoamento para todos os lotes ativos
-    para uma data específica, evitando duplicatas.
+    para uma data específica, lendo as projeções sem modificá-las.
     """
     logging.info("Iniciando api_sugestoes_arracoamento.")
     try:
@@ -37,92 +37,64 @@ def api_sugestoes_arracoamento(request):
         ativo=True,
         quantidade_atual__gt=0,
         data_povoamento__lte=data_alvo
-    )
+    ).select_related('tanque_atual__linha_producao', 'curva_crescimento')
+    
     if linha_producao_id:
         lotes_elegibles = lotes_elegibles.filter(tanque_atual__linha_producao_id=linha_producao_id)
     
-    logging.info(f"Lotes elegíveis para processamento: {[l.id for l in lotes_elegibles]}")
+    sugestoes_qs = ArracoamentoSugerido.objects.none() # Queryset vazio para unir
 
-    # 2. Processa cada lote para garantir que LoteDiario e ArracoamentoSugerido existam/sejam atualizados.
     with transaction.atomic():
         for lote in lotes_elegibles:
-            logging.info(f"Processando lote {lote.id} ({lote.nome})...")
-            
-            # Obter ou criar LoteDiario para a data alvo
-            lote_diario, created_ld = LoteDiario.objects.get_or_create(
+            # Garante que o LoteDiario exista, mas não sobrescreve dados projetados.
+            lote_diario, created = LoteDiario.objects.get_or_create(
                 lote=lote,
                 data_evento=data_alvo,
-                defaults={
-                    'quantidade_projetada': lote.quantidade_atual, # Usar valores atuais como projeção inicial
-                    'peso_medio_projetado': lote.peso_medio_atual,
-                    'biomassa_projetada': lote.biomassa_atual / Decimal('1000'),
-                    'quantidade_real': lote.quantidade_atual, # Inicializa com real para o dia
-                    'peso_medio_real': lote.peso_medio_atual,
-                    'biomassa_real': lote.biomassa_atual / Decimal('1000'),
-                }
             )
-            if not created_ld:
-                # Se já existia, atualiza os campos de projeção/real com os valores atuais do lote
-                # Isso é importante caso o lote tenha sido atualizado após a criação do LoteDiario
-                lote_diario.quantidade_projetada = lote.quantidade_atual
+
+            # Se o registro foi recém-criado, significa que a projeção não rodou.
+            # Isso é um fallback de segurança, mas o ideal é que a projeção já exista.
+            if created:
+                logging.warning(f"LoteDiario para lote {lote.id} na data {data_alvo} não existia. Criado em tempo de execução.")
+                # Preenche com os dados mais básicos possíveis
+                lote_diario.quantidade_projetada = lote.quantidade_inicial
                 lote_diario.peso_medio_projetado = lote.peso_medio_atual
-                lote_diario.biomassa_projetada = lote.biomassa_atual / Decimal('1000')
-                if lote_diario.quantidade_real is None: # Só atualiza se ainda não houver um valor real
-                    lote_diario.quantidade_real = lote.quantidade_atual
-                    lote_diario.peso_medio_real = lote.peso_medio_atual
-                    lote_diario.biomassa_real = lote.biomassa_atual / Decimal('1000')
+                lote_diario.biomassa_projetada = (lote.quantidade_inicial * lote.peso_medio_atual) / Decimal('1000')
                 lote_diario.save()
-            
-            # Gerar sugestão de arraçoamento
+
+            # Gera uma sugestão de arraçoamento baseada no peso real mais recente.
             resultado_sugestao = sugerir_para_lote(lote)
             
             if 'error' not in resultado_sugestao:
-                # Atualizar LoteDiario com a ração sugerida
-                lote_diario.racao_sugerida = resultado_sugestao['produto_racao']
-                lote_diario.racao_sugerida_kg = resultado_sugestao['quantidade_kg']
-                lote_diario.save()
-
-                # Gerenciar ArracoamentoSugerido para o LoteDiario
-                try:
-                    arracoamento_sugerido = ArracoamentoSugerido.objects.get(lote_diario=lote_diario)
-                    if arracoamento_sugerido.status == 'Pendente':
-                        # Se existe e está pendente, atualiza
-                        arracoamento_sugerido.produto_racao = resultado_sugestao['produto_racao']
-                        arracoamento_sugerido.quantidade_kg = resultado_sugestao['quantidade_kg']
-                        arracoamento_sugerido.save()
-                        logging.info(f"ArracoamentoSugerido existente (Pendente) atualizado para lote {lote.id}.")
-                    else:
-                        # Se existe e não está pendente (ex: Aprovado), não faz nada.
-                        # Não queremos sobrescrever um registro já aprovado com uma nova sugestão.
-                        logging.info(f"ArracoamentoSugerido existente (Status: {arracoamento_sugerido.status}) para lote {lote.id}. Não será atualizado.")
-                except ArracoamentoSugerido.DoesNotExist:
-                    # Se não existe, cria um novo
-                    ArracoamentoSugerido.objects.create(
-                        lote_diario=lote_diario,
-                        produto_racao=resultado_sugestao['produto_racao'],
-                        quantidade_kg=resultado_sugestao['quantidade_kg'],
-                        status='Pendente'
-                    )
-                    logging.info(f"Novo ArracoamentoSugerido criado para lote {lote.id}.")
-                
-                logging.info(f"Sugestão gerada/atualizada para lote {lote.id}. Quantidade: {resultado_sugestao['quantidade_kg']} kg")
+                # Garante que a sugestão exista ou seja atualizada se estiver pendente.
+                sugestao, created_sug = ArracoamentoSugerido.objects.get_or_create(
+                    lote_diario=lote_diario,
+                    defaults={
+                        'produto_racao': resultado_sugestao['produto_racao'],
+                        'quantidade_kg': resultado_sugestao['quantidade_kg'],
+                        'status': 'Pendente'
+                    }
+                )
+                if not created_sug and sugestao.status == 'Pendente':
+                    sugestao.produto_racao = resultado_sugestao['produto_racao']
+                    sugestao.quantidade_kg = resultado_sugestao['quantidade_kg']
+                    sugestao.save()
             else:
                 erros.append(f"Lote {lote.nome}: {resultado_sugestao['error']}")
-                logging.warning(f"Erro ao sugerir arraçoamento para lote {lote.id}: {resultado_sugestao['error']}")
 
-    # 4. Busca todas as sugestões para a data (incluindo as recém-criadas).
-    sugestoes_qs = ArracoamentoSugerido.objects.filter(
-        lote_diario__data_evento=data_alvo
-    ).select_related(
-        'lote_diario__lote',
-        'lote_diario__lote__tanque_atual__linha_producao',
-        'produto_racao'
-    ).prefetch_related('lote_diario__realizacoes') # Otimiza a busca pelos realizados
+        # Coleta todas as sugestões relevantes para a data e filtro de linha
+        sugestoes_qs = ArracoamentoSugerido.objects.filter(
+            lote_diario__data_evento=data_alvo
+        ).select_related(
+            'lote_diario__lote',
+            'lote_diario__lote__tanque_atual__linha_producao',
+            'produto_racao'
+        ).prefetch_related('lote_diario__realizacoes')
 
-    if linha_producao_id:
-        sugestoes_qs = sugestoes_qs.filter(lote_diario__lote__tanque_atual__linha_producao_id=linha_producao_id)
+        if linha_producao_id:
+            sugestoes_qs = sugestoes_qs.filter(lote_diario__lote__tanque_atual__linha_producao_id=linha_producao_id)
 
-    # Ordenação final
+    # Ordenação final em memória
     todas_sugestoes = sorted(
         list(sugestoes_qs),
         key=lambda s: (
@@ -136,7 +108,6 @@ def api_sugestoes_arracoamento(request):
     sugestoes_serializadas = []
     for s in todas_sugestoes:
         realizado_id = None
-        # Se o status é 'Aprovado', tenta encontrar o ID do registro realizado correspondente.
         if s.status == 'Aprovado':
             realizado = s.lote_diario.realizacoes.order_by('-data_realizacao').first()
             if realizado:
@@ -144,12 +115,12 @@ def api_sugestoes_arracoamento(request):
         
         sugestoes_serializadas.append({
             'sugestao_id': s.id,
-            'realizado_id': realizado_id, # ID do ArraçoamentoRealizado para o botão de editar
+            'realizado_id': realizado_id,
             'lote_id': s.lote_diario.lote.id,
             'lote_nome': s.lote_diario.lote.nome,
             'tanque_nome': s.lote_diario.lote.tanque_atual.nome if s.lote_diario.lote.tanque_atual else 'N/A',
             'lote_quantidade_atual': f"{s.lote_diario.lote.quantidade_atual:.2f}",
-            'lote_peso_medio_atual': f"{s.lote_diario.lote.peso_medio_atual:.2f}",
+            'lote_peso_medio_atual': f"{s.lote_diario.peso_medio_projetado:.2f}", # Usa o peso projetado para a exibição
             'lote_linha_producao': s.lote_diario.lote.tanque_atual.linha_producao.nome if s.lote_diario.lote.tanque_atual and s.lote_diario.lote.tanque_atual.linha_producao else 'N/A',
             'lote_sequencia': s.lote_diario.lote.tanque_atual.sequencia if s.lote_diario.lote.tanque_atual else 'N/A',
             'produto_racao_id': s.produto_racao.id if s.produto_racao else None,
@@ -168,8 +139,8 @@ def api_sugestoes_arracoamento(request):
 @transaction.atomic
 def api_aprovar_arracoamento(request):
     """
-    Aprova uma ou mais sugestões, criando/atualizando os registros de ArraçoamentoRealizado
-    e LoteDiario, e disparando a re-projeção do ciclo de vida.
+    Aprova uma ou mais sugestões, calculando o novo peso real e performance,
+    e disparando a re-projeção do ciclo de vida.
     """
     try:
         data = json.loads(request.body)
@@ -177,51 +148,79 @@ def api_aprovar_arracoamento(request):
         if not lancamentos:
             return JsonResponse({'success': False, 'message': 'Nenhum lançamento selecionado.'}, status=400)
 
-        # Importa aqui para evitar dependência circular no nível do módulo
         from .utils import reprojetar_ciclo_de_vida
         from .models import Produto
-        import logging
-        from django.utils import timezone
         from datetime import datetime
 
         count = 0
         for item in lancamentos:
             sugestao_id = item.get('sugestao_id')
-            quantidade_real = Decimal(item.get('quantidade_real'))
-            racao_realizada_id = item.get('racao_realizada_id') # Novo campo opcional
+            quantidade_real_racao = Decimal(item.get('quantidade_real'))
+            racao_realizada_id = item.get('racao_realizada_id')
 
             sugestao = ArracoamentoSugerido.objects.select_related('lote_diario__lote', 'produto_racao').get(id=sugestao_id, status='Pendente')
             lote_diario = sugestao.lote_diario
 
-            # Determina qual ração foi usada
+            if lote_diario.quantidade_real is None:
+                lote_diario.quantidade_real = lote_diario.lote.quantidade_atual
+            if lote_diario.peso_medio_real is None:
+                 lote_diario.peso_medio_real = lote_diario.lote.peso_medio_atual
+
+            dia_anterior = lote_diario.data_evento - timedelta(days=1)
+            lote_diario_anterior = LoteDiario.objects.filter(lote=lote_diario.lote, data_evento=dia_anterior).first()
+            
+            peso_medio_real_anterior = lote_diario.lote.peso_medio_inicial
+            if lote_diario_anterior and lote_diario_anterior.peso_medio_real is not None:
+                peso_medio_real_anterior = lote_diario_anterior.peso_medio_real
+
+            racao_sugerida_kg = lote_diario.racao_sugerida_kg or Decimal('0.0')
+            gpd_projetado = lote_diario.gpd_projetado or Decimal('0.0')
+            ganho_de_peso_do_dia = Decimal('0.0')
+
+            if racao_sugerida_kg > 0:
+                ratio_racao = quantidade_real_racao / racao_sugerida_kg
+                ganho_de_peso_do_dia = gpd_projetado * ratio_racao
+            
+            lote_diario.peso_medio_real = peso_medio_real_anterior + ganho_de_peso_do_dia
+            lote_diario.gpd_real = ganho_de_peso_do_dia
+            lote_diario.gpt_real = lote_diario.peso_medio_real - lote_diario.lote.peso_medio_inicial
+
             racao_final = sugestao.produto_racao
             if racao_realizada_id:
                 try:
                     racao_final = Produto.objects.get(pk=racao_realizada_id)
                 except Produto.DoesNotExist:
-                    # Se o ID for inválido, mantém a ração sugerida e loga um aviso
-                    logging.warning(f"ID de ração real inválido ({racao_realizada_id}) fornecido para sugestão {sugestao_id}. Usando ração sugerida.")
+                    logging.warning(f"ID de ração real inválido ({racao_realizada_id}) para sugestão {sugestao_id}. Usando ração sugerida.")
             
-            # Cria o registro de arraçoamento realizado
             ArracoamentoRealizado.objects.create(
                 lote_diario=lote_diario,
                 produto_racao=racao_final,
-                quantidade_kg=quantidade_real,
-                data_realizacao=timezone.make_aware(datetime.combine(lote_diario.data_evento, datetime.min.time())), # CORRIGIDO com timezone
+                quantidade_kg=quantidade_real_racao,
+                data_realizacao=timezone.make_aware(datetime.combine(lote_diario.data_evento, datetime.min.time())),
                 usuario_lancamento=request.user
             )
+
+            lote_diario.conversao_alimentar_real = None
+            if lote_diario.gpd_real > 0:
+                ganho_biomassa_dia_kg = (lote_diario.gpd_real * lote_diario.quantidade_real) / Decimal('1000')
+                if ganho_biomassa_dia_kg > 0:
+                    lote_diario.conversao_alimentar_real = quantidade_real_racao / ganho_biomassa_dia_kg
+
+            # --- CORREÇÃO: Calcular e salvar a biomassa_real ---
+            lote_diario.biomassa_real = (lote_diario.quantidade_real * lote_diario.peso_medio_real) / Decimal('1000')
+            lote_diario.racao_realizada = racao_final
+            lote_diario.racao_realizada_kg = quantidade_real_racao
+            lote_diario.usuario_edicao = request.user
             
-            # Atualiza o status da sugestão
+            update_fields = [
+                'peso_medio_real', 'gpd_real', 'gpt_real', 'conversao_alimentar_real',
+                'racao_realizada', 'racao_realizada_kg', 'usuario_edicao', 'quantidade_real', 'biomassa_real'
+            ]
+            lote_diario.save(update_fields=update_fields)
+
             sugestao.status = 'Aprovado'
             sugestao.save(update_fields=['status'])
-            
-            # Atualiza o LoteDiario com os dados reais do dia
-            lote_diario.racao_realizada = racao_final
-            lote_diario.racao_realizada_kg = quantidade_real
-            # TODO: Chamar função para calcular GPD real, GPT real, etc., e salvar no lote_diario
-            lote_diario.save(update_fields=['racao_realizada', 'racao_realizada_kg'])
 
-            # Dispara a re-projeção para os dias seguintes
             try:
                 reprojetar_ciclo_de_vida(lote_diario.lote, lote_diario.data_evento + timedelta(days=1))
             except Exception as e:
@@ -240,20 +239,47 @@ def api_aprovar_arracoamento(request):
         return JsonResponse({'success': False, 'message': f'Ocorreu um erro inesperado: {str(e)}'}, status=500)
 
 @login_required
-@require_http_methods(["DELETE"]) # Use DELETE method for RESTful API
+@require_http_methods(["DELETE"])
 @permission_required('producao.delete_arracoamentorealizado', raise_exception=True)
+@transaction.atomic
 def api_delete_arracoamento_realizado(request, pk):
     try:
-        obj = ArracoamentoRealizado.objects.get(pk=pk)
+        obj = ArracoamentoRealizado.objects.select_related('lote_diario__lote').get(pk=pk)
+        lote_diario = obj.lote_diario
+        lote = lote_diario.lote
+        data_evento_revertido = lote_diario.data_evento
+
+        # 1. Reverte o status da sugestão para Pendente
+        if hasattr(lote_diario, 'sugestao'):
+            sugestao = lote_diario.sugestao
+            sugestao.status = 'Pendente'
+            sugestao.save(update_fields=['status'])
+
+        # 2. Exclui o lançamento realizado
         obj.delete()
-        return JsonResponse({'success': True, 'message': 'Lançamento excluído com sucesso.'})
+
+        # 3. Limpa os campos _real do LoteDiario
+        lote_diario.racao_realizada = None
+        lote_diario.racao_realizada_kg = None
+        lote_diario.gpd_real = None
+        lote_diario.gpt_real = None
+        lote_diario.conversao_alimentar_real = None
+        lote_diario.peso_medio_real = None
+        lote_diario.usuario_edicao = None
+        lote_diario.save()
+
+        # 4. Dispara a re-projeção a partir do dia do lançamento excluído
+        from .utils import reprojetar_ciclo_de_vida
+        reprojetar_ciclo_de_vida(lote, data_evento_revertido)
+
+        return JsonResponse({'success': True, 'message': 'Lançamento excluído e projeção revertida.'})
     except ArracoamentoRealizado.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Lançamento não encontrado.'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Erro ao excluir lançamento: {str(e)}'}, status=500)
 
 @login_required
-@require_http_methods(["POST"]) # Use POST for bulk delete, as DELETE with body is tricky
+@require_http_methods(["POST"])
 @permission_required('producao.delete_arracoamentorealizado', raise_exception=True)
 @transaction.atomic
 def api_bulk_delete_arracoamento_realizado(request):
@@ -263,14 +289,102 @@ def api_bulk_delete_arracoamento_realizado(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'Nenhum item selecionado para exclusão.'}, status=400)
         
-        deleted_count, _ = ArracoamentoRealizado.objects.filter(id__in=ids).delete()
-        return JsonResponse({'success': True, 'message': f'{deleted_count} lançamento(s) excluído(s) com sucesso.'})
+        from .utils import reprojetar_ciclo_de_vida
+        from .models import Lote
+
+        lotes_afetados = {}
+        realizados_para_excluir = ArracoamentoRealizado.objects.filter(id__in=ids).select_related('lote_diario__lote')
+
+        for obj in realizados_para_excluir:
+            lote_diario = obj.lote_diario
+            if hasattr(lote_diario, 'sugestao'):
+                sugestao = lote_diario.sugestao
+                sugestao.status = 'Pendente'
+                sugestao.save(update_fields=['status'])
+
+            lote_diario.racao_realizada = None
+            lote_diario.racao_realizada_kg = None
+            lote_diario.gpd_real = None
+            lote_diario.gpt_real = None
+            lote_diario.conversao_alimentar_real = None
+            lote_diario.peso_medio_real = None
+            lote_diario.usuario_edicao = None
+            lote_diario.save()
+
+            lote_id = lote_diario.lote.id
+            data_evento = lote_diario.data_evento
+            if lote_id not in lotes_afetados or data_evento < lotes_afetados[lote_id]:
+                lotes_afetados[lote_id] = data_evento
+
+        deleted_count, _ = realizados_para_excluir.delete()
+
+        for lote_id, data_inicio in lotes_afetados.items():
+            lote = Lote.objects.get(id=lote_id)
+            reprojetar_ciclo_de_vida(lote, data_inicio)
+
+        return JsonResponse({'success': True, 'message': f'{deleted_count} lançamento(s) excluído(s) e projeções revertidas.'})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Requisição JSON inválida.'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Erro ao excluir lançamentos: {str(e)}'}, status=500)
 
-# Edit API
+@login_required
+@require_http_methods(["POST"])
+@permission_required('producao.change_arracoamentorealizado', raise_exception=True)
+@transaction.atomic
+def api_update_arracoamento_realizado(request, pk):
+    try:
+        data = json.loads(request.body)
+        obj = ArracoamentoRealizado.objects.select_related('lote_diario__lote').get(pk=pk)
+        lote_diario = obj.lote_diario
+
+        obj.quantidade_kg = Decimal(str(data.get('quantidade_kg')))
+        obj.observacoes = data.get('observacoes', '')
+        obj.usuario_edicao = request.user
+        obj.save()
+
+        from .utils import reprojetar_ciclo_de_vida
+        from datetime import datetime, timedelta
+
+        dia_anterior = lote_diario.data_evento - timedelta(days=1)
+        lote_diario_anterior = LoteDiario.objects.filter(lote=lote_diario.lote, data_evento=dia_anterior).first()
+        
+        peso_medio_real_anterior = lote_diario.lote.peso_medio_inicial
+        if lote_diario_anterior and lote_diario_anterior.peso_medio_real is not None:
+            peso_medio_real_anterior = lote_diario_anterior.peso_medio_real
+
+        racao_sugerida_kg = lote_diario.racao_sugerida_kg or Decimal('0.0')
+        gpd_projetado = lote_diario.gpd_projetado or Decimal('0.0')
+        ganho_de_peso_do_dia = Decimal('0.0')
+
+        if racao_sugerida_kg > 0:
+            ratio_racao = obj.quantidade_kg / racao_sugerida_kg
+            ganho_de_peso_do_dia = gpd_projetado * ratio_racao
+        
+        lote_diario.peso_medio_real = peso_medio_real_anterior + ganho_de_peso_do_dia
+        lote_diario.gpd_real = ganho_de_peso_do_dia
+        lote_diario.gpt_real = lote_diario.peso_medio_real - lote_diario.lote.peso_medio_inicial
+        lote_diario.racao_realizada_kg = obj.quantidade_kg
+
+        lote_diario.conversao_alimentar_real = None
+        if lote_diario.gpd_real > 0:
+            if lote_diario.quantidade_real is None: lote_diario.quantidade_real = lote_diario.lote.quantidade_atual
+            ganho_biomassa_dia_kg = (lote_diario.gpd_real * lote_diario.quantidade_real) / Decimal('1000')
+            if ganho_biomassa_dia_kg > 0:
+                lote_diario.conversao_alimentar_real = obj.quantidade_kg / ganho_biomassa_dia_kg
+
+        lote_diario.save()
+
+        reprojetar_ciclo_de_vida(lote_diario.lote, lote_diario.data_evento + timedelta(days=1))
+
+        return JsonResponse({'success': True, 'message': 'Lançamento atualizado e projeção recalculada.'})
+    except ArracoamentoRealizado.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Lançamento não encontrado.'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Requisição JSON inválida.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao atualizar lançamento: {str(e)}'}, status=500)
+
 @login_required
 @require_http_methods(["GET"])
 @permission_required('producao.view_arracoamentorealizado', raise_exception=True)
@@ -293,28 +407,3 @@ def api_get_arracoamento_realizado(request, pk):
         return JsonResponse({'success': False, 'message': 'Lançamento não encontrado.'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Erro ao buscar lançamento: {str(e)}'}, status=500)
-
-@login_required
-@require_http_methods(["POST"])
-@permission_required('producao.change_arracoamentorealizado', raise_exception=True)
-@transaction.atomic
-def api_update_arracoamento_realizado(request, pk):
-    try:
-        data = json.loads(request.body)
-        obj = ArracoamentoRealizado.objects.get(pk=pk)
-
-        # Update fields
-        obj.quantidade_kg = Decimal(str(data.get('quantidade_kg'))) # Ensure Decimal conversion
-        obj.observacoes = data.get('observacoes', '')
-        obj.usuario_edicao = request.user # CORREÇÃO AQUI
-        # You might want to update product_racao or data_realizacao here too,
-        # but for simplicity, let's stick to quantity and observations for now.
-
-        obj.save()
-        return JsonResponse({'success': True, 'message': 'Lançamento atualizado com sucesso.'})
-    except ArracoamentoRealizado.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Lançamento não encontrado.'}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Requisição JSON inválida.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Erro ao atualizar lançamento: {str(e)}'}, status=500)
