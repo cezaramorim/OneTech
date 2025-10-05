@@ -146,13 +146,9 @@ function loadAjaxContent(url) {
         window.location.href = response.url;
         return null;
       }
-      if (response.status === 403) {
-        if (typeof mostrarMensagem === 'function') {
-          mostrarMensagem('danger', 'Você não tem permissão para acessar esta página.');
-        } else {
-          alert('Você não tem permissão para acessar esta página.');
-        }
-        return null; // não troca o main-content
+      if (response.status === 403) { // Handle Forbidden as a redirect to login for AJAX requests
+        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
+        return null;
       }
       const ct = response.headers.get('content-type') || '';
       if (ct.includes('application/json')) {
@@ -349,6 +345,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const btnEditar = e.target.closest('#btn-editar');
         if (btnEditar && !btnEditar.disabled) {
             e.preventDefault();
+            const href = btnEditar.getAttribute('data-href');
+            if (href) {
+                loadAjaxContent(href);
+            }
         }
 
         const btnExcluir = e.target.closest('#btn-excluir');
@@ -1214,7 +1214,8 @@ function initPovoamentoLotes() {
     });
     adicionarBtn.addEventListener('click', adicionarLinha);
     processarBtn.addEventListener('click', processarPovoamentos);
-    if(buscarBtn) buscarBtn.addEventListener('click', buscarHistorico);
+    // Event Listeners
+    // buscarBtn.addEventListener('click', buscarSugestoes);
     listagemBody.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'desfazer') {
             e.target.closest('tr').remove();
@@ -1623,7 +1624,6 @@ function initArracoamentoDiario() {
     page.dataset.initialized = 'true';
 
     const dataInput = page.querySelector('#data-arraçoamento');
-    const buscarBtn = page.querySelector('#btn-buscar-sugestoes');
     const aprovarBtn = page.querySelector('#btn-aprovar-selecionados');
     const tabelaBody = page.querySelector('#corpo-tabela-sugestoes');
     const loadingSpinner = page.querySelector('#loading-spinner');
@@ -1706,28 +1706,28 @@ function initArracoamentoDiario() {
 
     async function buscarSugestoes() {
         const data = dataInput.value;
-        const linhaProducaoId = filtroLinhaProducaoSelect.value; // Pega o valor do filtro
+        const linhaProducaoId = filtroLinhaProducaoSelect.value;
 
         if (!data) {
-            mostrarMensagem('warning', 'Por favor, selecione uma data.');
+            tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Selecione uma data para ver as sugestões.</td></tr>';
+            updateTotais();
             return;
         }
 
-        const dataAlvo = new Date(data); // Convert selected date string to Date object
+        const dataAlvo = new Date(data);
         const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0); // Normalize 'today' to start of day for comparison
+        hoje.setHours(0, 0, 0, 0);
 
-        const isDataFutura = dataAlvo > hoje; // New condition
+        const isDataFutura = dataAlvo > hoje;
 
         loadingSpinner.style.display = 'block';
         tabelaBody.innerHTML = '';
-        buscarBtn.disabled = true;
         aprovarBtn.disabled = true;
 
+        let shouldDisableAll = false;
+
         try {
-            const urlParams = new URLSearchParams({
-                data: data
-            });
+            const urlParams = new URLSearchParams({ data: data });
             if (linhaProducaoId) {
                 urlParams.append('linha_producao_id', linhaProducaoId);
             }
@@ -1736,15 +1736,26 @@ function initArracoamentoDiario() {
             const result = await response.json();
 
             if (result.success) {
+                // Exibe o alerta de pendências ANTES de renderizar a tabela
+                if (result.has_pending_previous_approvals) {
+                    const dates = result.pending_previous_approval_dates.join(', ');
+                    await Swal.fire({
+                        title: 'Atenção!',
+                        html: `Existem arraçoamentos pendentes para datas anteriores: <strong>${dates}</strong>.<br>Recomenda-se aprová-los primeiro para garantir a precisão das projeções.`,
+                        icon: 'warning',
+                        confirmButtonText: 'Entendi'
+                    });
+                }
+
+                shouldDisableAll = isDataFutura || result.has_pending_previous_approvals;
+
                 if (result.sugestoes.length > 0) {
                     tabelaBody.innerHTML = result.sugestoes.map(s => {
                         const qtdSugerida = parseFloat(s.quantidade_kg).toFixed(2);
                         const isPendente = s.status === 'Pendente';
-                        // Combine conditions for disabling: not pending OR future date
-                        const isDisabled = isDataFutura; // Modified line
                         return `
                         <tr data-sugestao-id="${s.sugestao_id}" data-realizado-id="${s.realizado_id || ''}" data-qtd-sugerida="${qtdSugerida}" class="${!isPendente ? 'text-muted' : ''}">
-                            <td><input type="checkbox" class="form-check-input sugestao-checkbox" value="${s.sugestao_id}" ${isDisabled ? 'disabled' : ''}></td>
+                            <td><input type="checkbox" class="form-check-input sugestao-checkbox" value="${s.sugestao_id}" ${shouldDisableAll ? 'disabled' : ''}></td>
                             <td>${s.lote_nome}</td>
                             <td>${s.tanque_nome}</td>
                             <td>${s.lote_quantidade_atual}</td>
@@ -1752,102 +1763,110 @@ function initArracoamentoDiario() {
                             <td>${s.lote_linha_producao}</td>
                             <td>${s.lote_sequencia}</td>
                             <td>${s.produto_racao_nome}</td>
-                            <td><select class="form-select form-select-sm racao-realizada-select" ${isDisabled ? 'disabled' : ''} style="min-width: 150px;"><option value="">Padrão</option></select></td>
+                            <td><select class="form-select form-select-sm racao-realizada-select" ${shouldDisableAll ? 'disabled' : ''} style="min-width: 150px;"><option value="">Padrão</option></select></td>
                             <td class="text-center">${qtdSugerida}</td>
-                            <td><input type="text" class="form-control form-control-sm qtd-real-input" value="" ${isDisabled ? 'disabled' : ''} style="max-width: 80px;"></td>
+                            <td><input type="text" class="form-control form-control-sm qtd-real-input" value="" ${shouldDisableAll ? 'disabled' : ''} style="max-width: 80px;"></td>
                             <td><span class="badge bg-${isPendente ? 'warning' : 'success'}">${s.status}</span></td>
                         </tr>
                     `}).join('');
                 } else {
-                    tabelaBody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhuma sugestão encontrada para esta data.</td></tr>';
+                    tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center">Nenhuma sugestão encontrada para esta data.</td></tr>';
                 }
                 if(result.erros && result.erros.length > 0){
                     mostrarMensagem('warning', `Erros encontrados: ${result.erros.join('; ')}`)
                 }
+                
             } else {
                 mostrarMensagem('danger', result.message || 'Erro ao buscar sugestões.');
-                tabelaBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Falha ao carregar dados.</td></tr>';
+                tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Falha ao carregar dados.</td></tr>';
             }
         } catch (error) {
             console.error('Erro na busca de sugestões:', error);
             mostrarMensagem('danger', 'Erro de comunicação com o servidor.');
         } finally {
             loadingSpinner.style.display = 'none';
-            buscarBtn.disabled = false;
-            updateAprovarBtnState(isDataFutura); // Pass isDataFutura to updateAprovarBtnState
+            updateAprovarBtnState(shouldDisableAll);
             updateTotais();
-            inicializarSeletoresDeRacao(tabelaBody); // Chama a nova função aqui
+            inicializarSeletoresDeRacao(tabelaBody);
         }
     }
 
-    function updateAprovarBtnState(isDataFutura = false) { // Add parameter
+    function updateAprovarBtnState(shouldDisableAll = false) {
         const checkboxes = page.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-        // Disable if no checkboxes checked OR if it's a future date
-        aprovarBtn.disabled = checkboxes.length === 0 || isDataFutura; // Modified line
+        aprovarBtn.disabled = checkboxes.length === 0 || shouldDisableAll;
     }
 
     async function aprovarSugestoes() {
-        const lancamentos = [];
-        page.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)').forEach(cb => {
-            const row = cb.closest('tr');
-            const sugerida = parseFloat(row.dataset.qtdSugerida) || 0;
-            const realInput = row.querySelector('.qtd-real-input');
-            const real = parseFloat(realInput.value) || sugerida; // Usa sugerida se real for inválido/vazio
-            const racaoRealizadaSelect = row.querySelector('.racao-realizada-select');
-            const racaoRealizadaId = racaoRealizadaSelect ? racaoRealizadaSelect.value : null;
-
-            lancamentos.push({
-                sugestao_id: cb.value,
-                quantidade_real: real,
-                racao_realizada_id: racaoRealizadaId // Adiciona o novo campo
-            });
-        });
-
-        if (lancamentos.length === 0) {
+        const checkboxes = page.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
+        if (checkboxes.length === 0) {
             mostrarMensagem('warning', 'Selecione pelo menos uma sugestão pendente para aprovar.');
             return;
         }
 
         aprovarBtn.disabled = true;
-        aprovarBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aprovando...';
+        const totalToProcess = checkboxes.length;
+        let concluidos = 0;
+        const erros = [];
+
+        for (const cb of checkboxes) {
+            concluidos++;
+            aprovarBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Aprovando (${concluidos}/${totalToProcess})...`;
+            
+            const row = cb.closest('tr');
+            const sugerida = parseFloat(row.dataset.qtdSugerida) || 0;
+            const realInput = row.querySelector('.qtd-real-input');
+            const real = realInput.value.trim() === '' ? sugerida : toNumLocale(realInput.value);
+            
+            const racaoSelect = row.querySelector('.racao-realizada-select');
+            const payload = {
+                sugestao_id: cb.value,
+                quantidade_real_kg: real,
+                racao_realizada_id: racaoSelect ? racaoSelect.value : null
+            };
+
+            try {
+                const response = await fetchWithCreds(API_URL_APROVAR, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    erros.push(data.message || 'Erro desconhecido');
+                }
+            } catch (error) {
+                console.error('Erro na requisição de aprovação:', error);
+                erros.push('Erro de comunicação');
+            }
+        }
 
         try {
-            const response = await fetchWithCreds(API_URL_APROVAR, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lancamentos: lancamentos })
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                mostrarMensagem('success', result.message);
-                buscarSugestoes(); // Recarrega a lista para mostrar o novo status
+            if (erros.length === 0) {
+                mostrarMensagem('success', `${totalToProcess} arraçoamento(s) aprovado(s) com sucesso.`);
             } else {
-                mostrarMensagem('danger', result.message || 'Erro ao aprovar sugestões.');
+                const mensagensErro = erros.join('; ');
+                mostrarMensagem('danger', `Falha ao aprovar ${erros.length} item(ns): ${mensagensErro}`);
             }
-        } catch (error) {
-            console.error('Erro ao aprovar sugestões:', error);
-            mostrarMensagem('danger', 'Erro de comunicação com o servidor.');
         } finally {
             aprovarBtn.disabled = false;
             aprovarBtn.innerHTML = '<i class="fas fa-check me-2"></i>Aprovar Selecionados';
+            buscarSugestoes(); // Recarrega a lista para refletir o estado final
         }
     }
 
     // Event Listeners
-    buscarBtn.addEventListener('click', buscarSugestoes);
     aprovarBtn.addEventListener('click', aprovarSugestoes);
 
     selecionarTodosCheckbox.addEventListener('change', (e) => {
         page.querySelectorAll('.sugestao-checkbox:not(:disabled)').forEach(cb => {
             cb.checked = e.target.checked;
         });
-        updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0)); // Re-evaluate future date on select all
+        updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0));
     });
 
     tabelaBody.addEventListener('change', (e) => {
         if (e.target.classList.contains('sugestao-checkbox')) {
-            updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0)); // Re-evaluate future date on checkbox change
+            updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0));
         }
     });
 
@@ -1861,34 +1880,34 @@ function initArracoamentoDiario() {
         if (e.key === 'Tab') {
             const currentInput = e.target;
             if (currentInput.classList.contains('qtd-real-input')) {
-                e.preventDefault(); // Prevent default tab behavior
+                e.preventDefault();
 
                 const inputs = Array.from(tabelaBody.querySelectorAll('.qtd-real-input:not([disabled])'));
                 const currentIndex = inputs.indexOf(currentInput);
 
                 let nextIndex;
-                if (e.shiftKey) { // Shift + Tab (move backward)
+                if (e.shiftKey) {
                     nextIndex = currentIndex - 1;
                     if (nextIndex < 0) {
-                        nextIndex = inputs.length - 1; // Wrap around to last input
+                        nextIndex = inputs.length - 1;
                     }
-                } else { // Tab (move forward)
+                } else {
                     nextIndex = currentIndex + 1;
                     if (nextIndex >= inputs.length) {
-                        nextIndex = 0; // Wrap around to first input
+                        nextIndex = 0;
                     }
                 }
                 inputs[nextIndex].focus();
-                inputs[nextIndex].select(); // Select text for easier editing
+                inputs[nextIndex].select();
             }
         }
     });
 
     // Initial Load
     popularFiltroLinhaProducao(); // Popula o filtro ao carregar a página
-    buscarSugestoes();
+    // buscarSugestoes();
 
-    // Listener para o filtro de linha de produção
+    // Listeners
     filtroLinhaProducaoSelect.addEventListener('change', buscarSugestoes);
     dataInput.addEventListener('change', buscarSugestoes);
 
@@ -1902,10 +1921,7 @@ function initArracoamentoDiario() {
     const editObservacoesInput = document.getElementById('edit-observacoes');
 
     modalEdicao.addEventListener('show.bs.modal', async (event) => {
-        const button = event.relatedTarget; // Botão que acionou o modal
-
-        // Correção: A URL para buscar os dados já está no atributo data-href do botão,
-        // que é populado pela lógica de updateButtonStates.
+        const button = event.relatedTarget;
         const url = button.dataset.href;
 
         if (!url) {
@@ -1957,8 +1973,8 @@ function initArracoamentoDiario() {
 
             if (result.success) {
                 mostrarMensagem('success', result.message);
-                bootstrap.Modal.getInstance(modalEdicao).hide(); // Esconde o modal
-                buscarSugestoes(); // Recarrega a tabela
+                bootstrap.Modal.getInstance(modalEdicao).hide();
+                buscarSugestoes();
             } else {
                 mostrarMensagem('danger', result.message || 'Erro ao salvar alterações.');
             }

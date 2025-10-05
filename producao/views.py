@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
     EventoManejo, Unidade, Malha, TipoTela,
-    FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade
+    FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade, LoteDiario
 )
 from .forms import (
     TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
@@ -118,6 +118,21 @@ class TipoTelaUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMi
         context['data_page'] = 'editar_tipotela'
         context['data_tela'] = 'editar_tipotela'
         return context
+
+class ExcluirUnidadesMultiplosView(BulkDeleteView):
+    model = Unidade
+    permission_required = 'producao.delete_unidade'
+    success_url_name = 'producao:lista_unidades'
+
+class ExcluirMalhasMultiplosView(BulkDeleteView):
+    model = Malha
+    permission_required = 'producao.delete_malha'
+    success_url_name = 'producao:lista_malhas'
+
+class ExcluirTiposTelaMultiplosView(BulkDeleteView):
+    model = TipoTela
+    permission_required = 'producao.delete_tipotela'
+    success_url_name = 'producao:lista_tipotelas'
 
 
 # Linha de Produção
@@ -673,6 +688,47 @@ class ExcluirLotesMultiplosView(BulkDeleteView):
     model = Lote
     permission_required = 'producao.delete_lote'
     success_url_name = 'producao:lista_lotes'
+
+    def post(self, request, *args, **kwargs):
+        app_messages = get_app_messages(request)
+        try:
+            data = json.loads(request.body)
+            ids = data.get('ids', [])
+            if not ids:
+                message = app_messages.error('Nenhum item selecionado para exclusão.')
+                return JsonResponse({'success': False, 'message': message}, status=400)
+
+            lotes_para_deletar = self.model.objects.filter(pk__in=ids)
+            deleted_names = [str(obj) for obj in lotes_para_deletar]
+
+            with transaction.atomic():
+                # CORREÇÃO: Deletar 'filhos' explicitamente primeiro
+                LoteDiario.objects.filter(lote__in=lotes_para_deletar).delete()
+                
+                # Agora, deletar os lotes 'pais'
+                deleted_count, _ = lotes_para_deletar.delete()
+
+            if deleted_count > 0:
+                if len(deleted_names) == 1:
+                    message_detail = f"'{deleted_names[0]}'"
+                else:
+                    message_detail = f"'{', '.join(deleted_names)}'"
+                message = app_messages.success_deleted(self.model._meta.verbose_name_plural, message_detail)
+            else:
+                message = app_messages.error('Nenhum item foi excluído.')
+            
+            return JsonResponse({
+                'success': True, 
+                'message': message,
+                'redirect_url': str(reverse_lazy(self.success_url_name))
+            })
+        except json.JSONDecodeError:
+            message = app_messages.error('Requisição JSON inválida.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
+        except Exception as e:
+            error_message = f'Ocorreu um erro inesperado: {e}'
+            message = app_messages.error(error_message)
+            return JsonResponse({'success': False, 'message': message}, status=500)
 
 # === Eventos de Manejo ===
 
@@ -753,7 +809,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
     EventoManejo, Unidade, Malha, TipoTela,
-    FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade
+    FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade, LoteDiario
 )
 from .forms import (
     TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
@@ -761,97 +817,6 @@ from .forms import (
     UnidadeForm, MalhaForm, TipoTelaForm, LinhaProducaoForm, FaseProducaoForm,
     StatusTanqueForm, TipoTanqueForm, AtividadeForm, PovoamentoForm
 )
-from .utils import AjaxFormMixin, BulkDeleteView
-from common.utils import render_ajax_or_base
-from common.messages_utils import get_app_messages
-from produto.models import Produto
-
-# === Views de Suporte ===
-
-class UnidadeListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    model = Unidade
-    template_name = 'producao/suporte/unidade_list.html'
-    permission_required = 'producao.view_unidade'
-
-class UnidadeCreateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
-    model = Unidade
-    form_class = UnidadeForm
-    template_name = 'producao/suporte/unidade_form.html'
-    success_url = reverse_lazy('producao:lista_unidades')
-    permission_required = 'producao.add_unidade'
-
-class UnidadeUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, UpdateView):
-    model = Unidade
-    form_class = UnidadeForm
-    template_name = 'producao/suporte/unidade_form.html'
-    success_url = reverse_lazy('producao:lista_unidades')
-    permission_required = 'producao.change_unidade'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['data_page'] = 'editar_unidade'
-        context['data_tela'] = 'editar_unidade'
-        return context
-
-class MalhaListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    model = Malha
-    template_name = 'producao/suporte/malha_list.html'
-    permission_required = 'producao.view_malha'
-
-class MalhaCreateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
-    model = Malha
-    form_class = MalhaForm
-    template_name = 'producao/suporte/malha_form.html'
-    success_url = reverse_lazy('producao:lista_malhas')
-    permission_required = 'producao.add_malha'
-
-class MalhaUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, UpdateView):
-    model = Malha
-    form_class = MalhaForm
-    template_name = 'producao/suporte/malha_form.html'
-    success_url = reverse_lazy('producao:lista_malhas')
-    permission_required = 'producao.change_malha'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['data_page'] = 'editar_malha'
-        context['data_tela'] = 'editar_malha'
-        return context
-
-class TipoTelaListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    model = TipoTela
-    template_name = 'producao/suporte/tipotela_list.html'
-    permission_required = 'producao.view_tipotela'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['data_page'] = 'lista_tipotelas'
-        context['data_tela'] = 'lista_tipotelas'
-        return context
-
-    def render_to_response(self, context, **response_kwargs):
-        return render_ajax_or_base(self.request, self.template_name, context)
-
-class TipoTelaCreateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
-    model = TipoTela
-    form_class = TipoTelaForm
-    template_name = 'producao/suporte/tipotela_form.html'
-    success_url = reverse_lazy('producao:lista_tipotelas')
-    permission_required = 'producao.add_tipotela'
-
-class TipoTelaUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, UpdateView):
-    model = TipoTela
-    form_class = TipoTelaForm
-    template_name = 'producao/suporte/tipotela_form.html'
-    success_url = reverse_lazy('producao:lista_tipotelas')
-    permission_required = 'producao.change_tipotela'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['data_page'] = 'editar_tipotela'
-        context['data_tela'] = 'editar_tipotela'
-        return context
-
 
 # Linha de Produção
 class LinhaProducaoListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
@@ -1406,6 +1371,47 @@ class ExcluirLotesMultiplosView(BulkDeleteView):
     model = Lote
     permission_required = 'producao.delete_lote'
     success_url_name = 'producao:lista_lotes'
+
+    def post(self, request, *args, **kwargs):
+        app_messages = get_app_messages(request)
+        try:
+            data = json.loads(request.body)
+            ids = data.get('ids', [])
+            if not ids:
+                message = app_messages.error('Nenhum item selecionado para exclusão.')
+                return JsonResponse({'success': False, 'message': message}, status=400)
+
+            lotes_para_deletar = self.model.objects.filter(pk__in=ids)
+            deleted_names = [str(obj) for obj in lotes_para_deletar]
+
+            with transaction.atomic():
+                # CORREÇÃO: Deletar 'filhos' explicitamente primeiro
+                LoteDiario.objects.filter(lote__in=lotes_para_deletar).delete()
+                
+                # Agora, deletar os lotes 'pais'
+                deleted_count, _ = lotes_para_deletar.delete()
+
+            if deleted_count > 0:
+                if len(deleted_names) == 1:
+                    message_detail = f"'{deleted_names[0]}'"
+                else:
+                    message_detail = f"'{', '.join(deleted_names)}'"
+                message = app_messages.success_deleted(self.model._meta.verbose_name_plural, message_detail)
+            else:
+                message = app_messages.error('Nenhum item foi excluído.')
+            
+            return JsonResponse({
+                'success': True, 
+                'message': message,
+                'redirect_url': str(reverse_lazy(self.success_url_name))
+            })
+        except json.JSONDecodeError:
+            message = app_messages.error('Requisição JSON inválida.')
+            return JsonResponse({'success': False, 'message': message}, status=400)
+        except Exception as e:
+            error_message = f'Ocorreu um erro inesperado: {e}'
+            message = app_messages.error(error_message)
+            return JsonResponse({'success': False, 'message': message}, status=500)
 
 # === Eventos de Manejo ===
 

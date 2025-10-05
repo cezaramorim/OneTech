@@ -1,10 +1,14 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from produto.models import Produto # Importa o modelo Produto do app produto
+from produto.models import Produto
 from django.core.validators import MinValueValidator
-from datetime import date # Importa date para calculo de GPD
-from decimal import Decimal # Importa Decimal para cálculos precisos
+from datetime import date
+from decimal import Decimal
+import math
+
+# Importa as funções de cálculo para uso nas propriedades
+from .utils_uom import calc_biomassa_kg, g_to_kg
 
 # NOVOS MODELOS DE SUPORTE
 class Unidade(models.Model):
@@ -82,13 +86,12 @@ class Atividade(models.Model):
     def __str__(self):
         return self.nome
 
-# Modelo para o cabeçalho da Curva de Crescimento
 class CurvaCrescimento(models.Model):
     nome = models.CharField(max_length=255, unique=True, help_text="Nome único para a curva, ex: Curva Tilápia Verão 2025")
     especie = models.CharField(max_length=100, default='', help_text="Espécie do animal, ex: Tilápia")
     rendimento_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de rendimento da carcaça")
     trato_perc_curva = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato da curva")
-    peso_pretendido = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Peso pretendido (em gramas)")
+    peso_pretendido = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('0.000'), help_text="Peso pretendido (em g)")
     trato_sabados_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos sábados")
     trato_domingos_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos domingos")
     trato_feriados_perc = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentual de trato aos feriados")
@@ -101,17 +104,16 @@ class CurvaCrescimento(models.Model):
     def __str__(self):
         return self.nome
 
-# Modelo para os detalhes (linhas) da Curva de Crescimento
 class CurvaCrescimentoDetalhe(models.Model):
     curva = models.ForeignKey(CurvaCrescimento, on_delete=models.CASCADE, related_name='detalhes')
     periodo_semana = models.IntegerField(help_text="Número do período ou semana do ciclo", default=0)
     periodo_dias = models.IntegerField(help_text="Número de dias no período (ex: 7)", default=0)
-    peso_inicial = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso inicial do animal no período (em gramas)", default=0)
-    peso_final = models.DecimalField(max_digits=10, decimal_places=2, help_text="Peso final do animal no período (em gramas)", default=0)
-    ganho_de_peso = models.DecimalField(max_digits=10, decimal_places=2, help_text="Ganho de peso total no período (em gramas)", default=0)
+    peso_inicial = models.DecimalField(max_digits=10, decimal_places=3, help_text="Peso inicial do animal no período (em g)", default=0)
+    peso_final = models.DecimalField(max_digits=10, decimal_places=3, help_text="Peso final do animal no período (em g)", default=0)
+    ganho_de_peso = models.DecimalField(max_digits=10, decimal_places=3, help_text="Ganho de peso total no período (em g)", default=0)
     numero_tratos = models.IntegerField(help_text="Número de tratos de ração por dia", default=0)
     hora_inicio = models.TimeField(help_text="Hora de início do primeiro trato do dia", default='00:00')
-    arracoamento_biomassa_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de arraçoamento sobre a biomassa", default=0)
+    arracoamento_biomassa_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de arraçoamento sobre a biomassa (%BW/dia)", default=0)
     mortalidade_presumida_perc = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual de mortalidade presumida para o período", default=0)
     racao = models.ForeignKey(
         Produto,
@@ -121,26 +123,26 @@ class CurvaCrescimentoDetalhe(models.Model):
         related_name='curvas_crescimento',
         help_text="Ração utilizada no período (vinculada ao cadastro de produtos)"
     )
-    gpd = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ganho de Peso Diário (g)", default=0)
-    tca = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Taxa de Conversão Alimentar", default=0)
+    gpd = models.DecimalField(max_digits=10, decimal_places=3, verbose_name="Ganho de Peso Diário (g)", default=0)
+    tca = models.DecimalField(max_digits=10, decimal_places=3, verbose_name="Taxa de Conversão Alimentar", default=0)
 
     class Meta:
         verbose_name = "Detalhe da Curva de Crescimento"
         verbose_name_plural = "Detalhes da Curva de Crescimento"
         ordering = ['curva', 'periodo_semana']
-        unique_together = ('curva', 'periodo_semana') # Garante que cada período é único para uma curva
+        unique_together = ('curva', 'periodo_semana')
 
     def __str__(self):
         return f"{self.curva.nome} - Semana {self.periodo_semana}"
 
 class Tanque(models.Model):
     nome = models.CharField(max_length=120)
-    largura = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    comprimento = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    profundidade = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    largura = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Largura em metros (m)")
+    comprimento = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Comprimento em metros (m)")
+    profundidade = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Profundidade em metros (m)")
 
-    metro_quadrado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    metro_cubico   = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    metro_quadrado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Área em metros quadrados (m²)")
+    metro_cubico   = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, help_text="Volume em metros cúbicos (m³)")
     ha             = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
 
     unidade = models.ForeignKey('producao.Unidade', on_delete=models.SET_NULL, null=True, blank=True)
@@ -157,6 +159,41 @@ class Tanque(models.Model):
 
     data_criacao = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def volume_calculado_m3(self):
+        """Retorna o volume em m³, usando o campo 'metro_cubico' ou calculando-o."""
+        if self.metro_cubico and self.metro_cubico > 0:
+            return self.metro_cubico
+        if self.largura and self.comprimento and self.profundidade:
+            return self.largura * self.comprimento * self.profundidade
+        # Adicionar lógica para tanques circulares se houver campo de diâmetro
+        return Decimal('0.000')
+
+    @property
+    def densidade_peixes_m3(self):
+        """Calcula a densidade de peixes por m³ (peixes/m³)."""
+        volume = self.volume_calculado_m3
+        if not volume or volume == 0:
+            return Decimal('0.00')
+        
+        total_peixes = self.lotes_no_tanque.filter(ativo=True).aggregate(
+            total=models.Sum('quantidade_atual')
+        )['total'] or 0
+        
+        return Decimal(total_peixes) / volume
+
+    @property
+    def densidade_kg_m3(self):
+        """Calcula a densidade de biomassa por m³ (kg/m³)."""
+        volume = self.volume_calculado_m3
+        if not volume or volume == 0:
+            return Decimal('0.000')
+            
+        lotes_ativos = self.lotes_no_tanque.filter(ativo=True)
+        total_biomassa_kg = sum(lote.biomassa_atual_kg for lote in lotes_ativos)
+        
+        return total_biomassa_kg / volume
+
     class Meta:
         ordering = ['id']
 
@@ -164,20 +201,9 @@ class Tanque(models.Model):
         return f'{self.id} - {self.nome}'
 
     def verificar_e_liberar_status(self, lote_sendo_deletado=None):
-        """
-        Verifica se o tanque não tem mais lotes ativos e, se for o caso,
-        atualiza seu status para 'Livre'.
-        O parâmetro 'lote_sendo_deletado' é usado para excluir um lote
-        que está em processo de exclusão do queryset de verificação.
-        """
-        # Monta a query para verificar lotes ativos no tanque
         lotes_ativos_no_tanque = self.lotes_no_tanque.filter(ativo=True)
-
-        # Se um lote está sendo deletado, excluímos ele da contagem
         if lote_sendo_deletado:
             lotes_ativos_no_tanque = lotes_ativos_no_tanque.exclude(pk=lote_sendo_deletado.pk)
-
-        # Se não houver mais nenhum lote ativo...
         if not lotes_ativos_no_tanque.exists():
             try:
                 status_livre = StatusTanque.objects.get(nome__iexact='Livre')
@@ -185,7 +211,6 @@ class Tanque(models.Model):
                     self.status_tanque = status_livre
                     self.save(update_fields=['status_tanque'])
             except StatusTanque.DoesNotExist:
-                # Falha silenciosamente se o status 'Livre' não existir
                 pass
 
 class Lote(models.Model):
@@ -194,21 +219,32 @@ class Lote(models.Model):
     fase_producao = models.ForeignKey(FaseProducao, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes')
     tanque_atual = models.ForeignKey(Tanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_no_tanque')
     quantidade_inicial = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    peso_medio_inicial = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    peso_medio_inicial = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)], help_text="Peso médio inicial em gramas (g)")
     data_povoamento = models.DateField()
     ativo = models.BooleanField(default=True)
 
-    # Campos calculados (serão atualizados por eventos de manejo)
     quantidade_atual = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    peso_medio_atual = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    peso_medio_atual = models.DecimalField(max_digits=10, decimal_places=3, default=0, validators=[MinValueValidator(0)], help_text="Peso médio atual em gramas (g)")
 
     @property
-    def biomassa_inicial(self):
+    def biomassa_inicial_g(self):
+        """Retorna a biomassa inicial calculada em gramas."""
         return self.quantidade_inicial * self.peso_medio_inicial
 
     @property
-    def biomassa_atual(self):
+    def biomassa_inicial_kg(self):
+        """Retorna a biomassa inicial convertida para kg."""
+        return calc_biomassa_kg(self.quantidade_inicial, self.peso_medio_inicial)
+
+    @property
+    def biomassa_atual_g(self):
+        """Retorna a biomassa atual calculada em gramas."""
         return self.quantidade_atual * self.peso_medio_atual
+
+    @property
+    def biomassa_atual_kg(self):
+        """Retorna a biomassa atual convertida para kg."""
+        return calc_biomassa_kg(self.quantidade_atual, self.peso_medio_atual)
 
     @property
     def gpd(self):
@@ -216,11 +252,10 @@ class Lote(models.Model):
             dias_cultivo = (date.today() - self.data_povoamento).days
             if dias_cultivo > 0:
                 return (self.peso_medio_atual - self.peso_medio_inicial) / dias_cultivo
-        return Decimal('0.0') # Retorna Decimal para consistência
+        return Decimal('0.0')
 
     def recalcular_estado_atual(self):
         tanque_original = self.tanque_atual
-
         povoamento_inicial_evento = self.eventos_manejo.filter(tipo_evento='Povoamento').order_by('data_evento', 'id').first()
 
         if not povoamento_inicial_evento:
@@ -309,12 +344,18 @@ class EventoManejo(models.Model):
     tanque_destino = models.ForeignKey(Tanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='eventos_destino')
     data_evento = models.DateField()
     quantidade = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    peso_medio = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    peso_medio = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)], help_text="Peso médio em gramas (g)")
     observacoes = models.TextField(blank=True, null=True)
 
     @property
-    def biomassa(self):
+    def biomassa_g(self):
+        """Retorna a biomassa do evento em gramas."""
         return self.quantidade * self.peso_medio
+    
+    @property
+    def biomassa_kg(self):
+        """Retorna a biomassa do evento em quilogramas."""
+        return calc_biomassa_kg(self.quantidade, self.peso_medio)
 
     class Meta:
         verbose_name = "Evento de Manejo"
@@ -326,51 +367,44 @@ class EventoManejo(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-
-
-
-# =========================================================================
-# NOVOS MODELOS PARA O SISTEMA DE ARRAÇOAMENTO (v2 - PROATIVO)
-# =========================================================================
-
-
-
-
 class LoteDiario(models.Model):
-    """
-    Armazena um snapshot diário consolidado do estado e performance de um lote.
-    É pré-populado com projeções e depois atualizado com dados reais.
-    """
-    # --- Chaves e Data de Referência ---
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='historico_diario')
     data_evento = models.DateField(help_text="A data de referência para este registro diário.")
 
-    # --- Dados Projetados/Sugeridos ---
+    quantidade_inicial = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Qtd. de peixes no início do dia")
+    peso_medio_inicial = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, help_text="Peso médio no início do dia (g)")
+    biomassa_inicial = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, help_text="Biomassa no início do dia (kg)")
+
     racao_sugerida = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_sugeridos')
     racao_sugerida_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    quantidade_projetada = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    peso_medio_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Peso em gramas")
-    biomassa_projetada = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="em kg")
-    gpd_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPD Projetado (g)")
-    gpt_projetado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPT Projetado (g)")
+    quantidade_projetada = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Qtd. de peixes projetada para o FIM do dia")
+    peso_medio_projetado = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, help_text="Peso médio projetado para o FIM do dia (g)")
+    biomassa_projetada = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, help_text="Biomassa projetada para o FIM do dia (kg)")
+    gpd_projetado = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="GPD Projetado (g)")
+    gpt_projetado = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="GPT Projetado (g)")
     conversao_alimentar_projetada = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="Conversão Alimentar Projetada")
 
-    # --- Dados Reais (Pós-Evento) ---
     racao_realizada = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_realizados')
     racao_realizada_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    quantidade_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    peso_medio_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Peso em gramas")
-    biomassa_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="em kg")
-    gpd_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPD Real (g)")
-    gpt_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="GPT Real (g)")
+    quantidade_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Qtd. de peixes real no FIM do dia")
+    peso_medio_real = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, help_text="Peso médio real no FIM do dia (g)")
+    biomassa_real = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, help_text="Biomassa real no FIM do dia (kg)")
+    gpd_real = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="GPD Real (g)")
+    gpt_real = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="GPT Real (g)")
     conversao_alimentar_real = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, verbose_name="Conversão Alimentar Real")
 
-    # --- Auditoria e Observações ---
     observacoes = models.TextField(blank=True, null=True)
     data_lancamento = models.DateTimeField(auto_now_add=True)
-    data_edicao = models.DateTimeField(auto_now=True)
+    data_edicao = models.DateTimeField(null=True, blank=True)
     usuario_lancamento = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_criados')
     usuario_edicao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_editados')
+
+    @property
+    def biomassa_calc_kg(self):
+        """Propriedade de apoio para recomputar a biomassa do dia em kg, se necessário."""
+        if self.quantidade_inicial and self.peso_medio_inicial:
+            return calc_biomassa_kg(self.quantidade_inicial, self.peso_medio_inicial)
+        return Decimal('0.000')
 
     class Meta:
         verbose_name = "Histórico Diário do Lote"
@@ -381,21 +415,11 @@ class LoteDiario(models.Model):
     def __str__(self):
         return f"Histórico de {self.lote.nome} em {self.data_evento.strftime('%d/%m/%Y')}"
 
-
 class ArracoamentoSugerido(models.Model):
-    """
-    Armazena a transação de uma sugestão de arraçoamento gerada pelo sistema.
-    O status é controlado pelo usuário para indicar pendências.
-    """
-    STATUS_CHOICES = [
-        ('Pendente', 'Pendente'),
-        ('Aprovado', 'Aprovado'),
-        ('Rejeitado', 'Rejeitado'),
-    ]
     lote_diario = models.OneToOneField(LoteDiario, on_delete=models.CASCADE, related_name='sugestao')
     produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True)
     quantidade_kg = models.DecimalField(max_digits=10, decimal_places=3)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pendente')
+    status = models.CharField(max_length=20, choices=[('Pendente', 'Pendente'), ('Aprovado', 'Aprovado'), ('Rejeitado', 'Rejeitado')], default='Pendente')
     data_sugestao = models.DateTimeField(auto_now_add=True)
     usuario_sugestao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sugestoes_criadas')
 
@@ -407,21 +431,15 @@ class ArracoamentoSugerido(models.Model):
     def __str__(self):
         return f"Sugestão para {self.lote_diario} - {self.quantidade_kg} kg"
 
-
 class ArracoamentoRealizado(models.Model):
-    """
-    Registra a transação de um arraçoamento que foi efetivamente realizado,
-    seja a partir de uma sugestão aprovada ou de um lançamento manual.
-    """
     lote_diario = models.ForeignKey(LoteDiario, on_delete=models.CASCADE, related_name='realizacoes')
     produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, help_text="Ração efetivamente utilizada.")
     quantidade_kg = models.DecimalField(max_digits=10, decimal_places=3)
     data_realizacao = models.DateTimeField()
     observacoes = models.TextField(blank=True, null=True)
     
-    # Auditoria
     data_lancamento = models.DateTimeField(auto_now_add=True)
-    data_edicao = models.DateTimeField(auto_now=True)
+    data_edicao = models.DateTimeField(null=True, blank=True)
     usuario_lancamento = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='arracoamentos_lancados')
     usuario_edicao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='arracoamentos_editados')
 
@@ -432,4 +450,3 @@ class ArracoamentoRealizado(models.Model):
 
     def __str__(self):
         return f"Realizado para {self.lote_diario} - {self.quantidade_kg} kg"
-

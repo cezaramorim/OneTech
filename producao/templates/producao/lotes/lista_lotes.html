@@ -23,12 +23,11 @@
                         <tr>
                             <th><input type="checkbox" id="select-all-lotes"></th>
                             <th>Nome</th>
-                            <th>Curva de Crescimento</th>
-                            <th>Fase de Produção</th>
                             <th>Tanque Atual</th>
-                            <th>Quantidade Inicial</th>
-                            <th>Peso Médio Inicial</th>
                             <th>Data Povoamento</th>
+                            <th>Peso Médio Atual (g)</th>
+                            <th>Biomassa Atual (kg)</th>
+                            <th>Quantidade Atual (peixes)</th>
                             <th>Ativo</th>
                         </tr>
                     </thead>
@@ -37,17 +36,16 @@
                         <tr data-id="{{ lote.pk }}">
                             <td><input type="checkbox" class="check-lote" value="{{ lote.pk }}"></td>
                             <td>{{ lote.nome }}</td>
-                            <td>{{ lote.curva_crescimento.nome|default:"N/A" }}</td>
-                            <td>{{ lote.fase_producao.nome|default:"N/A" }}</td>
                             <td>{{ lote.tanque_atual.nome|default:"N/A" }}</td>
-                            <td>{{ lote.quantidade_inicial|floatformat:2 }}</td>
-                            <td>{{ lote.peso_medio_inicial|floatformat:2 }}</td>
                             <td>{{ lote.data_povoamento|date:"d/m/Y" }}</td>
+                            <td>{{ lote.peso_medio_atual|floatformat:2 }}</td>
+                            <td>{{ lote.biomassa_atual_kg|floatformat:2 }}</td>
+                            <td>{{ lote.quantidade_atual|floatformat:0 }}</td>
                             <td>{% if lote.ativo %}Sim{% else %}Não{% endif %}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center">Nenhum lote encontrado.</td>
+                            <td colspan="8" class="text-center">Nenhum lote encontrado.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -20,7 +20,7 @@
             <div class="row mb-4">
                 <div class="col-md-3">
                     <label for="data-arraçoamento" class="form-label">Data</label>
-                    <input type="date" id="data-arraçoamento" class="form-control" value="{{ today|date:'Y-m-d' }}">
+                    <input type="date" id="data-arraçoamento" class="form-control">
                 </div>
                 <div class="col-md-3">
                     <label for="filtro-linha-producao" class="form-label">Linha de Produção</label>
@@ -28,11 +28,6 @@
                         <option value="">Todas</option>
                         <!-- Opções serão carregadas via JS -->
                     </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button id="btn-buscar-sugestoes" class="btn btn-primary">
-                        <i class="fas fa-search me-2"></i>Buscar Sugestões
-                    </button>
                 </div>
             </div>
 
@@ -56,8 +51,8 @@
                             <th scope="col">Seq.</th>
                             <th scope="col">Ração Sugerida</th>
                             <th scope="col">Ração Realizada</th>
-                            <th scope="col">Qtd. Sugerida (kg)</th>
-                            <th scope="col">Qtd. Real (kg)</th>
+                            <th scope="col">Qtd. Sugerida (g)</th>
+                            <th scope="col">Qtd. Real (g)</th>
                             <th scope="col">Status</th>
                         </tr>
                     </thead>
@@ -69,9 +64,9 @@
                     </tbody>
                     <tfoot>
                         <tr class="table-light fw-bold">
-                            <td colspan="8" class="text-end">Totais:</td>
-                            <td id="total-sugerido" class="text-center">0.00</td>
-                            <td id="total-real" class="text-center">0.00</td>
+                            <td colspan="8" class="text-end">Totais (kg):</td>
+                            <td id="total-sugerido" class="text-center">0.000</td>
+                            <td id="total-real" class="text-center">0.000</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -116,8 +111,8 @@
             <input type="text" class="form-control" id="edit-produto-racao-nome" disabled>
           </div>
           <div class="mb-3">
-            <label for="edit-quantidade-kg" class="form-label">Quantidade (kg)</label>
-            <input type="number" class="form-control" id="edit-quantidade-kg" name="quantidade_kg" step="0.01">
+            <label for="edit-quantidade-kg" class="form-label">Quantidade (g)</label>
+            <input type="number" class="form-control" id="edit-quantidade-g" name="quantidade_g" step="0.01">
           </div>
           <div class="mb-3">
             <label for="edit-observacoes" class="form-label">Observações</label>

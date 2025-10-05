@@ -17,12 +17,15 @@ urlpatterns = [
     path('unidades/', views.UnidadeListView.as_view(), name='lista_unidades'),
     path('unidades/cadastrar/', views.UnidadeCreateView.as_view(), name='cadastrar_unidade'),
     path('unidades/<int:pk>/editar/', views.UnidadeUpdateView.as_view(), name='editar_unidade'),
+    path('unidades/excluir-multiplos/', views.ExcluirUnidadesMultiplosView.as_view(), name='excluir_unidades_multiplos'),
     path('malhas/', views.MalhaListView.as_view(), name='lista_malhas'),
     path('malhas/cadastrar/', views.MalhaCreateView.as_view(), name='cadastrar_malha'),
     path('malhas/<int:pk>/editar/', views.MalhaUpdateView.as_view(), name='editar_malha'),
+    path('malhas/excluir-multiplos/', views.ExcluirMalhasMultiplosView.as_view(), name='excluir_malhas_multiplos'),
     path('tipos-tela/', views.TipoTelaListView.as_view(), name='lista_tipotelas'),
     path('tipos-tela/cadastrar/', views.TipoTelaCreateView.as_view(), name='cadastrar_tipotela'),
     path('tipos-tela/<int:pk>/editar/', views.TipoTelaUpdateView.as_view(), name='editar_tipotela'),
+    path('tipos-tela/excluir-multiplos/', views.ExcluirTiposTelaMultiplosView.as_view(), name='excluir_tipostela_multiplos'),
 
     # Linhas de Produção
     path('linhas-producao/', views.LinhaProducaoListView.as_view(), name='lista_linhasproducao'),

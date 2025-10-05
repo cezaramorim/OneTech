@@ -1168,3 +1168,13 @@ textarea.form-control-sm {
   padding: 0.25rem 0.5rem !important;
   font-size: 0.875rem !important;
 }
+
+/* Offset global p/ navbar fixo (sobrescreve o padding:0 anterior) */
+#main-content { 
+  padding-top: 72px !important;  /* ajuste se seu navbar tiver outra altura */
+}
+
+/* Evita o primeiro card encostar no topo */
+#main-content > *:first-child { 
+  margin-top: 0 !important;
+}

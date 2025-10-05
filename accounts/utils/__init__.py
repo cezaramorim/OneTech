@@ -126,6 +126,23 @@ PERMISSOES_PT_BR = {
     "Can delete Unidade": "Excluir Unidade",
     "Can view Unidade": "Visualizar Unidade",
 
+    "Can add Arraçoamento Realizado": "Adicionar Arraçoamento Realizado",
+    "Can change Arraçoamento Realizado": "Alterar Arraçoamento Realizado",
+    "Can delete Arraçoamento Realizado": "Excluir Arraçoamento Realizado",
+    "Can view Arraçoamento Realizado": "Visualizar Arraçoamento Realizado",
+    "Can add Sugestão de Arraçoamento": "Adicionar Sugestão de Arraçoamento",
+    "Can change Sugestão de Arraçoamento": "Alterar Sugestão de Arraçoamento",
+    "Can delete Sugestão de Arraçoamento": "Excluir Sugestão de Arraçoamento",
+    "Can view Sugestão de Arraçoamento": "Visualizar Sugestão de Arraçoamento",
+    "Can add Histórico Diário do Lote": "Adicionar Histórico Diário do Lote",
+    "Can change Histórico Diário do Lote": "Alterar Histórico Diário do Lote",
+    "Can delete Histórico Diário do Lote": "Excluir Histórico Diário do Lote",
+    "Can view Histórico Diário do Lote": "Visualizar Histórico Diário do Lote",
+    "Can add Perfil de Ração": "Adicionar Perfil de Ração",
+    "Can change Perfil de Ração": "Alterar Perfil de Ração",
+    "Can delete Perfil de Ração": "Excluir Perfil de Ração",
+    "Can view Perfil de Ração": "Visualizar Perfil de Ração",
+
     # produto
     "Can add categoria produto": "Adicionar categoria de produto",
     "Can change categoria produto": "Alterar categoria de produto",

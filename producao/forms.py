@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, EventoManejo,
@@ -57,7 +58,7 @@ ATIVO_CHOICES = [
 class TanqueForm(forms.ModelForm):
     ativo = forms.ChoiceField(
         choices=ATIVO_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado form-control-sm
+        widget=forms.Select(attrs={'class': 'form-control form-control-sm'}),
         label="Ativo"
     )
 
@@ -70,32 +71,23 @@ class TanqueForm(forms.ModelForm):
             'sequencia',
             'largura', 'comprimento', 'profundidade',
             'malha', 'ativo',
-            'tipo_tela', # <--- tipo_tela aqui
-            'tag_tanque', # <--- tag_tanque movido para o final
+            'tipo_tela',
+            'tag_tanque',
         ]
         widgets = {
-            'nome': forms.TextInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'sequencia': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'tag_tanque': forms.TextInput(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'largura': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm', # Adicionado form-control-sm
-                'inputmode': 'decimal',
-            }),
-            'comprimento': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm', # Adicionado form-control-sm
-                'inputmode': 'decimal',
-            }),
-            'profundidade': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm', # Adicionado form-control-sm
-                'inputmode': 'decimal',
-            }),
-            'unidade': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'fase': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'tipo_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'linha_producao': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'malha': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'status_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
-            'tipo_tela': forms.Select(attrs={'class': 'form-control form-control-sm'}), # Adicionado
+            'nome': forms.TextInput(attrs={'class': 'form-control form-control-sm'}),
+            'sequencia': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'tag_tanque': forms.TextInput(attrs={'class': 'form-control form-control-sm'}),
+            'largura': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'inputmode': 'decimal'}),
+            'comprimento': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'inputmode': 'decimal'}),
+            'profundidade': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'inputmode': 'decimal'}),
+            'unidade': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'fase': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'tipo_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'linha_producao': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'malha': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'status_tanque': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'tipo_tela': forms.Select(attrs={'class': 'form-control form-control-sm'}),
         }
 
 # --- Formulário de Importação ---
@@ -104,7 +96,7 @@ class TanqueImportForm(forms.Form):
     arquivo_excel = forms.FileField(label="Selecione o arquivo Excel para importar tanques")
 
 
-# --- Formulários Existentes (sem alteração) ---
+# --- Formulários de Negócio com Validações Aprimoradas ---
 
 class CurvaCrescimentoForm(forms.ModelForm):
     class Meta:
@@ -126,12 +118,71 @@ class LoteForm(forms.ModelForm):
         model = Lote
         fields = '__all__'
 
+    def clean(self):
+        cleaned_data = super().clean()
+        for field_name in ['quantidade_inicial', 'peso_medio_inicial', 'quantidade_atual', 'peso_medio_atual']:
+            if cleaned_data.get(field_name) is not None and cleaned_data.get(field_name) < 0:
+                self.add_error(field_name, "Este valor não pode ser negativo.")
+        return cleaned_data
+
 class EventoManejoForm(forms.ModelForm):
     class Meta:
         model = EventoManejo
         fields = '__all__'
+        labels = {
+            'quantidade': 'Quantidade (peixes)',
+            'peso_medio': 'Peso Médio (g)',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for field_name in ['quantidade', 'peso_medio']:
+            if cleaned_data.get(field_name) is not None and cleaned_data.get(field_name) < 0:
+                self.add_error(field_name, "Este valor não pode ser negativo.")
+        return cleaned_data
+
+class CurvaCrescimentoDetalheForm(forms.ModelForm):
+    class Meta:
+        model = CurvaCrescimentoDetalhe
+        fields = '__all__'
+        exclude = ['curva']
+
+    def clean_arracoamento_biomassa_perc(self):
+        """Valida se o %BW/dia está em um range aceitável."""
+        percentual = self.cleaned_data.get('arracoamento_biomassa_perc')
+        if percentual is not None and not (Decimal('0') <= percentual <= Decimal('20')):
+            raise ValidationError("O percentual de arraçoamento deve estar entre 0 e 20%.")
+        return percentual
+
+    def clean(self):
+        """Valida a sobreposição de faixas de peso."""
+        cleaned_data = super().clean()
+        peso_inicial = cleaned_data.get('peso_inicial')
+        peso_final = cleaned_data.get('peso_final')
+        curva = self.instance.curva # A curva é associada na view antes de validar
+
+        if peso_inicial is not None and peso_final is not None:
+            if peso_inicial >= peso_final:
+                self.add_error('peso_final', "O peso final deve ser maior que o peso inicial.")
+                return cleaned_data
+
+            # Verifica sobreposição com outros detalhes da mesma curva
+            qs = CurvaCrescimentoDetalhe.objects.filter(curva=curva)
+            if self.instance.pk: # Se for edição, exclui o próprio objeto da verificação
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            for detalhe in qs:
+                # Verifica se a nova faixa (A) sobrepõe uma faixa existente (B)
+                # Condição: (A.inicio < B.fim) e (A.fim > B.inicio)
+                if (peso_inicial < detalhe.peso_final) and (peso_final > detalhe.peso_inicial):
+                    raise ValidationError(
+                        f"A faixa de peso ({peso_inicial}g - {peso_final}g) sobrepõe uma faixa existente "
+                        f"({detalhe.peso_inicial}g - {detalhe.peso_final}g) para esta curva."
+                    )
+        return cleaned_data
 
 
+# --- Formulários de Importação e Ações ---
 
 class ImportarCurvaForm(forms.Form):
     nome = forms.CharField(max_length=255, label="Nome da Curva")
@@ -147,27 +198,6 @@ class ExcelUploadForm(forms.Form):
     arquivo_excel = forms.FileField(label="Selecione o arquivo Excel")
     tipo_dado = forms.ChoiceField(label="Tipo de Dado", choices=TIPO_DADO_CHOICES)
 
-class CurvaCrescimentoDetalheForm(forms.ModelForm):
-    class Meta:
-        model = CurvaCrescimentoDetalhe
-        fields = '__all__'
-        exclude = ['curva']  # O campo 'curva' será associado automaticamente na view
-        widgets = {
-            'periodo_semana': forms.NumberInput(attrs={'id': 'id_periodo_semana'}),
-            'periodo_dias': forms.NumberInput(attrs={'id': 'id_periodo_dias'}),
-            'peso_inicial': forms.NumberInput(attrs={'id': 'id_peso_inicial'}),
-            'peso_final': forms.NumberInput(attrs={'id': 'id_peso_final'}),
-            'ganho_de_peso': forms.NumberInput(attrs={'id': 'id_ganho_de_peso'}),
-            'numero_tratos': forms.NumberInput(attrs={'id': 'id_numero_tratos'}),
-            'hora_inicio': forms.TimeInput(attrs={'id': 'id_hora_inicio'}),
-            'arracoamento_biomassa_perc': forms.NumberInput(attrs={'id': 'id_arracoamento_biomassa_perc'}),
-            'mortalidade_presumida_perc': forms.NumberInput(attrs={'id': 'id_mortalidade_presumida_perc'}),
-            'racao': forms.Select(attrs={'id': 'id_racao'}), # Assuming 'racao' is a ForeignKey, so a Select widget
-            'gpd': forms.NumberInput(attrs={'id': 'id_gpd'}),
-            'tca': forms.NumberInput(attrs={'id': 'id_tca'}),
-        }
-
-
 class PovoamentoForm(forms.Form):
     tipo_tanque = forms.CharField()
     curva_id = forms.IntegerField(required=False)
@@ -175,8 +205,8 @@ class PovoamentoForm(forms.Form):
     grupo_origem = forms.CharField()
     data_lancamento = forms.DateField(input_formats=['%Y-%m-%d'])
     nome_lote = forms.CharField(max_length=255, required=False)
-    quantidade = forms.DecimalField(min_value=0.01, max_digits=10, decimal_places=2)
-    peso_medio = forms.DecimalField(min_value=0.01, max_digits=10, decimal_places=2)
+    quantidade = forms.DecimalField(min_value=Decimal('0.01'), max_digits=10, decimal_places=2)
+    peso_medio = forms.DecimalField(min_value=Decimal('0.01'), max_digits=10, decimal_places=3)
     fase_id = forms.IntegerField()
     tamanho = forms.CharField(required=False)
     linha_id = forms.IntegerField()

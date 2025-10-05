@@ -265,7 +265,8 @@ def _get_permissoes_context():
         'produto': 'Produtos',
         'nota_fiscal': 'Nota Fiscal',
         'fiscal': 'Fiscal',
-        'relatorios': 'Relatórios'
+        'relatorios': 'Relatórios',
+        'producao': 'Produção'
     }
 
     for p in permissoes:
