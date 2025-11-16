@@ -1,54 +1,4 @@
-<!-- Conteúdo da tabela de empresas (para AJAX) -->
-<h2 class="mb-4">Empresas Avançadas</h2>
-
-<!-- ✅ Formulário com filtros dinâmicos e botão "Limpar" -->
-<form id="filtro-empresas-avancadas" class="row g-2 mb-4 ajax-form" method="get">
-  <!-- 🔍 Campo de busca unificada por razão social ou CNPJ -->
-  <div class="col-md-4">
-    <input type="text" id="busca-empresa" name="termo_empresa" class="form-control"
-           placeholder="Buscar por razão social ou CNPJ"
-           value="{{ request.GET.termo_empresa|default_if_none:'' }}"
-           autocomplete="off">
-  </div>
-
-  <!-- 🔽 Filtro por tipo de empresa -->
-  <div class="col-md-3">
-    <select name="tipo" class="form-select">
-      <option value="">Tipo de Empresa</option>
-      <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jurídica</option>
-      <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa Física</option>
-    </select>
-  </div>
-
-  <!-- 🔽 Filtro por status da empresa -->
-  <div class="col-md-3">
-    <select name="status" class="form-select">
-      <option value="">Status</option>
-      <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
-      <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
-    </select>
-  </div>
-
-  <!-- 🔁 Botão para limpar os filtros (redireciona à URL base) -->
-  <div class="col-md-2 text-end">
-    <a href="{% url 'empresas:lista_empresas_avancadas' %}" class="btn btn-outline-secondary w-100">Limpar</a>
-  </div>
-</form>
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-  <a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="btn btn-success ajax-link">
-    <i class="bi bi-plus-circle"></i> Novo
-  </a>
-  <a id="btn-editar" class="btn btn-primary disabled" role="button">
-    <i class="bi bi-pencil"></i> Editar
-  </a>
-  <button id="btn-excluir" class="btn btn-danger" disabled>
-    <i class="bi bi-trash"></i> Excluir
-  </button>
-</div>
-
-<div id="empresas-avancadas-tabela-wrapper">
-  <table class="table table-striped table-hover">
+<table class="table table-striped table-hover">
     <thead>
       <tr>
         <th style="width: 50px;"><input type="checkbox" id="select-all-empresas"></th>
@@ -76,4 +26,3 @@
       {% endfor %}
     </tbody>
   </table>
-</div>

@@ -3,7 +3,7 @@
       <h2>{% if form.instance.pk %}Editar Curva de Crescimento{% else %}Cadastrar Nova Curva de Crescimento{% endif %}</h2>
       <div class="card shadow-sm">
           <div class="card-body">
-              <form method="post" class="ajax-form" action="">
+              <form method="post" class="ajax-form" action="" data-response-type="json">
                   {% csrf_token %}
                   {{ form.as_p }}
                   <button type="submit" class="btn btn-primary">Salvar</button>

@@ -16,6 +16,7 @@
           action="{% url 'nota_fiscal:editar_entrada' nota.pk %}"
           method="post"
           class="ajax-form"
+          data-response-type="json"
         >
           {% csrf_token %}
 

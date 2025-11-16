@@ -1,39 +1,60 @@
 // static/js/empresa_avancada_form.js
+window.OneTech = window.OneTech || {};
+OneTech.EmpresaForm = (function () {
+  const SELECTOR_ROOT = '#form-empresa-avancada';
+  const SELECTOR_TIPO = '[name="tipo_empresa"]';
+  const SELECTOR_PF   = '#campos-pf';
+  const SELECTOR_PJ   = '#campos-pj';
 
-function initializeEmpresaAvancadaForm() {
-    const form = document.getElementById('form-empresa-avancada');
-    if (!form) {
-        return; // Sai se o formulário específico não está na página.
+  function toggleSection(root, tipo) {
+    const pf = root.querySelector(SELECTOR_PF);
+    const pj = root.querySelector(SELECTOR_PJ);
+    if (!pf || !pj) return;
+
+    const showPF = tipo === 'PF';
+    pf.classList.toggle('d-none', !showPF);
+    pj.classList.toggle('d-none', showPF);
+
+    // Habilita/Desabilita inputs para evitar submissão de dados ocultos
+    pf.querySelectorAll('input,select,textarea').forEach(el => el.disabled = !showPF);
+    pj.querySelectorAll('input,select,textarea').forEach(el => el.disabled = showPF);
+  }
+
+  function readTipo(selectEl) {
+    if (!selectEl) return null;
+    return (selectEl.value || '').trim().toUpperCase();
+  }
+
+  function init(rootEl) {
+    if (!rootEl || rootEl.dataset.initialized === '1') return;
+    rootEl.dataset.initialized = '1';
+
+    const selectTipo = rootEl.querySelector(SELECTOR_TIPO);
+
+    // Estado inicial (importante para a edição)
+    toggleSection(rootEl, readTipo(selectTipo));
+
+    // Listener para futuras mudanças
+    if (selectTipo) {
+      selectTipo.addEventListener('change', () => {
+        toggleSection(rootEl, readTipo(selectTipo));
+      });
     }
 
-    const tipoEmpresaSelect = document.getElementById('id_tipo_empresa');
-    const camposPj = document.getElementById('campos-pj');
-    const camposPf = document.getElementById('campos-pf');
+    // Lógica para abas Bootstrap, se aplicável
+    rootEl.closest('.tab-content')?.addEventListener('shown.bs.tab', (ev) => {
+      const target = ev.target?.getAttribute('data-bs-target') || '';
+      if (target && target.includes('identificacao')) {
+        toggleSection(rootEl, readTipo(selectTipo));
+      }
+    }, true);
+  }
 
-    if (!tipoEmpresaSelect || !camposPj || !camposPf) {
-        return; // Sai se os elementos essenciais não existirem
-    }
+  function destroy(rootEl) {
+    if (!rootEl) return;
+    delete rootEl.dataset.initialized;
+    // Lógica para remover listeners se necessário no futuro
+  }
 
-    function toggleCamposVisiveis(tipo) {
-        const tipoNormalizado = tipo ? tipo.toUpperCase() : '';
-        camposPj.classList.toggle('d-none', tipoNormalizado !== 'PJ');
-        camposPf.classList.toggle('d-none', tipoNormalizado !== 'PF');
-    }
-
-    // Adiciona o listener para mudanças manuais no tipo de empresa
-    tipoEmpresaSelect.addEventListener('change', () => {
-        toggleCamposVisiveis(tipoEmpresaSelect.value);
-    });
-
-    // Garante que, no carregamento da página, os campos corretos sejam exibidos
-    // com base no valor que o Django já renderizou no select.
-    toggleCamposVisiveis(tipoEmpresaSelect.value);
-}
-
-// Garante a execução no carregamento inicial e na navegação AJAX, seguindo o padrão do projeto.
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeEmpresaAvancadaForm);
-} else {
-    initializeEmpresaAvancadaForm();
-}
-document.addEventListener('ajaxContentLoaded', initializeEmpresaAvancadaForm);
+  return { init, destroy, SELECTOR_ROOT };
+})();

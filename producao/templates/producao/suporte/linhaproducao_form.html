@@ -1,7 +1,7 @@
 <div id="identificador-tela" data-tela="form_linhaproducao">
     <div class="container-fluid mt-4">
         <h2>{% if object %}Editar Linha de Produção{% else %}Nova Linha de Produção{% endif %}</h2>
-        <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_linhasproducao' %}">
+        <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_linhasproducao' %}" data-response-type="json">
             {% csrf_token %}
             {{ form.as_p }}
             <button type-="submit" class="btn btn-success">Salvar</button>

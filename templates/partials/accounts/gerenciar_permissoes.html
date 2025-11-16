@@ -14,7 +14,7 @@
         </div>
 
         <div class="card-body p-4">
-            <form method="post" id="form-permissoes" class="ajax-form">
+            <form method="post" id="form-permissoes" class="ajax-form" data-response-type="json">
                 {% csrf_token %}
 
                 {% for nome_app, permissoes_app in permissoes_agrupadas.items %}
@@ -49,4 +49,4 @@
         </div>
     </div>
 </div>
-<script src="{% static 'js/permissions.js' %}"></script>
+

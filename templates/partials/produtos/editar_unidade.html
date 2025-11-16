@@ -2,7 +2,7 @@
 
 <main id="main-content" data-tela="editar_unidade" class="container-fluid py-4">
     <div id="identificador-tela" data-tela="editar_unidade"></div>
-    <form method="post" novalidate class="ajax-form" data-url="{% url 'produto:editar_unidade' unidade.id %}">
+    <form method="post" novalidate class="ajax-form" data-url="{% url 'produto:editar_unidade' unidade.id %}" data-response-type="json">
         {% csrf_token %}
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">

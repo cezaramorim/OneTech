@@ -19,7 +19,7 @@
       <!-- 🧾 Card de formulário -->
       <div class="card shadow-sm p-4">
 
-        <form id="form-criar-usuario" method="post" novalidate class="card p-4 shadow-sm ajax-form" data-url="{% url 'accounts:criar_usuario' %}" autocomplete="off">
+        <form id="form-criar-usuario" method="post" novalidate class="card p-4 shadow-sm ajax-form" data-url="{% url 'accounts:criar_usuario' %}" data-response-type="json" autocomplete="off">
           {% csrf_token %}
 
           <!-- 🔤 Nome completo -->

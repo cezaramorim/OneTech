@@ -13,7 +13,7 @@
       </div>
 
       <div class="card shadow-sm p-4">
-        <form method="post" class="ajax-form" data-url="{% url 'accounts:edit_profile' %}">
+        <form method="post" class="ajax-form" data-url="{% url 'accounts:edit_profile' %}" data-response-type="json">
           {% csrf_token %}
 
           <!-- 👤 Nome completo -->

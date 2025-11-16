@@ -4,7 +4,7 @@
 
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" action="" class="ajax-form">
+                <form method="post" action="" class="ajax-form" data-response-type="json">
                     {% csrf_token %}
                     <div class="row">
                         <div class="col-md-4 form-group">{{ form.nome.label_tag }} {{ form.nome }}</div>

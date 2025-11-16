@@ -7,7 +7,7 @@
                 <p>Selecione um arquivo Excel (.xlsx) para importar múltiplos tanques. Certifique-se de que a planilha segue o modelo padrão.</p>
                 <p><a href="{% url 'producao:download_template_tanque' %}" class="btn btn-info">Baixar Modelo da Planilha</a></p>
                 
-                <form method="post" enctype="multipart/form-data" action="{% url 'producao:importar_tanques' %}" class="ajax-form">
+                <form method="post" enctype="multipart/form-data" action="{% url 'producao:importar_tanques' %}" class="ajax-form" data-response-type="json">
                     {% csrf_token %}
                     {{ form.as_p }}
                     <button type="submit" class="btn btn-success">Importar</button>

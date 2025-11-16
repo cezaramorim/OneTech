@@ -1,107 +1,185 @@
 {% load static producao_tags %}
 
 {% block content %}
-<div class="container-fluid mt-3" data-page="povoamento-lotes">
+<div class="container-fluid container-wide mt-3" data-page="povoamento-lotes"
+     data-tanques='{{ tanques_json|default:"[]"|safe }}'
+     data-fases='{{ fases_json|default:"[]"|safe }}'
+     data-linhas='{{ linhas_json|default:"[]"|safe }}'>
   <div id="identificador-tela" data-tela="povoamento-lotes"></div>
 
-  <h3>Povoamento de Lotes</h3>
+  <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="#" class="link-secondary">Produção</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Povoamento de Lotes</li>
+        </ol>
+      </nav>
+      <h1 class="h4 mb-1 d-flex align-items-center gap-2">
+        Povoamento de Lotes
+        <span class="info-tooltip" role="img" aria-label="Ajuda" tabindex="0">
+          <i class="bi bi-info-circle"></i>
+          <span class="info-tooltip__content">Selecione o tanque, defina os parâmetros e organize as linhas antes de processar.</span>
+        </span>
+      </h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="kpi-chip" data-kpi="tanque">
+        <i class="bi bi-box"></i> Tanque: <span data-value>—</span>
+      </span>
+      <span class="kpi-chip" data-kpi="ocupacao">
+        <i class="bi bi-graph-up"></i> Ocupação: <span data-value>—</span>
+      </span>
+      <span class="kpi-chip" data-kpi="fase">
+        <i class="bi bi-droplet-half"></i> Fase: <span data-value>—</span>
+      </span>
+    </div>
+  </header>
 
-  <div class="card shadow-sm mb-4">
-    <div class="card-header">Inserção de Povoamentos</div>
+  <div class="card mb-4" data-card="insercao">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <span class="fw-semibold">Inserção de Povoamentos</span>
+        <span class="info-tooltip" role="img" aria-label="Ajuda" tabindex="0">
+          <i class="bi bi-info-circle"></i>
+          <span class="info-tooltip__content">Preencha os campos abaixo e adicione linhas para montar o lote.</span>
+        </span>
+      </div>
+      <button class="btn btn-primary" type="button" data-action="adicionar-linha">
+        <i class="bi bi-plus-lg me-1"></i>Adicionar Linha
+      </button>
+    </div>
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-3">
-          <label class="form-label">Tipo de Origem</label>
-          <select class="form-select form-select-sm" data-role="tipo-origem">
+        <div class="col-md-3 col-sm-6">
+          <label for="tipo-origem" class="form-label">Tipo de Origem</label>
+          <select id="tipo-origem" class="form-select form-select-sm" data-role="tipo-origem">
             <option value="Avulsa">Avulsa</option>
           </select>
+          <div class="form-text">Determina a origem do grupo de peixes.</div>
         </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Tipo Tanque</label>
-          <select class="form-select form-select-sm" data-role="tipo-tanque">
+        <div class="col-md-3 col-sm-6">
+          <label for="tipo-tanque" class="form-label">Tipo de Tanque</label>
+          <select id="tipo-tanque" class="form-select form-select-sm" data-role="tipo-tanque">
             <option value="Tanque Vazio">Tanque Vazio</option>
             <option value="Tanque Povoado">Tanque Povoado</option>
           </select>
+          <div class="form-text">Filtra tanques com ou sem lote ativo.</div>
         </div>
 
-        <div class="col-md-3" data-container="curva-crescimento">
-          <label class="form-label">Curva de Crescimento</label>
+        <div class="col-md-3 col-sm-6" data-container="curva-crescimento">
+          <label for="curva" class="form-label">Curva de Crescimento</label>
           <div class="select2-wrapper">
-            <select class="form-select form-select-sm select2-search" data-role="curva-crescimento">
+            <select id="curva" class="form-select form-select-sm select2-povoamento" data-role="curva-crescimento">
               <option value="">Selecione...</option>
               {% for curva in curvas %}
                 <option value="{{ curva.pk }}">{{ curva.nome }}</option>
               {% endfor %}
             </select>
           </div>
+          <div class="form-text">Opcional para tanques vazios.</div>
         </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Tanque</label>
+        <div class="col-md-3 col-sm-6">
+          <label for="tanque" class="form-label">Tanque</label>
           <div class="select2-wrapper">
-            <select class="form-select form-select-sm select2-search" data-role="tanque"></select>
+            <select id="tanque" class="form-select form-select-sm select2-povoamento" data-role="tanque"></select>
           </div>
+          <div class="form-text">Somente tanques compatíveis com o tipo escolhido.</div>
         </div>
-      </div>
 
-      <div class="text-end mt-3">
-        <button class="btn btn-primary" data-action="adicionar-linha">Adicionar Linha</button>
       </div>
     </div>
   </div>
 
-  <div class="card shadow-sm">
-    <div class="card-header">Listagem de Povoamentos a Processar</div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-sm">
-          <thead>
+  <div class="card" data-card="listagem">
+    <div class="card-header">
+      <span class="fw-semibold">Listagem de Povoamentos a Processar</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive fixed-height">
+        <table class="table table-sm table-hover table-density-sm align-middle table-head-sticky" data-table="povoamentos">
+          <thead class="table-dark text-nowrap">
             <tr>
-              <th>Ação</th><th>Tanque</th><th>Grupo Origem</th><th>Curva</th>
-              <th>Data Lanç.</th><th>Nome Lote</th><th>Qtd.</th><th>Peso Médio</th>
-              <th>Fase</th><th>Tamanho</th><th>Linha</th>
+              <th scope="col" style="width:48px" class="text-center">Ação</th>
+              <th scope="col" style="width:120px">Tanque</th>
+              <th scope="col" style="width:110px">Origem</th>
+              <th scope="col" style="width:190px">Curva</th>
+              <th scope="col" style="width:130px">Data</th>
+              <th scope="col" style="width:140px">Lote</th>
+              <th scope="col" style="width:110px" class="text-end">Qtde</th>
+              <th scope="col" style="width:110px" class="text-end">P.Médio(g)</th>
+              <th scope="col" style="width:160px">Fase</th>
+              <th scope="col" style="width:160px">Linha</th>
+              <th scope="col" style="width:120px">Tamanho</th>
             </tr>
           </thead>
           <tbody data-container="listagem-body"></tbody>
         </table>
       </div>
-      <div class="text-end mt-3">
-        <button class="btn btn-success" data-action="processar">Processar Povoamentos</button>
+      <div class="table-empty-state d-none" data-state="empty">
+        <i class="bi bi-layout-text-sidebar"></i>
+        <p class="mb-0">Nenhuma linha adicionada. Use “Adicionar Linha” para começar.</p>
+      </div>
+    </div>
+    <div class="card-footer sticky-footer d-flex flex-wrap gap-3 align-items-center justify-content-between">
+      <div class="d-flex flex-wrap gap-4">
+        <div><span class="text-muted small">Total de linhas:</span> <strong data-total="linhas">0</strong></div>
+        <div><span class="text-muted small">Total de peixes:</span> <strong data-total="peixes">0</strong></div>
+        <div><span class="text-muted small">Peso vivo estimado:</span> <strong data-total="peso">0 kg</strong></div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" type="button" data-action="limpar-linhas">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Limpar
+        </button>
+        <button class="btn btn-success" type="button" data-action="processar">
+          <i class="bi bi-check2-circle me-1"></i>Processar Povoamentos
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="card shadow-sm mt-4">
+  <div class="card mt-4" data-card="historico">
     <div class="card-header">Lançamentos Pendentes / Histórico</div>
     <div class="card-body">
       <div class="row g-3 mb-3">
-        <div class="col-md-3">
-          <label>Data Inicial</label>
-          <input type="date" class="form-control form-control-sm" data-filter="data_inicial">
+        <div class="col-md-3 col-sm-6">
+          <label for="filtro-data-inicial" class="form-label">Data Inicial</label>
+          <input id="filtro-data-inicial" type="date" class="form-control form-control-sm" data-filter="data_inicial">
         </div>
-        <div class="col-md-3">
-          <label>Data Final</label>
-          <input type="date" class="form-control form-control-sm" data-filter="data_final">
+        <div class="col-md-3 col-sm-6">
+          <label for="filtro-data-final" class="form-label">Data Final</label>
+          <input id="filtro-data-final" type="date" class="form-control form-control-sm" data-filter="data_final">
         </div>
-        <div class="col-md-3">
-          <label>Status</label>
-          <select class="form-select form-select-sm" data-filter="status">
+        <div class="col-md-3 col-sm-6">
+          <label for="filtro-status" class="form-label">Status</label>
+          <select id="filtro-status" class="form-select form-select-sm" data-filter="status">
             <option value="">Todos</option>
             {% for value, label in tipos_evento %}
-            <option value="{{ value }}">{{ label }}</option>
+              <option value="{{ value }}">{{ label }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end">
-          <button class="btn btn-info w-100" data-action="buscar-historico">Buscar</button>
+        <div class="col-md-3 col-sm-6 d-flex align-items-end">
+          <button class="btn btn-info w-100" type="button" data-action="buscar-historico">
+            <i class="bi bi-search me-1"></i>Buscar
+          </button>
         </div>
       </div>
 
       <div class="table-responsive">
-        <table class="table table-sm">
+        <table class="table table-sm align-middle">
           <thead>
-            <tr><th>ID</th><th>Data</th><th>Lote</th><th>Tanque</th><th>Qtd. (peixes)</th><th>Peso Médio (g)</th><th>Status</th></tr>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Data</th>
+              <th scope="col">Lote</th>
+              <th scope="col">Tanque</th>
+              <th scope="col" class="text-end">Qtde</th>
+              <th scope="col" class="text-end">P.Médio(g)</th>
+              <th scope="col">Status</th>
+            </tr>
           </thead>
           <tbody data-container="historico-body"></tbody>
         </table>
@@ -111,14 +189,3 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-  // Define o contexto de dados específico da página no escopo da janela (window)
-  // para que o script global possa acessá-lo quando for inicializado.
-  window.DJANGO_CONTEXT = {
-    tanques: {{ tanques_json|safe }},
-    fases:   {% if fases   %}{{ fases|jsonify|safe   }}{% else %}[]{% endif %},
-    linhas:  {% if linhas  %}{{ linhas|jsonify|safe  }}{% else %}[]{% endif %}
-  };
-</script>
-{% endblock %}

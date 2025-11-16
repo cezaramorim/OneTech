@@ -5,7 +5,7 @@
         <h2 class="titulo-formulario">Novo Grupo</h2>
         <p class="text-muted dark:text-light">Crie um novo grupo e defina suas propriedades.</p>
       </div>
-      <form method="post" class="ajax-form card p-4 shadow-sm">
+      <form method="post" class="ajax-form card p-4 shadow-sm" data-response-type="json">
         {% csrf_token %}
         {{ form.as_p }}
         <div class="d-flex justify-content-between mt-4">

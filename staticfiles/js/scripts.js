@@ -1,41 +1,67 @@
-// 🌙 Aplica o tema salvo no localStorage (antes do paint)
+// ============================================================================
+// ARQUIVO scripts.js - ARQUITETURA AJAX REATORADA (COM BOTÕES DE AÇÃO)
+// ============================================================================
+
+// Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
-const isDarkInit = temaSalvo === "dark";
-if (isDarkInit) {
+if (temaSalvo === "dark") {
   document.documentElement.classList.add("dark");
 }
-
-// ✅ Objeto global para registrar inicializadores de página
-window.pageInitializers = {};
-
-// ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
-
-// ── Ajusta o navbar logo de cara ──
-const navbarInicial = document.querySelector(".navbar-superior");
-if (navbarInicial) {
-  navbarInicial.classList.add(isDarkInit ? "navbar-dark" : "navbar-light");
-}
 
 // --- Funções de Utilidade Global ---
 
 function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
+  const c = document.cookie.split(';').find(x => x.trim().startsWith('csrftoken='));
+  return c ? c.split('=')[1] : '';
+}
+
+function serializeFormToQuery(form) {
+  return new URLSearchParams(new FormData(form)).toString();
+}
+
+function debounce(fn, delay = 350) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+function notify(type, msg) {
+  if (window.mostrarMensagem) {
+    window.mostrarMensagem(type, msg);
+  } else {
+    console[type === 'danger' || type === 'error' ? 'error' : 'log'](msg);
+  }
+}
+
+const LOGIN_URL = document.body?.dataset?.loginUrl || '/accounts/login/';
+
+async function fetchWithCreds(url, options = {}, acceptHeader) {
+  const headers = { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) };
+  if (acceptHeader) headers['Accept'] = acceptHeader;
+  const opts = { credentials: 'same-origin', ...options, headers };
+  const method = (opts.method || 'GET').toUpperCase();
+  if (method !== 'GET' && !headers['X-CSRFToken']) {
+    headers['X-CSRFToken'] = getCSRFToken();
+  }
+  opts.headers = headers;
+  return fetch(url, opts);
+}
+
+function isLikelyLoginHTML(html) {
+  if (!html) return false;
+  const s = html.toLowerCase();
+  return s.includes('id="login-form"') || s.includes('data-page="login"');
 }
 
 function mostrarMensagem(type, message) {
+    if (!window.Swal) { console.error("SweetAlert2 não encontrada."); return; }
     let container = document.getElementById("toast-container");
-    // Se o container não existir, cria e anexa ao body. Abordagem robusta.
     if (!container) {
-        console.warn("Container de toast não encontrado. Criando um novo.");
         container = document.createElement('div');
         container.className = 'toast-container position-fixed top-0 end-0 p-3';
         container.id = 'toast-container';
-        container.style.zIndex = '1090'; // Garante que fique acima de outros elementos
+        container.style.zIndex = '1090';
         document.body.appendChild(container);
     }
-    
     const toastId = `toast-${Date.now()}`;
     const toastHTML = `
         <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -52,119 +78,58 @@ function mostrarMensagem(type, message) {
     toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
 }
 
-// --- Carregamento de Conteúdo AJAX ---
-
-function loadAjaxContent(url) {
-    console.log("🔁 loadAjaxContent: Iniciando carregamento para URL:", url);
-    const mainContent = document.getElementById("main-content");
-    if (!mainContent) {
-        console.error("❌ #main-content não encontrado. Recarregando a página.");
-        window.location.href = url;
-        return;
-    }
-
-    console.log("DEBUG: Enviando requisição AJAX com cabeçalho X-Requested-With: XMLHttpRequest");
-    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+function loadNavbar() {
+    fetchWithCreds('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(response => {
-            if (response.status === 401) {
-                return response.json().then(data => {
-                    window.location.href = data.redirect_url;
-                    throw new Error('Sessão expirada. Redirecionando para login.');
-                });
-            }
             if (!response.ok) {
-                throw new Error(`Erro de rede: ${response.statusText}`);
+                console.error(`❌ Falha ao buscar navbar. Status: ${response.status} ${response.statusText}`);
+                throw new Error('Falha ao buscar navbar');
             }
             return response.text();
         })
         .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const scriptTag = doc.querySelector('script[src]');
-            
-            // Injeta o HTML principal primeiro
-            mainContent.innerHTML = doc.body.innerHTML;
-
-            // Função para finalizar o processo
-            const finishLoading = () => {
-                const identificadorTela = mainContent.querySelector("#identificador-tela");
-                if (identificadorTela) {
-                    mainContent.dataset.page = identificadorTela.dataset.tela;
-                    mainContent.dataset.tela = identificadorTela.dataset.tela;
-                } else {
-                    mainContent.dataset.page = "";
-                    mainContent.dataset.tela = "";
-                    console.warn("⚠️ Identificador de tela (#identificador-tela) não encontrado no conteúdo AJAX. A vinculação de ações pode estar incorreta.");
-                }
-                
-                history.pushState({ ajaxUrl: url }, "", url);
-                document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
-                console.log("✅ Conteúdo e scripts (se houver) do #main-content atualizados.");
-            };
-
-            // Se um script for encontrado, carrega-o e depois finaliza.
-            // Caso contrário, apenas finaliza.
-            if (scriptTag && scriptTag.src) {
-                const newScript = document.createElement('script');
-                // Copia todos os atributos importantes
-                newScript.src = scriptTag.src;
-                if (scriptTag.defer) newScript.defer = true;
-                if (scriptTag.async) newScript.async = true;
-                
-                newScript.onload = finishLoading;
-                newScript.onerror = () => {
-                    console.error(`❌ Falha ao carregar o script dinâmico: ${scriptTag.src}`);
-                    finishLoading(); // Continua mesmo se o script falhar para não travar a navegação
-                };
-                document.body.appendChild(newScript); // Anexa ao body para garantir a execução
+            const navbarContainer = document.getElementById('navbar-container');
+            if (navbarContainer) {
+                navbarContainer.innerHTML = html;
             } else {
-                finishLoading();
+                // Silencioso em páginas que não têm o container, como a de login.
             }
         })
         .catch(error => {
-            if (error.message !== 'Sessão expirada. Redirecionando para login.') {
-                console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
-                mostrarMensagem("danger", "Erro ao carregar a página.");
-            }
+            console.error('Erro catastrófico ao carregar o navbar:', error);
+            notify('danger', 'Não foi possível carregar o menu de navegação.');
         });
 }
 
-// --- Lógica de Inicialização e Bind de Eventos ---
-
-// --- Funções de Ação de Tabela Genéricas ---
 function updateButtonStates(mainContent) {
-    if (!mainContent) {
-        return;
-    }
-
+    if (!mainContent) return;
     const identificadorTela = mainContent.querySelector("#identificador-tela");
-    if (!identificadorTela || !identificadorTela.dataset.seletorCheckbox) {
-        return;
-    }
+    if (!identificadorTela) return;
 
-    const itemCheckboxes = mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox);
+    const seletorFilho = identificadorTela?.dataset.seletorCheckbox;
+    if (!seletorFilho) return;
+
+    const itemCheckboxes = mainContent.querySelectorAll(seletorFilho);
     const btnEditar = mainContent.querySelector('#btn-editar');
     const btnExcluir = mainContent.querySelector('#btn-excluir');
-
     const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
     const hasSelection = selectedItems.length > 0;
     const hasSingleSelection = selectedItems.length === 1;
 
     if (btnEditar) {
-        btnEditar.disabled = !hasSingleSelection;
-        if (btnEditar.disabled) {
-            btnEditar.classList.add('disabled');
-        } else {
-            btnEditar.classList.remove('disabled');
-        }
+        let canEdit = hasSingleSelection;
+        let editId = null;
         if (hasSingleSelection) {
+            editId = selectedItems[0].value;
+        }
+
+        btnEditar.disabled = !canEdit;
+        btnEditar.classList.toggle('disabled', !canEdit);
+
+        if (canEdit && editId) {
             const editUrlBase = identificadorTela.dataset.urlEditar;
             if (editUrlBase) {
-                const itemId = selectedItems[0].value;
-                btnEditar.setAttribute('data-href', editUrlBase.replace('0', itemId));
-            } else {
-                 btnEditar.disabled = true;
-                 btnEditar.classList.add('disabled');
+                btnEditar.setAttribute('data-href', editUrlBase.replace('0', editId));
             }
         } else {
             btnEditar.removeAttribute('data-href');
@@ -173,207 +138,362 @@ function updateButtonStates(mainContent) {
 
     if (btnExcluir) {
         btnExcluir.disabled = !hasSelection;
-        if (btnExcluir.disabled) {
-            btnExcluir.classList.add('disabled');
-        } else {
-            btnExcluir.classList.remove('disabled');
-        }
+        btnExcluir.classList.toggle('disabled', !hasSelection);
     }
     
-    const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="selecionar-todas-"]');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.checked = itemCheckboxes.length > 0 && selectedItems.length === itemCheckboxes.length;
+    const seletorPai = identificadorTela.dataset.seletorPai;
+    const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
+    if (paiCheckbox) {
+        const total = itemCheckboxes.length;
+        const marcados = selectedItems.length;
+        if (marcados === 0) {
+            paiCheckbox.checked = false;
+            paiCheckbox.indeterminate = false;
+        } else if (marcados === total && total > 0) {
+            paiCheckbox.checked = true;
+            paiCheckbox.indeterminate = false;
+        } else {
+            paiCheckbox.checked = false;
+            paiCheckbox.indeterminate = true;
+        }
     }
 }
 
-function bindPageSpecificActions() {
-    const mainContent = document.getElementById("main-content");
-    const page = mainContent?.dataset.tela || "";
-    console.log(`🔎 Binding de ações para a página: ${page}`);
-    if (page && window.pageInitializers[page]) {
-        console.log(`🚀 Executando inicializador para a página '${page}'.`);
-        window.pageInitializers[page]();
-    }
+// --- Motor AJAX e Handlers de Resposta ---
+
+async function submitAjaxForm(form) {
+  let url = form.action || window.location.href;
+  const method = (form.getAttribute('method') || 'GET').toUpperCase();
+
+  const options = { method };
+  if (method === 'GET' || method === 'HEAD') {
+    const qs = serializeFormToQuery(form);
+    const base = url.split('#')[0];
+    url = qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
+  } else {
+    options.body = new FormData(form);
+    options.headers = { ...(options.headers || {}), 'X-CSRFToken': getCSRFToken() };
+  }
+
+  const declaredType = (form.dataset.responseType || '').toLowerCase();
+  const accept = declaredType === 'json'
+    ? 'application/json, text/plain, */*'
+    : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+
+  const res = await fetchWithCreds(url, options, accept);
+
+  if (res.redirected && /\/accounts\/login\//.test(res.url)) {
+    notify('error', 'Sessão expirada. Faça login novamente.');
+    window.location.href = res.url;
+    return null;
+  }
+
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const isJson = declaredType === 'json' || ct.includes('application/json');
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${errText.slice(0, 300)}`);
+  }
+
+  return isJson ? res.json() : res.text();
 }
 
+function handleJsonFormResponse(form, data) {
+  if (data.redirect_url) {
+    window.location.assign(data.redirect_url);
+    return;
+  }
+  if (data.html && form.dataset.targetContainer) {
+    const container = document.querySelector(form.dataset.targetContainer);
+    if (container) {
+      container.innerHTML = data.html;
+      document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
+        detail: { screen: container.dataset.tela || container.dataset.page || '' }
+      }));
+    }
+  }
+  if (data.message) notify(data.success ? 'success' : 'error', data.message);
+  if (data.reload) window.location.reload();
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-    const themeToggle = document.getElementById("theme-toggle");
-    if (themeToggle) {
-        themeToggle.addEventListener("click", () => {
-            const isDark = document.documentElement.classList.toggle("dark");
-            localStorage.setItem("tema", isDark ? "dark" : "light");
-        });
+function handleHtmlFormResponse(form, html) {
+  const targetSel = form.dataset.targetContainer || '#main-content';
+  const container = document.querySelector(targetSel);
+  if (container) {
+    container.innerHTML = html;
+    document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
+      detail: { screen: container.dataset.tela || container.dataset.page || '' }
+    }));
+  } else {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.location.assign(url);
+  }
+}
+
+function loadAjaxContent(url) {
+  const mainContent = document.getElementById("main-content");
+  if (!mainContent) {
+    window.location.href = url;
+    return;
+  }
+
+  fetchWithCreds(url, {}, 'text/html')
+    .then(async (response) => {
+      if (response.redirected && /\/accounts\/login\//.test(response.url)) {
+        notify('error', 'Sessão expirada. Faça login novamente.');
+        window.location.href = response.url;
+        return null;
+      }
+      const html = await response.text();
+      if (isLikelyLoginHTML(html)) {
+        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
+        return null;
+      }
+      return html;
+    })
+    .then((html) => {
+      if (html == null) return;
+      mainContent.innerHTML = html;
+      history.pushState({ ajaxUrl: url }, "", url);
+      document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
+    })
+    .catch(error => {
+      console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
+      notify("danger", "Erro ao carregar a página.");
+    });
+}
+
+// --- Listeners Globais ---
+
+document.body.addEventListener('submit', async (e) => {
+  const form = e.target.closest('form.ajax-form');
+  if (!form || form.dataset.skipGlobal === '1') return;
+
+  e.preventDefault();
+
+  try {
+    const result = await submitAjaxForm(form);
+    if (result == null) return;
+
+    const declaredType = (form.dataset.responseType || '').toLowerCase();
+    const isJson = declaredType === 'json' || (typeof result === 'object' && result !== null && !result.nodeType);
+
+    if (isJson) {
+      handleJsonFormResponse(form, result);
+    } else {
+      handleHtmlFormResponse(form, result);
     }
 
-    document.body.addEventListener("click", async e => {
-        console.log("DEBUG: Evento de clique disparado.");
-        const btnEditar = e.target.closest('#btn-editar');
-        const btnExcluir = e.target.closest('#btn-excluir');
-        const mainContent = document.getElementById("main-content");
-        const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
-        const ajaxLink = e.target.closest(".ajax-link");
-        console.log("DEBUG: ajaxLink encontrado:", ajaxLink);
-
-        // CONDIÇÃO ADICIONADA: Ignora links que são componentes do Bootstrap (como dropdowns)
-        if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
-            console.log("DEBUG: ajaxLink.href:", ajaxLink.href);
-            e.preventDefault();
-            loadAjaxContent(ajaxLink.href);
-        } else if (btnEditar && !btnEditar.disabled) {
-            e.preventDefault();
-            const href = btnEditar.getAttribute('data-href');
-            if(href) loadAjaxContent(href);
-        } else if (btnExcluir && !btnExcluir.disabled) {
-            e.preventDefault();
-            if (!identificadorTela) return;
-
-            const selectedItems = Array.from(mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox)).filter(cb => cb.checked);
-            if (selectedItems.length === 0) return;
-
-            const entidadeSingular = identificadorTela.dataset.entidadeSingular || 'item';
-            const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
-
-            const result = await Swal.fire({
-                title: 'Tem certeza?',
-                text: `Você realmente deseja excluir ${selectedItems.length} ${selectedItems.length > 1 ? entidadePlural : entidadeSingular} selecionado(s)?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sim, excluir!',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (result.isConfirmed) {
-                const ids = selectedItems.map(cb => cb.value);
-                const url = identificadorTela.dataset.urlExcluir;
-                
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ ids: ids })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.sucesso) {
-                        mostrarMensagem('success', data.mensagem);
-                        loadAjaxContent(window.location.pathname); // Recarrega a lista
-                    } else {
-                        mostrarMensagem('danger', data.mensagem || 'Erro desconhecido.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro na exclusão:', error);
-                    mostrarMensagem('danger', 'Erro de comunicação ao tentar excluir.');
-                });
-            }
-        }
-    });
-
-    // ←– Início do bloco a ser colado
-    document.body.addEventListener("submit", e => {
-        const form = e.target.closest(".ajax-form");
-        if (!form) return;
-        e.preventDefault();
-
-        const apiUrl = form.getAttribute("data-api-url") || form.action;
-        const method = form.method;
-        const formData = new FormData(form);
-        const headers = {
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": getCSRFToken()
-        };
-
-        fetch(apiUrl, { method, headers, body: formData })
-            .then(response => {
-                // ✅ Se a resposta for 401 (Não Autorizado), o middleware retornou JSON
-                if (response.status === 401) {
-                    return response.json().then(data => {
-                        // Força o redirecionamento para a página de login
-                        window.location.href = data.redirect_url;
-                        // Lança um erro para interromper a cadeia de promessas
-                        throw new Error('Sessão expirada. Redirecionando para login.');
-                    });
-                }
-                // Se não for 401, continua o fluxo normal
-                return response.json();
-            })
-            .then(data => {
-                console.log("✅ Resposta JSON recebida:", data);
-                if (data.success) {
-                    document.dispatchEvent(new CustomEvent("ajaxFormSuccess", { detail: { form, responseJson: data } }));
-                }
-                if (data.redirect_url) {
-                    // Se a URL de redirecionamento for a mesma da página atual, recarrega a página
-                    if (window.location.href === data.redirect_url) {
-                        window.location.reload();
-                    } else {
-                        window.location.href = data.redirect_url;
-                    }
-                } else if (data.message || data.mensagem) {
-                    const messageText = data.message || data.mensagem;
-                    const messageType = data.success ? "success" : "danger";
-                    mostrarMensagem(messageType, messageText);
-                }
-            })
-            .catch(error => {
-                // Evita mostrar a mensagem de erro de "Sessão expirada" para o usuário final
-                if (error.message !== 'Sessão expirada. Redirecionando para login.') {
-                    console.error("❌ Erro na submissão do formulário AJAX:", error);
-                    mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
-                }
-            });
-    });
-    // ←– Fim do bloco a ser colado
-
-
-    window.addEventListener("popstate", e => {
-        if (e.state && e.state.ajaxUrl) {
-            loadAjaxContent(e.state.ajaxUrl);
-        }
-    });
-
-    document.body.addEventListener("change", e => {
-        const mainContent = document.getElementById("main-content");
-        const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela") : null;
-        // Check if the change event is from a checkbox within a table that has data-seletor-checkbox
-        if (e.target.type === 'checkbox' && identificadorTela && identificadorTela.dataset.seletorCheckbox) {
-            const itemCheckbox = e.target.closest(identificadorTela.dataset.seletorCheckbox);
-            const selectAllCheckbox = e.target.id.startsWith('select-all-');
-
-            if (itemCheckbox || selectAllCheckbox) {
-                updateButtonStates(mainContent);
-            }
-        }
-    });
-
-    document.addEventListener("ajaxContentLoaded", () => {
-        bindPageSpecificActions();
-        const mainContent = document.getElementById("main-content");
-        if (mainContent) {
-            updateButtonStates(mainContent);
-        }
-        adjustMainContentPadding(); // Ajusta o padding após o carregamento AJAX
-    });
-
-    bindPageSpecificActions(); // Para a carga inicial da página
-    const mainContent = document.getElementById("main-content");
-    if (mainContent) {
-        updateButtonStates(mainContent);
+    if ((form.getAttribute('method') || 'GET').toUpperCase() === 'GET' && form.dataset.pushState !== 'false') {
+      const qs = serializeFormToQuery(form);
+      const base = (form.action || window.location.pathname).split('#')[0];
+      const nextUrl = qs ? `${base}?${qs}` : base;
+      history.pushState({}, '', nextUrl);
     }
-    adjustMainContentPadding(); // Ajusta o padding na carga inicial
+  } catch (err) {
+    console.error('❌ Erro na submissão do formulário AJAX:', err);
+    notify('error', 'Falha ao processar a requisição.');
+  }
 });
 
-function adjustMainContentPadding() {
-    const navbarSuperior = document.querySelector('.navbar-superior');
-    const mainContent = document.getElementById('main-content');
-    if (navbarSuperior && mainContent) {
-        const navbarHeight = navbarSuperior.offsetHeight;
-        mainContent.style.paddingTop = `${navbarHeight}px`;
+document.body.addEventListener('click', async (e) => {
+  // Handler para paginação/ordenação
+  const ajaxTargetLink = e.target.closest('a[data-ajax-target]');
+  if (ajaxTargetLink) {
+    e.preventDefault();
+    const targetSel = ajaxTargetLink.dataset.ajaxTarget;
+    const container = document.querySelector(targetSel);
+    if (!container) return;
+
+    try {
+      const res = await fetchWithCreds(ajaxTargetLink.href, { method: 'GET' }, 'text/html');
+      if (res.redirected && /\/accounts\/login\//.test(res.url)) {
+        window.location = res.url; return;
+      }
+      const html = await res.text();
+      container.innerHTML = html;
+      document.dispatchEvent(new CustomEvent('ajaxContentLoaded', { detail: { screen: container.dataset.tela || '' }}));
+      history.pushState({}, '', ajaxTargetLink.href);
+    } catch (err) {
+      console.error('❌ AJAX link error:', err);
+      notify('error', 'Falha ao carregar a página.');
     }
+    return;
+  }
+
+  // Handler para links AJAX genéricos
+  const ajaxLink = e.target.closest(".ajax-link");
+  if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
+      e.preventDefault();
+      loadAjaxContent(ajaxLink.href);
+      return;
+  }
+  
+  // Handler para o botão Editar genérico
+  const btnEditar = e.target.closest('#btn-editar');
+  if (btnEditar && !btnEditar.disabled) {
+      e.preventDefault();
+      const href = btnEditar.getAttribute('data-href');
+      if (href) {
+          loadAjaxContent(href);
+      }
+      return;
+  }
+
+  // Adicionar outros handlers de clique aqui (ex: #btn-excluir)
+});
+
+document.body.addEventListener('change', function(e) {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent || !e.target.matches('input[type="checkbox"]')) return;
+
+    const identificadorTela = mainContent.querySelector("#identificador-tela");
+    if (!identificadorTela) return;
+
+    const seletorPai = identificadorTela.dataset.seletorPai;
+    const seletorFilho = identificadorTela.dataset.seletorCheckbox;
+
+    if (!seletorFilho) return;
+
+    const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
+    const filhosCheckboxes = mainContent.querySelectorAll(seletorFilho);
+
+    let isCheckboxRelevante = false;
+    if ((paiCheckbox && e.target === paiCheckbox) || (filhosCheckboxes && Array.from(filhosCheckboxes).includes(e.target))) {
+        isCheckboxRelevante = true;
+    }
+    
+    if (isCheckboxRelevante) {
+        updateButtonStates(mainContent);
+    }
+});
+
+window.addEventListener('popstate', async () => {
+  const activeWrapper = document.querySelector('[data-ajax-root="true"]'); 
+  if (!activeWrapper) {
+      if (location.href !== window.lastAjaxUrl) {
+          window.location.reload();
+      }
+      return;
+  }
+
+  const url = window.location.href;
+  try {
+    const res = await fetchWithCreds(url, { method: 'GET' }, 'text/html');
+    const html = await res.text();
+    activeWrapper.innerHTML = html;
+    document.dispatchEvent(new CustomEvent('ajaxContentLoaded', { detail: { screen: activeWrapper.dataset.tela || '' }}));
+  } catch (_) {}
+});
+
+
+// --- Módulos de Página Específicos ---
+
+function initListaEmpresas() {
+  const form = document.getElementById('filtro-empresas-avancadas');
+  if (!form || form.dataset.debounced === 'true') return;
+  form.dataset.debounced = 'true';
+
+  const handler = debounce(() => {
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }, 400);
+
+  form.addEventListener('input', (e) => {
+    if (e.target.matches('input, select, textarea')) handler();
+  });
 }
+
+// --- Inicialização ---
+
+function runInitializers() {
+    // Lógica global que roda em todas as cargas de página/ajax
+    if (document.getElementById('navbar-container')) {
+        loadNavbar();
+    }
+    const mainContent = document.getElementById("main-content");
+    if (mainContent && typeof updateButtonStates === 'function') {
+        updateButtonStates(mainContent);
+    }
+
+    // Módulos específicos de página
+    const initializers = [
+        initListaEmpresas,
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarCurvas) {
+                const root = document.querySelector(OneTech.GerenciarCurvas.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarCurvas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarTanques) {
+                const root = document.querySelector(OneTech.GerenciarTanques.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarTanques.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarEventos) {
+                const root = document.querySelector(OneTech.GerenciarEventos.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarEventos.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.ArracoamentoDiario) {
+                const root = document.querySelector(OneTech.ArracoamentoDiario.SELECTOR_ROOT);
+                if (root) OneTech.ArracoamentoDiario.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.NotaFiscalEntradas) {
+                const root = document.querySelector(OneTech.NotaFiscalEntradas.SELECTOR_ROOT);
+                if (root) OneTech.NotaFiscalEntradas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.NotasEntradas) {
+                const root = document.querySelector(OneTech.NotasEntradas.SELECTOR_ROOT);
+                if (root) OneTech.NotasEntradas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.PovoamentoLotes) {
+                const root = document.querySelector(OneTech.PovoamentoLotes.SELECTOR_ROOT);
+                if (root) OneTech.PovoamentoLotes.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.EmpresaForm) {
+                const root = document.querySelector(OneTech.EmpresaForm.SELECTOR_ROOT);
+                if (root) OneTech.EmpresaForm.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.Permissions) {
+                const root = document.querySelector(OneTech.Permissions.SELECTOR_ROOT);
+                if (root) OneTech.Permissions.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.LancarNotaManual) {
+                const root = document.querySelector(OneTech.LancarNotaManual.SELECTOR_ROOT);
+                if (root) OneTech.LancarNotaManual.init(root);
+            }
+        }
+    ];
+    initializers.forEach(init => {
+        if (typeof init === 'function') {
+            init();
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOM completamente carregado. Iniciando scripts.");
+    runInitializers();
+});
+
+document.addEventListener("ajaxContentLoaded", (event) => {
+    console.log("✅ Conteúdo AJAX carregado. Re-inicializando scripts.");
+    runInitializers();
+});

@@ -4,7 +4,7 @@
 
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" action="" class="ajax-form">
+                <form method="post" action="" class="ajax-form" data-response-type="json">
                     {% csrf_token %}
                     {{ form.as_p }}
                     <button type="submit" class="btn btn-success">Salvar</button>

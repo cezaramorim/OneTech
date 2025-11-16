@@ -18,7 +18,8 @@
     <!-- Formulário de confirmação -->
     <form method="post"
           class="ajax-form d-flex flex-column gap-3"
-          data-url="{% url 'accounts:excluir_grupo' grupo.id %}">
+          data-url="{% url 'accounts:excluir_grupo' grupo.id %}"
+          data-response-type="json">
       {% csrf_token %}
 
       <div class="d-flex gap-2">

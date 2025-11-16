@@ -24,7 +24,7 @@
       <div class="card shadow-sm rounded-4">
         <div class="card-body">
           <!-- ✅ Formulário AJAX -->
-          <form id="form-editar-produto" method="post" class="ajax-form">
+          <form id="form-editar-produto" method="post" class="ajax-form" data-response-type="json">
             {% csrf_token %}
 
             <div class="row g-3">

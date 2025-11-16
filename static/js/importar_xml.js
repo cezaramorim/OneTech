@@ -231,14 +231,18 @@ function initImportarXml() {
 
     console.log("DEBUG: initImportarXml - Adicionando listener de submit pela primeira vez.");
     form.dataset.initialized = 'true'; // Marca o formulário como inicializado.
+    form.dataset.skipGlobal = '1'; // Evita o handler genérico global
     form.addEventListener('submit', handleFormSubmit);
-    
+
     const categoriasDataEl = document.getElementById('categorias-data');
-    if (categoriasDataEl) {
+    const telaRoot = document.querySelector('#identificador-tela[data-tela="importar_xml"]');
+    const categoriasJson = categoriasDataEl?.textContent || telaRoot?.dataset?.categoriasJson || '';
+    if (categoriasJson) {
         try {
-            todasCategorias = JSON.parse(categoriasDataEl.textContent);
+            todasCategorias = JSON.parse(categoriasJson);
         } catch (e) {
-            console.error("Erro ao parsear categorias JSON:", e);
+            console.error('Erro ao parsear categorias JSON:', e);
+            todasCategorias = [];
         }
     }
 }

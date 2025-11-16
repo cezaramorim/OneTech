@@ -42,7 +42,7 @@
             {% endif %}
 
             <!-- 🔐 Formulário de Login com AJAX -->
-            <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}" novalidate>
+            <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}" data-response-type="json" novalidate>
 
                 {% csrf_token %}
 

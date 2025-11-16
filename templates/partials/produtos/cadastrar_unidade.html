@@ -4,7 +4,7 @@
 <div class="container-fluid" data-page="cadastrar-unidade">
   <h2 class="mb-4">Cadastrar Unidade de Medida</h2>
 
-  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_unidade' %}" autocomplete="off">
+  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_unidade' %}" data-response-type="json" autocomplete="off">
     {% csrf_token %}
 
     <div class="row g-3">

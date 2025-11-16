@@ -14,6 +14,7 @@
   <form method="POST"
         class="ajax-form needs-validation"
         data-url="{% url 'accounts:signup' %}"
+        data-response-type="json"
         novalidate>
     {% csrf_token %}
 

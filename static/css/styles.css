@@ -2,7 +2,7 @@ html:not(.theme-ready) body {
   visibility: hidden;
 }
 
-/* ===========================
+/* ============================
    RESET E CONFIGURAÇÃO BASE
 =============================== */
 * {
@@ -31,7 +31,14 @@ html, body {
   overflow-x: hidden;
 }
 
-/* ===========================
+.layout {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+/* ============================
    LINKS
 =============================== */
 a {
@@ -43,7 +50,91 @@ a:hover {
   text-decoration: none;
 }
 
-/* ===========================
+
+.sidebar ul,
+.sidebar li {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 5px;
+}
+
+
+/* ============================
+   SIDEBAR
+=============================== */
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;              /* 🚫 impede que a sidebar encolha */
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+html.dark .sidebar,
+body.dark .sidebar {
+  background-color: #2b2f3a;
+  border-color: #444;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+/* ============================
+   MENU
+=============================== */
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+  margin-top: 15px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.toggle-icon {
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.menu-list {
+  list-style: none;
+  padding-left: 15px;
+  margin-top: 10px;
+  display: none;
+}
+
+.menu-list.show {
+  display: block;
+}
+
+.menu-list li {
+  margin: 8px 0;
+}
+
+.menu-list li a {
+  color: #333;
+  display: block;
+}
+
+html.dark .menu-list li a,
+body.dark .menu-list li a {
+  color: #ddd;
+}
+
+html.dark .menu-list li a:hover,
+body.dark .menu-list li a:hover {
+  color: #66b2ff;
+}
+
+/* ============================
    CONTEÚDO PRINCIPAL
 =============================== */
 .content {
@@ -64,7 +155,7 @@ h1, h2, h3 {
   color: inherit;
 }
 
-/* ===========================
+/* ============================
    FORMULÁRIOS E CAMPOS
 =============================== */
 form {
@@ -96,7 +187,7 @@ body.dark form {
 
 input, select, textarea {
   width: 100%;
-  padding: 8px; /* Alterado de 10px para 8px */
+  padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-family: inherit;
@@ -126,7 +217,7 @@ body.dark textarea:focus {
   box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
 }
 
-/* ===========================
+/* ============================
    BOTÕES (PADRÃO)
 =============================== */
 .btn,
@@ -192,7 +283,7 @@ body.dark .btn-outline:hover {
   color: #fff;
 }
 
-/* ===========================
+/* ============================
    ALERTAS
 =============================== */
 #alert-container {
@@ -237,9 +328,11 @@ body.dark {
   color: #f2f2f2;
 }
 
-/* Navegação */
+/* Navegação e sidebar */
 html.dark nav,
-body.dark nav {
+body.dark nav,
+html.dark .sidebar,
+body.dark .sidebar {
   background-color: #2b2f3a;
   color: #f2f2f2;
   border-color: #444;
@@ -287,7 +380,7 @@ html.dark .accordion-button:focus {
   box-shadow: none;
 }
 
-/* Menu lateral (regras remanescentes, se houver) */
+/* Menu lateral */
 html.dark .list-group-item {
   background-color: transparent;
   color: #ccc;
@@ -333,10 +426,7 @@ body.dark textarea {
 
 html.dark input:focus,
 html.dark select:focus,
-html.dark textarea:focus,
-body.dark input:focus,
-body.dark select:focus,
-body.dark textarea:focus {
+html.dark textarea:focus {
   border-color: #66b2ff;
   outline: none;
   box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
@@ -487,7 +577,7 @@ html.dark .form-check-label {
   background-color: #f8f9fa; /* cor neutra no tema claro */
 }
 
-/* ===========================
+/* ============================
    FUNDO COM IMAGEM TRANSPARENTE
 =============================== */
 
@@ -495,7 +585,6 @@ body {
   position: relative;
   z-index: 0;
   background: none; /* Remove conflitos visuais */
-  /* padding-top: 60px; */ /* Ajuste conforme a altura do seu navbar */
 }
 
 /* Logo no topo esquerdo */
@@ -516,9 +605,171 @@ body {
   padding: 2rem;
 }
 
+/* 🎯 Botões de submenus em "Configurações" */
+#submenu-configuracoes button[data-bs-toggle="collapse"] {
+  background-color: transparent !important;
+  color: inherit !important;
+  border: none;
+  padding: 0;
+  font-weight: 200;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+#submenu-configuracoes button[data-bs-toggle="collapse"]:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ❌ Remove bolinhas dos submenus */
+#submenu-configuracoes ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+/* ✅ Itens dos submenus */
+#submenu-configuracoes .list-group-item {
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0.25rem 0.75rem;
+  margin: 0;
+  font-weight: normal;  /* 🔧 Aqui está o ajuste principal */
+  font-size: 0.925rem;
+  color: inherit;
+  border-radius: 0.3rem;
+  transition: background-color 0.2s ease;
+}
+
+/* ☀️ Hover no tema claro */
+#submenu-configuracoes .list-group-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 🌙 Estilo no tema escuro */
+html.dark #submenu-configuracoes .list-group-item {
+  color: #f0f0f0;
+  background-color: rgba(255, 255, 255, 0.015);
+}
+
+html.dark #submenu-configuracoes .list-group-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sair-link {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: normal;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-sair-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .btn-sair-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ✅ Estilo para o botão "Sair" do menu */
+
+
+.logout-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .logout-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Estilo para .card-body no tema escuro */
+html.dark body {
+  background-color: #1e1f26;
+  color: #f0f0f0;
+}
+
+html.dark .card,
+html.dark .card-body,
+html.dark .form-control,
+html.dark .form-select {
+  background-color: #2a2b33;
+  color: #fff;
+  border-color: #444;
+}
+
+/* ============================
+   CORREÇÃO TEMA ESCURO FUNDO
+=============================== */
+html.dark .card-body .mb-4,
+html.dark .bg-white,
+html.dark .card,
+html.dark .form,
+html.dark .container,
+html.dark .card-body,
+html.dark .form-control,
+html.dark .form-select {
+  background-color: #2a2b33 !important;
+  color: #f0f0f0 !important;
+  border-color: #444 !important;
+}
+
+html.dark .card-header.bg-light,
+body.dark .card-header.bg-light {
+  background-color: #2a2b33 !important;
+  color: #f0f0f0 !important;
+  border-bottom: 1px solid #444 !important;
+}
 
 
 
+.logout-link {
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.3rem 0;
+  color: #212529; /* Cor para tema claro */
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+
+html.dark .logout-link {
+  color: #f2f2f2; /* Tema escuro */
+}
+
+.logout-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .logout-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+
+
+/* ✅ Remove completamente o contorno do botão da lua */
+#theme-toggle {
+  outline: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+#theme-toggle:focus {
+  outline: none;
+  box-shadow: none;
+}
 
 .welcome-bar {
   padding: 12px 16px;
@@ -555,12 +806,12 @@ body[data-tela="login"]::before {
   filter: blur(1px);
 }
 
-/* ===========================
+/* ============================
    MAIN CONTENT ESTABILIZADO
 =============================== */
 #main-content {
   flex-grow: 1;
-  padding: 0;
+  padding: 20px;
   position: relative;
   background-color: transparent !important;
   box-shadow: none !important;
@@ -654,11 +905,33 @@ html.dark .nav-tabs .nav-link.active {
 
 /* 🧩 Dropdown com largura flexível (herda do campo) */
 .select2-container--bootstrap-5 .select2-dropdown {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;   /* zera o min-width herdado */
+  width: auto;
   box-sizing: border-box;
 }
+
+/* Select2 (Bootstrap-5) – Dark dropdown + opções */
+html.dark .select2-container--bootstrap-5 .select2-dropdown {
+  background-color: #1e1f26 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+
+html.dark .select2-container--bootstrap-5 .select2-results__option--highlighted {
+  background-color: #2a2a2a !important;
+  color: #fff !important;
+}
+
+html.dark .select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
+  background-color: #111827 !important;
+  color: #fff !important;
+}
+
+html.dark .select2-container--bootstrap-5 .select2-search__field {
+  background-color: #2c2c2c !important;
+  color: #f2f2f2 !important;
+  border-color: #555 !important;
+}
+
 
 /* 🔹 Campo padrão */
 .select2-container--bootstrap-5 .select2-selection {
@@ -693,33 +966,6 @@ html.dark .nav-tabs .nav-link.active {
 html.dark .select2-container--bootstrap-5 .select2-selection {
   background-color: #1e1f26;
   color: #f2f2f2;
-  border-color: #444;
-}
-
-/* Correção para o texto renderizado do Select2 no tema escuro */
-html.dark .select2-container--bootstrap-5 .select2-selection__rendered {
-  background-color: inherit; /* Herda do pai para garantir consistência */
-  color: #f2f2f2; /* Garante a cor do texto clara */
-}
-
-/* Correção para o placeholder do Select2 no tema escuro */
-html.dark .select2-container--bootstrap-5 .select2-selection__placeholder {
-  color: #aaa; /* Cor mais clara para o placeholder */
-}
-
-/* Correção para os resultados do Select2 no tema escuro */
-html.dark .select2-container--bootstrap-5 .select2-results__option {
-  background-color: #2b2f3a; /* Fundo escuro para as opções */
-  color: #f2f2f2; /* Texto claro para as opções */
-}
-
-html.dark .select2-container--bootstrap-5 .select2-results__option--highlighted {
-  background-color: #007bff; /* Cor de destaque para a opção selecionada */
-  color: #fff;
-}
-
-html.dark .select2-container--bootstrap-5 .select2-dropdown {
-  background-color: #2b2f3a; /* Fundo escuro para o dropdown */
   border-color: #444;
 }
 
@@ -846,7 +1092,17 @@ html.dark #resultado-xml h5 {
   color: #66b2ff;
 }
 
-
+/* ============================
+   LAYOUT FLEX PRINCIPAL
+=============================== */
+.layout.d-flex {
+  display: flex;
+  flex-direction: row;         /* layout horizontal */
+  min-height: 100vh;           /* altura total da tela */
+  align-items: stretch;
+  width: 100%;                 /* garante largura total */
+  overflow-x: hidden;          /* impede deslocamento lateral */
+}
 
 /* 🟢 Mensagens instantâneas flutuantes no topo direito */
 #mensagens {
@@ -893,9 +1149,9 @@ html.dark #resultado-xml h5 {
 /* 🟩 Sucesso */
 #mensagens .alert-success {
   background-image: url('/static/icons/img_sucesso.png');
-  background-color: #00C31F;
-  color: #fff;
-  border-color: #009a18;
+  background-color: #bce5cc;
+  color: #1e4634;
+  border-color: #97d5b4;
 }
 
 /* ⚠️ Warning/Info */
@@ -947,28 +1203,6 @@ input.form-control:focus {
 }
 
 /* ============================
-   ESTILO PARA MODAIS GENÉRICOS NO TEMA ESCURO
-=============================== */
-html.dark .modal-content {
-  background-color: #2b2f3a; /* Mesmo fundo dos cards */
-  color: #f2f2f2;
-  border-color: #444;
-}
-
-html.dark .modal-header {
-  border-bottom-color: #444;
-}
-
-html.dark .modal-footer {
-  border-top-color: #444;
-}
-
-/* Ajusta a cor do botão de fechar (X) no header do modal */
-html.dark .modal-header .btn-close {
-  filter: invert(1) grayscale(100%) brightness(200%);
-}
-
-/* ============================
    AJUSTES ESPECÍFICOS PARA MODAIS DE SELEÇÃO DE EMPRESA (Solução Final)
 =============================== */
 
@@ -985,7 +1219,7 @@ html.dark .modal-selecao-empresa .modal-header {
   border-bottom-color: #444;
 }
 
-html.dark .modal-selecao-empresa .modal-selecao-empresa .modal-body {
+html.dark .modal-selecao-empresa .modal-body {
   background-color: #2a2b33; /* Fundo do corpo do modal */
   color: #f0f0f0;
 }
@@ -1031,10 +1265,8 @@ html.dark .modal-selecao-empresa .table {
 html.dark .modal-selecao-empresa .table thead th {
   background-color: #1f212c;
   color: #ffffff;
-  font-weight: bold;
 }
 
-/* 🔳 Linhas alternadas (se quiser) */
 html.dark .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) {
   background-color: #2e303d;
 }
@@ -1144,37 +1376,121 @@ html.dark .modal-body .col {
   background-color: inherit; /* Garante que herdem o fundo do modal-body no tema escuro */
 }
 
-.select2-wrapper { position: relative; width: 100%; }
-.select2-container--bootstrap-5 .select2-dropdown { width: 100% !important; max-width: 100% !important; }
-.table.table-sm { table-layout: fixed; }
-.table.table-sm td, .table.table-sm th { text-overflow: ellipsis; }
-
-.select2-container--open.select2-container--above .select2-dropdown{
-  bottom: auto !important;
-  top: 100% !important;
-  margin-top: -1px;
+.select2-container--open {
+  z-index: 1075;
 }
 
-.form-control-custom-sm {
-  height: calc(1.8125rem + 2px) !important;
-  padding: 0.25rem 0.5rem !important;
-  font-size: 0.875rem !important;
+.select2-dropdown {
+  overflow: hidden;
+  border-radius: 0.5rem;
 }
 
-input.form-control-sm,
-select.form-control-sm,
-textarea.form-control-sm {
-  height: calc(1.8125rem + 2px) !important;
-  padding: 0.25rem 0.5rem !important;
-  font-size: 0.875rem !important;
+.select2-search--dropdown {
+  display: block;
+  padding: 0.5rem 0.5rem 0;
 }
 
-/* Offset global p/ navbar fixo (sobrescreve o padding:0 anterior) */
-#main-content { 
-  padding-top: 72px !important;  /* ajuste se seu navbar tiver outra altura */
+.select2-search--dropdown .select2-search__field {
+  display: block;
+  width: 100% !important;
+  box-sizing: border-box;
+  height: 36px;
+  line-height: 36px;
+  margin: 0;
 }
 
-/* Evita o primeiro card encostar no topo */
-#main-content > *:first-child { 
-  margin-top: 0 !important;
+.table-responsive .select2-container {
+  position: static;
 }
+
+.select2-dropdown-povoamento {
+  min-width: 14rem;
+  max-width: min(32rem, 90vw);
+}
+
+/* ============================
+   TOOLTIP DE INFORMAÇÃO
+=============================== */
+.info-tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.info-tooltip .info-tooltip__content {
+  visibility: hidden;
+  width: 240px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -120px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.info-tooltip:hover .info-tooltip__content {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ===================================
+   GLOBAL ROBUST SELECT2 CONFIGURATION
+====================================== */
+
+/* A. Base styling for the custom dropdown panel */
+.select2-dropdown-custom {
+  border-radius: 0.5rem;
+  border: 1px solid #ced4da;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Ensures child elements respect the border-radius */
+}
+
+/* B. Dark Theme for the dropdown panel */
+.select2-dropdown-dark {
+  background-color: #2a2b33;
+  border-color: #444;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
+}
+
+/* C. Dark Theme for the options inside the panel */
+.select2-dropdown-dark .select2-results__option {
+  color: #f0f0f0;
+}
+
+/* D. Dark Theme for the highlighted/selected option */
+.select2-dropdown-dark .select2-results__option--highlighted[aria-selected],
+.select2-dropdown-dark .select2-results__option[aria-selected=true] {
+  background-color: #3c4049;
+  color: #fff;
+}
+
+/* E. Dark Theme for the search box inside the dropdown */
+.select2-dropdown-dark .select2-search__field {
+  background-color: #444;
+  border-color: #666;
+  color: #eee;
+}
+
+/* Garante que o container do Select2 ocupe a largura do input */
+.select2-container { width: 100% !important; }
+
+/* Em áreas com .table-responsive, evite recorte/posicionamento estranho */
+.table-responsive .select2-container { position: static; }
+
+/* Força o dropdown do Select2 a aparecer sobre todos os outros elementos */
+.select2-container--open {
+  z-index: 9999 !important;
+}
+
+/* Força o dropdown do Select2 a aparecer sobre todos os outros elementos */
+.select2-container--open {
+  z-index: 9999 !important;
+}
+
+

@@ -9,7 +9,7 @@
         <h2 class="mb-4 text-center">Importar Curva de Crescimento</h2>
         <p class="text-center text-muted mb-4">Utilize este formulário para importar dados de curvas de crescimento a partir de um arquivo Excel.</p>
 
-        <form method="post" enctype="multipart/form-data" class="ajax-form" action="{% url 'producao:importar_curva' %}">
+        <form method="post" enctype="multipart/form-data" class="ajax-form" action="{% url 'producao:importar_curva' %}" data-response-type="json">
           {% csrf_token %}
 
           <div class="mb-3">

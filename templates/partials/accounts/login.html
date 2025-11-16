@@ -20,7 +20,7 @@
       {% endif %}
 
       <!-- 🧾 Formulário -->
-      <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}">
+      <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}" data-response-type="json">
         {% csrf_token %}
 
         <div class="mb-3">

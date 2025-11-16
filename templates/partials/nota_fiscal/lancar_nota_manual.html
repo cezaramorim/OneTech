@@ -8,7 +8,7 @@
     <div class="card-body">
       <h2 class="mb-4 text-center">Lançar Nota Fiscal Manualmente</h2>
 
-      <form id="form-lancar-nota" class="ajax-form">
+      <form id="form-lancar-nota" class="ajax-form" data-skip-global="1">
         {% csrf_token %}
 
         <!-- Dados da Nota Fiscal (Cabeçalho) -->
@@ -212,4 +212,4 @@
   {{ empresas_disponiveis_json|default:'[]'|safe }}
 </script>
 
-<script defer src="{% static 'js/lancar_nota_manual.js' %}"></script>
+

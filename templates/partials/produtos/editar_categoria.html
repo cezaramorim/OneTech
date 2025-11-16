@@ -12,7 +12,7 @@
         </a>
       </div>
 
-      <form method="post" class="ajax-form" data-url="{% url 'produto:editar_categoria' categoria.id %}" autocomplete="off">
+      <form method="post" class="ajax-form" data-url="{% url 'produto:editar_categoria' categoria.id %}" data-response-type="json" autocomplete="off">
         {% csrf_token %}
         {% if form.non_field_errors %}
           <div class="alert alert-danger" role="alert">

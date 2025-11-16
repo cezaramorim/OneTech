@@ -1,7 +1,7 @@
 <div id="identificador-tela" data-tela="form_statustanque">
     <div class="container-fluid mt-4">
         <h2>{% if object %}Editar Status de Tanque{% else %}Novo Status de Tanque{% endif %}</h2>
-        <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_statustanque' %}">
+        <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_statustanque' %}" data-response-type="json">
             {% csrf_token %}
             {{ form.as_p }}
             <button type-="submit" class="btn btn-success">Salvar</button>

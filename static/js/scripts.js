@@ -1,107 +1,68 @@
 // ============================================================================
-// ARQUIVO scripts.js - VERSÃO COM FETCH HELPER E CREDENCIAIS
+// ARQUIVO scripts.js - ARQUITETURA AJAX REATORADA (COM BOTÕES DE AÇÃO)
 // ============================================================================
 
-//  Aplica o tema salvo no localStorage (antes do paint)
+// Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
-const isDarkInit = temaSalvo === "dark";
-if (isDarkInit) {
+if (temaSalvo === "dark") {
   document.documentElement.classList.add("dark");
 }
-
-// ✅ Libera a exibição da tela (importante!)
 document.documentElement.classList.add("theme-ready");
-
-// ── Ajusta o navbar logo de cara ──
-const navbarInicial = document.querySelector(".navbar-superior");
-if (navbarInicial) {
-  navbarInicial.classList.add(isDarkInit ? "navbar-dark" : "navbar-light");
-}
 
 // --- Funções de Utilidade Global ---
 
-// Detecta separador decimal e devolve Number seguro (aceita “1.234,56” e “1,234.56”)
-function toNumLocale(v) {
-  if (v == null) return 0;
-  v = String(v).trim();
-  if (!v) return 0;
-  v = v.replace(/[^\d,.\-]/g, '');
-  const lastComma = v.lastIndexOf(',');
-  const lastDot   = v.lastIndexOf('.');
-  let decSep = null;
-  if (lastComma === -1 && lastDot === -1) decSep = null;
-  else if (lastComma > lastDot) decSep = ',';
-  else decSep = '.';
-  if (decSep) {
-    const thouSep = decSep === ',' ? '.' : ',';
-    v = v.split(thouSep).join('');
-    v = v.replace(decSep, '.');
-  }
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-// Formata sempre com vírgula para a UI
-function formatBR(n, dec) {
-  const v = (Number.isFinite(n) ? n : 0).toFixed(dec ?? 2);
-  return v.replace('.', ',');
-}
-
-function parseSqlDatetime(s) {
-  if (!s) return null;
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (!m) return null;
-  return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0));
-}
-function formatDateTimeBRsql(s) {
-  const d = parseSqlDatetime(s);
-  return d && !isNaN(d) ? d.toLocaleString('pt-BR') : (s || '');
-}
-
 function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
+  const c = document.cookie.split(';').find(x => x.trim().startsWith('csrftoken='));
+  return c ? c.split('=')[1] : '';
 }
 
-// URL de login (pode vir do <body data-login-url="...") ou cai no padrão)
+function serializeFormToQuery(form) {
+  return new URLSearchParams(new FormData(form)).toString();
+}
+
+function debounce(fn, delay = 350) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+function notify(type, msg) {
+  if (window.mostrarMensagem) {
+    window.mostrarMensagem(type, msg);
+  } else {
+    console[type === 'danger' || type === 'error' ? 'error' : 'log'](msg);
+  }
+}
+
 const LOGIN_URL = document.body?.dataset?.loginUrl || '/accounts/login/';
 
-// fetch com cookies + cabeçalhos padrão (AJAX)
-function fetchWithCreds(url, options = {}) {
-  const opts = { credentials: 'include', ...options }; // Ensure credentials: 'include'
-  const headers = new Headers(opts.headers || {});
-  if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
-  if ((opts.method || 'GET').toUpperCase() !== 'GET' && !headers.has('X-CSRFToken')) {
-    headers.set('X-CSRFToken', getCSRFToken());
+async function fetchWithCreds(url, options = {}, acceptHeader) {
+  const headers = { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) };
+  if (acceptHeader) headers['Accept'] = acceptHeader;
+  const opts = { credentials: 'same-origin', ...options, headers };
+  const method = (opts.method || 'GET').toUpperCase();
+  if (method !== 'GET' && !headers['X-CSRFToken']) {
+    headers['X-CSRFToken'] = getCSRFToken();
   }
   opts.headers = headers;
-  return fetch(url, opts);
+  const res = await fetch(url, opts);
+
+  // Adiciona tratamento para 401 Unauthorized
+  if (res.status === 401) {
+    notify('error', 'Sessão expirada. Faça login novamente.');
+    window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
+    return null; // Retorna null para interromper o fluxo
+  }
+
+  return res;
 }
 
-// Heurística simples para detectar HTML de login devolvido no lugar do conteúdo pedido
 function isLikelyLoginHTML(html) {
   if (!html) return false;
   const s = html.toLowerCase();
-
-  // Marcadores explícitos (recomendado: adicione isso no template do login)
-  const hasExplicitMarker =
-    s.includes('id="login-form"') ||
-    s.includes('id="login-page"') ||           // se você colocar no <body id="login-page">
-    s.includes('data-page="login"');           // ou <body data-page="login">
-
-  // Heurística mais forte: precisa ter form com action para /accounts/login E campos username+password
-  const hasLoginAction = /<form[^>]+action=[\"'][^\"']*\/accounts\/login\/?['\"][^>]*>/i.test(s);
-  const hasUsername = /\bname=[\"']username[\"']/i.test(s);
-  const hasPassword = /\bname=[\"']password[\"']/i.test(s);
-
-  return hasExplicitMarker || (hasLoginAction && hasUsername && hasPassword);
+  return s.includes('id="login-form"') || s.includes('data-page="login"');
 }
 
 function mostrarMensagem(type, message) {
-    if (!window.Swal) {
-        console.error("Biblioteca Swal (SweetAlert2) não encontrada.");
-        return;
-    }
+    if (!window.Swal) { console.error("SweetAlert2 não encontrada."); return; }
     let container = document.getElementById("toast-container");
     if (!container) {
         container = document.createElement('div');
@@ -126,75 +87,35 @@ function mostrarMensagem(type, message) {
     toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
 }
 
-function loadAjaxContent(url) {
-  console.log(" loadAjaxContent: Carregando URL:", url);
-  const mainContent = document.getElementById("main-content");
-  if (!mainContent) {
-    console.error("❌ #main-content não encontrado. Recarregando a página.");
-    window.location.href = url;
-    return;
-  }
-
-  fetchWithCreds(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-    .then(async (response) => {
-      if (response.status === 401) {
-        let data = null; try { data = await response.json(); } catch {} 
-        window.location.href = data?.redirect_url || `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
-        return null;
-      }
-      if (response.redirected) { // servidor respondeu 302 → login
-        window.location.href = response.url;
-        return null;
-      }
-      if (response.status === 403) { // Handle Forbidden as a redirect to login for AJAX requests
-        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
-        return null;
-      }
-      const ct = response.headers.get('content-type') || '';
-      if (ct.includes('application/json')) {
-        const data = await response.json();
-        if (data?.redirect_url) { window.location.href = data.redirect_url; return null; }
-        throw new Error('JSON inesperado em loadAjaxContent.');
-      }
-      const html = await response.text();
-      if (isLikelyLoginHTML(html)) { // HTML da tela de login veio “embedado”
-        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
-        return null;
-      }
-      return html;
-    })
-    .then((html) => {
-      if (html == null) return; // já redirecionou
-      mainContent.innerHTML = html;
-
-      // reexecuta scripts embutidos (mantendo seu skip do scripts.js)
-      Array.from(mainContent.querySelectorAll("script")).forEach(oldScript => {
-        if (oldScript.src && oldScript.src.includes('scripts.js')) return;
-        const newScript = document.createElement("script");
-        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-      });
-
-      history.pushState({ ajaxUrl: url }, "", url);
-      document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
-      console.log("✅ Conteúdo do #main-content atualizado e scripts executados.");
-    })
-    .catch(error => {
-      console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
-      mostrarMensagem("danger", "Erro ao carregar a página.");
-    });
+function loadNavbar() {
+    fetchWithCreds('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => {
+            if (!response.ok) {
+                console.error(`❌ Falha ao buscar navbar. Status: ${response.status} ${response.statusText}`);
+                throw new Error('Falha ao buscar navbar');
+            }
+            return response.text();
+        })
+        .then(html => {
+            const navbarContainer = document.getElementById('navbar-container');
+            if (navbarContainer) {
+                navbarContainer.innerHTML = html;
+            } else {
+                // Silencioso em páginas que não têm o container, como a de login.
+            }
+        })
+        .catch(error => {
+            console.error('Erro catastrófico ao carregar o navbar:', error);
+            notify('danger', 'Não foi possível carregar o menu de navegação.');
+        });
 }
 
 function updateButtonStates(mainContent) {
     if (!mainContent) return;
     const identificadorTela = mainContent.querySelector("#identificador-tela");
-
-    // Move a verificação para ANTES de tentar acessar .dataset
     if (!identificadorTela) return;
 
-    const seletorFilho = identificadorTela?.dataset.seletorFilho || identificadorTela?.dataset.seletorCheckbox;
-
+    const seletorFilho = identificadorTela?.dataset.seletorCheckbox;
     if (!seletorFilho) return;
 
     const itemCheckboxes = mainContent.querySelectorAll(seletorFilho);
@@ -207,23 +128,7 @@ function updateButtonStates(mainContent) {
     if (btnEditar) {
         let canEdit = hasSingleSelection;
         let editId = null;
-
-        // Lógica específica para a tela de arraçoamento
-        if (hasSingleSelection && identificadorTela.dataset.tela === 'arracoamento-diario') {
-            const selectedRow = selectedItems[0].closest('tr');
-            const statusBadge = selectedRow ? selectedRow.querySelector('.badge') : null;
-            
-            // Só pode editar se o status for 'Aprovado' e a linha tiver o ID do realizado
-            if (statusBadge && statusBadge.textContent.trim() === 'Aprovado') {
-                editId = selectedRow.dataset.realizadoId;
-                if (!editId) {
-                    canEdit = false; 
-                }
-            } else {
-                canEdit = false; // Não pode editar se não for 'Aprovado'
-            }
-        } else if (hasSingleSelection) {
-            // Lógica para outras telas
+        if (hasSingleSelection) {
             editId = selectedItems[0].value;
         }
 
@@ -234,9 +139,6 @@ function updateButtonStates(mainContent) {
             const editUrlBase = identificadorTela.dataset.urlEditar;
             if (editUrlBase) {
                 btnEditar.setAttribute('data-href', editUrlBase.replace('0', editId));
-            } else {
-                btnEditar.disabled = true;
-                btnEditar.classList.add('disabled');
             }
         } else {
             btnEditar.removeAttribute('data-href');
@@ -248,1010 +150,215 @@ function updateButtonStates(mainContent) {
         btnExcluir.classList.toggle('disabled', !hasSelection);
     }
     
-    const selectAllCheckbox = mainContent.querySelector('input[type="checkbox"][id^="select-all-"]');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.checked = itemCheckboxes.length > 0 && selectedItems.length === itemCheckboxes.length;
+    const seletorPai = identificadorTela.dataset.seletorPai;
+    const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
+    if (paiCheckbox) {
+        const total = itemCheckboxes.length;
+        const marcados = selectedItems.length;
+        if (marcados === 0) {
+            paiCheckbox.checked = false;
+            paiCheckbox.indeterminate = false;
+        } else if (marcados === total && total > 0) {
+            paiCheckbox.checked = true;
+            paiCheckbox.indeterminate = false;
+        } else {
+            paiCheckbox.checked = false;
+            paiCheckbox.indeterminate = true;
+        }
     }
 }
 
-function loadNavbar() {
-    fetchWithCreds('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
-        .then(response => {
-            if (!response.ok) {
-                // Log detalhado do erro
-                console.error(`❌ Falha ao buscar navbar. Status: ${response.status} ${response.statusText}`);
-                throw new Error('Falha ao buscar navbar');
-            }
-            return response.text();
-        })
-        .then(html => {
-            const navbarContainer = document.getElementById('navbar-container');
-            if (navbarContainer) {
-                navbarContainer.innerHTML = html;
-                console.log("✅ Navbar carregado e inserido no DOM.");
-            } else {
-                console.error("❌ Elemento #navbar-container não encontrado no DOM.");
-            }
-        })
-        .catch(error => {
-            console.error('Erro catastrófico ao carregar o navbar:', error);
-            mostrarMensagem('danger', 'Não foi possível carregar o menu de navegação.');
-        });
+// --- Motor AJAX e Handlers de Resposta ---
+
+async function submitAjaxForm(form) {
+  let url = form.action || window.location.href;
+  const method = (form.getAttribute('method') || 'GET').toUpperCase();
+
+  const options = { method };
+  if (method === 'GET' || method === 'HEAD') {
+    const qs = serializeFormToQuery(form);
+    const base = url.split('#')[0];
+    url = qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
+  } else {
+    options.body = new FormData(form);
+    options.headers = { ...(options.headers || {}), 'X-CSRFToken': getCSRFToken() };
+  }
+
+  const declaredType = (form.dataset.responseType || '').toLowerCase();
+  const accept = declaredType === 'json'
+    ? 'application/json, text/plain, */*'
+    : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+
+  const res = await fetchWithCreds(url, options, accept);
+
+  if (res.redirected && /\/accounts\/login\//.test(res.url)) {
+    notify('error', 'Sessão expirada. Faça login novamente.');
+    window.location.href = res.url;
+    return null;
+  }
+
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const isJson = declaredType === 'json' || ct.includes('application/json');
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${errText.slice(0, 300)}`);
+  }
+
+  return isJson ? res.json() : res.text();
 }
 
-function alternarTema() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('tema', isDark ? 'dark' : 'light');
-    console.log(`DEBUG: Tema alterado para: ${isDark ? 'dark' : 'light'}`);
-    const navbar = document.querySelector('.navbar-superior');
-    if (navbar) {
-        navbar.classList.toggle('navbar-dark', isDark);
-        navbar.classList.toggle('navbar-light', !isDark);
+function handleJsonFormResponse(form, data) {
+  if (data.redirect_url) {
+    window.location.assign(data.redirect_url);
+    return;
+  }
+  if (data.html && form.dataset.targetContainer) {
+    const container = document.querySelector(form.dataset.targetContainer);
+    if (container) {
+      container.innerHTML = data.html;
+      document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
+        detail: { screen: container.dataset.tela || container.dataset.page || '' }
+      }));
     }
+  }
+  if (data.message) notify(data.success ? 'success' : 'error', data.message);
+  if (data.reload) window.location.reload();
 }
 
-function adjustMainContentPadding() {
-    const navbarSuperior = document.querySelector('.navbar-superior');
-    const mainContent = document.getElementById('main-content');
-    if (navbarSuperior && mainContent) {
-        mainContent.style.paddingTop = `${navbarSuperior.offsetHeight + 10}px`;
-    }
+function handleHtmlFormResponse(form, html) {
+  const targetSel = form.dataset.targetContainer || '#main-content';
+  const container = document.querySelector(targetSel);
+  if (container) {
+    container.innerHTML = html;
+    document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
+      detail: { screen: container.dataset.tela || container.dataset.page || '' }
+    }));
+  } else {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.location.assign(url);
+  }
 }
 
-// --- Lógica de Inicialização e Bind de Eventos ---
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("✅ DOM completamente carregado. Iniciando scripts.");
-
-    if (document.getElementById('navbar-container')) {
-        loadNavbar();
-    }
-
-    adjustMainContentPadding();
-    const mainContentInitial = document.getElementById("main-content");
-    if (mainContentInitial) {
-        updateButtonStates(mainContentInitial);
-    }
-
-    document.body.addEventListener("click", async (e) => {
-        const logoutLink = e.target.closest('#logout-link-superior');
-        if (logoutLink) {
-            e.preventDefault();
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = logoutLink.href;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = getCSRFToken();
-            form.appendChild(csrfInput);
-            document.body.appendChild(form);
-            form.submit();
-            return;
-        }
-
-        const themeButton = e.target.closest('#btn-alternar-tema-superior');
-        if (themeButton) {
-            e.preventDefault();
-            alternarTema();
-            return;
-        }
-
-        const ajaxLink = e.target.closest(".ajax-link");
-        if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
-            e.preventDefault();
-            loadAjaxContent(ajaxLink.href);
-        }
-
-        const btnEditar = e.target.closest('#btn-editar');
-        if (btnEditar && !btnEditar.disabled) {
-            e.preventDefault();
-            const href = btnEditar.getAttribute('data-href');
-            if (href) {
-                loadAjaxContent(href);
-            }
-        }
-
-        const btnExcluir = e.target.closest('#btn-excluir');
-        if (btnExcluir && !btnExcluir.disabled) {
-            e.preventDefault();
-            const mainContent = document.getElementById("main-content");
-            const identificadorTela = mainContent ? mainContent.querySelector("#identificador-tela[data-seletor-checkbox]") : null;
-            if (!identificadorTela) return;
-            
-            const selectedItems = Array.from(mainContent.querySelectorAll(identificadorTela.dataset.seletorCheckbox)).filter(cb => cb.checked);
-            if (selectedItems.length === 0) return;
-
-            const entidadeSingular = identificadorTela.dataset.entidadeSingular || 'item';
-            const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
-
-            const result = await Swal.fire({
-                title: 'Tem certeza?',
-                text: `Você realmente deseja excluir ${selectedItems.length} ${selectedItems.length > 1 ? entidadePlural : entidadeSingular} selecionado(s)?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sim, excluir!',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (result.isConfirmed) {
-                const ids = selectedItems.map(cb => cb.value);
-                const url = identificadorTela.dataset.urlExcluir;
-                fetchWithCreds(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ids: ids })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.sucesso || data.success) {
-                        mostrarMensagem('success', data.mensagem || data.message);
-                        loadAjaxContent(window.location.pathname);
-                    } else {
-                        mostrarMensagem('danger', data.mensagem || data.message || 'Erro desconhecido.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro na exclusão:', error);
-                    mostrarMensagem('danger', 'Erro de comunicação ao tentar excluir.');
-                });
-            }
-        }
-    });
-
-    document.body.addEventListener("submit", e => {
-        const form = e.target.closest(".ajax-form");
-        if (!form || form.dataset.skipGlobal === '1') return; // ⟵ ignore this form
-        if (form) { // This 'if (form)' is now redundant but kept for minimal change
-            e.preventDefault();
-            const apiUrl = form.getAttribute("data-api-url") || form.action;
-            const method = form.method;
-            const formData = new FormData(form);
-
-            fetchWithCreds(apiUrl, { method, body: formData })
-                .then(async (response) => {
-                    if (response.status === 401) {
-                        const data = await response.json().catch(() => ({}));
-                        window.location.href = data.redirect_url || `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
-                        throw new Error('Sessão expirada.');
-                    }
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        throw new Error('Redirecionado para login.');
-                    }
-                    const ct = response.headers.get('content-type') || '';
-                    if (ct.includes('text/html')) {
-                        const html = await response.text();
-                        if (isLikelyLoginHTML(html)) {
-                            window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
-                            throw new Error('Login requerido.');
-                        }
-                        throw new Error('HTML inesperado.');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        document.dispatchEvent(new CustomEvent("ajaxFormSuccess", { detail: { form, responseJson: data } }));
-                    }
-                    if (data.redirect_url) {
-                        window.location.href = data.redirect_url;
-                    } else if (data.message || data.mensagem) {
-                        const messageText = data.message || data.mensagem;
-                        const messageType = data.success ? "success" : "danger";
-                        mostrarMensagem(messageType, messageText);
-                    }
-                })
-                .catch(error => {
-                    if (error.message !== 'Sessão expirada.' && error.message !== 'Redirecionado para login.' && error.message !== 'Login requerido.') {
-                        console.error("❌ Erro na submissão do formulário AJAX:", error);
-                        mostrarMensagem("danger", error.message || "Ocorreu um erro de comunicação.");
-                    }
-                });
-        }
-    });
-
-    window.addEventListener("popstate", e => {
-        if (e.state && e.state.ajaxUrl) {
-            loadAjaxContent(e.state.ajaxUrl);
-        }
-    });
-
-    
-
-    document.addEventListener("ajaxContentLoaded", (event) => {
-        adjustMainContentPadding();
-        const mainContent = document.getElementById("main-content");
-        if (mainContent) {
-            updateButtonStates(mainContent);
-        }
-    });
-});
-
-// === GERENCIAR CURVAS: bootstrap da página ===
-function initGerenciarCurvas() {
-  const raiz = document.querySelector('#gerenciar-curvas[data-page="gerenciar-curvas"]');
-  if (!raiz || raiz.dataset.bound === '1') return;
-  raiz.dataset.bound = '1';
-
-  const q = (sel, ctx = document) => ctx.querySelector(sel);
-  const qa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-  const toast = (type, text) => {
-    if (typeof window.mostrarMensagem === 'function') window.mostrarMensagem(type, text);
-    else console.log(`[${type.toUpperCase()}] ${text}`);
-  };
-  const toJSONorText = async (resp) => {
-    const ct = resp.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return resp.json();
-    return resp.text();
-  };
-  const setDisabled = (el, disabled = true) => { if (el) el.disabled = disabled; };
-
-  const endpointBaseCurva = raiz.dataset.endpointCurvaBase || '/producao/api/curva/';
-  const endpointSufixoDet = raiz.dataset.endpointDetalheSufixo || 'detalhes/';
-
-  const listaCurvas = q('#lista-curvas', raiz);
-  const formCurva = q('#form-curva', raiz);
-  const formDetalhe = q('#form-ponto-crescimento', raiz);
-  const inputCurvaId = q('#curva-id', raiz);
-  const inputDetalheId = q('#detalhe-id', raiz);
-  const tabBtnPonto = q('#ponto-crescimento-tab', raiz);
-  const tabelaBody = q('#tabela-detalhes-body', raiz);
-  const btnNovaCurva = q('#btn-nova-curva', raiz);
-  const btnLimparCurva = q('[data-action="limpar-curva"]', formCurva);
-  const btnLimparDetalhe = q('[data-action="limpar-detalhe"]', formDetalhe);
-
-  function habilitarAbaPonto(habilitar = true) {
-    if (!tabBtnPonto) return;
-    tabBtnPonto.disabled = !habilitar;
-    tabBtnPonto.classList.toggle('disabled', !habilitar);
-    tabBtnPonto.setAttribute('aria-disabled', (!habilitar).toString());
-  }
-  function abrirAbaPonto() {
-    if (!tabBtnPonto) return;
-    new bootstrap.Tab(tabBtnPonto).show();
+function loadAjaxContent(url) {
+  const mainContent = document.getElementById("main-content");
+  if (!mainContent) {
+    window.location.href = url;
+    return;
   }
 
-  function limparTabela() {
-    tabelaBody.innerHTML = `<tr data-empty="true"><td colspan="8" class="text-center text-muted">Selecione uma curva para ver ou adicionar detalhes.</td></tr>`;
-  }
-  function limparFormCurva(keepId = false) {
-    if (!formCurva) return;
-    if (!keepId) inputCurvaId.value = '';
-    qa('input, select, textarea', formCurva).forEach(el => {
-      if (el === inputCurvaId) return;
-      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
+  fetchWithCreds(url, {}, 'text/html')
+    .then(async (response) => {
+      if (response === null) { // Check if fetchWithCreds already handled a redirect (e.g., 401)
+        return null;
+      }
+      if (response.redirected && /\/accounts\/login\//.test(response.url)) {
+        notify('error', 'Sessão expirada. Faça login novamente.');
+        window.location.href = response.url;
+        return null;
+      }
+      const html = await response.text();
+      if (isLikelyLoginHTML(html)) {
+        window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(url)}`;
+        return null;
+      }
+      return html;
+    })
+    .then((html) => {
+      if (html == null) return;
+      mainContent.innerHTML = html;
+      history.pushState({ ajaxUrl: url }, "", url);
+      document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
+    })
+    .catch(error => {
+      console.error("❌ Falha ao carregar conteúdo via AJAX:", error);
+      notify("danger", "Erro ao carregar a página.");
     });
-  }
-  function limparFormDetalhe(keepId = false) {
-    if (!formDetalhe) return;
-    if (!keepId) inputDetalheId.value = '';
-    qa('input, select, textarea', formDetalhe).forEach(el => {
-      if (el === inputDetalheId) return;
-      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
-    });
-  }
+}
 
-  function renderLinhaDetalheJSON(d) {
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-id', d.id);
-    tr.innerHTML = `
-      <td>${d.periodo_semana ?? ''}</td>
-      <td>${d.peso_inicial ?? ''}</td>
-      <td>${d.peso_final ?? ''}</td>
-      <td>${d.ganho_de_peso ?? ''}</td>
-      <td>${d.racao_nome ?? d.racao ?? ''}</td>
-      <td>${d.numero_tratos ?? ''}</td>
-      <td>${d.gpd ?? ''}</td>
-      <td>${d.tca ?? ''}</td>
-    `;
-    return tr;
-  }
+// --- Listeners Globais ---
 
-  function popularTelaComCurva(payload) {
-    const c = payload.curva || {};
-    inputCurvaId.value = c.id ?? '';
-    const map = {
-      'id_nome': c.nome, 'id_especie': c.especie, 'id_rendimento_perc': c.rendimento_perc,
-      'id_trato_perc_curva': c.trato_perc_curva, 'id_peso_pretendido': c.peso_pretendido,
-      'id_trato_sabados_perc': c.trato_sabados_perc, 'id_trato_domingos_perc': c.trato_domingos_perc,
-      'id_trato_feriados_perc': c.trato_feriados_perc,
-    };
-    Object.entries(map).forEach(([id, val]) => { if (q(`#${id}`, formCurva)) q(`#${id}`, formCurva).value = (val ?? ''); });
-    habilitarAbaPonto(true);
-    const detalhes = Array.isArray(payload.detalhes) ? payload.detalhes : [];
-    tabelaBody.innerHTML = '';
-    if (!detalhes.length) {
-      limparTabela();
+document.body.addEventListener('submit', async (e) => {
+  const form = e.target.closest('form.ajax-form');
+  if (!form || form.dataset.skipGlobal === '1') return;
+
+  e.preventDefault();
+
+  try {
+    const result = await submitAjaxForm(form);
+    if (result == null) return;
+
+    const declaredType = (form.dataset.responseType || '').toLowerCase();
+    const isJson = declaredType === 'json' || (typeof result === 'object' && result !== null && !result.nodeType);
+
+    if (isJson) {
+      handleJsonFormResponse(form, result);
     } else {
-      const frag = document.createDocumentFragment();
-      detalhes.forEach(d => frag.appendChild(renderLinhaDetalheJSON(d)));
-      tabelaBody.appendChild(frag);
+      handleHtmlFormResponse(form, result);
     }
-    limparFormDetalhe(false);
+
+    if ((form.getAttribute('method') || 'GET').toUpperCase() === 'GET' && form.dataset.pushState !== 'false') {
+      const qs = serializeFormToQuery(form);
+      const base = (form.action || window.location.pathname).split('#')[0];
+      const nextUrl = qs ? `${base}?${qs}` : base;
+      history.pushState({}, '', nextUrl);
+    }
+  } catch (err) {
+    console.error('❌ Erro na submissão do formulário AJAX:', err);
+    notify('error', 'Falha ao processar a requisição.');
   }
-
-  async function carregarCurva(curvaId) {
-    if (!curvaId) return;
-    try {
-      const url = `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}`;
-      const resp = await fetchWithCreds(url, { method: 'GET' });
-      if (!resp.ok) throw new Error('Falha ao carregar a curva.');
-      const data = await resp.json();
-      popularTelaComCurva(data);
-      toast('success', `Curva '${data.curva.nome}' carregada.`);
-    } catch (err) {
-      toast('danger', err.message || 'Erro ao carregar a curva.');
-      limparTabela();
-    }
-  }
-
-  if (listaCurvas) {
-    listaCurvas.addEventListener('click', (ev) => {
-      const li = ev.target.closest('li.list-group-item[data-id]');
-      if (!li) return;
-      qa('li.list-group-item', listaCurvas).forEach(x => x.classList.remove('active'));
-      li.classList.add('active');
-      carregarCurva(li.dataset.id);
-    });
-  }
-
-  if (btnNovaCurva) {
-    btnNovaCurva.addEventListener('click', () => {
-      qa('li.list-group-item', listaCurvas).forEach(x => x.classList.remove('active'));
-      limparFormCurva(false); limparFormDetalhe(false); limparTabela(); habilitarAbaPonto(false);
-      toast('info', 'Preencha o cabeçalho e salve para liberar os períodos.');
-    });
-  }
-
-  if (btnLimparCurva) btnLimparCurva.addEventListener('click', () => limparFormCurva(true));
-  if (btnLimparDetalhe) btnLimparDetalhe.addEventListener('click', () => limparFormDetalhe(false));
-
-  formCurva?.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const curvaId = inputCurvaId.value?.trim();
-    const isNovo = !curvaId;
-    const url = isNovo ? endpointBaseCurva : `${endpointBaseCurva}${curvaId}/`;
-    const fd = new FormData(formCurva);
-    try {
-      setDisabled(formCurva.querySelector('[type="submit"]'), true);
-      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
-      const data = await toJSONorText(resp);
-      if (!resp.ok || (data && data.success === false)) throw new Error((data && (data.message || data.error)) || 'Erro ao salvar a curva.');
-      if (isNovo) { // Branch for new curve creation
-        const novoId = (data && (data.id || data.curva_id || data.pk)) || null;
-        if (!novoId) { // If ID not received
-          toast('warning', 'Curva criada, mas não recebi o ID. Recarregue a lista se necessário.');
-        } else { // If ID received, add to list
-          inputCurvaId.value = String(novoId);
-          habilitarAbaPonto(true);
-          toast('success', 'Curva criada. Agora adicione os períodos.');
-
-          // Adiciona o novo item à lista lateral
-          const li = document.createElement('li');
-          li.className =
-            'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
-          li.dataset.id = String(novoId);
-          li.dataset.name = data.curva_nome || 'Sem nome';
-          li.style.cursor = 'pointer';
-          li.innerHTML =
-            `<span class="texto-truncado">${li.dataset.name}</span>` +
-            `<i class="fas fa-chevron-right small text-muted"></i>`;
-          document.querySelector('#lista-curvas')?.appendChild(li);
-        }
-      } else { // This is the ELSE branch for if (isNovo) - meaning it's an update
-        toast('success', (data && data.message) || 'Cabeçalho da curva salvo.');
-        // Atualiza o nome na lista lateral
-        const li = listaCurvas.querySelector(`li[data-id="${curvaId}"]`);
-        if (li && data.curva_nome) {
-          li.dataset.name = data.curva_nome;
-          li.innerHTML =
-            `<span class="texto-truncado">${data.curva_nome}</span>` +
-            `<i class="fas fa-chevron-right small text-muted"></i>`;
-        }
-      }
-    } catch (err) { toast('danger', err.message || 'Falha ao salvar a curva.');
-    } finally { setDisabled(formCurva.querySelector('[type="submit"]'), false); }
-  });
-
-  tabelaBody?.addEventListener('click', async (ev) => {
-    const tr = ev.target.closest('tr[data-id]');
-    if (!tr) return;
-    const curvaId = inputCurvaId.value?.trim();
-    const detalheId = tr.getAttribute('data-id');
-    if (!curvaId || !detalheId) return;
-    try {
-      const url = `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}${detalheId}/`;
-      const resp = await fetchWithCreds(url, { method: 'GET' });
-      if (!resp.ok) throw new Error('Falha ao carregar o detalhe.');
-      const d = await resp.json();
-      inputDetalheId.value = d.id ?? detalheId;
-      const map = {
-        'id_periodo_semana': d.periodo_semana, 'id_periodo_dias': d.periodo_dias, 'id_peso_inicial': d.peso_inicial,
-        'id_peso_final': d.peso_final, 'id_ganho_de_peso': d.ganho_de_peso, 'id_numero_tratos': d.numero_tratos,
-        'id_hora_inicio': d.hora_inicio, 'id_arracoamento_biomassa_perc': d.arracoamento_biomassa_perc,
-        'id_mortalidade_presumida_perc': d.mortalidade_presumida_perc, 'id_racao': d.racao, 'id_gpd': d.gpd, 'id_tca': d.tca
-      };
-      Object.entries(map).forEach(([id, val]) => { if (q(`#${id}`, formDetalhe)) q(`#${id}`, formDetalhe).value = (val ?? ''); });
-      abrirAbaPonto();
-    } catch (err) { toast('danger', err.message || 'Erro ao carregar o detalhe.'); }
-  });
-
-  formDetalhe?.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const curvaId = inputCurvaId.value?.trim();
-    const detalheId = inputDetalheId.value?.trim();
-    if (!curvaId) { toast('warning', 'Salve o cabeçalho da curva antes.'); return; }
-    const isNovo = !detalheId;
-    const url = isNovo ? `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}criar/` : `${endpointBaseCurva}${curvaId}/${endpointSufixoDet}${detalheId}/atualizar/`;
-    const fd = new FormData(formDetalhe);
-    try {
-      setDisabled(formDetalhe.querySelector('[type="submit"]'), true);
-      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
-      const data = await toJSONorText(resp);
-      if (!resp.ok || (data && data.success === false)) throw new Error((data && (data.message || data.error)) || 'Erro ao salvar o detalhe.');
-      if (data && data.periodo) {
-        const d = data.periodo;
-        const trNova = renderLinhaDetalheJSON(d);
-        if (!isNovo) {
-          const alvo = tabelaBody.querySelector(`tr[data-id="${d.id || detalheId}"]`);
-          if (alvo) alvo.replaceWith(trNova);
-        } else {
-          const empty = tabelaBody.querySelector('tr[data-empty="true"]');
-          if (empty) empty.remove();
-          tabelaBody.appendChild(trNova);
-        }
-      }
-      if (isNovo) { limparFormDetalhe(false); toast('success', (data && data.message) || 'Período adicionado.');
-      } else toast('success', (data && data.message) || 'Período atualizado.');
-    } catch (err) { toast('danger', err.message || 'Falha ao salvar o detalhe.');
-    } finally { setDisabled(formDetalhe.querySelector('[type="submit"]'), false); }
-  });
-
-  //  Busca dinâmica robusta (delegação + sem recarregar ao pressionar Enter)
-  (function bindBuscaDinamica() {
-    const listaCurvas = raiz.querySelector('#lista-curvas');
-    if (!listaCurvas) return;
-
-    function filtrar() {
-      const search = raiz.querySelector('#search-curva');
-      const filtro = (search?.value || '').trim().toUpperCase();
-      Array.from(listaCurvas.querySelectorAll('li.list-group-item')).forEach(li => {
-        const txt = ((li.dataset.name || li.textContent) || '').toUpperCase();
-        li.style.display = txt.includes(filtro) ? '' : 'none';
-      });
-    }
-
-    // Delegação: reage a qualquer #search-curva que estiver no DOM
-    raiz.addEventListener('input', (e) => {
-      if (e.target && e.target.id === 'search-curva') filtrar();
-    });
-
-    // Evita submit/reload ao apertar Enter dentro do campo de busca
-    raiz.addEventListener('keydown', (e) => {
-      if (e.target && e.target.id === 'search-curva' && e.key === 'Enter') {
-        e.preventDefault();
-      }
-    });
-
-    // Primeiro filtro (caso haja valor vindo de autofill)
-    filtrar();
-  })();
-}
-
-// Inicializa o módulo em ambos os cenários: carga inicial e carga via AJAX.
-document.addEventListener("DOMContentLoaded", initGerenciarCurvas);
-document.addEventListener("ajaxContentLoaded", initGerenciarCurvas);
-
-// === GERENCIAR TANQUES ===
-function initGerenciarTanques() {
-  const raiz = document.querySelector('#gerenciar-tanques[data-page="gerenciar-tanques"]');
-  if (!raiz) return;
-
-  // Técnica para garantir que os listeners não sejam duplicados
-  if (raiz.abortController) {
-    raiz.abortController.abort();
-  }
-  raiz.abortController = new AbortController();
-  const signal = raiz.abortController.signal;
-
-  const form = raiz.querySelector('#form-tanque');
-  const lista = raiz.querySelector('#lista-tanques');
-  const inputId = raiz.querySelector('#tanque-id');
-  const elIdVis = raiz.querySelector('#id_id');
-  const elDataCriacao = raiz.querySelector('#id_data_criacao');
-  const elLarg = raiz.querySelector('#id_largura');
-  const elComp = raiz.querySelector('#id_comprimento');
-  const elProf = raiz.querySelector('#id_profundidade');
-  const elArea = raiz.querySelector('#id_metro_quadrado');
-  const elVolume = raiz.querySelector('#id_metro_cubico');
-  const elHa = raiz.querySelector('#id_ha');
-  const search = raiz.querySelector('#search-tanque, [data-role="busca-tanque"]');
-  const btnNovo = raiz.querySelector('#btn-novo-tanque,[data-action="novo-tanque"]');
-  const btnSalvar = raiz.querySelector('[data-action="salvar-tanque"]');
-  const API_BASE = '/producao/api/tanques/';
-
-  function computeFromInputs() {
-    const L = toNumLocale(elLarg?.value);
-    const C = toNumLocale(elComp?.value);
-    const P = toNumLocale(elProf?.value);
-    const area = L * C;
-    const volume = area * P;
-    const ha = area / 10000;
-    return { L, C, P, area, volume, ha };
-  }
-
-  function recalcDimensoes() {
-    const r = computeFromInputs();
-    if (elArea) elArea.value = formatBR(r.area, 2);
-    if (elVolume) elVolume.value = formatBR(r.volume, 3);
-    if (elHa) elHa.value = formatBR(r.ha, 4);
-  }
-
-  function setBR(el, val, dec) {
-    if (!el) return;
-    if (val == null || val === '') {
-      el.value = '';
-      return;
-    }
-    el.value = formatBR(toNumLocale(val), dec);
-  }
-
-  function resetFormTanque(clearId = true) {
-    if (!form) return;
-    if (clearId && inputId) inputId.value = '';
-    Array.from(form.querySelectorAll('input,select,textarea')).forEach(el => {
-      if (el.readOnly || el.disabled) return;
-      if (clearId && el === inputId) return;
-      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-      else if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
-    });
-    if (elIdVis) elIdVis.value = '';
-    if (elDataCriacao) elDataCriacao.value = '';
-    recalcDimensoes();
-    form.querySelector('#id_nome')?.focus();
-  }
-
-  async function carregarTanque(id) {
-    if (!id) return;
-    const url = `${API_BASE}${id}/`;
-    const resp = await fetchWithCreds(url);
-    if (!resp.ok) {
-      alert('Falha ao carregar tanque');
-      return;
-    }
-    const d = await resp.json();
-    if (inputId) inputId.value = d.id;
-    if (elIdVis) {
-      elIdVis.value = String(d.id || '');
-      elIdVis.readOnly = true;
-      elIdVis.disabled = true;
-    }
-    if (elDataCriacao) {
-      elDataCriacao.value = formatDateTimeBRsql(d.data_criacao);
-      elDataCriacao.readOnly = true;
-      elDataCriacao.disabled = true;
-    }
-    setBR(elLarg, d.largura, 2);
-    setBR(elComp, d.comprimento, 2);
-    setBR(elProf, d.profundidade, 2);
-    const elNome = raiz.querySelector('#id_nome');
-    if (elNome) elNome.value = d.nome || '';
-    const elSeq = raiz.querySelector('#id_sequencia');
-    if (elSeq) elSeq.value = (d.sequencia ?? '');
-    const elTag = raiz.querySelector('#id_tag_tanque');
-    if (elTag) elTag.value = d.tag_tanque || '';
-    const selUnid = raiz.querySelector('#id_unidade');
-    if (selUnid) selUnid.value = d.unidade_id || d.unidade || '';
-    const selFase = raiz.querySelector('#id_fase');
-    if (selFase) selFase.value = d.fase_id || d.fase || '';
-    const selTipo = raiz.querySelector('#id_tipo_tanque');
-    if (selTipo) selTipo.value = d.tipo_tanque_id || d.tipo_tanque || '';
-    const selLinha = raiz.querySelector('#id_linha_producao');
-    if (selLinha) selLinha.value = d.linha_producao_id || d.linha_producao || '';
-    const selMalha = raiz.querySelector('#id_malha');
-    if (selMalha) selMalha.value = d.malha_id || d.malha || '';
-    const selStatus = raiz.querySelector('#id_status_tanque');
-    if (selStatus) selStatus.value = d.status_tanque_id || d.status_tanque || '';
-    const selTipoTela = raiz.querySelector('#id_tipo_tela');
-    if (selTipoTela) {
-      selTipoTela.value = d.tipo_tela || '';
-    }
-    const elAtivo = raiz.querySelector('#id_ativo');
-    if (elAtivo) {
-      elAtivo.value = (String(d.ativo) === '1' || d.ativo === true) ? 'True' : 'False';
-    }
-    recalcDimensoes();
-  }
-
-  async function salvarTanque() {
-    if (!form) return;
-    recalcDimensoes();
-    const r = computeFromInputs();
-    const fd = new FormData(form);
-    fd.delete('id');
-    fd.delete('data_criacao');
-    fd.set((elArea?.name || 'metro_quadrado'), r.area.toFixed(2));
-    fd.set((elVolume?.name || 'metro_cubico'), r.volume.toFixed(3));
-    fd.set((elHa?.name || 'ha'), r.ha.toFixed(4));
-    const id = (inputId?.value || '').trim();
-    const url = id ? `${API_BASE}${id}/atualizar/` : API_BASE;
-    const btn = btnSalvar || form.querySelector('[type="submit"]');
-    btn && (btn.disabled = true);
-    try {
-      const resp = await fetchWithCreds(url, { method: 'POST', body: fd });
-      const ct = resp.headers.get('content-type') || '';
-      if (!ct.includes('json')) {
-        const body = await resp.text().catch(() => '');
-        throw new Error(`Servidor retornou ${resp.status} ${resp.statusText}.`);
-      }
-      const data = await resp.json();
-      if (!resp.ok || data.success === false) {
-        throw new Error(data.message || 'Falha ao salvar.');
-      }
-      const nome = form.querySelector('#id_nome')?.value || 'Sem nome';
-      if (!id && (data.id || data.pk)) {
-        const novoId = String(data.id || data.pk);
-        if (inputId) inputId.value = novoId;
-        const li = document.createElement('li');
-        li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-        li.dataset.id = novoId;
-        li.dataset.name = nome;
-        li.innerHTML = `<span class="texto-truncado">${nome}</span><i class="fas fa-chevron-right small text-muted"></i>`;
-        lista?.appendChild(li);
-      } else if (id) {
-        const li = lista?.querySelector(`li[data-id="${id}"]`);
-        if (li) {
-          li.dataset.name = nome;
-          li.querySelector('.texto-truncado')?.replaceChildren(document.createTextNode(nome));
-        }
-      }
-      mostrarMensagem('success', data.message || 'Salvo com sucesso.');
-    } catch (err) {
-      mostrarMensagem('danger', err.message || 'Erro ao salvar.');
-    } finally {
-      btn && (btn.disabled = false);
-    }
-  }
-
-  [elLarg, elComp, elProf].forEach(el => {
-    el?.addEventListener('input', recalcDimensoes, { signal });
-    el?.addEventListener('change', recalcDimensoes, { signal });
-  });
-  recalcDimensoes();
-
-  lista?.addEventListener('click', (e) => {
-    const li = e.target.closest('li.list-group-item');
-    if (!li) return;
-    lista.querySelectorAll('li.list-group-item.active').forEach(x => x.classList.remove('active'));
-    li.classList.add('active');
-    carregarTanque(li.dataset.id);
-  }, { signal });
-
-  (function bindBuscaTanques() {
-    if (!lista || !search) return;
-    function filtrar() {
-      const filtro = (search.value || '').trim().toUpperCase();
-      lista.querySelectorAll('li.list-group-item').forEach(li => {
-        const txt = ((li.getAttribute('data-name') || li.textContent) || '').toUpperCase();
-        const isVisible = txt.includes(filtro);
-        li.style.display = isVisible ? '' : 'none';
-        if (isVisible) {
-          li.classList.add('d-flex');
-        } else {
-          li.classList.remove('d-flex');
-        }
-      });
-    }
-    search.addEventListener('input', filtrar, { signal });
-    search.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') e.preventDefault();
-    }, { signal });
-    filtrar();
-  })();
-
-  btnNovo?.addEventListener('click', (e) => {
-    e.preventDefault();
-    lista?.querySelectorAll('li.list-group-item.active').forEach(li => li.classList.remove('active'));
-    resetFormTanque(true);
-  }, { signal });
-
-  btnSalvar?.addEventListener('click', (e) => {
-    e.preventDefault();
-    salvarTanque();
-  }, { signal });
-
-  resetFormTanque(true);
-
-  function adjustListHeight() {
-    if (!form || !lista) return;
-    const formRect = form.getBoundingClientRect();
-    const formTop = formRect.top;
-    const formBottom = formRect.top + form.offsetHeight;
-    const availableHeight = formBottom - formTop;
-    const searchAndButtonContainer = raiz.querySelector('.d-flex.mb-2');
-    const searchAndButtonHeight = searchAndButtonContainer ? searchAndButtonContainer.offsetHeight : 0;
-    const finalHeight = availableHeight - searchAndButtonHeight - 20;
-    lista.style.maxHeight = `${finalHeight}px`;
-    lista.style.overflowY = 'auto';
-  }
-
-  adjustListHeight();
-  window.addEventListener('resize', adjustListHeight, { signal });
-}
-
-function initPovoamentoLotes() {
-    const page = document.querySelector('[data-page="povoamento-lotes"]');
-    if (!page) return;
-    if (page.dataset.initialized) {
-        console.log("DEBUG: initPovoamentoLotes - Saindo, página já inicializada.");
-        return;
-    }
-    page.dataset.initialized = "true";
-    console.log("DEBUG: initPovoamentoLotes - INICIANDO");
-
-    const DJANGO_CONTEXT = window.DJANGO_CONTEXT || {};
-
-    // --- Seletores de Elementos ---
-    const tipoTanqueSelect = page.querySelector('[data-role="tipo-tanque"]');
-    const curvaContainer = page.querySelector('[data-container="curva-crescimento"]');
-    const tanqueSelect = page.querySelector('[data-role="tanque"]');
-    const curvaSelect = page.querySelector('[data-role="curva-crescimento"]');
-    const adicionarBtn = page.querySelector('[data-action="adicionar-linha"]');
-    const processarBtn = page.querySelector('[data-action="processar"]');
-    const listagemBody = page.querySelector('[data-container="listagem-body"]');
-    const buscarBtn = page.querySelector('[data-action="buscar-historico"]');
-    const historicoBody = page.querySelector('[data-container="historico-body"]');
-
-    // --- Funções Auxiliares ---
-    const gerarGrupoOrigem = () => {
-        const d = new Date();
-        const mes = String(d.getMonth() + 1).padStart(2, '0');
-        const ano = String(d.getFullYear()).slice(-2);
-        return `LM${mes}${ano}`;
-    };
-
-    const atualizarOpcoesTanque = () => {
-        if (!DJANGO_CONTEXT.tanques) {
-            console.error("Contexto de tanques não encontrado para atualizar opções.");
-            return;
-        }
-        const tipo = tipoTanqueSelect.value;
-        const tanquesFiltrados = DJANGO_CONTEXT.tanques.filter(t => {
-            if (tipo === 'Tanque Vazio') {
-                return !t.tem_lote_ativo && t.status_nome === 'livre';
-            } else {
-                return t.tem_lote_ativo;
-            }
-        });
-        tanqueSelect.innerHTML = '<option value="">Selecione...</option>' + tanquesFiltrados.map(t => `<option value="${t.pk}">${t.nome}</option>`).join('');
-        $(tanqueSelect).trigger('change');
-    };
-
-    const verificarLoteAtivo = async (tanqueId, linha) => {
-        if (!tanqueId) return;
-        const nomeLoteInput = linha.querySelector('[data-field="nome_lote"]');
-        try {
-            const response = await fetchWithCreds(`/producao/api/tanque/${tanqueId}/lote-ativo/`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    nomeLoteInput.value = data.lote.nome;
-                    nomeLoteInput.readOnly = true;
-                }
-            } else {
-                nomeLoteInput.value = '';
-                nomeLoteInput.readOnly = false;
-            }
-        } catch (error) {
-            console.error('Erro ao buscar lote ativo:', error);
-            nomeLoteInput.value = '';
-            nomeLoteInput.readOnly = false;
-        }
-    };
-
-    const buscarHistorico = async () => {
-        const dataInicial = page.querySelector('[data-filter="data_inicial"]').value;
-        const dataFinal = page.querySelector('[data-filter="data_final"]').value;
-        const status = page.querySelector('[data-filter="status"]').value;
-        const url = new URL(window.location.origin + '/producao/api/povoamento/historico/');
-        if (dataInicial) url.searchParams.append('data_inicial', dataInicial);
-        if (dataFinal) url.searchParams.append('data_final', dataFinal);
-        if (status) url.searchParams.append('status', status);
-
-        try {
-            const response = await fetchWithCreds(url);
-            const data = await response.json();
-            if (data.success) {
-                historicoBody.innerHTML = data.historico.map(h => `
-                    <tr>
-                        <td>${h.id}</td>
-                        <td>${h.data}</td>
-                        <td>${h.lote}</td>
-                        <td>${h.tanque}</td>
-                        <td>${h.quantidade}</td>
-                        <td>${h.peso_medio}</td>
-                        <td>${h.tipo_evento}</td>
-                    </tr>
-                `).join('');
-            } else {
-                mostrarMensagem('danger', data.message || 'Não foi possível carregar o histórico.');
-            }
-        } catch (error) {
-            console.error('Erro ao buscar histórico:', error);
-            mostrarMensagem('danger', 'Erro de comunicação ao buscar histórico.');
-        }
-    };
-
-    const inicializarSelect2 = (selector) => {
-        console.log(`DEBUG: Tentando inicializar Select2 para o seletor: "${selector}"`);
-        const elements = $(selector);
-        console.log(`DEBUG: Encontrados ${elements.length} elementos.`);
-
-        elements.each(function() {
-            const el = $(this);
-            console.log("DEBUG: Inicializando elemento:", el[0]);
-            console.log("  - Classes do elemento:", el.attr('class'));
-            const parent = el.parent();
-            console.log("  - Elemento pai:", parent[0]);
-            console.log("  - Classes do pai:", parent.attr('class'));
-
-            const options = {
-                theme: "bootstrap-5",
-                width: '100%',
-                containerCssClass: "select2-sm",
-                dropdownAutoWidth: false,
-                dropdownParent: el.parent()
-            };
-
-            console.log("  - Opções do Select2:", options);
-
-            try {
-                el.select2(options);
-                console.log("  - Select2 inicializado com SUCESSO.");
-            } catch (e) {
-                console.error("  - ERRO ao inicializar Select2:", e);
-            }
-        });
-    };
-
-    const adicionarLinha = async () => {
-        if (!tanqueSelect.value) { mostrarMensagem('warning', 'Selecione um tanque primeiro.'); return; }
-        if (!DJANGO_CONTEXT.fases || !DJANGO_CONTEXT.linhas) {
-             console.error("Contexto de fases ou linhas não encontrado.");
-             return;
-        }
-        const linhaId = `row-${Date.now()}`;
-        const faseOptions = DJANGO_CONTEXT.fases.map(f => `<option value="${f.pk}">${f.nome}</option>`).join('');
-        const linhaOptions = DJANGO_CONTEXT.linhas.map(l => `<option value="${l.pk}">${l.nome}</option>`).join('');
-
-        console.log("DEBUG: Conteúdo de faseOptions:", faseOptions);
-        console.log("DEBUG: Conteúdo de linhaOptions:", linhaOptions);
-        const novaLinhaHTML = `
-            <tr id="${linhaId}" data-tanque-id="${tanqueSelect.value}" data-curva-id="${curvaSelect.value}">
-                <td><button class="btn btn-danger btn-sm" data-action="desfazer">X</button></td>
-                <td>${tanqueSelect.options[tanqueSelect.selectedIndex].text}</td>
-                <td>${gerarGrupoOrigem()}</td>
-                <td>${curvaSelect.options[curvaSelect.selectedIndex].text}</td>
-                <td><input type="date" class="form-control form-control-sm" data-field="data_lancamento" value="${new Date().toISOString().slice(0,10)}"></td>
-                <td><input type="text" class="form-control form-control-sm" data-field="nome_lote"></td>
-                <td><input type="number" class="form-control form-control-sm" data-field="quantidade" step="0.01"></td>
-                <td><input type="text" class="form-control form-control-sm" data-field="peso_medio" step="0.01"></td>
-                <td>
-                  <div class="select2-wrapper">
-                    <select class="form-select form-select-sm select2-search-row" data-field="fase_id">${faseOptions}</select>
-                  </div>
-                </td>
-                <td><input type="text" class="form-control form-control-sm" data-field="tamanho"></td>
-                <td>
-                  <div class="select2-wrapper">
-                    <select class="form-select form-select-sm select2-search-row" data-field="linha_id">${linhaOptions}</select>
-                  </div>
-                </td>
-            </tr>
-        `;
-        listagemBody.insertAdjacentHTML('beforeend', novaLinhaHTML);
-        const novaLinha = document.getElementById(linhaId);
-        if (tipoTanqueSelect.value === 'Tanque Povoado') {
-            await verificarLoteAtivo(tanqueSelect.value, novaLinha);
-        }
-        
-    };
-
-    const processarPovoamentos = async () => {
-        const linhas = listagemBody.querySelectorAll('tr');
-        if (linhas.length === 0) { 
-            mostrarMensagem('warning', 'Adicione pelo menos uma linha para processar.'); 
-            return; 
-        }
-        const payload = {
-            povoamentos: Array.from(linhas).map(linha => ({
-                tipo_tanque: tipoTanqueSelect.value,
-                curva_id: linha.dataset.curvaId,
-                tanque_id: linha.dataset.tanqueId,
-                grupo_origem: linha.cells[2].textContent,
-                data_lancamento: linha.querySelector('[data-field="data_lancamento"]').value,
-                nome_lote: linha.querySelector('[data-field="nome_lote"]').value,
-                quantidade: linha.querySelector('[data-field="quantidade"]').value,
-                peso_medio: linha.querySelector('[data-field="peso_medio"]').value,
-                fase_id: linha.querySelector('[data-field="fase_id"]').value,
-                tamanho: linha.querySelector('[data-field="tamanho"]').value,
-                linha_id: linha.querySelector('[data-field="linha_id"]').value,
-            }))
-        };
-        processarBtn.disabled = true;
-        processarBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-        try {
-            const response = await fetchWithCreds('/producao/povoamento/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            mostrarMensagem(response.ok ? 'success' : 'danger', result.message);
-            if (response.ok) {
-                listagemBody.innerHTML = '';
-                buscarHistorico(); // Atualiza o histórico
-            }
-        } catch (error) {
-            mostrarMensagem('danger', 'Ocorreu um erro de comunicação com o servidor.');
-        } finally {
-            processarBtn.disabled = false;
-            processarBtn.innerHTML = 'Processar Povoamentos';
-        }
-    };
-
-    // --- Event Listeners ---
-    tipoTanqueSelect.addEventListener('change', () => {
-        curvaContainer.style.display = tipoTanqueSelect.value === 'Tanque Povoado' ? 'none' : '';
-        atualizarOpcoesTanque();
-    });
-    adicionarBtn.addEventListener('click', adicionarLinha);
-    processarBtn.addEventListener('click', processarPovoamentos);
-    // Event Listeners
-    // buscarBtn.addEventListener('click', buscarSugestoes);
-    listagemBody.addEventListener('click', (e) => {
-        if (e.target.dataset.action === 'desfazer') {
-            e.target.closest('tr').remove();
-        }
-    });
-
-    // --- Inicialização ---
-    console.log("DEBUG: Bloco de inicialização principal.");
-    atualizarOpcoesTanque();
-    inicializarSelect2('.select2-search');
-
-    // Limpa o contexto global para evitar vazamento de memória entre cargas de página AJAX
-    if (window.DJANGO_CONTEXT) {
-        window.DJANGO_CONTEXT = null;
-    }
-}
-
-
-// Inicializa os módulos em ambos os cenários: carga inicial e carga via AJAX.
-document.addEventListener("DOMContentLoaded", () => {
-    initGerenciarCurvas();
-    initGerenciarTanques();
-    initPovoamentoLotes();
-    initGerenciarEventos();
-});
-document.addEventListener("ajaxContentLoaded", () => {
-    initGerenciarCurvas();
-    initGerenciarTanques();
-    initPovoamentoLotes();
-    initGerenciarEventos();
 });
 
-// Listener de delegação de eventos unificado para checkboxes
+document.body.addEventListener('click', async (e) => {
+  // Handler para paginação/ordenação
+  const ajaxTargetLink = e.target.closest('a[data-ajax-target]');
+  if (ajaxTargetLink) {
+    e.preventDefault();
+    const targetSel = ajaxTargetLink.dataset.ajaxTarget;
+    const container = document.querySelector(targetSel);
+    if (!container) return;
+
+    try {
+      const res = await fetchWithCreds(ajaxTargetLink.href, { method: 'GET' }, 'text/html');
+      if (res.redirected && /\/accounts\/login\//.test(res.url)) {
+        window.location = res.url; return;
+      }
+      const html = await res.text();
+      container.innerHTML = html;
+      document.dispatchEvent(new CustomEvent('ajaxContentLoaded', { detail: { screen: container.dataset.tela || '' }}));
+      history.pushState({}, '', ajaxTargetLink.href);
+    } catch (err) {
+      console.error('❌ AJAX link error:', err);
+      notify('error', 'Falha ao carregar a página.');
+    }
+    return;
+  }
+
+  // Handler para links AJAX genéricos
+  const ajaxLink = e.target.closest(".ajax-link");
+  if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
+      e.preventDefault();
+      loadAjaxContent(ajaxLink.href);
+      return;
+  }
+  
+  // Handler para o botão Editar genérico
+  const btnEditar = e.target.closest('#btn-editar');
+  if (btnEditar && !btnEditar.disabled) {
+      e.preventDefault();
+      const href = btnEditar.getAttribute('data-href');
+      if (href) {
+          loadAjaxContent(href);
+      }
+      return;
+  }
+
+  // Adicionar outros handlers de clique aqui (ex: #btn-excluir)
+});
+
 document.body.addEventListener('change', function(e) {
     const mainContent = document.getElementById('main-content');
-    // Apenas continua se o alvo for um checkbox dentro do conteúdo principal
     if (!mainContent || !e.target.matches('input[type="checkbox"]')) return;
 
     const identificadorTela = mainContent.querySelector("#identificador-tela");
@@ -1260,743 +367,145 @@ document.body.addEventListener('change', function(e) {
     const seletorPai = identificadorTela.dataset.seletorPai;
     const seletorFilho = identificadorTela.dataset.seletorCheckbox;
 
-    // Se não houver seletores de checkbox nesta tela, não faz nada.
     if (!seletorFilho) return;
 
     const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
     const filhosCheckboxes = mainContent.querySelectorAll(seletorFilho);
 
     let isCheckboxRelevante = false;
-
-    // Lógica 1: O clique foi no checkbox "Pai"?
-    if (paiCheckbox && e.target === paiCheckbox) {
+    if ((paiCheckbox && e.target === paiCheckbox) || (filhosCheckboxes && Array.from(filhosCheckboxes).includes(e.target))) {
         isCheckboxRelevante = true;
-        filhosCheckboxes.forEach(filho => {
-            filho.checked = paiCheckbox.checked;
-        });
-    }
-
-    // Lógica 2: O clique foi em um checkbox "Filho"?
-    if (filhosCheckboxes && Array.from(filhosCheckboxes).includes(e.target)) {
-        isCheckboxRelevante = true;
-        if (paiCheckbox) {
-            const total = filhosCheckboxes.length;
-            const marcados = mainContent.querySelectorAll(`${seletorFilho}:checked`).length;
-
-            if (marcados === 0) {
-                paiCheckbox.checked = false;
-                paiCheckbox.indeterminate = false;
-            } else if (marcados === total) {
-                paiCheckbox.checked = true;
-                paiCheckbox.indeterminate = false;
-            } else {
-                paiCheckbox.checked = false;
-                paiCheckbox.indeterminate = true;
-            }
-        }
     }
     
-    // Lógica 3: Atualizar sempre o estado dos botões se um checkbox relevante foi alterado
     if (isCheckboxRelevante) {
         updateButtonStates(mainContent);
     }
 });
 
-
-function initGerenciarEventos() {
-  const ROOT_SEL = "#gerenciar-eventos";
-  const root = document.querySelector(ROOT_SEL);
-  if (!root || root.dataset.bound === "1") {
-    return;
-  }
-  root.dataset.bound = "1";
-
-  console.log("✅ initGerenciarEventos() executado.");
-
-  const q = (sel, ctx = root) => ctx.querySelector(sel);
-  const qa = (sel, ctx = root) => Array.from(ctx.querySelectorAll(sel));
-
-  function debounce(func, delay) {
-      let timeout;
-      return function(...args) {
-          const context = this;
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(context, args), delay);
-      };
-  }
-
-  const visaoInicial = q("#visao-inicial-eventos");
-  const conteudoAbas = q("#conteudo-abas-eventos");
-  const selectAba = q('#aba-evento-select');
-  const btnMostrarMais = q("#btn-mostrar-mais-eventos");
-  const tabelaUltimosEventosBody = q("#tabela-ultimos-eventos-body");
-  
-  // Seletores de Filtro
-  const filtroBusca = q("#filtro-busca");
-  const filtroUnidade = q("#filtro-unidade");
-  const filtroLinha = q("#filtro-linha");
-  const filtroFase = q("#filtro-fase");
-  const filtroData = q("#filtro-data");
-
-  function toggleView(showAbas) {
-    visaoInicial.classList.toggle('d-none', showAbas);
-    conteudoAbas.classList.toggle('d-none', !showAbas);
-  }
-
-  function showTabBySlug(slug) {
-    if (!slug) {
-      toggleView(false);
+window.addEventListener('popstate', async () => {
+  const activeWrapper = document.querySelector('[data-ajax-root="true"]'); 
+  if (!activeWrapper) {
+      if (location.href !== window.lastAjaxUrl) {
+          window.location.reload();
+      }
       return;
-    }
-    const btn = q(`[data-bs-toggle="tab"][data-bs-target="#pane-${slug}"]`);
-    if (btn && window.bootstrap?.Tab) {
-      toggleView(true);
-      new bootstrap.Tab(btn).show();
-    }
   }
 
-  function activePaneSlug() {
-    const active = q('#conteudo-abas-eventos .tab-pane.active');
-    return active ? active.id.replace('pane-', '') : null;
-  }
-
-  function loadActivePane(reset = false) {
-    const slug = activePaneSlug();
-    if (!slug) {
-        carregarUltimosEventos(true);
-    } else if (slug === 'mortalidade') {
-      carregarMortalidade();
-    }
-  }
-
-  async function carregarUltimosEventos(reset = false) {
-    let offset = reset ? 0 : parseInt(btnMostrarMais.dataset.offset || '0', 10);
-    
-    const params = new URLSearchParams({
-        offset,
-        termo: filtroBusca.value.trim(),
-        unidade: filtroUnidade.value,
-        linha_producao: filtroLinha.value,
-        fase: filtroFase.value,
-        data: filtroData.value
-    });
-
-    btnMostrarMais.disabled = true;
-    btnMostrarMais.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Carregando...';
-
-    if (reset) {
-        tabelaUltimosEventosBody.innerHTML = `<tr><td colspan="8" class="text-center"><span class="spinner-border spinner-border-sm"></span> Buscando...</td></tr>`;
-    }
-
-    try {
-      const url = `/producao/api/ultimos-eventos/?${params.toString()}`;
-      const response = await (window.fetchWithCreds || fetch)(url);
-      const data = await response.json();
-
-      if (reset) {
-          tabelaUltimosEventosBody.innerHTML = '';
-      }
-
-      if (data.success && data.eventos.length > 0) {
-        const newRows = data.eventos.map(evento => `
-          <tr>
-            <td>${evento.data_evento}</td>
-            <td>${evento.tipo_evento}</td>
-            <td>${evento.lote}</td>
-            <td>${evento.tanque_origem}</td>
-            <td>${evento.tanque_destino}</td>
-            <td class="text-end">${evento.quantidade}</td>
-            <td class="text-end">${evento.peso_medio}</td>
-            <td>${evento.observacoes}</td>
-          </tr>
-        `).join('');
-        tabelaUltimosEventosBody.insertAdjacentHTML('beforeend', newRows);
-        btnMostrarMais.dataset.offset = offset + data.eventos.length;
-        
-        if (data.eventos.length < 20) {
-          btnMostrarMais.classList.add('d-none');
-        } else {
-          btnMostrarMais.classList.remove('d-none');
-        }
-      } else {
-        btnMostrarMais.classList.add('d-none');
-        if (reset) {
-            tabelaUltimosEventosBody.innerHTML = `<tr><td colspan="8" class="text-center">Nenhum evento encontrado para a busca.</td></tr>`;
-        }
-        if (!data.success) {
-            mostrarMensagem('danger', data.message || 'Erro ao carregar eventos.');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar eventos:', error);
-      mostrarMensagem('danger', 'Erro de comunicação ao buscar eventos.');
-    } finally {
-      btnMostrarMais.disabled = false;
-      btnMostrarMais.innerHTML = 'Mostrar mais...';
-    }
-  }
-
-  async function carregarMortalidade() {
-    const TBL_SEL = "#tabela-mortalidade tbody";
-    const API_URL = "/producao/api/eventos/mortalidade/";
-    const tbody = q(TBL_SEL);
-    if (!tbody) return;
-
-    tbody.innerHTML = `<tr><td colspan="99" class="text-center"><span class="badge bg-primary">Carregando dados...</span></td></tr>`;
-    
-    try {
-        const params = new URLSearchParams({
-            unidade: filtroUnidade.value,
-            linha_producao: filtroLinha.value,
-            fase: filtroFase.value,
-            termo: filtroBusca.value.trim(),
-            data: filtroData.value
-        });
-        const url = `${API_URL}?${params.toString()}`;
-        const response = await (window.fetchWithCreds || fetch)(url);
-        const data = await response.json();
-
-        if (data.results && data.results.length > 0) {
-            tbody.innerHTML = data.results.map(it => `
-              <tr data-lote="${it.lote_id}">
-                <td>${it.tanque}</td>
-                <td>${it.lote}</td>
-                <td>${it.data_inicio}</td>
-                <td class="text-end">${it.qtd_atual}</td>
-                <td class="text-end">${it.peso_medio_g}</td>
-                <td class="text-end">${it.biomassa_kg}</td>
-                <td class="text-end"><input type="text" pattern="[0-9]*" inputmode="numeric" class="form-control form-control-sm input-mort" value="${it.qtd_mortalidade || ''}" data-peso-medio="${it.peso_medio_g}"></td>
-                <td class="text-end" data-biomassa-retirada>${formatBR((it.qtd_mortalidade * it.peso_medio_g) / 1000, 2)}</td>
-              </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = `<tr><td colspan="99" class="text-center">Nenhum lote ativo encontrado para os filtros selecionados.</td></tr>`;
-        }
-
-        // Adiciona listener para atualização dinâmica da biomassa retirada
-        qa('.input-mort', tbody).forEach(input => {
-            input.addEventListener('input', (e) => {
-                const row = e.target.closest('tr');
-                const qtdMortalidade = parseFloat(e.target.value) || 0;
-                const pesoMedioG = parseFloat(e.target.dataset.pesoMedio) || 0;
-                const biomassaRetiradaKg = (qtdMortalidade * pesoMedioG) / 1000;
-                
-                row.querySelector('[data-biomassa-retirada]').textContent = formatBR(biomassaRetiradaKg, 2);
-                updateTotaisMortalidade();
-            });
-        });
-        updateTotaisMortalidade(); // Atualiza totais na carga inicial
-
-    } catch (error) {
-        console.error("Erro ao carregar mortalidade:", error);
-        tbody.innerHTML = `<tr><td colspan="99" class="text-center"><span class="badge bg-danger">Erro ao carregar dados</span></td></tr>`;
-    }
-  }
-
-  // --- Event Listeners ---
-  const debouncedLoad = debounce(() => loadActivePane(true), 400);
-
-  selectAba?.addEventListener('change', (e) => {
-    showTabBySlug(e.target.value);
-  });
-
-  btnMostrarMais?.addEventListener('click', () => carregarUltimosEventos(false));
-
-  [filtroBusca, filtroUnidade, filtroLinha, filtroFase, filtroData].forEach(filtro => {
-      filtro?.addEventListener('input', (e) => {
-          // Nao acionar busca em cada digitação de data, apenas no change
-          if (e.target.type === 'date' && e.type === 'input') return;
-          debouncedLoad();
-      });
-      if (filtro?.type === 'date') {
-          filtro.addEventListener('change', debouncedLoad);
-      }
-  });
-
-  qa('[data-bs-toggle="tab"]').forEach(el => {
-    el.addEventListener("shown.bs.tab", () => loadActivePane(true));
-  });
-
-  // Listener para o botão Processar Lançamentos (Mortalidade)
-  const btnProcessarMortalidade = q('#btn-processar-mortalidade');
-  if (btnProcessarMortalidade) {
-    btnProcessarMortalidade.addEventListener('click', async () => {
-      const lancamentos = [];
-      const dataEvento = filtroData.value; // Data do filtro
-
-      if (!dataEvento) {
-        mostrarMensagem('warning', 'Por favor, selecione uma data de lançamento.');
-        return;
-      }
-
-      qa('#tabela-mortalidade tbody tr').forEach(row => {
-        const loteId = row.dataset.lote;
-        const qtdMortalidade = toNumLocale(row.querySelector('.input-mort').value);
-        const biomassaRetirada = toNumLocale(row.querySelector('[data-biomassa-retirada]').textContent);
-
-        if (qtdMortalidade > 0) {
-          lancamentos.push({
-            lote_id: loteId,
-            quantidade_mortalidade: qtdMortalidade,
-            biomassa_retirada: biomassaRetirada,
-          });
-        }
-      });
-
-      if (lancamentos.length === 0) {
-        mostrarMensagem('warning', 'Nenhum lançamento de mortalidade para processar.');
-        return;
-      }
-
-      btnProcessarMortalidade.disabled = true;
-      btnProcessarMortalidade.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-
-      try {
-        const response = await fetchWithCreds('/producao/api/eventos/mortalidade/processar/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lancamentos, data_evento: dataEvento })
-        });
-        const result = await response.json();
-
-        if (result.success) {
-          mostrarMensagem('success', result.message);
-          carregarMortalidade(); // Recarrega a tabela para refletir as mudanças
-          carregarUltimosEventos(true); // Recarrega a lista de últimos eventos
-          // Opcional: limpar filtroData.value = '';
-        } else {
-          mostrarMensagem('danger', result.message || 'Erro ao processar mortalidade.');
-        }
-      } catch (error) {
-        console.error('Erro ao processar mortalidade:', error);
-        mostrarMensagem('danger', 'Erro de comunicação ao processar mortalidade.');
-      } finally {
-        btnProcessarMortalidade.disabled = false;
-        btnProcessarMortalidade.innerHTML = 'Processar Lançamentos';
-      }
-    });
-  }
-
-  // --- Estado Inicial ---
-  toggleView(false);
-  carregarUltimosEventos(true); // Carrega a lista inicial com filtros vazios
-}
-
-function updateTotaisMortalidade() {
-  console.log("DEBUG: updateTotaisMortalidade() chamada.");
-  const tabelaMortalidadeBody = document.querySelector("#tabela-mortalidade tbody");
-  if (!tabelaMortalidadeBody) {
-    console.log("DEBUG: tbody da tabela de mortalidade não encontrado.");
-    return;
-  }
-
-  let totalQtd = 0;
-  let totalBiomassa = 0;
-
-  tabelaMortalidadeBody.querySelectorAll('tr').forEach(row => {
-    const inputQtdMort = row.querySelector('.input-mort');
-    if (inputQtdMort) {
-      const qtd = toNumLocale(inputQtdMort.value) || 0;
-      const biomassa = toNumLocale(row.querySelector('[data-biomassa-retirada]').textContent) || 0; // Biomassa Mortalidade (kg)
-      console.log(`DEBUG: Linha - Qtd: ${qtd}, Biomassa: ${biomassa}`);
-      totalQtd += qtd;
-      totalBiomassa += biomassa;
-    }
-  });
-
-  const totalQtdElement = document.getElementById('total-mortalidade-qtd');
-  const totalBiomassaElement = document.getElementById('total-mortalidade-biomassa');
-
-  if (totalQtdElement) {
-    totalQtdElement.textContent = formatBR(totalQtd, 0); // Quantidade total pode ser inteira
-    console.log("DEBUG: Total Qtd atualizado para:", totalQtd);
-  }
-  if (totalBiomassaElement) {
-    totalBiomassaElement.textContent = formatBR(totalBiomassa, 2);
-    console.log("DEBUG: Total Biomassa atualizado para:", totalBiomassa.toFixed(2));
-  }
-}
-
-// === ARRAÇOAMENTO DIÁRIO ===
-function initArracoamentoDiario() {
-    const page = document.querySelector('[data-page="arracoamento-diario"]');
-    if (!page || page.dataset.initialized) return;
-    page.dataset.initialized = 'true';
-
-    const dataInput = page.querySelector('#data-arraçoamento');
-    const aprovarBtn = page.querySelector('#btn-aprovar-selecionados');
-    const tabelaBody = page.querySelector('#corpo-tabela-sugestoes');
-    const loadingSpinner = page.querySelector('#loading-spinner');
-    const selecionarTodosCheckbox = page.querySelector('#selecionar-todos-sugestoes');
-    const totalSugeridoEl = page.querySelector('#total-sugerido');
-    const totalRealEl = page.querySelector('#total-real');
-    const filtroLinhaProducaoSelect = page.querySelector('#filtro-linha-producao');
-
-    const API_URL_SUGESTOES = '/producao/api/arracoamento/sugestoes/';
-    const API_URL_APROVAR = '/producao/api/arracoamento/aprovar/';
-    const API_URL_LINHAS_PRODUCAO = '/producao/api/linhas-producao/';
-    const API_URL_PRODUTOS_RACAO = '/produtos/api/racoes/'; // Rota corrigida
-
-    let produtosRacaoCache = null; // Cache para os produtos de ração
-
-    // Função para buscar e popular os seletores de ração
-    async function inicializarSeletoresDeRacao(container) {
-        if (!produtosRacaoCache) {
-            try {
-                const response = await fetchWithCreds(API_URL_PRODUTOS_RACAO);
-                const produtos = await response.json();
-                produtosRacaoCache = produtos;
-            } catch (error) {
-                console.error('Erro ao buscar produtos de ração:', error);
-                mostrarMensagem('danger', 'Não foi possível carregar as opções de ração.');
-                return;
-            }
-        }
-
-        container.querySelectorAll('.racao-realizada-select').forEach(select => {
-            // Limpa opções antigas, exceto a primeira ("Padrão")
-            while (select.options.length > 1) {
-                select.remove(1);
-            }
-            // Popula com os produtos do cache
-            produtosRacaoCache.forEach(produto => {
-                const option = new Option(produto.nome, produto.id);
-                select.add(option);
-            });
-        });
-    }
-
-    // Função para popular o filtro de linha de produção
-    async function popularFiltroLinhaProducao() {
-        try {
-            const response = await fetchWithCreds(API_URL_LINHAS_PRODUCAO);
-            const linhas = await response.json();
-            linhas.forEach(linha => {
-                const option = document.createElement('option');
-                option.value = linha.id;
-                option.textContent = linha.nome;
-                filtroLinhaProducaoSelect.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Erro ao popular filtro de linha de produção:', error);
-            mostrarMensagem('danger', 'Erro ao carregar linhas de produção.');
-        }
-    }
-
-    function updateTotais() {
-        let totalSugerido = 0;
-        let totalReal = 0;
-        const rows = tabelaBody.querySelectorAll('tr');
-
-        rows.forEach(row => {
-            const qtdSugerida = parseFloat(row.dataset.qtdSugerida) || 0;
-            const qtdRealInput = row.querySelector('.qtd-real-input');
-            
-            totalSugerido += qtdSugerida;
-
-            if (qtdRealInput) {
-                const qtdReal = parseFloat(qtdRealInput.value) || qtdSugerida; // Usa sugerida se real for inválido/vazio
-                totalReal += qtdReal;
-            }
-        });
-
-        if (totalSugeridoEl) totalSugeridoEl.textContent = totalSugerido.toFixed(2);
-        if (totalRealEl) totalRealEl.textContent = totalReal.toFixed(2);
-    }
-
-    async function buscarSugestoes() {
-        const data = dataInput.value;
-        const linhaProducaoId = filtroLinhaProducaoSelect.value;
-
-        if (!data) {
-            tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Selecione uma data para ver as sugestões.</td></tr>';
-            updateTotais();
-            return;
-        }
-
-        const dataAlvo = new Date(data);
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        const isDataFutura = dataAlvo > hoje;
-
-        loadingSpinner.style.display = 'block';
-        tabelaBody.innerHTML = '';
-        aprovarBtn.disabled = true;
-
-        let shouldDisableAll = false;
-
-        try {
-            const urlParams = new URLSearchParams({ data: data });
-            if (linhaProducaoId) {
-                urlParams.append('linha_producao_id', linhaProducaoId);
-            }
-            const url = `${API_URL_SUGESTOES}?${urlParams.toString()}`;
-            const response = await fetchWithCreds(url);
-            const result = await response.json();
-
-            if (result.success) {
-                // Exibe o alerta de pendências ANTES de renderizar a tabela
-                if (result.has_pending_previous_approvals) {
-                    const dates = result.pending_previous_approval_dates.join(', ');
-                    await Swal.fire({
-                        title: 'Atenção!',
-                        html: `Existem arraçoamentos pendentes para datas anteriores: <strong>${dates}</strong>.<br>Recomenda-se aprová-los primeiro para garantir a precisão das projeções.`,
-                        icon: 'warning',
-                        confirmButtonText: 'Entendi'
-                    });
-                }
-
-                shouldDisableAll = isDataFutura || result.has_pending_previous_approvals;
-
-                if (result.sugestoes.length > 0) {
-                    tabelaBody.innerHTML = result.sugestoes.map(s => {
-                        const qtdSugerida = parseFloat(s.quantidade_kg).toFixed(2);
-                        const isPendente = s.status === 'Pendente';
-                        return `
-                        <tr data-sugestao-id="${s.sugestao_id}" data-realizado-id="${s.realizado_id || ''}" data-qtd-sugerida="${qtdSugerida}" class="${!isPendente ? 'text-muted' : ''}">
-                            <td><input type="checkbox" class="form-check-input sugestao-checkbox" value="${s.sugestao_id}" ${shouldDisableAll ? 'disabled' : ''}></td>
-                            <td>${s.lote_nome}</td>
-                            <td>${s.tanque_nome}</td>
-                            <td>${s.lote_quantidade_atual}</td>
-                            <td>${s.lote_peso_medio_atual}</td>
-                            <td>${s.lote_linha_producao}</td>
-                            <td>${s.lote_sequencia}</td>
-                            <td>${s.produto_racao_nome}</td>
-                            <td><select class="form-select form-select-sm racao-realizada-select" ${shouldDisableAll ? 'disabled' : ''} style="min-width: 150px;"><option value="">Padrão</option></select></td>
-                            <td class="text-center">${qtdSugerida}</td>
-                            <td><input type="text" class="form-control form-control-sm qtd-real-input" value="" ${shouldDisableAll ? 'disabled' : ''} style="max-width: 80px;"></td>
-                            <td><span class="badge bg-${isPendente ? 'warning' : 'success'}">${s.status}</span></td>
-                        </tr>
-                    `}).join('');
-                } else {
-                    tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center">Nenhuma sugestão encontrada para esta data.</td></tr>';
-                }
-                if(result.erros && result.erros.length > 0){
-                    mostrarMensagem('warning', `Erros encontrados: ${result.erros.join('; ')}`)
-                }
-                
-            } else {
-                mostrarMensagem('danger', result.message || 'Erro ao buscar sugestões.');
-                tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Falha ao carregar dados.</td></tr>';
-            }
-        } catch (error) {
-            console.error('Erro na busca de sugestões:', error);
-            mostrarMensagem('danger', 'Erro de comunicação com o servidor.');
-        } finally {
-            loadingSpinner.style.display = 'none';
-            updateAprovarBtnState(shouldDisableAll);
-            updateTotais();
-            inicializarSeletoresDeRacao(tabelaBody);
-        }
-    }
-
-    function updateAprovarBtnState(shouldDisableAll = false) {
-        const checkboxes = page.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-        aprovarBtn.disabled = checkboxes.length === 0 || shouldDisableAll;
-    }
-
-    async function aprovarSugestoes() {
-        const checkboxes = page.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-        if (checkboxes.length === 0) {
-            mostrarMensagem('warning', 'Selecione pelo menos uma sugestão pendente para aprovar.');
-            return;
-        }
-
-        aprovarBtn.disabled = true;
-        const totalToProcess = checkboxes.length;
-        let concluidos = 0;
-        const erros = [];
-
-        for (const cb of checkboxes) {
-            concluidos++;
-            aprovarBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Aprovando (${concluidos}/${totalToProcess})...`;
-            
-            const row = cb.closest('tr');
-            const sugerida = parseFloat(row.dataset.qtdSugerida) || 0;
-            const realInput = row.querySelector('.qtd-real-input');
-            const real = realInput.value.trim() === '' ? sugerida : toNumLocale(realInput.value);
-            
-            const racaoSelect = row.querySelector('.racao-realizada-select');
-            const payload = {
-                sugestao_id: cb.value,
-                quantidade_real_kg: real,
-                racao_realizada_id: racaoSelect ? racaoSelect.value : null
-            };
-
-            try {
-                const response = await fetchWithCreds(API_URL_APROVAR, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                    erros.push(data.message || 'Erro desconhecido');
-                }
-            } catch (error) {
-                console.error('Erro na requisição de aprovação:', error);
-                erros.push('Erro de comunicação');
-            }
-        }
-
-        try {
-            if (erros.length === 0) {
-                mostrarMensagem('success', `${totalToProcess} arraçoamento(s) aprovado(s) com sucesso.`);
-            } else {
-                const mensagensErro = erros.join('; ');
-                mostrarMensagem('danger', `Falha ao aprovar ${erros.length} item(ns): ${mensagensErro}`);
-            }
-        } finally {
-            aprovarBtn.disabled = false;
-            aprovarBtn.innerHTML = '<i class="fas fa-check me-2"></i>Aprovar Selecionados';
-            buscarSugestoes(); // Recarrega a lista para refletir o estado final
-        }
-    }
-
-    // Event Listeners
-    aprovarBtn.addEventListener('click', aprovarSugestoes);
-
-    selecionarTodosCheckbox.addEventListener('change', (e) => {
-        page.querySelectorAll('.sugestao-checkbox:not(:disabled)').forEach(cb => {
-            cb.checked = e.target.checked;
-        });
-        updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0));
-    });
-
-    tabelaBody.addEventListener('change', (e) => {
-        if (e.target.classList.contains('sugestao-checkbox')) {
-            updateAprovarBtnState(new Date(dataInput.value) > new Date().setHours(0,0,0,0));
-        }
-    });
-
-    tabelaBody.addEventListener('input', (e) => {
-        if (e.target.classList.contains('qtd-real-input')) {
-            updateTotais();
-        }
-    });
-
-    tabelaBody.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            const currentInput = e.target;
-            if (currentInput.classList.contains('qtd-real-input')) {
-                e.preventDefault();
-
-                const inputs = Array.from(tabelaBody.querySelectorAll('.qtd-real-input:not([disabled])'));
-                const currentIndex = inputs.indexOf(currentInput);
-
-                let nextIndex;
-                if (e.shiftKey) {
-                    nextIndex = currentIndex - 1;
-                    if (nextIndex < 0) {
-                        nextIndex = inputs.length - 1;
-                    }
-                } else {
-                    nextIndex = currentIndex + 1;
-                    if (nextIndex >= inputs.length) {
-                        nextIndex = 0;
-                    }
-                }
-                inputs[nextIndex].focus();
-                inputs[nextIndex].select();
-            }
-        }
-    });
-
-    // Initial Load
-    popularFiltroLinhaProducao(); // Popula o filtro ao carregar a página
-    // buscarSugestoes();
-
-    // Listeners
-    filtroLinhaProducaoSelect.addEventListener('change', buscarSugestoes);
-    dataInput.addEventListener('change', buscarSugestoes);
-
-    // Lógica para o modal de edição
-    const modalEdicao = document.getElementById('modalEdicao');
-    const formEdicao = document.getElementById('formEdicao');
-    const editIdInput = document.getElementById('edit-id');
-    const editLoteNomeInput = document.getElementById('edit-lote-nome');
-    const editProdutoRacaoNomeInput = document.getElementById('edit-produto-racao-nome');
-    const editQuantidadeKgInput = document.getElementById('edit-quantidade-kg');
-    const editObservacoesInput = document.getElementById('edit-observacoes');
-
-    modalEdicao.addEventListener('show.bs.modal', async (event) => {
-        const button = event.relatedTarget;
-        const url = button.dataset.href;
-
-        if (!url) {
-            console.error("O botão de edição não possui um data-href. O modal não pode ser populado.");
-            event.preventDefault();
-            return;
-        }
-
-        try {
-            const response = await fetchWithCreds(url);
-            const result = await response.json();
-
-            if (result.success) {
-                const data = result.data;
-                editIdInput.value = data.id;
-                editLoteNomeInput.value = data.lote_nome;
-                editProdutoRacaoNomeInput.value = data.produto_racao_nome;
-                editQuantidadeKgInput.value = data.quantidade_kg;
-                editObservacoesInput.value = data.observacoes;
-                formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${data.id}/update/`;
-            } else {
-                mostrarMensagem('danger', result.message || 'Erro ao carregar dados para edição.');
-                const modalInstance = bootstrap.Modal.getInstance(modalEdicao);
-                if (modalInstance) modalInstance.hide();
-            }
-        } catch (error) {
-            console.error('Erro ao carregar dados para edição:', error);
-            mostrarMensagem('danger', 'Erro de comunicação ao carregar dados para edição.');
-            const modalInstance = bootstrap.Modal.getInstance(modalEdicao);
-            if (modalInstance) modalInstance.hide();
-        }
-    });
-
-    formEdicao.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const apiUrl = formEdicao.dataset.apiUrl;
-        const payload = {
-            quantidade_kg: parseFloat(editQuantidadeKgInput.value) || 0,
-            observacoes: editObservacoesInput.value
-        };
-
-        try {
-            const response = await fetchWithCreds(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                mostrarMensagem('success', result.message);
-                bootstrap.Modal.getInstance(modalEdicao).hide();
-                buscarSugestoes();
-            } else {
-                mostrarMensagem('danger', result.message || 'Erro ao salvar alterações.');
-            }
-        } catch (error) {
-            console.error('Erro ao salvar alterações:', error);
-            mostrarMensagem('danger', 'Erro de comunicação ao salvar alterações.');
-        }
-    });
-}
-
-// Adiciona a nova função aos listeners existentes
-document.addEventListener("DOMContentLoaded", () => {
-    initGerenciarCurvas();
-    initGerenciarTanques();
-    initPovoamentoLotes();
-    initGerenciarEventos();
-    initArracoamentoDiario(); // Adicionado aqui
+  const url = window.location.href;
+  try {
+    const res = await fetchWithCreds(url, { method: 'GET' }, 'text/html');
+    const html = await res.text();
+    activeWrapper.innerHTML = html;
+    document.dispatchEvent(new CustomEvent('ajaxContentLoaded', { detail: { screen: activeWrapper.dataset.tela || '' }}));
+  } catch (_) {}
 });
-document.addEventListener("ajaxContentLoaded", () => {
-    initGerenciarCurvas();
-    initGerenciarTanques();
-    initPovoamentoLotes();
-    initGerenciarEventos();
-    initArracoamentoDiario(); // Adicionado aqui
+
+
+// --- Módulos de Página Específicos ---
+
+function initListaEmpresas() {
+  const form = document.getElementById('filtro-empresas-avancadas');
+  if (!form || form.dataset.debounced === 'true') return;
+  form.dataset.debounced = 'true';
+
+  const handler = debounce(() => {
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }, 400);
+
+  form.addEventListener('input', (e) => {
+    if (e.target.matches('input, select, textarea')) handler();
+  });
+}
+
+// --- Inicialização ---
+
+function runInitializers() {
+    // Lógica global que roda em todas as cargas de página/ajax
+    if (document.getElementById('navbar-container')) {
+        loadNavbar();
+    }
+    const mainContent = document.getElementById("main-content");
+    if (mainContent && typeof updateButtonStates === 'function') {
+        updateButtonStates(mainContent);
+    }
+
+    // Módulos específicos de página
+    const initializers = [
+        initListaEmpresas,
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarCurvas) {
+                const root = document.querySelector(OneTech.GerenciarCurvas.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarCurvas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarTanques) {
+                const root = document.querySelector(OneTech.GerenciarTanques.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarTanques.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.GerenciarEventos) {
+                const root = document.querySelector(OneTech.GerenciarEventos.SELECTOR_ROOT);
+                if (root) OneTech.GerenciarEventos.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.ArracoamentoDiario) {
+                const root = document.querySelector(OneTech.ArracoamentoDiario.SELECTOR_ROOT);
+                if (root) OneTech.ArracoamentoDiario.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.NotaFiscalEntradas) {
+                const root = document.querySelector(OneTech.NotaFiscalEntradas.SELECTOR_ROOT);
+                if (root) OneTech.NotaFiscalEntradas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.NotasEntradas) {
+                const root = document.querySelector(OneTech.NotasEntradas.SELECTOR_ROOT);
+                if (root) OneTech.NotasEntradas.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.PovoamentoLotes) {
+                const root = document.querySelector(OneTech.PovoamentoLotes.SELECTOR_ROOT);
+                if (root) OneTech.PovoamentoLotes.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.EmpresaForm) {
+                const root = document.querySelector(OneTech.EmpresaForm.SELECTOR_ROOT);
+                if (root) OneTech.EmpresaForm.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.Permissions) {
+                const root = document.querySelector(OneTech.Permissions.SELECTOR_ROOT);
+                if (root) OneTech.Permissions.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.LancarNotaManual) {
+                const root = document.querySelector(OneTech.LancarNotaManual.SELECTOR_ROOT);
+                if (root) OneTech.LancarNotaManual.init(root);
+            }
+        }
+    ];
+    initializers.forEach(init => {
+        if (typeof init === 'function') {
+            init();
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOM completamente carregado. Iniciando scripts.");
+    runInitializers();
+});
+
+document.addEventListener("ajaxContentLoaded", (event) => {
+    console.log("✅ Conteúdo AJAX carregado. Re-inicializando scripts.");
+    runInitializers();
 });

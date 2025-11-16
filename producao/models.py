@@ -282,7 +282,8 @@ class Lote(models.Model):
                         if nova_quantidade > 0:
                             current_peso_medio = nova_biomassa / nova_quantidade
                         else:
-                            current_peso_medio = peso_medio_evento
+                            # Se a quantidade for zero, o peso médio também deve ser zero ou o peso do evento se for um reforço
+                            current_peso_medio = Decimal('0')
                         current_quantidade = nova_quantidade
                 elif evento.tipo_evento in ['Mortalidade', 'Despesca']:
                     current_quantidade -= (evento.quantidade or Decimal('0'))

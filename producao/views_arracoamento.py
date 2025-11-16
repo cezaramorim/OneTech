@@ -87,6 +87,7 @@ def api_sugestoes_arracoamento(request):
     sugestoes_serializadas = []
     for s in todas_sugestoes:
         realizado_id = s.lote_diario.realizacoes.order_by('-data_realizacao').first().id if s.status == 'Aprovado' and s.lote_diario.realizacoes.exists() else None
+        racao_realizada_obj = s.lote_diario.racao_realizada
         sugestoes_serializadas.append({
             'sugestao_id': s.id,
             'realizado_id': realizado_id,
@@ -99,6 +100,7 @@ def api_sugestoes_arracoamento(request):
             'lote_sequencia': s.lote_diario.lote.tanque_atual.sequencia if s.lote_diario.lote.tanque_atual else 'N/A',
             'produto_racao_id': s.produto_racao.id if s.produto_racao else None,
             'produto_racao_nome': s.produto_racao.nome if s.produto_racao else 'N/A',
+            'racao_realizada_id': racao_realizada_obj.id if racao_realizada_obj else None, # Adicionado
             'quantidade_kg': f"{s.quantidade_kg:.3f}",
             'quantidade_realizada_kg': f"{s.lote_diario.racao_realizada_kg:.3f}" if s.lote_diario.racao_realizada_kg is not None else "",
             'status': s.status,
@@ -140,26 +142,40 @@ def api_aprovar_arracoamento(request):
         data = json.loads(request.body)
         sugestao_id = data.get('sugestao_id')
         quantidade_real_kg = q3(data.get('quantidade_real_kg'))
+        racao_realizada_id = data.get('racao_realizada_id') # Captura a ração escolhida
         observacoes = data.get('observacoes', '')
 
         if quantidade_real_kg <= 0:
             return JsonResponse({'success': False, 'message': 'A quantidade real deve ser um número positivo.'}, status=400)
 
         with transaction.atomic():
-            sugestao = ArracoamentoSugerido.objects.select_related('lote_diario__lote').get(id=sugestao_id)
+            sugestao = ArracoamentoSugerido.objects.select_related('lote_diario__lote', 'produto_racao').get(id=sugestao_id)
             lote = Lote.objects.select_for_update().get(pk=sugestao.lote_diario.lote.pk)
             lote_diario = sugestao.lote_diario
 
             if sugestao.status == 'Aprovado':
                 return JsonResponse({'success': False, 'message': 'Esta sugestão já foi aprovada.'}, status=400)
 
+            # Determina qual ração usar: a escolhida pelo usuário ou a sugerida como padrão
+            racao_a_ser_usada = sugestao.produto_racao
+            if racao_realizada_id:
+                try:
+                    # Lazy import para evitar import circular se o modelo Produto estiver em outro app
+                    from produto.models import Produto
+                    racao_a_ser_usada = Produto.objects.get(pk=racao_realizada_id)
+                except Produto.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': f'A ração escolhida com ID {racao_realizada_id} não foi encontrada.'}, status=404)
+
             sugestao.status = 'Aprovado'
             sugestao.save(update_fields=['status'])
 
             ArracoamentoRealizado.objects.create(
-                lote_diario=lote_diario, produto_racao=sugestao.produto_racao,
-                quantidade_kg=quantidade_real_kg, data_realizacao=timezone.now(),
-                usuario_lancamento=request.user, observacoes=observacoes
+                lote_diario=lote_diario, 
+                produto_racao=racao_a_ser_usada, # CORRIGIDO
+                quantidade_kg=quantidade_real_kg, 
+                data_realizacao=timezone.now(),
+                usuario_lancamento=request.user, 
+                observacoes=observacoes
             )
 
             # --- INÍCIO DA LÓGICA DE CÁLCULO DE MÉTRICAS REAIS ---
@@ -213,7 +229,7 @@ def api_aprovar_arracoamento(request):
             lote_diario.gpt_real = lote_diario.peso_medio_real - lote.peso_medio_inicial
             
             # Atualiza campos do LoteDiario
-            lote_diario.racao_realizada = sugestao.produto_racao
+            lote_diario.racao_realizada = racao_a_ser_usada # CORRIGIDO
             lote_diario.racao_realizada_kg = quantidade_real_kg
             lote_diario.usuario_lancamento = request.user
 

@@ -4,7 +4,7 @@
 <div class="container-fluid" data-page="cadastrar-produto">
   <h2 class="mb-4">Cadastrar Produto</h2>
 
-  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_produto' %}" autocomplete="off">
+  <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_produto' %}" data-response-type="json" autocomplete="off">
     {% csrf_token %}
 
     <div class="row g-3">

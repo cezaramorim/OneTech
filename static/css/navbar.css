@@ -109,3 +109,13 @@ html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collaps
 .navbar-superior .dropdown-menu a[aria-expanded="true"] .submenu-arrow {
     transform: rotate(90deg);
 }
+
+:root{
+  /* ajuste aqui o tamanho do respiro */
+  --navbar-gap: 60px;  /* 12–24px costuma ficar bom */
+}
+
+/* espaço entre a navbar (injetada) e o conteúdo */
+#navbar-container{
+  margin-bottom: var(--navbar-gap);
+}

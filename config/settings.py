@@ -178,3 +178,23 @@ SESSION_SAVE_EVERY_REQUEST = True           # Renova a sessão a cada requisiç�
 LOCALE_PATHS = [
     BASE_DIR / 'locale',  # onde os arquivos .po e .mo ficarão salvos
 ]
+
+# =======================
+# LOGGING DE QUERIES SQL (PARA DIAGNÓSTICO)
+# =======================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}

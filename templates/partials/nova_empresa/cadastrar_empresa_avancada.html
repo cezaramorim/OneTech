@@ -16,6 +16,7 @@
 
         <form method="post" id="form-empresa-avancada" class="ajax-form" 
     data-url="{% if empresa %}{% url 'empresas:editar_empresa_avancada' pk=empresa.pk %}{% else %}{% url 'empresas:cadastrar_empresa_avancada' %}{% endif %}" 
+    data-response-type="json"
     autocomplete="off">
           {% csrf_token %}
 

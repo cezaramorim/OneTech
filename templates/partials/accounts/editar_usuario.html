@@ -16,7 +16,7 @@
 
       <div class="card shadow-sm p-4">
 
-        <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_usuario' usuario.id %}">
+        <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_usuario' usuario.id %}" data-response-type="json">
           {% csrf_token %}
 
           <!-- 👤 Nome de Usuário -->

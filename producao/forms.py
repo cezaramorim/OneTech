@@ -130,8 +130,8 @@ class EventoManejoForm(forms.ModelForm):
         model = EventoManejo
         fields = '__all__'
         labels = {
-            'quantidade': 'Quantidade (peixes)',
-            'peso_medio': 'Peso Médio (g)',
+            'quantidade': 'Qtde',
+            'peso_medio': 'P.Médio(g)',
         }
 
     def clean(self):
@@ -198,8 +198,13 @@ class ExcelUploadForm(forms.Form):
     arquivo_excel = forms.FileField(label="Selecione o arquivo Excel")
     tipo_dado = forms.ChoiceField(label="Tipo de Dado", choices=TIPO_DADO_CHOICES)
 
+TIPO_TANQUE_CHOICES = [
+    ('VAZIO', 'Tanque Vazio'),
+    ('POVOADO', 'Tanque Povoado'),
+]
+
 class PovoamentoForm(forms.Form):
-    tipo_tanque = forms.CharField()
+    tipo_tanque = forms.ChoiceField(choices=TIPO_TANQUE_CHOICES)
     curva_id = forms.IntegerField(required=False)
     tanque_id = forms.IntegerField()
     grupo_origem = forms.CharField()
@@ -219,4 +224,3 @@ class PovoamentoForm(forms.Form):
             if not cleaned_data.get("curva_id"):
                 self.add_error("curva_id", "O campo 'Curva de Crescimento' é obrigatório.")
         return cleaned_data
-

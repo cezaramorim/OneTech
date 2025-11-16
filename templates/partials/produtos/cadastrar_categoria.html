@@ -11,7 +11,7 @@
         <div class="card-body">
           <h2 class="mb-4">📁 Cadastrar Categoria</h2>
 
-          <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_categoria' %}" autocomplete="off">
+          <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_categoria' %}" data-response-type="json" autocomplete="off">
             {% csrf_token %}
 
             <div class="row g-3">

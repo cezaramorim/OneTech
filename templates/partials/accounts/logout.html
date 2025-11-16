@@ -12,7 +12,7 @@
     <h2 class="mb-3">Deseja realmente sair?</h2>
 
     <!-- Formulário de logout AJAX -->
-    <form method="post" class="ajax-form" data-url="{% url 'accounts:logout' %}">
+    <form method="post" class="ajax-form" data-url="{% url 'accounts:logout' %}" data-response-type="json">
       {% csrf_token %}
       <div class="d-flex justify-content-center gap-3">
         <button type="submit" class="btn btn-danger">Sim, Sair</button>

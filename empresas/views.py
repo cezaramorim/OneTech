@@ -29,6 +29,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.db.models import Q
 from .models import EmpresaAvancada
+from common.mixins import AjaxListMixin
 
 
 
@@ -181,44 +182,33 @@ def lista_empresas_avancadas_view(request):
     - filtro por status (ativa/inativa)
     - compatível com AJAX e base.html
     """
-
+    # Lógica de filtragem
     empresas = EmpresaAvancada.objects.select_related('categoria').all()
-
-    # 🔍 Parâmetros de busca
     termo = request.GET.get('termo_empresa', '').strip()
-    tipo = request.GET.get('tipo', '').strip()      # Esperado: 'PJ' ou 'PF'
-    status = request.GET.get('status', '').strip()  # Esperado: 'ativo' ou 'inativo'
+    tipo = request.GET.get('tipo', '').strip()
+    status = request.GET.get('status', '').strip()
 
-    # 🔎 Filtro por termo (razão social ou CNPJ)
     if termo:
         empresas = empresas.filter(
-            Q(razao_social__icontains=termo) |
-            Q(cnpj__icontains=termo) |
-            Q(nome__icontains=termo) |
-            Q(nome_fantasia__icontains=termo)
+            Q(razao_social__icontains=termo) | Q(cnpj__icontains=termo) |
+            Q(nome__icontains=termo) | Q(nome_fantasia__icontains=termo)
         )
+    if tipo:
+        empresas = empresas.filter(tipo_empresa=tipo)
+    if status:
+        status_map = {'ativo': 'ativa', 'inativo': 'inativa'}
+        if status in status_map:
+            empresas = empresas.filter(status_empresa=status_map[status])
 
-    # 🔎 Filtro por tipo de empresa (PF/PJ)
-    if tipo == "PJ":
-        empresas = empresas.filter(tipo_empresa="PJ")
-    elif tipo == "PF":
-        empresas = empresas.filter(tipo_empresa="PF")
+    context = {'empresas': empresas, 'request': request}
 
-    # 🔎 Filtro por status (ativo ou inativo)
-    status_map = {
-        'ativo': 'ativa',
-        'inativo': 'inativa',
-    }
-    if status in status_map:
-        empresas = empresas.filter(status_empresa=status_map[status])
+    # O Mixin lida com a lógica de renderização
+    mixin = AjaxListMixin()
+    mixin.template_page = 'partials/nova_empresa/lista_empresas.html'
+    mixin.template_partial = 'partials/nova_empresa/_lista_empresas_table.html'
     
-
-    
-
-    return render_ajax_or_base(request, 'partials/nova_empresa/lista_empresas.html', {
-        'empresas': empresas,
-        'request': request
-    })
+    # A função render_list do mixin decide qual template usar
+    return mixin.render_list(request, context)
 
 
 
