@@ -11,6 +11,23 @@
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{% static 'js/scripts.js' %}" defer></script>
+    <style>
+      body[data-tela="login"]::before {
+        content: '';
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80vw;
+        height: 80vh;
+        background: url('{% if empresa_atual and empresa_atual.logo %}{{ empresa_atual.logo.url }}{% else %}{% static 'icons/logo_sem_fundo1.png' %}{% endif %}') no-repeat center center;
+        background-size: contain;
+        opacity: 0.50;
+        z-index: -1;
+        pointer-events: none;
+        filter: blur(1px);
+      }
+    </style>
 </head>
 <body class="d-flex align-items-center justify-content-center" data-tela="login">
     <div class="container">

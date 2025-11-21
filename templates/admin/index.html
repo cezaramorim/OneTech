@@ -1,55 +1,60 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load i18n static %}
+
+{# This part is from the default template to load specific css #}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{# These blocks are emptied in the default template to have a wider content area #}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
 
 {% block content %}
+{# This is the user's custom title #}
 <div class="container py-4">
   <h2 class="mb-4 text-primary text-center">Painel Administrativo OneTech</h2>
-
-  <div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center" id="cadastros-toggle" style="cursor: pointer;">
-      <span class="fw-bold d-flex align-items-center">
-        <img src="{% static 'icons/pasta.png' %}" alt="Ícone de pasta" class="me-2" style="width: 20px;">
-        Cadastros
-      </span>
-      <span id="toggle-icon">▼</span>
-    </div>
-
-    <div class="card-body p-0">
-      <ul id="cadastros" class="list-group list-group-flush" style="display: none;">
-        <li class="list-group-item">
-          <a href="{% url 'accounts:signup' %}" class="text-decoration-none text-dark">Cadastrar Novo Usuário</a>
-        </li>
-        <li class="list-group-item">
-          <a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="text-decoration-none text-dark">Cadastrar Nova Empresa</a>
-        </li>
-        <li class="list-group-item">
-          <a href="{% url 'empresas:cadastrar_categoria_avancada' %}">Cadastrar Nova Categoria</a>
-        </li>
-        <li class="list-group-item">
-          <a href="{% url 'accounts:lista_usuarios' %}" class="text-decoration-none text-dark">Lista de Usuários</a>
-        </li>
-      </ul>
-    </div>
-  </div>
 </div>
 
-{{ block.super }}
-
-<!-- Script de toggle -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const toggle = document.getElementById('cadastros-toggle');
-    const lista = document.getElementById('cadastros');
-    const icon = document.getElementById('toggle-icon');
-
-    toggle?.addEventListener('click', () => {
-      const isVisible = lista.style.display === 'block';
-      lista.style.display = isVisible ? 'none' : 'block';
-      icon.textContent = isVisible ? '▼' : '▲';
-    });
-  });
-</script>
+{# This is the content from the default template #}
+<div id="content-main">
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
 {% endblock %}
 
-
-
+{# This is the sidebar with recent actions from the default template #}
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% translate 'Recent actions' %}</h2>
+        <h3>{% translate 'My actions' %}</h3>
+            {% load log %}
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% translate 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr }}
+                {% else %}
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}

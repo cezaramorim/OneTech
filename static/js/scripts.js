@@ -62,6 +62,10 @@ function isLikelyLoginHTML(html) {
 }
 
 function mostrarMensagem(type, message) {
+    // Mapeia a tag 'error' do Django para a classe 'danger' do Bootstrap para estilização correta.
+    if (type === 'error') {
+        type = 'danger';
+    }
     if (!window.Swal) { console.error("SweetAlert2 não encontrada."); return; }
     let container = document.getElementById("toast-container");
     if (!container) {
@@ -85,6 +89,19 @@ function mostrarMensagem(type, message) {
     const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
     toast.show();
     toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+}
+
+function showFlashMessage() {
+    const flashMessageData = sessionStorage.getItem('flashMessage');
+    if (flashMessageData) {
+        try {
+            const { type, message } = JSON.parse(flashMessageData);
+            mostrarMensagem(type, message);
+        } catch (e) {
+            console.error('Could not parse flash message:', e);
+        }
+        sessionStorage.removeItem('flashMessage');
+    }
 }
 
 function loadNavbar() {
@@ -282,19 +299,29 @@ function loadAjaxContent(url) {
 document.body.addEventListener('submit', async (e) => {
   const form = e.target.closest('form.ajax-form');
   if (!form || form.dataset.skipGlobal === '1') return;
-
+  
+  console.log('[DEBUG] Interceptado envio de form.ajax-form:', form);
   e.preventDefault();
 
   try {
+    console.log('[DEBUG] Chamando submitAjaxForm...');
     const result = await submitAjaxForm(form);
-    if (result == null) return;
+    console.log('[DEBUG] Resultado de submitAjaxForm:', result);
+
+    if (result == null) {
+      console.log('[DEBUG] Resultado é nulo, encerrando.');
+      return;
+    }
 
     const declaredType = (form.dataset.responseType || '').toLowerCase();
     const isJson = declaredType === 'json' || (typeof result === 'object' && result !== null && !result.nodeType);
+    console.log(`[DEBUG] Resposta é JSON? ${isJson}`);
 
     if (isJson) {
+      console.log('[DEBUG] Chamando handleJsonFormResponse...');
       handleJsonFormResponse(form, result);
     } else {
+      console.log('[DEBUG] Chamando handleHtmlFormResponse...');
       handleHtmlFormResponse(form, result);
     }
 
@@ -305,8 +332,8 @@ document.body.addEventListener('submit', async (e) => {
       history.pushState({}, '', nextUrl);
     }
   } catch (err) {
-    console.error('❌ Erro na submissão do formulário AJAX:', err);
-    notify('error', 'Falha ao processar a requisição.');
+    console.error('❌ [DEBUG] Erro CAPTURADO na submissão do formulário AJAX:', err);
+    notify('error', 'Falha ao processar a requisição. Verifique o console.');
   }
 });
 
@@ -351,6 +378,15 @@ document.body.addEventListener('click', async (e) => {
       if (href) {
           loadAjaxContent(href);
       }
+      return;
+  }
+
+  // Handler para o botão de alternar tema
+  const themeToggle = e.target.closest('#btn-alternar-tema-superior');
+  if (themeToggle) {
+      e.preventDefault();
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('tema', isDark ? 'dark' : 'light');
       return;
   }
 
@@ -420,6 +456,7 @@ function initListaEmpresas() {
 // --- Inicialização ---
 
 function runInitializers() {
+    showFlashMessage();
     // Lógica global que roda em todas as cargas de página/ajax
     if (document.getElementById('navbar-container')) {
         loadNavbar();
@@ -490,6 +527,12 @@ function runInitializers() {
             if (window.OneTech && window.OneTech.LancarNotaManual) {
                 const root = document.querySelector(OneTech.LancarNotaManual.SELECTOR_ROOT);
                 if (root) OneTech.LancarNotaManual.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.CriarUsuario) {
+                const root = document.querySelector(OneTech.CriarUsuario.SELECTOR_ROOT);
+                if (root) OneTech.CriarUsuario.init(root);
             }
         }
     ];

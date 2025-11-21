@@ -10,9 +10,4 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='user',
-            name='whatsapp',
-            field=models.CharField(blank=True, help_text='Número de WhatsApp para recuperação de senha.', max_length=20, null=True, verbose_name='WhatsApp'),
-        ),
     ]

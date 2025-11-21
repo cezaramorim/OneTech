@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_extensions',
 
     # Apps do projeto
+    'control',
     'rest_framework',
     'django_filters',
     'painel',
@@ -56,6 +57,20 @@ INSTALLED_APPS = [
     'integracao_nfe',
     'producao',
 ]
+
+TENANT_APPS = (
+    'auth',
+    'contenttypes',
+    'accounts',
+    'empresas',
+    'produto',
+    'producao',
+    'nota_fiscal',
+    'relatorios',
+    'fiscal',
+    'painel',
+    'integracao_nfe',
+)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -82,6 +97,7 @@ REST_FRAMEWORK = {
 # =======================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'control.middleware.TenantMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -114,7 +130,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'painel.context_processors.definir_data_tela',
-                # ADICIONAR A LINHA ABAIXO
+                'control.context_processors.tenant_branding',  # Injeta dados do tenant (logo, nome, etc)
                 'common.context_processors.dynamic_menu', 
             ],
         },
@@ -146,6 +162,12 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static', BASE_DIR / 'producao' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# =======================
+# Arquivos de Mídia (Uploads de Usuários)
+# =======================
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # =======================
@@ -198,3 +220,8 @@ LOGGING = {
         },
     },
 }
+
+# =======================
+# Roteador Multi-Tenant
+# =======================
+DATABASE_ROUTERS = ['control.db_router.TenantRouter']

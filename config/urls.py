@@ -15,6 +15,9 @@ urlpatterns = [
     # 🔹 Administração do Django
     path('admin/', admin.site.urls),
 
+    # 🔹 Administração Customizada (Tenants, etc.)
+    path('gerenciamento/', include('control.urls', namespace='control')),
+
     # 🔹 Módulo de autenticação e gestão de usuários
     path('painel/', include('painel.urls', namespace='painel')), # Adiciona o namespace painel explicitamente
     path('accounts/', include('accounts.urls', namespace='accounts')),
@@ -60,3 +63,10 @@ urlpatterns = [
         name="favicon"
     ),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+# serving media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

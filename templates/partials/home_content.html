@@ -30,7 +30,11 @@
               </strong>!
             </h1>
             <p class="lead">
-              Bem-vindo(a) ao <strong>OneTech</strong>, seu painel de gestão inteligente.
+              {% if empresa_atual %}
+                Bem-vindo(a) ao <strong>{{ empresa_atual.nome }}</strong>, seu painel de gestão inteligente.
+              {% else %}
+                Bem-vindo(a) ao <strong>OneTech</strong>, seu painel de gestão inteligente.
+              {% endif %}
             </p>
           </div>
 

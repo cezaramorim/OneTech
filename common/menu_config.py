@@ -2,6 +2,16 @@
 
 MENU_ITEMS = [
     {
+        'name': 'Admin',
+        'icon': '👑',
+        'children': [
+            {'name': 'Listar Clientes', 'icon': '👥', 'url_name': 'control:tenant_list', 'required_perms': ['control.view_tenant']},
+            {'name': 'Novo Cliente', 'icon': '➕', 'url_name': 'control:tenant_create', 'required_perms': ['control.add_tenant']},
+            {'name': 'Usuários por Cliente', 'icon': '🔍', 'url_name': 'control:tenant_user_list', 'required_perms': ['accounts.view_user']},
+            {'name': 'Painel Django', 'icon': '🛠️', 'url': '/admin/', 'is_external': True},
+        ]
+    },
+    {
         'name': 'Configurações',
         'icon': '⚙️',
         'children': [
@@ -63,6 +73,7 @@ MENU_ITEMS = [
         'children': [
             {'name': 'Importar XML', 'url_name': 'nota_fiscal:importar_xml', 'required_perms': ['nota_fiscal.add_notafiscal']},
             {'name': 'Lançar Nota Manual', 'url_name': 'nota_fiscal:lancar_nota_manual', 'required_perms': ['nota_fiscal.add_notafiscal']},
+            {'name': 'Emitir NF-e', 'icon': '🚀', 'url_name': 'nota_fiscal:emitir_nfe_list', 'required_perms': ['integracao_nfe.can_emit_nfe']},
             {'name': 'Entradas de Nota', 'url_name': 'nota_fiscal:entradas_nota', 'required_perms': ['nota_fiscal.view_notafiscal']},
         ]
     },

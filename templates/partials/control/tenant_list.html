@@ -1,0 +1,64 @@
+{% load static %}
+
+<div class="container-fluid p-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0 text-primary">
+                <i class="bi bi-people-fill me-2"></i>Gestão de Clientes (Tenants)
+            </h2>
+            <a href="{% url 'control:tenant_create' %}" class="btn btn-primary ajax-link">
+                <i class="bi bi-plus-circle me-1"></i> Novo Cliente
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Nome do Cliente</th>
+                            <th scope="col">Domínio</th>
+                            <th scope="col">CNPJ</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tenant in tenants %}
+                        <tr>
+                            <td class="fw-bold">
+                                {% if tenant.logo %}
+                                    <img src="{{ tenant.logo.url }}" alt="Logo" class="rounded-circle me-2" width="32" height="32">
+                                {% else %}
+                                    <span class="avatar-placeholder me-2">{{ tenant.nome|first }}</span>
+                                {% endif %}
+                                {{ tenant.nome }}
+                            </td>
+                            <td><a href="http://{{ tenant.dominio }}:8000" target="_blank">{{ tenant.dominio }}</a></td>
+                            <td>{{ tenant.cnpj }}</td>
+                            <td class="text-center">
+                                {% if tenant.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'control:tenant_edit' tenant.pk %}" class="btn btn-outline-secondary btn-sm ajax-link" title="Editar Cliente">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <h5 class="text-muted">Nenhum cliente cadastrado.</h5>
+                                <p>Clique em "Novo Cliente" para começar.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

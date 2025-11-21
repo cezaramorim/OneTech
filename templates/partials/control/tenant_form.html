@@ -1,0 +1,158 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<div class="container-fluid p-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary">
+                {% if tenant %}
+                    <i class="bi bi-pencil-square me-2"></i>Editar Cliente: {{ tenant.nome }}
+                {% else %}
+                    <i class="bi bi-plus-circle me-2"></i>Adicionar Novo Cliente
+                {% endif %}
+            </h2>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Seção 1: Informações Principais -->
+                <fieldset class="mb-4">
+                    <legend class="h5 mb-3 border-bottom pb-2">Informações de Acesso</legend>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.nome.id_for_label }}" class="form-label">{{ form.nome.label }}</label>
+                            {% render_field form.nome class+="form-control" class+="is-invalid"|iff:form.nome.errors %}
+                            <div class="invalid-feedback">{{ form.nome.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.slug.id_for_label }}" class="form-label">{{ form.slug.label }}</label>
+                            {% render_field form.slug class+="form-control" class+="is-invalid"|iff:form.slug.errors %}
+                            <small class="form-text text-muted">{{ form.slug.help_text }}</small>
+                            <div class="invalid-feedback">{{ form.slug.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.dominio.id_for_label }}" class="form-label">{{ form.dominio.label }}</label>
+                            {% render_field form.dominio class+="form-control" class+="is-invalid"|iff:form.dominio.errors %}
+                            <small class="form-text text-muted">{{ form.dominio.help_text }}</small>
+                            <div class="invalid-feedback">{{ form.dominio.errors|first }}</div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Seção 2: Dados da Empresa -->
+                <fieldset class="mb-4">
+                    <legend class="h5 mb-3 border-bottom pb-2">Dados da Empresa</legend>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.razao_social.id_for_label }}" class="form-label">{{ form.razao_social.label }}</label>
+                            {% render_field form.razao_social class+="form-control" class+="is-invalid"|iff:form.razao_social.errors %}
+                            <div class="invalid-feedback">{{ form.razao_social.errors|first }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.nome_fantasia.id_for_label }}" class="form-label">{{ form.nome_fantasia.label }}</label>
+                            {% render_field form.nome_fantasia class+="form-control" class+="is-invalid"|iff:form.nome_fantasia.errors %}
+                            <div class="invalid-feedback">{{ form.nome_fantasia.errors|first }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.cnpj.id_for_label }}" class="form-label">{{ form.cnpj.label }}</label>
+                            {% render_field form.cnpj class+="form-control" class+="is-invalid"|iff:form.cnpj.errors %}
+                            <div class="invalid-feedback">{{ form.cnpj.errors|first }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.ie.id_for_label }}" class="form-label">{{ form.ie.label }}</label>
+                            {% render_field form.ie class+="form-control" class+="is-invalid"|iff:form.ie.errors %}
+                            <div class="invalid-feedback">{{ form.ie.errors|first }}</div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Seção 3: Admin do Tenant (apenas na criação) -->
+                {% if form.admin_user %}
+                <fieldset class="mb-4">
+                    <legend class="h5 mb-3 border-bottom pb-2">Administrador Inicial do Cliente</legend>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.admin_user.id_for_label }}" class="form-label">{{ form.admin_user.label }}</label>
+                            {% render_field form.admin_user class+="form-control" class+="is-invalid"|iff:form.admin_user.errors %}
+                            <small class="form-text text-muted">{{ form.admin_user.help_text }}</small>
+                            <div class="invalid-feedback">{{ form.admin_user.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.admin_email.id_for_label }}" class="form-label">{{ form.admin_email.label }}</label>
+                            {% render_field form.admin_email class+="form-control" class+="is-invalid"|iff:form.admin_email.errors %}
+                            <small class="form-text text-muted">{{ form.admin_email.help_text }}</small>
+                            <div class="invalid-feedback">{{ form.admin_email.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.admin_pass.id_for_label }}" class="form-label">{{ form.admin_pass.label }}</label>
+                            {% render_field form.admin_pass class+="form-control" class+="is-invalid"|iff:form.admin_pass.errors %}
+                            <small class="form-text text-muted">{{ form.admin_pass.help_text }}</small>
+                            <div class="invalid-feedback">{{ form.admin_pass.errors|first }}</div>
+                        </div>
+                    </div>
+                </fieldset>
+                {% endif %}
+
+                <!-- Seção 4: Branding e Configurações Fiscais -->
+                <fieldset class="mb-4">
+                    <legend class="h5 mb-3 border-bottom pb-2">Branding e Configurações Fiscais</legend>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.logo.id_for_label }}" class="form-label">{{ form.logo.label }}</label>
+                            {% render_field form.logo class+="form-control" class+="is-invalid"|iff:form.logo.errors %}
+                            <div class="invalid-feedback">{{ form.logo.errors|first }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.certificado_a1.id_for_label }}" class="form-label">{{ form.certificado_a1.label }}</label>
+                            {% render_field form.certificado_a1 class+="form-control" class+="is-invalid"|iff:form.certificado_a1.errors %}
+                            <div class="invalid-feedback">{{ form.certificado_a1.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.senha_certificado.id_for_label }}" class="form-label">{{ form.senha_certificado.label }}</label>
+                            {% render_field form.senha_certificado class+="form-control" class+="is-invalid"|iff:form.senha_certificado.errors %}
+                            <div class="invalid-feedback">{{ form.senha_certificado.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.csc.id_for_label }}" class="form-label">{{ form.csc.label }}</label>
+                            {% render_field form.csc class+="form-control" class+="is-invalid"|iff:form.csc.errors %}
+                            <div class="invalid-feedback">{{ form.csc.errors|first }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.id_token.id_for_label }}" class="form-label">{{ form.id_token.label }}</label>
+                            {% render_field form.id_token class+="form-control" class+="is-invalid"|iff:form.id_token.errors %}
+                            <div class="invalid-feedback">{{ form.id_token.errors|first }}</div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="form-check form-switch mb-4">
+                    {% render_field form.ativo class+="form-check-input" %}
+                    <label for="{{ form.ativo.id_for_label }}" class="form-check-label">{{ form.ativo.label }}</label>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-end">
+                    <a href="{% url 'control:tenant_list' %}" class="btn btn-secondary me-2 ajax-link">Cancelar</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-circle me-2"></i>
+                        {% if tenant %}
+                            Salvar Alterações
+                        {% else %}
+                            Provisionar Cliente
+                        {% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

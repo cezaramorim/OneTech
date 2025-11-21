@@ -19,16 +19,21 @@
     <!-- Necessário para que scripts.js funcione corretamente -->
     <div id="main-content" class="d-flex justify-content-center align-items-center">
 
-        <!-- Logo pequena no canto superior esquerdo -->
-        <img src="{% static 'icons/logo_sem_fundo1.png' %}" alt="Logo OneTech" class="logo-top-left">
+        <!-- Logo dinâmica no canto superior esquerdo -->
+        <img src="{% if empresa_atual and empresa_atual.logo %}{{ empresa_atual.logo.url }}{% else %}{% static 'icons/logo_sem_fundo1.png' %}{% endif %}" 
+             alt="Logo {{ empresa_atual.nome|default:'OneTech' }}" 
+             class="logo-top-left"
+             style="max-width: 120px; max-height: 60px; object-fit: contain;">
 
         <!-- Container centralizado de login -->
         <div class="card login-card shadow-sm p-4" style="max-width: 300px; width: 100%;">
 
-            <!-- Logo -->
+            <!-- Logo Dinâmico -->
             <div class="text-center mb-4">
-                <img src="{% static 'icons/logo_sem_fundo1.png' %}" alt="Logo OneTech" class="img-fluid"
-                    style="max-height: 340px;">
+                <img src="{% if empresa_atual and empresa_atual.logo %}{{ empresa_atual.logo.url }}{% else %}{% static 'icons/logo_sem_fundo1.png' %}{% endif %}" 
+                     alt="Logo {{ empresa_atual.nome|default:'OneTech' }}" 
+                     class="img-fluid"
+                     style="max-width: 200px; max-height: 150px; object-fit: contain;">
             </div>
 
             <!-- Título

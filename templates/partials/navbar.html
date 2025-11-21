@@ -23,19 +23,19 @@
                             <a class="dropdown-item" href="#">{{ child.icon|safe }} {{ child.name }} &raquo;</a>
                             <ul class="submenu dropdown-menu">
                               {% for grandchild in child.children %}
-                                <li><a class="dropdown-item ajax-link" href="{{ grandchild.url }}">{{ grandchild.name }}</a></li>
+                                <li><a class="dropdown-item{% if not grandchild.is_external %} ajax-link{% endif %}" href="{{ grandchild.url }}"{% if grandchild.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ grandchild.name }}</a></li>
                               {% endfor %}
                             </ul>
                           </li>
                         {% else %}
-                          <li><a class="dropdown-item ajax-link" href="{{ child.url }}">{{ child.icon|safe }} {{ child.name }}</a></li>
+                          <li><a class="dropdown-item{% if not child.is_external %} ajax-link{% endif %}" href="{{ child.url }}"{% if child.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ child.icon|safe }} {{ child.name }}</a></li>
                         {% endif %}
                       {% endfor %}
                     </ul>
                   </li>
                 {% else %}
                   <li class="nav-item">
-                    <a class="nav-link ajax-link" href="{{ item.url }}">{{ item.icon|safe }} {{ item.name }}</a>
+                    <a class="nav-link{% if not item.is_external %} ajax-link{% endif %}" href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.icon|safe }} {{ item.name }}</a>
                   </li>
                 {% endif %}
               {% endfor %}

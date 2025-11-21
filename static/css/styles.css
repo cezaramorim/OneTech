@@ -51,34 +51,7 @@ a:hover {
 }
 
 
-.sidebar ul,
-.sidebar li {
-  list-style: none;
-  padding-left: 0;
-  margin-bottom: 5px;
-}
 
-
-/* ============================
-   SIDEBAR
-=============================== */
-.sidebar {
-  width: 250px;
-  flex-shrink: 0;              /* 🚫 impede que a sidebar encolha */
-  background-color: #fff;
-  border-right: 1px solid #ddd;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-
-html.dark .sidebar,
-body.dark .sidebar {
-  background-color: #2b2f3a;
-  border-color: #444;
-}
 
 .logo {
   font-size: 20px;
@@ -328,11 +301,9 @@ body.dark {
   color: #f2f2f2;
 }
 
-/* Navegação e sidebar */
+/* Navegação */
 html.dark nav,
-body.dark nav,
-html.dark .sidebar,
-body.dark .sidebar {
+body.dark nav {
   background-color: #2b2f3a;
   color: #f2f2f2;
   border-color: #444;
@@ -789,22 +760,7 @@ body {
   z-index: 0;
 }
 
-/* ✅ Fundo na tela de login */
-body[data-tela="login"]::before {
-  content: '';
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80vw;
-  height: 80vh;
-  background: url('/static/icons/logo_sem_fundo1.png') no-repeat center center;
-  background-size: contain;
-  opacity: 0.50;
-  z-index: -1;
-  pointer-events: none;
-  filter: blur(1px);
-}
+
 
 /* ============================
    MAIN CONTENT ESTABILIZADO
@@ -1432,6 +1388,7 @@ html.dark .modal-body .col {
   margin-left: -120px;
   opacity: 0;
   transition: opacity 0.3s;
+  font-size: 0.8rem; /* Tamanho de fonte menor */
 }
 
 .info-tooltip:hover .info-tooltip__content {

@@ -18,7 +18,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 # Removido o @csrf_exempt por razões de segurança
@@ -79,6 +78,28 @@ def xml_to_dict(element):
     return result
 
 # --- Views Principais --- #
+
+@login_required_json
+@require_GET
+def emitir_nfe_list_view(request):
+    """
+    Lista as notas fiscais que estão prontas para serem emitidas (status em branco ou 'rascunho').
+    """
+    # Filtra notas do emitente que é o tenant atual e que ainda não foram enviadas.
+    # O status pode ser '' (vazio) ou um status específico como 'rascunho'.
+    notas_para_emitir = NotaFiscal.objects.filter(
+        emitente=request.tenant,
+        status_sefaz__in=['', None, 'rascunho']
+    ).select_related('destinatario').order_by('-data_emissao')
+
+    context = {
+        'notas_para_emitir': notas_para_emitir,
+        'content_template': 'partials/nota_fiscal/emitir_nfe_list.html',
+        'data_page': 'emitir_nfe_list',
+    }
+    
+    return render_ajax_or_base(request, context['content_template'], context)
+
 
 @login_required_json
 @require_GET
@@ -376,6 +397,7 @@ def processar_importacao_xml_view(request):
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
         message = app_messages.success_updated(nf) if nota_existente and force_update else app_messages.success_imported(nf, source_type="XML")
 
+        from django.urls import reverse
         return JsonResponse({
             'success': True,
             'message': message,
@@ -683,3 +705,30 @@ def excluir_notas_multiplo_view(request):
         traceback.print_exc()
         message = app_messages.error(f'Erro ao excluir notas fiscais: {str(e)}')
         return JsonResponse({'success': False, 'message': message}, status=500)
+
+
+@login_required_json
+@require_GET
+def buscar_produtos_para_nota_view(request):
+    """
+    Busca produtos para adicionar a uma nota fiscal manual, retornando JSON.
+    """
+    termo = request.GET.get('q', '').strip()
+    produtos = Produto.objects.filter(
+        Q(nome__icontains=termo) | Q(codigo__icontains=termo)
+    ).select_related('unidade_medida_interna')[:50] # Limita a 50 resultados
+
+    resultados = []
+    for p in produtos:
+        resultados.append({
+            'id': p.id,
+            'text': f"{p.codigo} - {p.nome}",
+            'codigo': p.codigo,
+            'nome': p.nome,
+            'unidade': p.unidade_medida_interna.sigla if p.unidade_medida_interna else 'UN',
+            'preco_venda': p.preco_venda,
+            'ncm': p.detalhes_fiscais.ncm.codigo if hasattr(p, 'detalhes_fiscais') and p.detalhes_fiscais.ncm else '',
+            'cfop': p.detalhes_fiscais.cfop if hasattr(p, 'detalhes_fiscais') else '',
+        })
+
+    return JsonResponse({'results': resultados})
