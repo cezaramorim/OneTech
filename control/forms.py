@@ -106,3 +106,31 @@ class TenantUserChangeForm(forms.ModelForm):
             grupo = self.cleaned_data['grupo']
             user.groups.set([grupo])
         return user
+
+
+# ==============================================================================
+# 🚀 FORMULÁRIO PARA EMITENTE (MATRIZ/FILIAIS)
+# ==============================================================================
+from .models import Emitente
+
+class EmitenteForm(forms.ModelForm):
+    class Meta:
+        model = Emitente
+        fields = '__all__'
+        widgets = {
+            'razao_social': forms.TextInput(attrs={'class': 'form-control'}),
+            'nome_fantasia': forms.TextInput(attrs={'class': 'form-control'}),
+            'cnpj': forms.TextInput(attrs={'class': 'form-control'}),
+            'ie': forms.TextInput(attrs={'class': 'form-control'}),
+            'cep': forms.TextInput(attrs={'class': 'form-control'}),
+            'logradouro': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'complemento': forms.TextInput(attrs={'class': 'form-control'}),
+            'bairro': forms.TextInput(attrs={'class': 'form-control'}),
+            'cidade': forms.TextInput(attrs={'class': 'form-control'}),
+            'uf': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'logotipo': forms.FileInput(attrs={'class': 'form-control'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }

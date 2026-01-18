@@ -11,3 +11,14 @@ def tenant_branding(request):
     return {
         'empresa_atual': get_current_tenant()
     }
+
+from .utils import get_default_emitente
+
+def emitente_context(request):
+    """
+    Disponibiliza o emitente padrão no contexto de todos os templates
+    como a variável `default_emitente`.
+    """
+    return {
+        "default_emitente": get_default_emitente()
+    }

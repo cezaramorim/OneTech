@@ -184,3 +184,75 @@ def tenant_user_toggle_active_view(request, tenant_id, user_id):
 
 def ping_view(request):
     return HttpResponse("Pong! A URL de controle está funcionando.")
+
+
+# ==============================================================================
+# 🚀 VIEWS PARA EMITENTE (MATRIZ/FILIAIS)
+# ==============================================================================
+from .models import Emitente
+from .forms import EmitenteForm
+
+@login_required
+# @permission_required('control.view_emitente', raise_exception=True)
+def lista_emitentes(request):
+    """
+    Lista todos os emitentes cadastrados no banco de dados atual.
+    """
+    emitentes = Emitente.objects.all().order_by('-is_default', 'nome_fantasia')
+    context = {'emitentes': emitentes}
+    return render_ajax_or_base(request, 'partials/control/lista_emitentes.html', context)
+
+@login_required
+# @permission_required('control.add_emitente', raise_exception=True)
+def criar_emitente(request):
+    """
+    Cria um novo emitente.
+    """
+    if request.method == 'POST':
+        form = EmitenteForm(request.POST, request.FILES)
+        if form.is_valid():
+            emitente = form.save()
+            messages.success(request, f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" criado com sucesso!')
+            return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    else:
+        form = EmitenteForm()
+    
+    context = {'form': form}
+    return render_ajax_or_base(request, 'partials/control/form_emitente.html', context)
+
+@login_required
+# @permission_required('control.change_emitente', raise_exception=True)
+def editar_emitente(request, pk):
+    """
+    Edita um emitente existente.
+    """
+    emitente = get_object_or_404(Emitente, pk=pk)
+    if request.method == 'POST':
+        form = EmitenteForm(request.POST, request.FILES, instance=emitente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" atualizado com sucesso!')
+            return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    else:
+        form = EmitenteForm(instance=emitente)
+
+    context = {'form': form, 'emitente': emitente}
+    return render_ajax_or_base(request, 'partials/control/form_emitente.html', context)
+
+@login_required
+@require_POST
+# @permission_required('control.delete_emitente', raise_exception=True)
+def excluir_emitente(request, pk):
+    """
+    Exclui um emitente.
+    """
+    emitente = get_object_or_404(Emitente, pk=pk)
+    nome_emitente = emitente.nome_fantasia or emitente.razao_social
+    emitente.delete()
+    messages.success(request, f'Emitente "{nome_emitente}" excluído com sucesso.')
+    # A resposta JSON é para o caso de o frontend tratar a exclusão via fetch/AJAX
+    return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})

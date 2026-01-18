@@ -408,6 +408,13 @@ document.body.addEventListener('change', function(e) {
     const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
     const filhosCheckboxes = mainContent.querySelectorAll(seletorFilho);
 
+    // Lógica PAI -> FILHO: Se o checkbox mestre for alterado, atualiza todos os filhos.
+    if (paiCheckbox && e.target === paiCheckbox) {
+        filhosCheckboxes.forEach(filho => {
+            filho.checked = paiCheckbox.checked;
+        });
+    }
+
     let isCheckboxRelevante = false;
     if ((paiCheckbox && e.target === paiCheckbox) || (filhosCheckboxes && Array.from(filhosCheckboxes).includes(e.target))) {
         isCheckboxRelevante = true;

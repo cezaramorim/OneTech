@@ -255,7 +255,7 @@ function bindTanqueChange(tanqueSelect, page) {
     const linhaOptions = linhas.map((linha) => `<option value="${linha.pk}">${linha.nome}</option>`).join('');
 
     // --- Lógica de Reforço vs. Novo Lote ---
-    const isReforco = tipoTanqueSelect.value === 'Tanque Povoado';
+    const isReforco = tipoTanqueSelect.options[tipoTanqueSelect.selectedIndex].value === 'POVOADO';
     const loteAtivo = isReforco ? await verificarLoteAtivo(tanqueSelect.value) : null;
 
     const curvaIdParaLinha = isReforco ? (loteAtivo?.curva_id || '') : (curvaSelect.value || '');
@@ -390,17 +390,17 @@ function bindTanqueChange(tanqueSelect, page) {
 
     const payload = {
       povoamentos: linhas.map((linha) => ({
-        tipo_tanque: tipoTanqueSelect.value,
+        tipo_tanque: tipoTanqueSelect.options[tipoTanqueSelect.selectedIndex].value,
         curva_id: linha.dataset.curvaId || null,
         tanque_id: linha.dataset.tanqueId,
         grupo_origem: linha.cells[2]?.textContent?.trim() || null,
         data_lancamento: linha.querySelector('[data-field="data_lancamento"]').value || null,
         nome_lote: linha.querySelector('[data-field="nome_lote"]').value || null,
-        quantidade: linha.querySelector('[data-field="quantidade"]').value || null,
-        peso_medio: linha.querySelector('[data-field="peso_medio"]').value || null,
-        fase_id: linha.querySelector('[data-field="fase_id"]').value || null,
+        quantidade: parseFloat(linha.querySelector('[data-field="quantidade"]').value) || null,
+        peso_medio: parseFloat(linha.querySelector('[data-field="peso_medio"]').value) || null,
+        fase_id: parseInt(linha.querySelector('[data-field="fase_id"]').value, 10) || null,
         tamanho: linha.querySelector('[data-field="tamanho"]').value || null,
-        linha_id: linha.querySelector('[data-field="linha_id"]').value || null,
+        linha_id: parseInt(linha.querySelector('[data-field="linha_id"]').value, 10) || null,
       })),
     };
 
@@ -477,7 +477,7 @@ function atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect, page) {
 
   // 1) filtra por tipo (Povoado/Vazio)
   const filtrados = tanques.filter(t =>
-    tipo === 'Tanque Vazio' ? !t.tem_lote_ativo : !!t.tem_lote_ativo
+    tipo === 'VAZIO' ? !t.tem_lote_ativo : !!t.tem_lote_ativo
   );
 
   // 2) (re)monta opções do <select>
@@ -623,7 +623,7 @@ bindHistorico(buscarBtn, historicoBody);
 tipoTanqueSelect.addEventListener('change', () => {
   console.log(`[Debug] Evento change: tipoTanqueSelect. Novo valor: ${tipoTanqueSelect.value}`);
 
-  const povoado = (tipoTanqueSelect.value === 'Tanque Povoado');
+  const povoado = (tipoTanqueSelect.value === 'POVOADO');
 
   // Mostra/oculta o container de curva conforme o tipo
   curvaContainer.style.display = povoado ? 'none' : '';

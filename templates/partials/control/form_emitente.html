@@ -1,0 +1,123 @@
+
+{% load static widget_tweaks %}
+
+<div class="container-fluid py-4">
+    <form method="post" enctype="multipart/form-data" class="ajax-form" 
+          action="{% if emitente %}{% url 'control:editar_emitente' pk=emitente.pk %}{% else %}{% url 'control:criar_emitente' %}{% endif %}"
+          data-redirect-url="{% url 'control:lista_emitentes' %}">
+        {% csrf_token %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{% if emitente %}Editar Emitente{% else %}Novo Emitente{% endif %}</h5>
+                <div>
+                    <a href="{% url 'control:lista_emitentes' %}" class="btn btn-outline-secondary btn-sm ajax-link">Cancelar</a>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-save me-1"></i>
+                        Salvar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Seção de Dados Principais -->
+                <fieldset class="border p-3 rounded mb-4">
+                    <legend class="fs-6 fw-bold text-muted px-2">Dados Principais</legend>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.razao_social.id_for_label }}" class="form-label">{{ form.razao_social.label }}</label>
+                            {% render_field form.razao_social class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.nome_fantasia.id_for_label }}" class="form-label">{{ form.nome_fantasia.label }}</label>
+                            {% render_field form.nome_fantasia class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.cnpj.id_for_label }}" class="form-label">{{ form.cnpj.label }}</label>
+                            {% render_field form.cnpj class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.ie.id_for_label }}" class="form-label">{{ form.ie.label }}</label>
+                            {% render_field form.ie class="form-control form-control-sm" %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Seção de Endereço -->
+                <fieldset class="border p-3 rounded mb-4">
+                    <legend class="fs-6 fw-bold text-muted px-2">Endereço</legend>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.cep.id_for_label }}" class="form-label">{{ form.cep.label }}</label>
+                            {% render_field form.cep class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-7 mb-3">
+                            <label for="{{ form.logradouro.id_for_label }}" class="form-label">{{ form.logradouro.label }}</label>
+                            {% render_field form.logradouro class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label for="{{ form.numero.id_for_label }}" class="form-label">{{ form.numero.label }}</label>
+                            {% render_field form.numero class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.complemento.id_for_label }}" class="form-label">{{ form.complemento.label }}</label>
+                            {% render_field form.complemento class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.bairro.id_for_label }}" class="form-label">{{ form.bairro.label }}</label>
+                            {% render_field form.bairro class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.cidade.id_for_label }}" class="form-label">{{ form.cidade.label }}</label>
+                            {% render_field form.cidade class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-1 mb-3">
+                            <label for="{{ form.uf.id_for_label }}" class="form-label">{{ form.uf.label }}</label>
+                            {% render_field form.uf class="form-control form-control-sm" %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Seção de Contato e Mídia -->
+                <fieldset class="border p-3 rounded mb-4">
+                    <legend class="fs-6 fw-bold text-muted px-2">Contato</legend>
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.telefone.id_for_label }}" class="form-label">{{ form.telefone.label }}</label>
+                            {% render_field form.telefone class="form-control form-control-sm" %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                            {% render_field form.email class="form-control form-control-sm" %}
+                        </div>
+                    </div>
+                </fieldset>
+                
+                <!-- Opções e Mídia -->
+                <fieldset class="border p-3 rounded">
+                    <legend class="fs-6 fw-bold text-muted px-2">Opções e Mídia</legend>
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_logotipo" class="form-label">{{ form.logotipo.label }}</label>
+                            {% render_field form.logotipo class="form-control form-control-sm" %}
+                            {% if emitente.logotipo %}
+                                <div class="mt-2">
+                                    <small>Atual: <a href="{{ emitente.logotipo.url }}" target="_blank">{{ emitente.logotipo.name }}</a></small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3 pt-4">
+                            <div class="form-check form-switch">
+                                {% render_field form.is_default class="form-check-input" %}
+                                <label class="form-check-label" for="{{ form.is_default.id_for_label }}">
+                                    {{ form.is_default.label }}
+                                </label>
+                                <small class="d-block text-muted">Marque para usar este emitente como padrão.</small>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+            </div>
+        </div>
+    </form>
+</div>

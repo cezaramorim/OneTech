@@ -67,3 +67,53 @@ TransporteNotaFiscalFormSet = inlineformset_factory(
     can_delete=False,
     fk_name='nota_fiscal'
 )
+
+# ==============================================================================
+# 🚀 FORMULÁRIO PARA NOTA FISCAL DE SAÍDA
+# ==============================================================================
+from control.models import Emitente
+from empresas.models import EmpresaAvancada
+
+class NotaFiscalSaidaForm(forms.ModelForm):
+    emitente_proprio = forms.ModelChoiceField(
+        queryset=Emitente.objects.all(),
+        label="Nosso Emitente (Matriz/Filial)",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    destinatario = forms.ModelChoiceField(
+        queryset=EmpresaAvancada.objects.filter(cliente=True),
+        label="Destinatário (Cliente)",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    class Meta:
+        model = NotaFiscal
+        fields = [
+            'emitente_proprio',
+            'destinatario',
+            'natureza_operacao',
+            'tipo_operacao',
+            'finalidade_emissao',
+            'data_emissao',
+            'data_saida',
+            'informacoes_adicionais',
+        ]
+        widgets = {
+            'natureza_operacao': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo_operacao': forms.Select(attrs={'class': 'form-select'}),
+            'finalidade_emissao': forms.Select(attrs={'class': 'form-select'}),
+            'data_emissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'data_saida': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'informacoes_adicionais': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Tenta pré-selecionar o emitente padrão
+        default_emitente = Emitente.objects.filter(is_default=True).first()
+        if default_emitente:
+            self.fields['emitente_proprio'].initial = default_emitente
+        
+        # Define o tipo de operação como 'Saída' por padrão e o torna somente leitura
+        self.fields['tipo_operacao'].initial = '1' # '1' para Saída
+        self.fields['tipo_operacao'].widget.attrs['readonly'] = True

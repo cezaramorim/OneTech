@@ -1,0 +1,84 @@
+{% load widget_tweaks %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Criar Nota Fiscal de Saída</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="ajax-form" action="{% url 'nota_fiscal:criar_nfe_saida' %}" data-redirect-url-on-success="true">
+                {% csrf_token %}
+
+                <div class="row">
+                    <!-- Coluna da Esquerda -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.emitente_proprio.id_for_label }}" class="form-label">{{ form.emitente_proprio.label }}</label>
+                            {% render_field form.emitente_proprio class="form-select" %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.natureza_operacao.id_for_label }}" class="form-label">{{ form.natureza_operacao.label }}</label>
+                            {% render_field form.natureza_operacao class="form-control" placeholder="Ex: Venda de Mercadoria" %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.finalidade_emissao.id_for_label }}" class="form-label">{{ form.finalidade_emissao.label }}</label>
+                            {% render_field form.finalidade_emissao class="form-select" %}
+                        </div>
+                    </div>
+
+                    <!-- Coluna da Direita -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.destinatario.id_for_label }}" class="form-label">{{ form.destinatario.label }}</label>
+                            {% render_field form.destinatario class="form-select" %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-sm-6 mb-3">
+                                <label for="{{ form.data_emissao.id_for_label }}" class="form-label">{{ form.data_emissao.label }}</label>
+                                {% render_field form.data_emissao class="form-control" %}
+                            </div>
+                            <div class="col-sm-6 mb-3">
+                                <label for="{{ form.data_saida.id_for_label }}" class="form-label">{{ form.data_saida.label }}</label>
+                                {% render_field form.data_saida class="form-control" %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.tipo_operacao.id_for_label }}" class="form-label">{{ form.tipo_operacao.label }}</label>
+                            {% render_field form.tipo_operacao class="form-select" %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="{{ form.informacoes_adicionais.id_for_label }}" class="form-label">{{ form.informacoes_adicionais.label }}</label>
+                            {% render_field form.informacoes_adicionais class="form-control" %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ações -->
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{% url 'nota_fiscal:emitir_nfe_list' %}" class="btn btn-secondary me-2 ajax-link">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">
+                        Continuar e Adicionar Itens
+                        <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Inicializar Select2 se necessário
+$(document).ready(function() {
+    $('#{{ form.emitente_proprio.id_for_label }}, #{{ form.destinatario.id_for_label }}').select2({
+        theme: 'bootstrap-5'
+    });
+});
+</script>

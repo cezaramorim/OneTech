@@ -15,6 +15,7 @@ MENU_ITEMS = [
         'name': 'Configurações',
         'icon': '⚙️',
         'children': [
+            {'name': 'Emitentes / Filiais', 'icon': '🏢', 'url_name': 'control:lista_emitentes', 'required_perms': ['control.view_emitente']},
             {'name': 'Novo Usuário', 'icon': '👤', 'url_name': 'accounts:criar_usuario', 'required_perms': ['accounts.add_user']},
             {'name': 'Lista de Usuários', 'icon': '👤', 'url_name': 'accounts:lista_usuarios', 'required_perms': ['accounts.view_user']},
             {'name': 'Novo Grupo', 'icon': '🛡️', 'url_name': 'accounts:cadastrar_grupo', 'required_perms': ['auth.add_group']},
@@ -71,8 +72,9 @@ MENU_ITEMS = [
         'name': 'Nota Fiscal',
         'icon': '📄',
         'children': [
-            {'name': 'Importar XML', 'url_name': 'nota_fiscal:importar_xml', 'required_perms': ['nota_fiscal.add_notafiscal']},
-            {'name': 'Lançar Nota Manual', 'url_name': 'nota_fiscal:lancar_nota_manual', 'required_perms': ['nota_fiscal.add_notafiscal']},
+            {'name': 'Criar NF-e (Saída)', 'icon': '➕', 'url_name': 'nota_fiscal:criar_nfe_saida', 'required_perms': ['nota_fiscal.add_notafiscal']},
+            {'name': 'Importar XML (Entrada)', 'icon': '📥', 'url_name': 'nota_fiscal:importar_xml', 'required_perms': ['nota_fiscal.add_notafiscal']},
+            {'name': 'Lançar Nota Manual (Entrada)', 'icon': '✍️', 'url_name': 'nota_fiscal:lancar_nota_manual', 'required_perms': ['nota_fiscal.add_notafiscal']},
             {'name': 'Emitir NF-e', 'icon': '🚀', 'url_name': 'nota_fiscal:emitir_nfe_list', 'required_perms': ['integracao_nfe.can_emit_nfe']},
             {'name': 'Entradas de Nota', 'url_name': 'nota_fiscal:entradas_nota', 'required_perms': ['nota_fiscal.view_notafiscal']},
         ]

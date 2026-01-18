@@ -19,6 +19,7 @@ urlpatterns = [
     path("entradas/", views.entradas_nota_view, name="entradas_nota"),
     path("lancar-manual/", views.lancar_nota_manual_view, name="lancar_nota_manual"),
     path("emitir/", views.emitir_nfe_list_view, name="emitir_nfe_list"),
+    path("criar-saida/", views.criar_nfe_saida, name="criar_nfe_saida"),
     path("editar/<int:pk>/", views.editar_nota_view, name="editar_nota"),
 
     # --- API ENDPOINTS PARA O FRONTEND ---

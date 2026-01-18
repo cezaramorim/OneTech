@@ -1153,8 +1153,9 @@ def povoamento_lotes_view(request):
                     form = PovoamentoForm(item)
                     if not form.is_valid():
                         # Retorna o primeiro erro de validação encontrado
-                        primeiro_erro = next(iter(form.errors.values()))[0]
-                        return JsonResponse({'success': False, 'message': f'Erro na validação: {primeiro_erro}'}, status=400)
+                        primeiro_erro_campo = next(iter(form.errors))
+                        primeiro_erro_msg = form.errors[primeiro_erro_campo][0]
+                        return JsonResponse({'success': False, 'message': f'Erro na validação: {primeiro_erro_campo} - {primeiro_erro_msg}'}, status=400)
 
                     cleaned_data = form.cleaned_data
                     tanque = get_object_or_404(Tanque, pk=cleaned_data['tanque_id'])

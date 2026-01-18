@@ -30,7 +30,6 @@ urlpatterns = [
     path('avancadas/<int:pk>/atualizar-status/', views.atualizar_status_empresa_avancada, name='atualizar_status_empresa_avancada'),
     path('avancadas/<int:pk>/editar/', views.empresa_avancada_form_view, name='editar_empresa_avancada'),
     path('avancadas/excluir-multiplos/', views.excluir_empresas_avancadas_view, name='excluir_empresas_avancadas_multiplos'),
-
 ]
 
 # 🔁 Adiciona as rotas da API REST ao final

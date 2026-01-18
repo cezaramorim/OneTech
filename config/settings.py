@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'django.contrib.humanize',
 
     # Apps do projeto
     'control',
@@ -131,7 +132,8 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'painel.context_processors.definir_data_tela',
                 'control.context_processors.tenant_branding',  # Injeta dados do tenant (logo, nome, etc)
-                'common.context_processors.dynamic_menu', 
+                'common.context_processors.dynamic_menu',
+                'control.context_processors.emitente_context', # Injeta o emitente padrão
             ],
         },
     },

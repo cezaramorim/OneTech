@@ -58,3 +58,16 @@ def tenant_media_path(instance, filename):
     app_label = instance._meta.app_label
     model_name = instance._meta.model_name
     return f'tenants/{slug}/{app_label}/{model_name}/{filename}'
+
+
+def get_default_emitente():
+    """
+    Retorna o emitente marcado como padrão.
+    Se nenhum for padrão, retorna o primeiro emitente cadastrado.
+    Se não houver nenhum, retorna None.
+    """
+    from .models import Emitente
+    emitente = Emitente.objects.filter(is_default=True).first()
+    if not emitente:
+        emitente = Emitente.objects.first()
+    return emitente

@@ -35,7 +35,8 @@ from .forms import (
     NotaFiscalForm,
     ItemNotaFiscalFormSet,
     DuplicataNotaFiscalFormSet,
-    TransporteNotaFiscalFormSet
+    TransporteNotaFiscalFormSet,
+    NotaFiscalSaidaForm
 )
 
 # --- Funções Auxiliares de Parsing --- #
@@ -87,8 +88,9 @@ def emitir_nfe_list_view(request):
     """
     # Filtra notas do emitente que é o tenant atual e que ainda não foram enviadas.
     # O status pode ser '' (vazio) ou um status específico como 'rascunho'.
+    emitente = getattr(request.tenant, "emitente_padrao", None)
     notas_para_emitir = NotaFiscal.objects.filter(
-        emitente=request.tenant,
+        emitente_proprio=emitente,
         status_sefaz__in=['', None, 'rascunho']
     ).select_related('destinatario').order_by('-data_emissao')
 
@@ -732,3 +734,40 @@ def buscar_produtos_para_nota_view(request):
         })
 
     return JsonResponse({'results': resultados})
+
+
+# ==============================================================================
+# 🚀 VIEW PARA CRIAR NOTA FISCAL DE SAÍDA
+# ==============================================================================
+@login_required_json
+# @permission_required('nota_fiscal.add_notafiscal', raise_exception=True) # Adicionar permissão depois
+def criar_nfe_saida(request):
+    """
+    Renderiza o formulário para criar uma nova Nota Fiscal de Saída e processa a sua submissão.
+    """
+    if request.method == 'POST':
+        form = NotaFiscalSaidaForm(request.POST)
+        if form.is_valid():
+            # AINDA NÃO SALVA OS ITENS, apenas o cabeçalho da nota
+            nova_nota = form.save(commit=False)
+            nova_nota.created_by = request.user
+            # Gerar número e chave de acesso provisórios
+            nova_nota.numero = str(NotaFiscal.objects.count() + 1).zfill(9)
+            nova_nota.chave_acesso = f"TEMP-{timezone.now().strftime('%Y%m%d%H%M%S')}-{nova_nota.numero}"
+            nova_nota.save()
+            
+            messages.success(request, f"Nota Fiscal de Saída Nº {nova_nota.numero} criada com sucesso. Adicione os itens.")
+            # Redireciona para a tela de edição para adicionar itens
+            return JsonResponse({'success': True, 'redirect_url': reverse('nota_fiscal:editar_nota', kwargs={'pk': nova_nota.pk})})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
+    else:
+        form = NotaFiscalSaidaForm()
+
+    context = {
+        'form': form,
+        'content_template': 'partials/nota_fiscal/form_nfe_saida.html',
+        'data_page': 'criar_nfe_saida',
+    }
+    return render_ajax_or_base(request, context['content_template'], context)

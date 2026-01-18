@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-from empresas.models import EmpresaAvancada # Certifique-se de que este caminho está correto
+from empresas.models import EmpresaAvancada
+from control.models import Emitente
 from django.utils import timezone
 from django.apps import apps
 from fiscal.models import CST, CSOSN # Nova importação
@@ -21,20 +22,32 @@ class NotaFiscal(models.Model):
         verbose_name="Data de Entrada"
     )
 
-    # RELACIONAMENTOS ESSENCIAIS PARA NF-e (Emitente e Destinatário)
+    # --- RELACIONAMENTOS ---
+    # Para NOTAS DE SAÍDA (nós emitimos)
+    emitente_proprio = models.ForeignKey(
+        Emitente,
+        on_delete=models.PROTECT, # Impede a exclusão de um emitente que já emitiu notas
+        null=True, blank=True,
+        related_name="notas_proprias_emitidas",
+        verbose_name="Nosso Emitente (Matriz/Filial)"
+    )
+
+    # Para NOTAS DE ENTRADA (recebemos de terceiros)
     emitente = models.ForeignKey(
         EmpresaAvancada,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="notas_emitidas",
+        related_name="notas_emitidas_por_terceiros",
         verbose_name="Emitente (Fornecedor)"
     )
+    
+    # Para AMBOS os casos
     destinatario = models.ForeignKey(
         EmpresaAvancada,
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name="notas_recebidas",
-        verbose_name="Destinatário"
+        verbose_name="Destinatário (Cliente)"
     )
 
     # Campos de cabeçalho da Nota Fiscal
@@ -106,7 +119,8 @@ class NotaFiscal(models.Model):
         ordering = ['-data_emissao', '-numero'] # Ordenação padrão
 
     def __str__(self):
-        return f"Nota {self.numero} – {self.emitente.razao_social if self.emitente else 'Emitente Desconhecido'} ({self.chave_acesso})"
+        nome_emitente = self.emitente_proprio or (self.emitente.razao_social if self.emitente else 'Emitente Desconhecido')
+        return f"Nota {self.numero} – {nome_emitente} ({self.chave_acesso})"
 
     # Se você removeu o campo 'fornecedor', ajuste seu código aqui ou em qualquer outro lugar que o use.
     # Se você pretende manter 'fornecedor' para outro propósito, o views.py atual não o popula.
