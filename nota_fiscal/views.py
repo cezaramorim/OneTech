@@ -207,7 +207,7 @@ def importar_xml_nfe_view(request):
             prod = det_item.get('prod', {})
             codigo_importado = prod.get('cProd', '')
 
-            produto_existente = Produto.objects.filter(codigo=codigo_importado).first()
+            produto_existente = Produto.objects.filter(codigo_fornecedor=codigo_importado).first()
             estoque_atual = produto_existente.estoque_atual if produto_existente else 0
             
             produto_data = {
@@ -376,7 +376,7 @@ def processar_importacao_xml_view(request):
             _create_item_nota_fiscal(nf, item_data, produto_obj)
             
             # 4.3. Cria a Entrada de Produto
-            EntradaProduto.objects.create(
+            entrada_produto_obj = EntradaProduto.objects.create( # Captura o objeto criado
                 item_nota_fiscal=ItemNotaFiscal.objects.latest('id'), # Pega o último item criado
                 quantidade=Decimal(prod_data.get('qCom', '0')),
                 preco_unitario=Decimal(prod_data.get('vUnCom', '0')),
@@ -385,6 +385,8 @@ def processar_importacao_xml_view(request):
                 nota_fiscal=nf,
                 numero_nota=nf.numero,
             )
+            # 4.4. Recalcula o estoque e preços do Produto mestre
+            produto_obj.recalculate_stock_and_prices() # Chama o método para recalcular
 
 
         # 5. Processar Transporte e Duplicatas
@@ -451,7 +453,7 @@ def _get_or_create_empresa(data, tipo):
 def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor):
     """Atualiza ou cria um registro na tabela mestre de Produtos."""
     produto, created = Produto.objects.get_or_create(
-        codigo=codigo_produto,
+        codigo_fornecedor=codigo_produto,
         defaults={
             'nome': dados_agregados['dados_primeiro_item'].get('xProd', ''),
             'fornecedor': fornecedor,
@@ -717,15 +719,16 @@ def buscar_produtos_para_nota_view(request):
     """
     termo = request.GET.get('q', '').strip()
     produtos = Produto.objects.filter(
-        Q(nome__icontains=termo) | Q(codigo__icontains=termo)
+        Q(nome__icontains=termo) | Q(codigo_interno__icontains=termo) | Q(codigo_fornecedor__icontains=termo)
     ).select_related('unidade_medida_interna')[:50] # Limita a 50 resultados
 
     resultados = []
     for p in produtos:
         resultados.append({
             'id': p.id,
-            'text': f"{p.codigo} - {p.nome}",
-            'codigo': p.codigo,
+            'text': f"{p.codigo_interno} - {p.nome}",
+            'codigo_interno': p.codigo_interno,
+            'codigo_fornecedor': p.codigo_fornecedor,
             'nome': p.nome,
             'unidade': p.unidade_medida_interna.sigla if p.unidade_medida_interna else 'UN',
             'preco_venda': p.preco_venda,

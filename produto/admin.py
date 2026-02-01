@@ -16,13 +16,13 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
 
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'nome', 'categoria', 'unidade_medida_interna', 'preco_custo', 'estoque_atual', 'ativo')
+    list_display = ('codigo_interno', 'codigo_fornecedor', 'nome', 'categoria', 'unidade_medida_interna', 'preco_custo', 'estoque_atual', 'ativo')
     list_filter = ('categoria', 'unidade_medida_interna', 'ativo')
-    search_fields = ('codigo', 'nome', 'descricao', 'ncm')
-    readonly_fields = ('preco_medio', 'estoque_atual')
+    search_fields = ('codigo_interno', 'codigo_fornecedor', 'nome')
+    readonly_fields = ('codigo_interno', 'preco_medio', 'estoque_atual')
     fieldsets = (
         ('Identificação', {
-            'fields': ('codigo', 'nome', 'descricao', 'categoria', 'ncm', 'cfop')
+            'fields': ('codigo_fornecedor', 'nome', 'categoria')
         }),
         ('Comercial', {
             'fields': ('unidade_medida_interna', 'fator_conversao', 'preco_custo', 'preco_venda', 'preco_medio')
@@ -34,4 +34,3 @@ class ProdutoAdmin(admin.ModelAdmin):
             'fields': ('ativo', 'data_cadastro', 'observacoes')
         }),
     )
-    

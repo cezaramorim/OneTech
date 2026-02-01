@@ -13,6 +13,7 @@ from .models import Lote, LoteDiario, ArracoamentoSugerido, ArracoamentoRealizad
 from .utils import sugerir_para_lote, reprojetar_ciclo_de_vida, _apurar_quantidade_real_no_dia
 # Importa as novas funções de cálculo padronizadas
 from .utils_uom import calc_biomassa_kg, calc_fcr, g_to_kg, q3
+from produto.models import Produto # Importado no topo para evitar 'cannot access local variable' e garantir disponibilidade global.
 
 
 @login_required
@@ -178,7 +179,22 @@ def api_aprovar_arracoamento(request):
                 observacoes=observacoes
             )
 
-            # --- INÍCIO DA LÓGICA DE CÁLCULO DE MÉTRICAS REAIS ---
+            # --- Lógica de Decréscimo de Estoque ---
+            from django.db.models import F
+            from produto.models import Produto # Importação local para evitar import circular
+            try:
+                # Atualiza quantidade_saidas no banco de dados
+                Produto.objects.filter(pk=racao_a_ser_usada.pk).update(
+                    quantidade_saidas=F('quantidade_saidas') + quantidade_real_kg
+                )
+                # Recarrega o objeto para que o save() customizado use o valor atualizado de quantidade_saidas
+                racao_a_ser_usada.refresh_from_db()
+                # Chama o save() customizado para recalcular e persistir estoque_atual
+                racao_a_ser_usada.save() 
+                logging.info(f"Estoque do produto '{racao_a_ser_usada.nome}' atualizado. Saídas incrementadas em {quantidade_real_kg} kg.")
+            except Exception as e:
+                logging.error(f"Erro ao atualizar estoque do produto {racao_a_ser_usada.id}: {e}")
+                raise Exception(f"Falha ao atualizar estoque da ração: {e}")
 
             # Define a quantidade inicial do dia com base no dia anterior ou no lote
             dia_anterior = lote_diario.data_evento - timedelta(days=1)

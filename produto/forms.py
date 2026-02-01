@@ -20,7 +20,7 @@ class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
         fields = [
-            'codigo', 'nome', 'categoria', 'unidade_medida_interna', 'fator_conversao',
+            'codigo_fornecedor', 'nome', 'categoria', 'unidade_medida_interna', 'fator_conversao',
             'preco_custo', 'preco_venda', 'preco_medio',
             'estoque_total', 'quantidade_saidas', 'estoque_atual',
             'controla_estoque', 'ativo', 'data_cadastro',
@@ -29,10 +29,10 @@ class ProdutoForm(forms.ModelForm):
             'unidade_fornecedor_padrao',
         ]
         labels = {
-            'codigo': 'Cód. Fornecedor',
+            'codigo_fornecedor': 'Cód. Fornecedor',
         }
         widgets = {
-            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
+            'codigo_fornecedor': forms.TextInput(attrs={'class': 'form-control'}),
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'categoria': forms.Select(attrs={'class': 'form-select'}),
             'unidade_medida_interna': forms.Select(attrs={'class': 'form-select'}),
@@ -57,10 +57,6 @@ class ProdutoForm(forms.ModelForm):
         # ✅ Exibe a data formatada dd/mm/yyyy
         if self.instance.pk and self.instance.data_cadastro:
             self.fields['data_cadastro'].initial = self.instance.data_cadastro.strftime('%d/%m/%Y')
-
-        # Remove o prefixo "AUTO-" do código, se existir
-        if self.instance.pk and self.instance.codigo and self.instance.codigo.startswith('AUTO-'):
-            self.fields['codigo'].initial = self.instance.codigo.replace('AUTO-', '')
 
         # ✅ Corrige filtro do fornecedor
         self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(tipo_empresa__in=["Fornecedor", "Ambos"], status_empresa=True)
@@ -89,27 +85,3 @@ class DetalhesFiscaisProdutoForm(forms.ModelForm):
         model = DetalhesFiscaisProduto
         fields = '__all__'
         exclude = ['produto'] # O produto será associado na view
-        widgets = {
-            'cst_icms': forms.TextInput(attrs={'class': 'form-control'}),
-            'origem_mercadoria': forms.TextInput(attrs={'class': 'form-control'}),
-            'aliquota_icms_interna': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'aliquota_icms_interestadual': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'reducao_base_icms': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cst_ipi': forms.TextInput(attrs={'class': 'form-control'}),
-            'aliquota_ipi': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cst_pis': forms.TextInput(attrs={'class': 'form-control'}),
-            'aliquota_pis': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cst_cofins': forms.TextInput(attrs={'class': 'form-control'}),
-            'aliquota_cofins': CurrencyInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cest': forms.TextInput(attrs={'class': 'form-control'}),
-            'ncm': forms.Select(attrs={'class': 'form-select'}), # Adicionado NCM
-            'cfop': forms.TextInput(attrs={'class': 'form-control'}), # Adicionado CFOP
-            'valor_unitario_comercial': QuantityInput(attrs={'class': 'form-control', 'step': '0.0000000001'}),
-            'icms': CurrencyInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'ipi': CurrencyInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'pis': CurrencyInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'cofins': CurrencyInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'unidade_comercial': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantidade_comercial': QuantityInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'codigo_produto_fornecedor': forms.TextInput(attrs={'class': 'form-control'}),
-        }

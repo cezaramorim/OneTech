@@ -103,14 +103,14 @@ class CurvaCrescimentoForm(forms.ModelForm):
         model = CurvaCrescimento
         fields = '__all__'
         widgets = {
-            'nome': forms.TextInput(attrs={'id': 'id_nome'}),
-            'especie': forms.TextInput(attrs={'id': 'id_especie'}),
-            'rendimento_perc': forms.NumberInput(attrs={'id': 'id_rendimento_perc'}),
-            'trato_perc_curva': forms.NumberInput(attrs={'id': 'id_trato_perc_curva'}),
-            'peso_pretendido': forms.NumberInput(attrs={'id': 'id_peso_pretendido'}),
-            'trato_sabados_perc': forms.NumberInput(attrs={'id': 'id_trato_sabados_perc'}),
-            'trato_domingos_perc': forms.NumberInput(attrs={'id': 'id_trato_domingos_perc'}),
-            'trato_feriados_perc': forms.NumberInput(attrs={'id': 'id_trato_feriados_perc'}),
+            'nome': forms.TextInput(attrs={'id': 'id_nome', 'class': 'form-control form-control-sm'}),
+            'especie': forms.TextInput(attrs={'id': 'id_especie', 'class': 'form-control form-control-sm'}),
+            'rendimento_perc': forms.NumberInput(attrs={'id': 'id_rendimento_perc', 'class': 'form-control form-control-sm'}),
+            'trato_perc_curva': forms.NumberInput(attrs={'id': 'id_trato_perc_curva', 'class': 'form-control form-control-sm'}),
+            'peso_pretendido': forms.NumberInput(attrs={'id': 'id_peso_pretendido', 'class': 'form-control form-control-sm'}),
+            'trato_sabados_perc': forms.NumberInput(attrs={'id': 'id_trato_sabados_perc', 'class': 'form-control form-control-sm'}),
+            'trato_domingos_perc': forms.NumberInput(attrs={'id': 'id_trato_domingos_perc', 'class': 'form-control form-control-sm'}),
+            'trato_feriados_perc': forms.NumberInput(attrs={'id': 'id_trato_feriados_perc', 'class': 'form-control form-control-sm'}),
         }
 
 class LoteForm(forms.ModelForm):
@@ -146,6 +146,20 @@ class CurvaCrescimentoDetalheForm(forms.ModelForm):
         model = CurvaCrescimentoDetalhe
         fields = '__all__'
         exclude = ['curva']
+        widgets = {
+            'periodo_semana': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'periodo_dias': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'peso_inicial': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'peso_final': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'ganho_de_peso': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'numero_tratos': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'hora_inicio': forms.TimeInput(attrs={'class': 'form-control form-control-sm', 'type': 'time'}),
+            'arracoamento_biomassa_perc': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'mortalidade_presumida_perc': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'racao': forms.Select(attrs={'class': 'form-control form-control-sm'}),
+            'gpd': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+            'tca': forms.NumberInput(attrs={'class': 'form-control form-control-sm'}),
+        }
 
     def clean_arracoamento_biomassa_perc(self):
         """Valida se o %BW/dia está em um range aceitável."""

@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.db.models import Sum
 from decimal import Decimal
@@ -35,7 +36,8 @@ class NCM(models.Model):
 # 🛒 Produto principal — agora usado também como item da nota
 class Produto(models.Model):
     # 🔑 Identificação
-    codigo = models.CharField(max_length=50, unique=True)
+    codigo_interno = models.CharField(max_length=50, unique=True, editable=False, help_text="Código único interno do produto (gerado automaticamente).")
+    codigo_fornecedor = models.CharField(max_length=50, blank=True, null=True, help_text="Código do produto conforme fornecedor.")
     nome = models.CharField(max_length=255)
 
     # 📂 Classificações
@@ -144,6 +146,10 @@ class Produto(models.Model):
 
 
     def save(self, *args, **kwargs):
+        # Gerar codigo_interno se não existir e o produto for novo
+        if not self.pk and not self.codigo_interno:
+            self.codigo_interno = str(uuid.uuid4()).replace('-', '')[:20].upper()
+
         print(f"DEBUG: Método save do Produto chamado para {self.nome} (ID: {self.pk})")
         # Verifica se o fator_conversao foi alterado
         if self.pk: # Se o objeto já existe no banco de dados
@@ -166,4 +172,4 @@ class Produto(models.Model):
 
 
     def __str__(self):
-        return f"{self.codigo} - {self.nome}"
+        return f"{self.codigo_interno or self.codigo_fornecedor} - {self.nome}"

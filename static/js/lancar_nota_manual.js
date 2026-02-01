@@ -126,8 +126,12 @@ OneTech.LancarNotaManual = (function () {
       const newItemHtml = `
           <div class="item-produto row g-3 mb-3 p-3" data-index="${index}">
               <div class="col-md-3">
-                  <label for="item-${index}-codigo" class="form-label">Código</label>
-                  <input type="text" id="item-${index}-codigo" class="form-control" required>
+                  <label for="item-${index}-codigo_interno" class="form-label">Cód. Interno</label>
+                  <input type="text" id="item-${index}-codigo_interno" class="form-control">
+              </div>
+              <div class="col-md-3">
+                  <label for="item-${index}-codigo_fornecedor" class="form-label">Cód. Fornecedor</label>
+                  <input type="text" id="item-${index}-codigo_fornecedor" class="form-control">
               </div>
               <div class="col-md-4">
                   <label for="item-${index}-nome" class="form-label">Nome</label>
@@ -313,7 +317,8 @@ OneTech.LancarNotaManual = (function () {
           const valorTotalItem = quantidade * valorUnitario;
 
           payload.produtos.push({
-              codigo: document.getElementById(`item-${index}-codigo`).value,
+              codigo_interno: document.getElementById(`item-${index}-codigo_interno`).value,
+              codigo_fornecedor: document.getElementById(`item-${index}-codigo_fornecedor`).value,
               nome: document.getElementById(`item-${index}-nome`).value,
               ncm: document.getElementById(`item-${index}-ncm`).value,
               cfop: document.getElementById(`item-${index}-cfop`).value,

@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal
+from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal, ItemNotaFiscal
 from relatorios.forms import NotaFiscalForm
 from common.serializers.nota_fiscal import NotaFiscalSerializer
 from decimal import Decimal
@@ -84,7 +84,7 @@ def api_nota_detalhada(request, pk):
     Retorna os dados completos da Nota Fiscal para preencher a tela de edição.
     """
     try:
-        nota = NotaFiscal.objects.get(pk=pk)
+        nota = NotaFiscal.objects.prefetch_related('itens__produto').get(pk=pk)
     except NotaFiscal.DoesNotExist:
         return Response({"erro": "Nota não encontrada"}, status=404)
 
@@ -105,23 +105,34 @@ def api_nota_detalhada(request, pk):
     }
 
     # Produtos da nota
-    produtos = EntradaProduto.objects.filter(numero_nota=nota.numero)
-    produtos_data = [
-        {
-            "codigo": p.produto.codigo,
-            "descricao": p.produto.nome,
-            "ncm": p.produto.ncm,
-            "cfop": p.produto.cfop,
-            "quantidade": p.quantidade,
-            "unidade": p.produto.unidade_comercial,
-            "valor_unitario": p.preco_unitario,
-            "valor_total": p.preco_total,
-            "icms": p.icms_valor,
-            "ipi": p.ipi_valor,
-            "desconto": 0,  # ajuste conforme necessidade
+    produtos_data = []
+    for item in nota.itens.all():
+        # Calcula o valor do ICMS para o item
+        valor_icms = Decimal('0')
+        if item.base_calculo_icms and item.aliquota_icms:
+            valor_icms = item.base_calculo_icms * (item.aliquota_icms / Decimal('100'))
+
+        # Calcula o valor do IPI para o item
+        valor_ipi = Decimal('0')
+        if hasattr(item, 'base_calculo_ipi') and hasattr(item, 'aliquota_ipi') and item.base_calculo_ipi and item.aliquota_ipi:
+            valor_ipi = item.base_calculo_ipi * (item.aliquota_ipi / Decimal('100'))
+
+        produto_data = {
+            "codigo_interno": item.produto.codigo_interno if item.produto else None,
+            "codigo_fornecedor": item.produto.codigo_fornecedor if item.produto else item.codigo,
+            "descricao": item.descricao,
+            "ncm": item.ncm,
+            "cfop": item.cfop,
+            "quantidade": item.quantidade,
+            "unidade": item.unidade,
+            "valor_unitario": item.valor_unitario,
+            "valor_total": item.valor_total,
+            "icms": valor_icms,
+            "ipi": valor_ipi,
+            "desconto": item.desconto or 0,
         }
-        for p in produtos
-    ]
+        produtos_data.append(produto_data)
+
 
     # Transporte da nota
     try:

@@ -298,7 +298,8 @@ function updateAprovarBtnState(disableAll = false) {
 
       aprovarBtn.disabled = false;
       aprovarBtn.innerHTML = '<i class="fas fa-check me-2"></i>Aprovar Selecionados';
-      buscarSugestoes();
+      await buscarSugestoes(); // Garante que a lista foi recarregada antes de desmarcar
+      selecionarTodosCheckbox.checked = false; // Desmarca o checkbox pai
     }
 
     aprovarBtn.addEventListener('click', aprovarSugestoes, { signal });
