@@ -1,10 +1,10 @@
 {% load static producao_tags %}
 
 {% block content %}
-<div class="container-fluid container-wide mt-3" data-page="povoamento-lotes"
-     data-tanques='{{ tanques_json|default:"[]"|safe }}'
-     data-fases='{{ fases_json|default:"[]"|safe }}'
-     data-linhas='{{ linhas_json|default:"[]"|safe }}'>
+<div class="container-fluid container-wide mt-3" data-page="povoamento-lotes">
+  {{ tanques_data|json_script:"povoamento-tanques-json" }}
+  {{ fases_list|json_script:"povoamento-fases-json" }}
+  {{ linhas_list|json_script:"povoamento-linhas-json" }}
   <div id="identificador-tela" data-tela="povoamento-lotes"></div>
 
   <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">

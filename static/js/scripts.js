@@ -513,10 +513,8 @@ function runInitializers() {
             }
         },
         () => {
-            if (window.OneTech && window.OneTech.PovoamentoLotes) {
-                const root = document.querySelector(OneTech.PovoamentoLotes.SELECTOR_ROOT);
-                if (root) OneTech.PovoamentoLotes.init(root);
-            }
+            // A inicialização de PovoamentoLotes foi movida para o próprio arquivo (povoamento_lotes.js)
+            // para garantir a execução correta e eliminar condições de corrida.
         },
         () => {
             if (window.OneTech && window.OneTech.EmpresaForm) {

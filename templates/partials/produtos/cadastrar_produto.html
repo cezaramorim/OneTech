@@ -9,9 +9,18 @@
 
     <div class="row g-3">
       <!-- Identificação -->
-      <div class="col-md-4">{{ form.codigo_interno.label_tag }} {{ form.codigo_interno|add_class:"form-control" }}</div>
-      <div class="col-md-4">{{ form.codigo_fornecedor.label_tag }} {{ form.codigo_fornecedor|add_class:"form-control" }}</div>
-      <div class="col-md-8">{{ form.nome.label_tag }} {{ form.nome|add_class:"form-control" }}</div>
+      <div class="col-md-6">
+        <label for="id_codigo_interno" class="form-label">Cód. Interno</label>
+        <input type="text" id="id_codigo_interno" class="form-control" placeholder="[Gerado automaticamente]" readonly>
+      </div>
+      <div class="col-md-6">
+        <label for="{{ form.codigo_fornecedor.id_for_label }}" class="form-label">{{ form.codigo_fornecedor.label }}</label>
+        {{ form.codigo_fornecedor|add_class:"form-control" }}
+      </div>
+      <div class="col-12">
+        {{ form.nome.label_tag }}
+        {{ form.nome|add_class:"form-control" }}
+      </div>
       
 
       <!-- Categoria e Unidade -->

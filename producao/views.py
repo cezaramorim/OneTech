@@ -1214,7 +1214,7 @@ def povoamento_lotes_view(request):
 
                         # --- INÍCIO DA NOVA INTEGRAÇÃO ---
                         from .utils import projetar_ciclo_de_vida_lote
-                        import logging
+                        
                         try:
                             projetar_ciclo_de_vida_lote(novo_lote)
                         except Exception as e:
@@ -1254,10 +1254,10 @@ def povoamento_lotes_view(request):
 
     context = {
         'curvas': CurvaCrescimento.objects.order_by('nome'),
-        'tanques_json': json.dumps(tanques_data),
-        'fases_json': json.dumps(fases_list),
-        'linhas_json': json.dumps(linhas_list),
-        'tipos_evento': EventoManejo.TIPO_EVENTO_CHOICES, # Adiciona os tipos de evento
+        'tanques_data': tanques_data,
+        'fases_list': fases_list,
+        'linhas_list': linhas_list,
+        'tipos_evento': EventoManejo.TIPO_EVENTO_CHOICES,
         'data_page': 'povoamento-lotes'
     }
     return render_ajax_or_base(request, 'producao/povoamento_lotes.html', context)

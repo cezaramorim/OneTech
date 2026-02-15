@@ -12,7 +12,7 @@
     <!-- 📝 Formulário AJAX -->
     <form method="post"
           class="ajax-form"
-          data-url="{% if form.instance.pk %}{% url 'empresas:cadastrar_categoria_avancada_new' pk=form.instance.pk %}{% else %}{% url 'empresas:cadastrar_categoria_avancada_new' %}{% endif %}"
+          data-url="{% if form.instance.pk %}{% url 'empresas:editar_categoria' pk=form.instance.pk %}{% else %}{% url 'empresas:cadastrar_categoria_avancada_new' %}{% endif %}"
           autocomplete="off">
       {% csrf_token %}
 

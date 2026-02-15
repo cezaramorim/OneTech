@@ -146,9 +146,23 @@ class Produto(models.Model):
 
 
     def save(self, *args, **kwargs):
-        # Gerar codigo_interno se não existir e o produto for novo
+        # Gerar codigo_interno sequencial se não existir e o produto for novo
         if not self.pk and not self.codigo_interno:
-            self.codigo_interno = str(uuid.uuid4()).replace('-', '')[:20].upper()
+            from django.db.models import Max
+            from django.db.models.functions import Cast
+            from django.db.models import IntegerField
+
+            # Encontra o maior código numérico existente
+            max_code = Produto.objects.annotate(
+                numeric_code=Cast('codigo_interno', IntegerField())
+            ).aggregate(max_code=Max('numeric_code'))['max_code']
+
+            if max_code is not None:
+                new_code_int = max_code + 1
+            else:
+                new_code_int = 1
+            
+            self.codigo_interno = f"{new_code_int:05d}"
 
         print(f"DEBUG: Método save do Produto chamado para {self.nome} (ID: {self.pk})")
         # Verifica se o fator_conversao foi alterado

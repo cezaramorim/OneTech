@@ -52,7 +52,8 @@
               <th>
                 <input type="checkbox" id="select-all-produtos">
               </th>
-              <th>Código</th>
+              <th>Cód. Interno</th>
+              <th>Cód. Fornecedor</th>
               <th>Nome</th>
               <th>Categoria</th>
               <th>Unidade</th>
@@ -67,10 +68,15 @@
               <td>
                 <input type="checkbox" class="check-produto" value="{{ produto.id }}">
               </td>
-              <td>{{ produto.codigo_interno|default:produto.codigo_fornecedor }}</td>
+              <td>{{ produto.codigo_interno|default:"-" }}</td>
+              <td>{{ produto.codigo_fornecedor|default:"-" }}</td>
               <td>{{ produto.nome }}</td>
-              <td>{{ produto.categoria.nome }}</td>
-              <td>{{ produto.unidade_medida_interna.sigla }}</td>
+              {% with categoria=produto.categoria %}
+                <td>{{ categoria.nome|default:"Sem categoria" }}</td>
+              {% endwith %}
+              {% with unidade=produto.unidade_medida_interna %}
+                <td>{{ unidade.sigla|default:"-" }}</td>
+              {% endwith %}
               <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
               <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
               <td>

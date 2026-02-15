@@ -1451,3 +1451,90 @@ html.dark .modal-body .col {
 }
 
 
+/* ============================
+   AJUSTES DE ALTURA PARA SELECT2
+=============================== */
+
+/* 1. Alinha a altura do Select2 com os inputs .form-control-sm */
+.select2-container .select2-selection--single {
+  height: calc(1.5em + 0.5rem + 2px); /* Altura padrão do Bootstrap para .form-control-sm */
+}
+
+/* 2. Centraliza o texto verticalmente */
+.select2-container .select2-selection--single .select2-selection__rendered {
+  line-height: calc(1.5em + 0.5rem); /* Ajusta a linha para centralizar */
+  padding-left: 0.5rem;
+  padding-right: 1.5rem; /* Espaço para a seta */
+}
+
+/* 3. Ajusta a posição da seta */
+.select2-container .select2-selection--single .select2-selection__arrow {
+  height: calc(1.5em + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 4. Garante que o campo de busca dentro do dropdown também seja 'sm' */
+.select2-dropdown .select2-search__field {
+  font-size: 0.875rem;
+}
+
+/* 5. Remove padding extra que pode afetar a altura */
+.select2-container--default .select2-selection--single {
+  padding: 0;
+}
+
+/* 6. Aplica o mesmo estilo de borda e fundo dos outros inputs */
+.select2-container--default .select2-selection--single {
+  border: 1px solid #ced4da;
+  background-color: #fff;
+  border-radius: 0.25rem;
+}
+
+/* 7. Estilo de foco */
+.select2-container--default.select2-container--open .select2-selection--single {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* 8. Tema escuro */
+html.dark .select2-container--default .select2-selection--single {
+  background-color: #2a2b33;
+  border-color: #444;
+  color: #f0f0f0;
+}
+
+html.dark .select2-container--default.select2-container--open .select2-selection--single {
+  border-color: #66b2ff;
+}
+
+html.dark .select2-dropdown {
+  background-color: #2a2b33;
+  border-color: #444;
+}
+
+html.dark .select2-results__option {
+  color: #f0f0f0;
+}
+
+html.dark .select2-results__option--highlighted[aria-selected] {
+  background-color: #3c4049;
+}
+
+/* Remove o brilho de foco para botões de ícone */
+.btn-icon-no-focus,
+.btn-icon-no-focus:focus,
+.btn-icon-no-focus:active {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border: none !important;
+}
+
+.btn-icon-no-focus:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.dark .btn-icon-no-focus:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}

@@ -48,12 +48,18 @@ def lista_categorias_view(request):
 
 
 @login_required_json
-@permission_required('empresas.add_categoriaempresa', raise_exception=True)
 def categoria_form_view(request, pk=None):
     app_messages = get_app_messages(request)
+
     if pk:
+        if not request.user.has_perm('empresas.change_categoriaempresa'):
+            message = app_messages.error('Você não tem permissão para editar categorias.')
+            return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
     else:
+        if not request.user.has_perm('empresas.add_categoriaempresa'):
+            message = app_messages.error('Você não tem permissão para adicionar categorias.')
+            return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = None
     
     form = CategoriaEmpresaForm(request.POST or None, instance=categoria)

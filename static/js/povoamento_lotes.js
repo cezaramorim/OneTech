@@ -1,114 +1,38 @@
-// ---- Atualiza KPIs (chips) com base no tanque selecionado ----
-function atualizarChips(tanqueId, page) {
-  console.log(`[Debug] atualizarChips: Recebeu tanqueId: '${tanqueId}'`);
-
-  const kpiTanque   = page.querySelector('[data-kpi="tanque"] [data-value]');
-  const kpiOcupacao = page.querySelector('[data-kpi="ocupacao"] [data-value]');
-  const kpiFase     = page.querySelector('[data-kpi="fase"] [data-value]');
-
-  const tanque = (window.DJANGO_CONTEXT?.tanques || [])
-    .find(t => String(t.pk) === String(tanqueId));
-
-  console.log('[Debug] Tanque encontrado no contexto:', tanque);
-
-  if (tanque) {
-    const nome = tanque.nome ?? tanque.codigo ?? 'N/A';
-    const pct  = tanque.ocupacao_percentual ??
-                 (typeof tanque.ocupacao === 'number' ? Math.round(tanque.ocupacao * 100) + '%' : 'N/A');
-    const fase = tanque.fase_nome ?? tanque.fase ?? 'N/A';
-
-    if (kpiTanque)   kpiTanque.textContent   = nome;
-    if (kpiOcupacao) kpiOcupacao.textContent = pct;
-    if (kpiFase)     kpiFase.textContent     = fase;
-  } else {
-    if (kpiTanque)   kpiTanque.textContent   = '—';
-    if (kpiOcupacao) kpiOcupacao.textContent = '—';
-    if (kpiFase)     kpiFase.textContent     = '—';
-  }
-}
-
-
-// --- HELPER: bindTanqueChange (nativo + Select2) ---
-function bindTanqueChange(tanqueSelect, page) {
-  const handler = () => {
-    const val = (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2)
-      ? window.jQuery(tanqueSelect).val()  // quando Select2 está aplicado
-      : tanqueSelect.value;
-
-    console.log(`[Debug] Evento change/select2: tanqueSelect. Novo valor: ${val}`);
-    tanqueSelect.dataset.prev = val || '';
-    if (typeof atualizarChips === 'function') {
-      atualizarChips(val || '', page);
-    }
-  };
-
-  // Limpa binds nativos anteriores e religa
-  tanqueSelect.removeEventListener('change', handler);
-  tanqueSelect.addEventListener('change', handler);
-
-  // Liga eventos do Select2, se disponível (com namespace para evitar duplicidade)
-  if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-    const $sel = window.jQuery(tanqueSelect);
-    $sel.off('select2:select.selectChips select2:clear.selectChips select2:open.selectChips');
-
-    $sel.on('select2:select.selectChips', handler);
-    $sel.on('select2:clear.selectChips', handler);
-
-    // Ao abrir o dropdown, injeta classe para dark mode no dropdown
-    $sel.on('select2:open.selectChips', () => {
-      const data = $sel.data('select2');
-      if (data && data.$dropdown) {
-        data.$dropdown.addClass('select2-dark'); // classe nossa pro tema escuro
-      }
-    });
-  }
-}
-
 (function () {
   const PAGE_SELECTOR = '[data-page="povoamento-lotes"]';
   const SELECT2_SELECTOR = '.select2-povoamento';
-  const SELECT2_BASE_CONFIG = {
-    theme: 'bootstrap-5',
-    width: 'style',
-    dropdownAutoWidth: true,
-  };
-  let select2GuardsBound = false;
 
-  function decodeJsonAttribute(value) {
-    if (!value) return [];
-    let raw = value;
+  // === Helper robusto: suporta id ou pk ===
+  function getObjId(obj) {
+    return obj?.id ?? obj?.pk ?? null;
+  }
+
+  function readJsonScript(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
     try {
-      return JSON.parse(raw);
-    } catch (error) {
-      try {
-        raw = raw.replace(/&quot;/g, '"');
-        return JSON.parse(raw);
-      } catch (innerError) {
-        console.warn('Não foi possível interpretar JSON do dataset.', innerError);
-        return [];
-      }
+      return JSON.parse(el.textContent || 'null');
+    } catch (e) {
+      return null;
     }
   }
 
   function resolveContext(page) {
-    const dataset = page?.dataset || {};
-
-    const datasetContext = {
-      tanques: decodeJsonAttribute(dataset.tanques),
-      fases: decodeJsonAttribute(dataset.fases),
-      linhas: decodeJsonAttribute(dataset.linhas),
-    };
-
     const globalContext = window.DJANGO_CONTEXT || {};
 
-    const merged = {
-      tanques: datasetContext.tanques.length ? datasetContext.tanques : (globalContext.tanques || []),
-      fases: datasetContext.fases.length ? datasetContext.fases : (globalContext.fases || []),
-      linhas: datasetContext.linhas.length ? datasetContext.linhas : (globalContext.linhas || []),
+    const scriptTanques = readJsonScript('povoamento-tanques-json');
+    const scriptFases = readJsonScript('povoamento-fases-json');
+    const scriptLinhas = readJsonScript('povoamento-linhas-json');
+
+    const ctx = {
+      ...globalContext,
+      tanques: Array.isArray(scriptTanques) ? scriptTanques : [],
+      fases: Array.isArray(scriptFases) ? scriptFases : [],
+      linhas: Array.isArray(scriptLinhas) ? scriptLinhas : [],
     };
 
-    window.DJANGO_CONTEXT = { ...globalContext, ...merged };
-    return merged;
+    window.DJANGO_CONTEXT = ctx;
+    return ctx;
   }
 
   function hasSelect2() {
@@ -119,66 +43,103 @@ function bindTanqueChange(tanqueSelect, page) {
     return window.jQuery('body');
   }
 
-  function bindSelect2Guards() {
-    if (!hasSelect2() || select2GuardsBound) return;
-    select2GuardsBound = true;
-    window.jQuery(document)
-      .off('mousedown.povoamento')
-      .on('mousedown.povoamento', '.select2-container--open .select2-dropdown', (event) => {
-        event.stopPropagation();
-      });
-  }
-
   function applySelect2($elements, extraConfig = {}) {
-  if (!hasSelect2() || !$elements || !$elements.length) return;
+    if (!hasSelect2() || !$elements || !$elements.length) return;
 
-  function getDropdownClasses() {
-    let classes = 'select2-dropdown-custom ';
-    if (document.documentElement.classList.contains('dark')) classes += 'select2-dropdown-dark';
-    return classes;
+    function getDropdownClasses() {
+      let classes = 'select2-dropdown-custom ';
+      if (document.documentElement.classList.contains('dark')) classes += 'select2-dropdown-dark';
+      return classes;
+    }
+
+    const config = {
+      theme: 'bootstrap-5',
+      width: 'resolve',
+      dropdownAutoWidth: true,
+      dropdownParent: buildDropdownParent(),
+      dropdownCssClass: getDropdownClasses(),
+      ...extraConfig
+    };
+
+    $elements.each(function () {
+      const $el = window.jQuery(this);
+      $el.select2(config);
+    });
   }
 
-  const config = {
-    theme: 'bootstrap-5',
-    width: 'resolve',
-    dropdownAutoWidth: true,
-    dropdownParent: buildDropdownParent(),     // usa seu helper
-    dropdownCssClass: getDropdownClasses(),
-    ...extraConfig
-  };
+  // === Ajuste: atualizarChips tolerante a id/pk ===
+  function atualizarChips(tanqueId) {
+    console.log('[Debug] atualizarChips: Recebeu tanqueId:', tanqueId);
 
-  $elements.each(function () {
-    const $el = window.jQuery(this);
-    $el.select2(config);
+    const tanques = Array.isArray(window.DJANGO_CONTEXT?.tanques) ? window.DJANGO_CONTEXT.tanques : [];
+    if (!tanqueId) {
+      document.querySelectorAll('[data-chip]').forEach(chip => chip.textContent = '--');
+      return;
+    }
 
-    $el.off('select2:open.povoamento').on('select2:open.povoamento', () => {
-      const $dd = $el.data('select2').$dropdown;
-      if (!$dd || !$dd.length) return;
+    const tanque = tanques.find(t => String(getObjId(t)) === String(tanqueId));
+    console.log('[Debug] Tanque encontrado no contexto:', tanque);
 
-      // força abrir para baixo
-      $dd.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+    if (!tanque) return;
 
-      // largura ~15% maior que o campo, com limites de viewport
-      const rect = this.getBoundingClientRect();
-      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+    const chipNome = document.querySelector('[data-chip="tanque-nome"]');
+    if (chipNome) chipNome.textContent = tanque.nome ?? '--';
 
-      const baseWidth  = rect.width;                 // largura do <select>
-      const growWidth  = Math.round(baseWidth * 1.15); // +15%
-      const spaceRight = vw - rect.left - 8;         // espaço útil até a borda direita
+    const chipStatus = document.querySelector('[data-chip="tanque-status"]');
+    if (chipStatus) chipStatus.textContent = tanque.status_nome ?? '--';
 
-      // não deixa menor que o campo, nem maior do que cabe na direita
-      const desired = Math.max(baseWidth, Math.min(growWidth, spaceRight));
+    const chipOcup = document.querySelector('[data-chip="tanque-ocupacao"]');
+    if (chipOcup) chipOcup.textContent = (tanque.ocupacao_percentual ?? '--') + '%';
+  }
 
-      $dd.css({
-        width:     desired + 'px',
-        maxWidth:  desired + 'px',
-        minWidth:  baseWidth + 'px'
-      });
-    });
-  });
-}
+  // === Ajuste: atualizarOpcoesTanque usando id/pk e data-role ===
+  function atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect) {
+    if (!tanqueSelect) return;
 
+    const tipo = (tipoTanqueSelect?.value || '').trim(); // 'VAZIO' | 'POVOADO'
+    const tanques = Array.isArray(window.DJANGO_CONTEXT?.tanques) ? window.DJANGO_CONTEXT.tanques : [];
 
+    const filtrados = tanques.filter(t =>
+      tipo === 'VAZIO' ? !t.tem_lote_ativo : !!t.tem_lote_ativo
+    );
+
+    tanqueSelect.innerHTML = [
+      '<option value="">Selecione...</option>',
+      ...filtrados.map(t => {
+        const tid = getObjId(t);
+        return `<option value="${tid}">${t.nome}</option>`;
+      })
+    ].join('');
+
+    if (window.jQuery && window.jQuery(tanqueSelect).data('select2')) {
+      window.jQuery(tanqueSelect).trigger('change.select2');
+    }
+  }
+
+  async function verificarLoteAtivo(tanqueId) {
+    if (!tanqueId) return null;
+    try {
+      const response = await fetchWithCreds(`/producao/api/tanque/${tanqueId}/lote-ativo/`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return (data?.success && data.lote) ? data.lote : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function validarAntesDeAdicionar(tipoTanqueSelect, curvaSelect, tanqueSelect) {
+    if (!tanqueSelect?.value) {
+      mostrarMensagem('warning', 'Selecione um tanque.');
+      return false;
+    }
+    if (tipoTanqueSelect?.value === 'Tanque Vazio' && !curvaSelect?.value) {
+      mostrarMensagem('warning', 'Selecione a Curva de Crescimento.');
+      return false;
+    }
+    return true;
+  }
+  
   function sanitizeOrigem(tipoOrigemValor) {
     return (tipoOrigemValor || '')
       .toUpperCase()
@@ -196,37 +157,6 @@ function bindTanqueChange(tanqueSelect, page) {
     return `${origemPrefix}${mes}${ano}`;
   }
 
-  async function verificarLoteAtivo(tanqueId) {
-    if (!tanqueId) return null;
-
-    try {
-        const response = await fetchWithCreds(`/producao/api/tanque/${tanqueId}/lote-ativo/`);
-        if (!response.ok) {
-            return null;
-        }
-        const data = await response.json();
-        if (data?.success && data.lote) {
-            return data.lote; // Retorna o objeto completo do lote
-        }
-        return null;
-    } catch (error) {
-        console.error('Erro ao buscar lote ativo:', error);
-        return null;
-    }
-  }
-
-  function validarAntesDeAdicionar(tipoTanqueSelect, curvaSelect, tanqueSelect) {
-    if (!tanqueSelect?.value) {
-      mostrarMensagem('warning', 'Selecione um tanque.');
-      return false;
-    }
-    if (tipoTanqueSelect?.value === 'Tanque Vazio' && !curvaSelect?.value) {
-      mostrarMensagem('warning', 'Selecione a Curva de Crescimento.');
-      return false;
-    }
-    return true;
-  }
-
   async function adicionarLinha({
     tipoTanqueSelect,
     tipoOrigemSelect,
@@ -236,13 +166,7 @@ function bindTanqueChange(tanqueSelect, page) {
     emptyState,
     totaisRefs,
   }) {
-    if (
-      !validarAntesDeAdicionar(
-        tipoTanqueSelect,
-        curvaSelect,
-        tanqueSelect,
-      )
-    ) {
+    if (!validarAntesDeAdicionar(tipoTanqueSelect, curvaSelect, tanqueSelect)) {
       return;
     }
 
@@ -254,7 +178,6 @@ function bindTanqueChange(tanqueSelect, page) {
     const faseOptions = fases.map((fase) => `<option value="${fase.pk}">${fase.nome}</option>`).join('');
     const linhaOptions = linhas.map((linha) => `<option value="${linha.pk}">${linha.nome}</option>`).join('');
 
-    // --- Lógica de Reforço vs. Novo Lote ---
     const isReforco = tipoTanqueSelect.options[tipoTanqueSelect.selectedIndex].value === 'POVOADO';
     const loteAtivo = isReforco ? await verificarLoteAtivo(tanqueSelect.value) : null;
 
@@ -271,7 +194,7 @@ function bindTanqueChange(tanqueSelect, page) {
 
     const novaLinhaHTML = `
       <tr id="${linhaId}" data-tanque-id="${tanqueSelect.value}" data-curva-id="${curvaIdParaLinha}">
-        <td><button class="btn btn-danger btn-sm" data-action="desfazer" type="button">X</button></td>
+        <td><button class="btn btn-sm btn-icon-no-focus" data-action="desfazer" type="button" title="Excluir linha"><i class="bi bi-trash3 text-danger"></i></button></td>
         <td>${tanqueSelect.options[tanqueSelect.selectedIndex].text}</td>
         <td>${generateGrupoOrigem(tipoOrigemSelect?.value)}</td>
         <td>${curvaTexto}</td>
@@ -288,7 +211,6 @@ function bindTanqueChange(tanqueSelect, page) {
     listagemBody.insertAdjacentHTML('beforeend', novaLinhaHTML);
     const novaLinha = document.getElementById(linhaId);
 
-    // Pré-seleciona a fase se for um reforço
     if (loteAtivo && faseIdSelecionada) {
         const faseSelect = novaLinha.querySelector('[data-field="fase_id"]');
         faseSelect.value = faseIdSelecionada;
@@ -336,9 +258,7 @@ function bindTanqueChange(tanqueSelect, page) {
 
   function recalcularTotais(listagemBody, totaisRefs) {
     if (!listagemBody) return;
-    let linhas = 0;
-    let peixes = 0;
-    let peso = 0;
+    let linhas = 0, peixes = 0, peso = 0;
 
     listagemBody.querySelectorAll('tr').forEach((linha) => {
       linhas += 1;
@@ -349,13 +269,9 @@ function bindTanqueChange(tanqueSelect, page) {
     });
 
     const { linhas: linhasEl, peixes: peixesEl, peso: pesoEl } = totaisRefs || {};
-    const formatter = new Intl.NumberFormat('pt-BR');
-
     if (linhasEl) linhasEl.textContent = String(linhas);
-    if (peixesEl) peixesEl.textContent = formatter.format(peixes);
+    if (peixesEl) peixesEl.textContent = new Intl.NumberFormat('pt-BR').format(peixes);
     if (pesoEl) pesoEl.textContent = `${peso.toFixed(1)} kg`;
-
-    return { linhas, peixes, pesoKg: peso };
   }
 
   function atualizarEstadoListagem(listagemBody, emptyState) {
@@ -378,18 +294,14 @@ function bindTanqueChange(tanqueSelect, page) {
     emptyState,
     totaisRefs,
   }) {
-    const linhas = Array.from(listagemBody.querySelectorAll('tr'));
-    if (!linhas.length) {
+    if (!listagemBody.querySelectorAll('tr').length) {
       mostrarMensagem('warning', 'Adicione pelo menos uma linha para processar.');
       return;
     }
-
-    if (!validarLinhas(listagemBody, tipoTanqueSelect.value)) {
-      return;
-    }
+    if (!validarLinhas(listagemBody, tipoTanqueSelect.value)) return;
 
     const payload = {
-      povoamentos: linhas.map((linha) => ({
+      povoamentos: Array.from(listagemBody.querySelectorAll('tr')).map((linha) => ({
         tipo_tanque: tipoTanqueSelect.options[tipoTanqueSelect.selectedIndex].value,
         curva_id: linha.dataset.curvaId || null,
         tanque_id: linha.dataset.tanqueId,
@@ -405,7 +317,6 @@ function bindTanqueChange(tanqueSelect, page) {
     };
 
     processarBtn.disabled = true;
-    const originalLabel = processarBtn.innerHTML;
     processarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processando...';
 
     try {
@@ -415,299 +326,128 @@ function bindTanqueChange(tanqueSelect, page) {
         body: JSON.stringify(payload),
       });
       const result = await response.json().catch(() => ({}));
-
       if (!response.ok) {
         mostrarMensagem('danger', result?.message || 'Falha ao processar os povoamentos.');
         return;
       }
-
       mostrarMensagem('success', result?.message || 'Povoamentos processados com sucesso.');
       limparListagem(listagemBody, emptyState, totaisRefs);
     } catch (error) {
-      console.error('Erro ao processar povoamentos:', error);
       mostrarMensagem('danger', 'Ocorreu um erro de comunicação com o servidor.');
     } finally {
       processarBtn.disabled = false;
-      processarBtn.innerHTML = originalLabel;
+      processarBtn.innerHTML = 'Processar Povoamentos';
+    }
+  }
+  
+  function setupEventListeners(page, context) {
+    const tipoTanqueSelect = page.querySelector('[data-role="tipo-tanque"]') || page.querySelector('#id_tipo_tanque');
+    const tipoOrigemSelect = page.querySelector('#id_tipo_origem');
+    const curvaSelect = page.querySelector('#curva');
+    const tanqueSelect = page.querySelector('[data-role="tanque"]') || page.querySelector('#id_tanque');
+    const curvaContainer = page.querySelector('[data-container="curva-crescimento"]');
+    
+    const addBtn = page.querySelector('[data-action="adicionar-linha"]');
+    const processarBtn = page.querySelector('[data-action="processar"]');
+    const limparBtn = page.querySelector('[data-action="limpar-linhas"]');
+    const listagemBody = page.querySelector('[data-container="listagem-body"]');
+    const emptyState = page.querySelector('[data-state="empty"]');
+    const totaisRefs = obterTotaisRefs(page);
+
+    if (addBtn) {
+        addBtn.addEventListener('click', () => adicionarLinha({
+            tipoTanqueSelect, tipoOrigemSelect, curvaSelect, tanqueSelect,
+            listagemBody, emptyState, totaisRefs
+        }));
+    }
+
+    if (processarBtn) {
+        processarBtn.addEventListener('click', () => processarPovoamentos({
+            tipoTanqueSelect, listagemBody, processarBtn, emptyState, totaisRefs
+        }));
+    }
+
+    if (limparBtn) {
+        limparBtn.addEventListener('click', () => limparListagem(listagemBody, emptyState, totaisRefs));
+    }
+
+    if (listagemBody) {
+        listagemBody.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="desfazer"]')) {
+                e.target.closest('tr').remove();
+                atualizarEstadoListagem(listagemBody, emptyState);
+                recalcularTotais(listagemBody, totaisRefs);
+            }
+        });
+        listagemBody.addEventListener('input', (e) => {
+            if (e.target.matches('[data-field="quantidade"], [data-field="peso_medio"]')) {
+                recalcularTotais(listagemBody, totaisRefs);
+            }
+        });
+    }
+    
+    if (tipoTanqueSelect) {
+        tipoTanqueSelect.addEventListener('change', () => {
+            const povoado = (tipoTanqueSelect.value === 'POVOADO');
+            if(curvaContainer) curvaContainer.style.display = povoado ? 'none' : '';
+            if (povoado && curvaSelect) {
+                curvaSelect.value = '';
+                if (hasSelect2()) window.jQuery(curvaSelect).val(null).trigger('change');
+            }
+        });
     }
   }
 
-  function bindHistorico(buscarBtn, historicoBody) {
-    if (!buscarBtn || !historicoBody) return;
-    buscarBtn.addEventListener('click', async (event) => {
-      event.preventDefault();
-      const inicial = document.querySelector('[data-filter="data_inicial"]').value;
-      const final = document.querySelector('[data-filter="data_final"]').value;
-      const status = document.querySelector('[data-filter="status"]').value;
-      const url = new URL('/producao/api/povoamento/historico/', window.location.origin);
-      if (inicial) url.searchParams.append('data_inicial', inicial);
-      if (final) url.searchParams.append('data_final', final);
-      if (status) url.searchParams.append('status', status);
-
-      try {
-        const response = await fetchWithCreds(url.toString());
-        const data = await response.json();
-        historicoBody.innerHTML = data?.success
-          ? data.historico.map((item) => `
-              <tr>
-                <td>${item.id}</td>
-                <td>${item.data}</td>
-                <td>${item.lote}</td>
-                <td>${item.tanque}</td>
-                <td>${item.quantidade}</td>
-                <td>${item.peso_medio}</td>
-                <td>${item.tipo_evento}</td>
-              </tr>
-            `).join('')
-          : '';
-      } catch (error) {
-        console.error('Erro ao buscar histórico:', error);
-        mostrarMensagem('danger', 'Não foi possível carregar o histórico.');
-      }
-    });
-  }
-
-
-  // Liga os eventos de mudança do select de tanque de forma resiliente (nativo + Select2)
-function atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect, page) {
-  if (!window.DJANGO_CONTEXT || !tanqueSelect || !page) return;
-
-  const tipo = (tipoTanqueSelect?.value || '').trim();
-  const tanques = Array.isArray(window.DJANGO_CONTEXT.tanques) ? window.DJANGO_CONTEXT.tanques : [];
-
-  // 1) filtra por tipo (Povoado/Vazio)
-  const filtrados = tanques.filter(t =>
-    tipo === 'VAZIO' ? !t.tem_lote_ativo : !!t.tem_lote_ativo
-  );
-
-  // 2) (re)monta opções do <select>
-  const optionsHtml = [
-    '<option value="">Selecione...</option>',
-    ...filtrados.map(t => `<option value="${t.pk}">${t.nome}</option>`),
-  ].join('');
-  tanqueSelect.innerHTML = optionsHtml;
-
-  // 3) (re)aplica Select2 somente aqui (evita instâncias duplicadas)
-  const hasS2 = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2);
-  let $sel = null;
-  if (hasS2) {
-    $sel = window.jQuery(tanqueSelect);
-    if ($sel.data('select2')) $sel.select2('destroy'); // limpa instância antiga
-
-    const $page = window.jQuery('[data-page="povoamento-lotes"]');
-    $sel.select2({
-      theme: 'bootstrap-5',              // ✅ forca a classe .select2-container--bootstrap-5
-      width: '100%',
-      dropdownParent: $page.length ? $page : buildDropdownParent(),
-      placeholder: 'Selecione...',
-      allowClear: true,
-    });
-
-    // aplica tema dark no container “fechado”
-    const $s2Container = $sel.next('.select2');
-    $s2Container.addClass('select2-dark');
-  }
-
-  // 4) decide seleção: prioriza a anterior; senão mantém a atual; senão 1ª válida; senão vazio
-  const prev   = tanqueSelect.dataset.prev || '';
-  const curr   = tanqueSelect.value || '';
-  const exists = v => [...tanqueSelect.options].some(o => o.value === String(v));
-  let nextVal  = '';
-
-  if (prev && exists(prev)) {
-    nextVal = String(prev);
-  } else if (curr && exists(curr)) {
-    nextVal = String(curr);
-  } else if (filtrados.length > 0) {
-    nextVal = String(filtrados[0].pk);
-  } else {
-    nextVal = '';
-  }
-
-  // 5) (re)liga os eventos (nativo + select2) ANTES de sincronizar valor, para capturar o trigger
-  if (typeof bindTanqueChange === 'function') {
-    bindTanqueChange(tanqueSelect, page);
-  } else {
-    console.error('[Erro] bindTanqueChange não está definido no escopo.');
-  }
-
-  // 6) sincroniza UI/valor e atualiza chips
-  tanqueSelect.value = nextVal;
-
-  if (hasS2) {
-    // no Select2, o trigger dispara o handler → chips serão atualizados via bind
-    $sel.val(nextVal || null).trigger('change.select2');
-  } else {
-    // sem Select2, atualiza chips manualmente
-    if (typeof atualizarChips === 'function') {
-      atualizarChips(nextVal || '', page);
-    }
-  }
-
-  // 7) persiste a seleção para a próxima filtragem
-  tanqueSelect.dataset.prev = nextVal || '';
-}
-
-
+  // === Ajuste: initPovoamentoLotes encontrando selects por data-role e fallback por id ===
   function initPovoamentoLotes() {
-  console.log('%c[Debug] initPovoamentoLotes: Iniciando...', 'color: blue; font-weight: bold;');
+    const page = document.querySelector(PAGE_SELECTOR);
+    if (!page) return;
+    if (page.dataset.povoamentoInitialized === 'true') return;
+    page.dataset.povoamentoInitialized = 'true';
 
-  const page = document.querySelector(PAGE_SELECTOR);
-  if (!page) return;
+    resolveContext(page);
 
-  // ✅ Anti-reentrada: evita concorrência/duplicidade entre múltiplos eventos
-  if (page.dataset.initialized === 'true') {
-    console.log('[Debug] initPovoamentoLotes: já inicializado, abortando.');
-    return;
-  }
-  if (page.dataset.initializing === 'true') {
-    console.log('[Debug] initPovoamentoLotes: já em inicialização, abortando.');
-    return;
-  }
-  page.dataset.initializing = 'true';
+    const tipoTanqueSelect =
+      page.querySelector('[data-role="tipo-tanque"]') ||
+      page.querySelector('#tipo-tanque') ||
+      page.querySelector('#id_tipo_tanque');
 
-  const context = resolveContext(page);
-  console.log('[Debug] Contexto de tanques resolvido:', JSON.parse(JSON.stringify(window.DJANGO_CONTEXT.tanques)));
+    const tanqueSelect =
+      page.querySelector('[data-role="tanque"]') ||
+      page.querySelector('#tanque') ||
+      page.querySelector('#id_tanque');
 
-  const contextReady =
-    context &&
-    Array.isArray(context.tanques) &&
-    Array.isArray(context.fases) &&
-    Array.isArray(context.linhas) &&
-    (context.tanques.length || context.fases.length || context.linhas.length);
-
-  if (!contextReady) {
-    // ❗ Se ainda não há contexto suficiente, libera o lock para permitir uma futura tentativa
-    delete page.dataset.initializing;
-    console.warn('[Debug] initPovoamentoLotes: contexto ainda não pronto. Abortando (liberado para nova tentativa).');
-    return;
-  }
-
-  // ✅ Agora podemos marcar como inicializado de fato
-  page.dataset.initialized = 'true';
-  delete page.dataset.initializing;
-
-  const tipoOrigemSelect = page.querySelector('[data-role="tipo-origem"]');
-  const tipoTanqueSelect = page.querySelector('[data-role="tipo-tanque"]');
-  const curvaContainer   = page.querySelector('[data-container="curva-crescimento"]');
-  const tanqueSelect     = page.querySelector('[data-role="tanque"]');
-  const curvaSelect      = page.querySelector('[data-role="curva-crescimento"]');
-  const adicionarBtn     = page.querySelector('[data-action="adicionar-linha"]');
-  const processarBtn     = page.querySelector('[data-action="processar"]');
-  const listagemBody     = page.querySelector('[data-container="listagem-body"]');
-  const buscarBtn        = page.querySelector('[data-action="buscar-historico"]');
-  const historicoBody    = page.querySelector('[data-container="historico-body"]');
-  const limparBtn        = page.querySelector('[data-action="limpar-linhas"]');
-  const emptyState       = page.querySelector('[data-state="empty"]');
-  const totaisRefs       = obterTotaisRefs(page);
-
-  if (hasSelect2()) {
-    applySelect2(window.jQuery(curvaSelect));
-
-    // Exclui o [data-role="tanque"] do seletor genérico
-    const others = Array.from(page.querySelectorAll(SELECT2_SELECTOR))
-      .filter(el => el !== tanqueSelect); // ou: !el.matches('[data-role="tanque"]')
-    if (others.length) applySelect2(window.jQuery(others));
-  }
-
-
-// Popula o combo e sincroniza chips (a função já cuida de Select2, restauração/auto-seleção e chips)
-atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect, page);
-
-// Mantém estado da listagem e histórico
-atualizarEstadoListagem(listagemBody, emptyState);
-recalcularTotais(listagemBody, totaisRefs);
-bindHistorico(buscarBtn, historicoBody);
-
-// Listener do tipo de tanque (sem atualizarChips manualmente)
-tipoTanqueSelect.addEventListener('change', () => {
-  console.log(`[Debug] Evento change: tipoTanqueSelect. Novo valor: ${tipoTanqueSelect.value}`);
-
-  const povoado = (tipoTanqueSelect.value === 'POVOADO');
-
-  // Mostra/oculta o container de curva conforme o tipo
-  curvaContainer.style.display = povoado ? 'none' : '';
-
-  // Se for "Tanque Povoado", limpamos a curva selecionada
-  if (povoado && curvaSelect) {
-    curvaSelect.value = '';
-    if (hasSelect2()) {
-      window.jQuery(curvaSelect).val(null).trigger('change');
+    if (!tipoTanqueSelect || !tanqueSelect) {
+      console.warn('[povoamento] Selects não encontrados:', { tipoTanqueSelect, tanqueSelect });
+      return;
     }
+
+    atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect);
+
+    tipoTanqueSelect.addEventListener('change', () => {
+      atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect);
+      atualizarChips('');
+    });
+
+    tanqueSelect.addEventListener('change', () => {
+      atualizarChips(tanqueSelect.value);
+    });
+
+    if (tanqueSelect.value) {
+      atualizarChips(tanqueSelect.value);
+    }
+    
+    setupEventListeners(page);
   }
 
-  // Reconstroi as opções do tanque e, internamente, já:
-  // - (re)aplica Select2 com dropdownParent e classe dark
-  // - restaura/auto-seleciona valor
-  // - re-binda eventos (bindTanqueChange)
-  // - atualiza os chips conforme a seleção atual
-  atualizarOpcoesTanque(tipoTanqueSelect, tanqueSelect, page);
-
-  // ❌ NÃO chame atualizarChips aqui
-});
-
-// Ações da listagem
-adicionarBtn?.addEventListener('click', () => {
-  adicionarLinha({
-    tipoTanqueSelect,
-    tipoOrigemSelect,
-    curvaSelect,
-    tanqueSelect,
-    listagemBody,
-    emptyState,
-    totaisRefs,
-  });
-});
-
-processarBtn?.addEventListener('click', () => {
-  processarPovoamentos({
-    tipoTanqueSelect,
-    listagemBody,
-    processarBtn,
-    emptyState,
-    totaisRefs,
-  });
-});
-
-listagemBody?.addEventListener('click', (event) => {
-  if (event.target?.dataset?.action === 'desfazer') {
-    event.preventDefault();
-    const row = event.target.closest('tr');
-    row?.remove();
-    atualizarEstadoListagem(listagemBody, emptyState);
-    recalcularTotais(listagemBody, totaisRefs);
-  }
-});
-
-listagemBody?.addEventListener('input', (event) => {
-  if (event.target?.matches('[data-field="quantidade"], [data-field="peso_medio"]')) {
-    recalcularTotais(listagemBody, totaisRefs);
-  }
-});
-
-limparBtn?.addEventListener('click', () => {
-  limparListagem(listagemBody, emptyState, totaisRefs);
-});
-
-// Mantém a função local de chips — ela é chamada por atualizarOpcoesTanque/binds
-
-}
-
-
-
-  // A inicialização foi centralizada no evento 'page:ready' para garantir que o contexto do Django esteja sempre disponível.
-  // document.addEventListener('DOMContentLoaded', initPovoamentoLotes);
-  document.addEventListener('ajaxContentLoaded', initPovoamentoLotes);
-  window.addEventListener('page:ready', (event) => {
-    if (event?.detail?.page === 'povoamento-lotes') {
+  function initializeWhenReady() {
+    const page = document.querySelector(PAGE_SELECTOR);
+    if (page) {
       initPovoamentoLotes();
     }
-  });
+  }
 
-  window.OneTech = window.OneTech || {};
-    window.OneTech.PovoamentoLotes = {
-      SELECTOR_ROOT: PAGE_SELECTOR,
-      init: initPovoamentoLotes,
-    };
+  document.addEventListener('DOMContentLoaded', initializeWhenReady);
+  document.addEventListener('ajaxContentLoaded', initializeWhenReady);
 
 })();
