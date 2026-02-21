@@ -10,7 +10,6 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: subtle shadow */
     transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
     min-height: 30px; /* Altura mínima para alinhar com o logo */
-    padding: 0 1rem; /* Ajusta o preenchimento horizontal */
 }
 
 .navbar-superior .navbar-brand img {
@@ -118,4 +117,78 @@ html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collaps
 /* espaço entre a navbar (injetada) e o conteúdo */
 #navbar-container{
   margin-bottom: var(--navbar-gap);
+}
+
+/* ===============================
+   CORREÇÃO NAVBAR TEMA AZUL
+================================= */
+
+html.azul .navbar-superior {
+  background-color: rgba(26, 42, 58, 0.98);
+  border-bottom: 1px solid #3a5a7a;
+  box-shadow: none; /* remove faixa estranha */
+}
+
+html.azul .navbar-superior .navbar-brand,
+html.azul .navbar-superior .nav-link {
+  color: #e0e0e0 !important;
+}
+
+html.azul .navbar-superior .nav-link:hover {
+  color: #ffffff !important;
+  background-color: rgba(50, 70, 90, 0.6);
+  border-radius: 4px;
+}
+
+/* Dropdown */
+html.azul .navbar-superior .dropdown-menu {
+  background-color: rgba(36, 52, 68, 0.98) !important;
+  border-color: #3a5a7a;
+}
+
+html.azul .navbar-superior .dropdown-item {
+  color: #e0e0e0;
+}
+
+html.azul .navbar-superior .dropdown-item:hover {
+  background-color: rgba(50, 70, 90, 0.8);
+  color: #ffffff;
+}
+
+/* Indicador ativo */
+html.azul .menu-ativo {
+  border-left: 3px solid #6a9acb;
+}
+
+/* ===========================================
+   REMOVE O ESPAÇO À ESQUERDA DA LOGO
+   E MANTÉM ESPAÇAMENTO INTERNO ORGANIZADO
+=========================================== */
+
+/* 1) Remove o padding que empurra tudo pra direita */
+.navbar-superior {
+  padding-left: 0 !important;
+  padding-right: 0 !important; /* opcional: tira o respiro direito também */
+}
+
+/* 2) Remove o gutter padrão do Bootstrap no container */
+.navbar-superior > .container-fluid {
+  padding-left: 0 !important;
+  padding-right: 0 !important; /* opcional */
+}
+
+/* 3) Mantém “espaço interno” somente no conteúdo */
+.navbar-superior .navbar-brand {
+  padding-left: 12px; /* respiro interno, mas SEM criar vão antes do nav */
+  margin-right: 18px; /* espaço entre logo e menus */
+}
+
+/* 4) Respiro dos menus (se quiser) */
+.navbar-superior .navbar-nav.me-auto {
+  gap: 6px; /* espaçamento entre itens do menu */
+}
+
+/* 5) Mantém o último item (perfil) com respiro na direita */
+.navbar-superior .navbar-nav.ms-auto {
+  padding-right: 12px;
 }

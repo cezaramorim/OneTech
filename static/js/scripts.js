@@ -4,10 +4,29 @@
 
 // Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
-if (temaSalvo === "dark") {
-  document.documentElement.classList.add("dark");
+if (temaSalvo && temaSalvo !== "light") { // 'light' é o tema padrão sem classe
+  document.documentElement.classList.add(temaSalvo);
 }
 document.documentElement.classList.add("theme-ready");
+
+// Temas disponíveis
+const availableThemes = ['light', 'dark', 'azul'];
+
+// Função para obter o próximo tema
+function getNextTheme(currentTheme) {
+  const currentIndex = availableThemes.indexOf(currentTheme);
+  const nextIndex = (currentIndex + 1) % availableThemes.length;
+  return availableThemes[nextIndex];
+}
+
+// Função para aplicar o tema
+function applyTheme(theme) {
+  document.documentElement.classList.remove('light', 'dark', 'azul'); // Remove todos os temas
+  if (theme !== 'light') { // 'light' é o tema padrão sem classe
+    document.documentElement.classList.add(theme);
+  }
+  localStorage.setItem('tema', theme);
+}
 
 // --- Funções de Utilidade Global ---
 
@@ -381,12 +400,12 @@ document.body.addEventListener('click', async (e) => {
       return;
   }
 
-  // Handler para o botão de alternar tema
-  const themeToggle = e.target.closest('#btn-alternar-tema-superior');
-  if (themeToggle) {
+  // Handler para os links de tema no menu de perfil
+  const themeOption = e.target.closest('.theme-option');
+  if (themeOption) {
       e.preventDefault();
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('tema', isDark ? 'dark' : 'light');
+      const selectedTheme = themeOption.dataset.theme;
+      applyTheme(selectedTheme);
       return;
   }
 

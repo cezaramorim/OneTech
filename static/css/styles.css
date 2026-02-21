@@ -20,11 +20,7 @@ body {
   /*transition: background 0.3s, color 0.3s;*/
 }
 
-html.dark,
-body.dark {
-  background-color: #1e1f26;
-  color: #f2f2f2;
-}
+
 
 html, body {
   height: 100%;
@@ -117,11 +113,7 @@ body.dark .menu-list li a:hover {
   transition: background 0.3s;
 }
 
-html.dark .content,
-body.dark .content {
-  background-color: #1e1f26;
-  color: #f2f2f2;
-}
+
 
 h1, h2, h3 {
   margin-bottom: 15px;
@@ -141,12 +133,7 @@ form {
   /*max-width: 100%;*/
 }
 
-html.dark form,
-body.dark form {
-  background-color: #3c404b;
-  color: #fff;
-  border: 1px solid #555;
-}
+
 
 .form-group {
   margin-bottom: 20px;
@@ -168,27 +155,9 @@ input, select, textarea {
   transition: border-color 0.2s;
 }
 
-html.dark input,
-html.dark select,
-html.dark textarea,
-body.dark input,
-body.dark select,
-body.dark textarea {
-  background-color: #444;
-  border: 1px solid #666;
-  color: #eee;
-}
 
-html.dark input:focus,
-html.dark select:focus,
-html.dark textarea:focus,
-body.dark input:focus,
-body.dark select:focus,
-body.dark textarea:focus {
-  border-color: #66b2ff;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
-}
+
+
 
 /* ============================
    BOTÕES (PADRÃO)
@@ -269,158 +238,17 @@ body.dark .btn-outline:hover {
   padding: 12px 16px;
 }
 
-html.dark .alert-success,
-body.dark .alert-success {
-  background-color: #155724;
-  color: #d4edda;
-  border-color: #19692c;
-}
 
-html.dark .alert-danger,
-body.dark .alert-danger {
-  background-color: #721c24;
-  color: #f8d7da;
-  border-color: #7f1d1d;
-}
 
-html.dark .alert-warning,
-body.dark .alert-warning {
-  background-color: #856404;
-  color: #fff3cd;
-  border-color: #856404;
-}
 
-/* ============================  
-   AJUSTES FINAIS TEMA ESCURO  
-=============================== */
 
-/* Estrutura base */
-html.dark,
-body.dark {
-  background-color: #1e1f26;
-  color: #f2f2f2;
-}
 
-/* Navegação */
-html.dark nav,
-body.dark nav {
-  background-color: #2b2f3a;
-  color: #f2f2f2;
-  border-color: #444;
-}
 
-/* Conteúdo principal */
-html.dark main,
-body.dark main,
-html.dark #main-content,
-body.dark #main-content,
-html.dark .content,
-body.dark .content,
-html.dark .container,
-body.dark .container {
-  background-color: #1e1f26 !important;
-  color: #f2f2f2 !important;
-}
 
-/* Correção para elementos com .bg-white no modo escuro */
-html.dark .bg-white,
-body.dark .bg-white {
-  background-color: #2b2f3a !important;
-  color: #f2f2f2 !important;
-}
 
-/* Accordion */
-html.dark .accordion-item,
-body.dark .accordion-item {
-  background-color: #2b2f3a;
-  border-color: #444;
-}
 
-html.dark .accordion-button,
-body.dark .accordion-button {
-  background-color: #2b2f3a;
-  color: #f2f2f2;
-}
 
-html.dark .accordion-button:not(.collapsed) {
-  background-color: #1e1f26;
-  color: #fff;
-}
 
-html.dark .accordion-button:focus {
-  box-shadow: none;
-}
-
-/* Menu lateral */
-html.dark .list-group-item {
-  background-color: transparent;
-  color: #ccc;
-  border: none;
-}
-
-/* Botões */
-html.dark .btn-outline-secondary {
-  border-color: #888;
-  color: #ccc;
-}
-
-html.dark .btn-outline-secondary:hover {
-  background-color: #666;
-  color: #fff;
-}
-
-/* Tabelas */
-html.dark table,
-body.dark table,
-html.dark .table,
-body.dark .table {
-  background-color: #2b2f3a;
-  color: #f2f2f2;
-  border-color: #444;
-}
-
-html.dark .table-striped tbody tr:nth-of-type(odd) {
-  background-color: #2f323c;
-}
-
-/* Inputs e campos */
-html.dark input,
-html.dark select,
-html.dark textarea,
-body.dark input,
-body.dark select,
-body.dark textarea {
-  background-color: #444;
-  border: 1px solid #666;
-  color: #eee;
-}
-
-html.dark input:focus,
-html.dark select:focus,
-html.dark textarea:focus {
-  border-color: #66b2ff;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(102, 178, 255, 0.2);
-}
-
-/* Alertas */
-html.dark .alert-success {
-  background-color: #155724;
-  color: #d4edda;
-  border-color: #19692c;
-}
-
-html.dark .alert-danger {
-  background-color: #721c24;
-  color: #f8d7da;
-  border-color: #7f1d1d;
-}
-
-html.dark .alert-warning {
-  background-color: #856404;
-  color: #fff3cd;
-  border-color: #856404;
-}
 
 /* Bordas */
 html.dark .border-end,
@@ -478,13 +306,7 @@ html.dark .welcome-card .text-muted {
   color: #bbb !important;
 }
 
-/* ============================  
-   AJUSTES DE TEXTO MUTED NO TEMA ESCURO  
-=============================== */
-html.dark .text-muted,
-body.dark .text-muted {
-  color: #bfc4ca !important; /* Um cinza claro com boa legibilidade */
-}
+
 
 /* ============================  
    LISTA DE USUÁRIOS - MELHORIAS DE VISUAL  
@@ -494,10 +316,7 @@ body.dark .text-muted {
   transition: background 0.2s ease-in-out;
 }
 
-html.dark .list-group-item {
-  background-color: #2a2d36;
-  border-color: #444;
-}
+
 
 html.dark .list-group-item:hover {
   background-color: #323640;
@@ -526,18 +345,9 @@ body.dark .form-control-plaintext {
    ESTILO PARA TEMA ESCURO - COMPONENTES DE CARTÕES
 =============================== */
 
-/* 🎴 Cartões (cards) em tema escuro */
-html.dark .card,
-body.dark .card {
-  background-color: #2b2f3a;  /* Fundo escuro para o card */
-  color: #f2f2f2;             /* Texto claro dentro do card */
-}
 
-/* 🧭 Cabeçalho do card */
-html.dark .card-header {
-  background-color: #1e1f26;  /* Fundo mais escuro para o cabeçalho */
-  color: #ddd;                /* Cor de texto clara e suave */
-}
+
+
 
 /* ✅ Rótulo dos checkboxes */
 html.dark .form-check-label {
@@ -575,6 +385,8 @@ body {
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   padding: 2rem;
 }
+
+
 
 /* 🎯 Botões de submenus em "Configurações" */
 #submenu-configuracoes button[data-bs-toggle="collapse"] {
@@ -661,36 +473,9 @@ html.dark .logout-link:hover {
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* Estilo para .card-body no tema escuro */
-html.dark body {
-  background-color: #1e1f26;
-  color: #f0f0f0;
-}
 
-html.dark .card,
-html.dark .card-body,
-html.dark .form-control,
-html.dark .form-select {
-  background-color: #2a2b33;
-  color: #fff;
-  border-color: #444;
-}
 
-/* ============================
-   CORREÇÃO TEMA ESCURO FUNDO
-=============================== */
-html.dark .card-body .mb-4,
-html.dark .bg-white,
-html.dark .card,
-html.dark .form,
-html.dark .container,
-html.dark .card-body,
-html.dark .form-control,
-html.dark .form-select {
-  background-color: #2a2b33 !important;
-  color: #f0f0f0 !important;
-  border-color: #444 !important;
-}
+
 
 html.dark .card-header.bg-light,
 body.dark .card-header.bg-light {
@@ -866,27 +651,16 @@ html.dark .nav-tabs .nav-link.active {
 }
 
 /* Select2 (Bootstrap-5) – Dark dropdown + opções */
-html.dark .select2-container--bootstrap-5 .select2-dropdown {
-  background-color: #1e1f26 !important;
-  color: #f2f2f2 !important;
-  border-color: #444 !important;
-}
 
-html.dark .select2-container--bootstrap-5 .select2-results__option--highlighted {
-  background-color: #2a2a2a !important;
-  color: #fff !important;
-}
+
+
 
 html.dark .select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
   background-color: #111827 !important;
   color: #fff !important;
 }
 
-html.dark .select2-container--bootstrap-5 .select2-search__field {
-  background-color: #2c2c2c !important;
-  color: #f2f2f2 !important;
-  border-color: #555 !important;
-}
+
 
 
 /* 🔹 Campo padrão */
@@ -918,12 +692,7 @@ html.dark .select2-container--bootstrap-5 .select2-search__field {
   font-size: 1.25rem;
 }
 
-/* 🌙 Tema escuro */
-html.dark .select2-container--bootstrap-5 .select2-selection {
-  background-color: #1e1f26;
-  color: #f2f2f2;
-  border-color: #444;
-}
+
 
 /* 🌙 Escuro com foco */
 html.dark .select2-container--bootstrap-5 .select2-selection:focus {
@@ -937,39 +706,15 @@ html.dark .select2-container--bootstrap-5 .select2-selection:focus {
   width: 100% !important;
 }
 
-/* 🌙 Tabelas no tema escuro */
-html.dark table,
-html.dark .table,
-html.dark .table thead th,
-html.dark .table td {
-  background-color: #2a2d3a;
-  color: #f2f2f2;
-  border-color: #444 !important;
-}
 
-/* 🔲 Cabeçalho da tabela no tema escuro */
-html.dark .table thead th {
-  background-color: #1f212c;
-  color: #ffffff;
-  font-weight: bold;
-}
 
-/* 🔳 Linhas alternadas (se quiser) */
-html.dark .table-striped tbody tr:nth-of-type(odd) {
-  background-color: #2e303d;
-}
 
-/* 🌑 Ajusta o campo de busca no tema escuro */
-html.dark .form-control {
-  background-color: #2c2c2c; /* fundo escuro sutil */
-  color: #f2f2f2; /* texto branco para leitura */
-  border: 1px solid #555; /* borda mais visível no dark */
-}
 
-/* Corrige placeholder do campo no tema escuro */
-html.dark .form-control::placeholder {
-  color: #aaa; /* tom suave no placeholder */
-}
+
+
+
+
+
 
 /* ================================
    🔍 Autocomplete NCM - Dropdown
@@ -1238,85 +983,85 @@ html.dark .modal-selecao-empresa .list-group-item:hover {
 }
 
 /* Tema Claro */
-html:not(.dark) .modal-selecao-empresa {
+html:not(.dark):not(.azul) .modal-selecao-empresa {
   background-color: #fff; /* Fundo do modal */
   color: #212529; /* Cor do texto */
   border-color: #dee2e6;
 }
 
-html:not(.dark) .modal-selecao-empresa .modal-header {
+html:not(.dark):not(.azul) .modal-selecao-empresa .modal-header {
   background-color: transparent; /* Fundo do cabeçalho do modal */
   color: #212529;
   border-bottom-color: #dee2e6;
 }
 
-html:not(.dark) .modal-selecao-empresa .modal-body {
+html:not(.dark):not(.azul) .modal-selecao-empresa .modal-body {
   background-color: transparent; /* Fundo do corpo do modal */
   color: #212529;
 }
 
-html:not(.dark) .modal-selecao-empresa .modal-footer {
+html:not(.dark):not(.azul) .modal-selecao-empresa .modal-footer {
   background-color: transparent; /* Fundo do rodapé do modal */
   color: #212529;
   border-top-color: #dee2e6;
 }
 
 /* Inputs dentro de modais no tema claro */
-html:not(.dark) .modal-selecao-empresa .form-control,
-html:not(.dark) .modal-selecao-empresa .form-select,
-html:not(.dark) .modal-selecao-empresa .form-control:focus,
-html:not(.dark) .modal-selecao-empresa .form-select:focus {
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-control,
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-select,
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-control:focus,
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-select:focus {
   background-color: #fff;
   border-color: #ced4da;
   color: #212529;
 }
 
-html:not(.dark) .modal-selecao-empresa .form-control::placeholder {
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-control::placeholder {
   color: #6c757d;
 }
 
 /* Checkboxes dentro de modais no tema claro */
-html:not(.dark) .modal-selecao-empresa .form-check-input {
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-check-input {
   background-color: #fff; /* Fundo do checkbox */
   border-color: #ced4da; /* Borda do checkbox */
 }
 
-html:not(.dark) .modal-selecao-empresa .form-check-input:checked {
+html:not(.dark):not(.azul) .modal-selecao-empresa .form-check-input:checked {
   background-color: #0d6efd; /* Cor de fundo quando checado */
   border-color: #0d6efd; /* Cor da borda quando checado */
 }
 
 /* Tabela de resultados da busca dentro do modal no tema claro */
-html:not(.dark) .modal-selecao-empresa .table {
+html:not(.dark):not(.azul) .modal-selecao-empresa .table {
   color: #212529; /* Cor do texto padrão para a tabela no tema claro */
   border-color: #dee2e6;
 }
 
-html:not(.dark) .modal-selecao-empresa .table tbody tr > * {
+html:not(.dark):not(.azul) .modal-selecao-empresa .table tbody tr > * {
   background-color: #fff !important; /* Fundo branco para todas as células do corpo da tabela */
   box-shadow: none !important; /* Remove o box-shadow que cria o fundo */
   color: #212529 !important; /* Cor do texto escura para o tema claro */
 }
 
-html:not(.dark) .modal-selecao-empresa .table thead th {
+html:not(.dark):not(.azul) .modal-selecao-empresa .table thead th {
   background-color: #f8f9fa !important; /* Fundo claro para o cabeçalho da tabela */
   color: #212529 !important; /* Cor do texto escura para o tema claro */
   box-shadow: none !important; /* Remove o box-shadow do cabeçalho */
 }
 
-html:not(.dark) .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) > * {
+html:not(.dark):not(.azul) .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) > * {
   background-color: #f2f2f2 !important; /* Um cinza bem claro para linhas zebradas */
   box-shadow: none !important; /* Remove o box-shadow das linhas zebradas */
   color: #212529 !important; /* Cor do texto escura para o tema claro */
 }
 
-html:not(.dark) .modal-selecao-empresa .list-group-item {
+html:not(.dark):not(.azul) .modal-selecao-empresa .list-group-item {
   background-color: #fff;
   color: #212529;
   border-color: rgba(0, 0, 0, 0.125);
 }
 
-html:not(.dark) .modal-selecao-empresa .list-group-item:hover {
+html:not(.dark):not(.azul) .modal-selecao-empresa .list-group-item:hover {
   background-color: #f8f9fa;
 }
 
@@ -1497,29 +1242,17 @@ html.dark .modal-body .col {
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
-/* 8. Tema escuro */
-html.dark .select2-container--default .select2-selection--single {
-  background-color: #2a2b33;
-  border-color: #444;
-  color: #f0f0f0;
-}
+
 
 html.dark .select2-container--default.select2-container--open .select2-selection--single {
   border-color: #66b2ff;
 }
 
-html.dark .select2-dropdown {
-  background-color: #2a2b33;
-  border-color: #444;
-}
 
-html.dark .select2-results__option {
-  color: #f0f0f0;
-}
 
-html.dark .select2-results__option--highlighted[aria-selected] {
-  background-color: #3c4049;
-}
+
+
+
 
 /* Remove o brilho de foco para botões de ícone */
 .btn-icon-no-focus,
@@ -1537,4 +1270,681 @@ html.dark .select2-results__option--highlighted[aria-selected] {
 
 html.dark .btn-icon-no-focus:hover {
     background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+html.azul .list-group-item:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+html.azul .btn-outline-secondary {
+  border-color: #6a9acb;
+  color: #9acbe6;
+}
+
+html.azul .btn-outline-secondary:hover {
+  background-color: #6a9acb;
+  color: #fff;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+html.azul .select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
+  background-color: rgba(20, 30, 40, 0.9) !important;
+  color: #fff !important;
+}
+
+
+
+
+
+html.azul .select2-container--bootstrap-5 .select2-selection:focus {
+  border-color: #6a9acb;
+  box-shadow: 0 0 0 0.2rem rgba(106, 154, 203, 0.25);
+}
+
+
+
+html.azul .welcome-card {
+  background-color: rgba(26, 42, 58, 0.95);
+  color: #e0e0e0;
+}
+
+html.azul .welcome-card h1,
+html.azul .welcome-card h2,
+html.azul .welcome-card .lead,
+html.azul .welcome-card p {
+  color: #e0e0e0;
+}
+
+html.azul .welcome-card hr {
+  border-color: #3a5a7a;
+}
+
+html.azul .welcome-card .text-muted {
+  color: #a0a0a0 !important;
+}
+
+html.azul .logout-card {
+  background-color: rgba(36, 52, 68, 0.95);
+  color: #e0e0e0;
+}
+
+html.azul .logout-link {
+  color: #e0e0e0;
+}
+
+html.azul .logout-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+html.azul .welcome-bar {
+  border-bottom: 1px dashed #3a5a7a;
+  color: #e0e0e0;
+}
+
+html.azul .nav-tabs .nav-link.active {
+  background-color: rgba(36, 52, 68, 0.9);
+  border-bottom: 2px solid #6a9acb;
+}
+
+html.azul .autocomplete-ncm-list {
+  background-color: rgba(26, 42, 58, 0.9);
+  color: #e0e0e0;
+  border-color: #3a5a7a;
+}
+
+html.azul .autocomplete-ncm-item:hover {
+  background-color: rgba(50, 70, 90, 0.8);
+}
+
+html.azul #resultado-xml {
+  background-color: rgba(36, 52, 68, 0.9);
+  border-color: #3a5a7a;
+  color: #e0e0e0;
+}
+
+html.azul #resultado-xml h5 {
+  color: #6a9acb;
+}
+
+html.azul .modal-selecao-empresa {
+  background-color: rgba(36, 52, 68, 0.95);
+  color: #e0e0e0;
+  border-color: #3a5a7a;
+}
+
+html.azul .modal-selecao-empresa .modal-header {
+  background-color: rgba(26, 42, 58, 0.9);
+  color: #e0e0e0;
+  border-bottom-color: #3a5a7a;
+}
+
+html.azul .modal-selecao-empresa .modal-body {
+  background-color: rgba(36, 52, 68, 0.95);
+  color: #e0e0e0;
+}
+
+html.azul .modal-selecao-empresa .modal-footer {
+  background-color: rgba(26, 42, 58, 0.9);
+  color: #e0e0e0;
+  border-top-color: #3a5a7a;
+}
+
+html.azul .modal-selecao-empresa .form-control,
+html.azul .modal-selecao-empresa .form-select,
+html.azul .modal-selecao-empresa .form-control:focus,
+html.azul .modal-selecao-empresa .form-select:focus {
+  background-color: rgba(50, 70, 90, 0.8);
+  border-color: #6a9acb;
+  color: #e0e0e0;
+}
+
+html.azul .modal-selecao-empresa .form-control::placeholder {
+  color: #a0a0a0;
+}
+
+html.azul .modal-selecao-empresa .form-check-input {
+  background-color: rgba(50, 70, 90, 0.8);
+  border-color: #6a9acb;
+}
+
+html.azul .modal-selecao-empresa .form-check-input:checked {
+  background-color: #6a9acb;
+  border-color: #6a9acb;
+}
+
+html.azul .modal-selecao-empresa .table,
+html.azul .modal-selecao-empresa .table thead th,
+html.azul .modal-selecao-empresa .table td {
+  background-color: rgba(36, 52, 68, 0.9);
+  color: #e0e0e0;
+  border-color: #3a5a7a !important;
+}
+
+html.azul .modal-selecao-empresa .table thead th {
+  background-color: rgba(26, 42, 58, 0.9);
+  color: #ffffff;
+}
+
+html.azul .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(46, 62, 78, 0.9);
+}
+
+html.azul .modal-selecao-empresa .list-group-item {
+  background-color: rgba(36, 52, 68, 0.95);
+  color: #e0e0e0;
+  border-color: #3a5a7a;
+}
+
+html.azul .modal-selecao-empresa .list-group-item:hover {
+  background-color: rgba(50, 70, 90, 0.8);
+}
+
+.select2-dropdown-azul { /* Classe específica para o dropdown do Select2 no tema azul */
+  background-color: rgba(26, 42, 58, 0.9) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+
+.select2-dropdown-azul .select2-results__option--highlighted[aria-selected],
+.select2-dropdown-azul .select2-results__option[aria-selected=true] {
+  background-color: rgba(50, 70, 90, 0.8) !important;
+  color: #fff !important;
+}
+
+.select2-dropdown-azul .select2-search__field {
+  background-color: rgba(50, 70, 90, 0.8) !important;
+  color: #e0e0e0 !important;
+  border-color: #6a9acb !important;
+}
+/* =========================================================
+   ✅ TEMA DARK (COMPLETO) — sem fundo branco em cards/inputs
+   (Cole no final do CSS)
+========================================================= */
+html.dark,
+body.dark {
+  background-color: #1e1f26 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Conteúdo/base (evita “ilhas” claras) */
+html.dark main,
+html.dark #main-content,
+html.dark .content,
+html.dark .container,
+html.dark .container-fluid,
+body.dark main,
+body.dark #main-content,
+body.dark .content,
+body.dark .container,
+body.dark .container-fluid {
+  background-color: #1e1f26 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Bootstraps helpers que vazam branco */
+html.dark .bg-white,
+html.dark .bg-light,
+html.dark .text-bg-light,
+body.dark .bg-white,
+body.dark .bg-light,
+body.dark .text-bg-light {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Cards (principal causa do “card branco” é .card-body/.bg-white) */
+html.dark .card,
+body.dark .card {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+
+html.dark .card-header,
+body.dark .card-header {
+  background-color: #1e1f26 !important;
+  color: #ddd !important;
+  border-bottom-color: #444 !important;
+}
+
+html.dark .card-body,
+body.dark .card-body {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Seções internas que costumam vir com sombra e fundo claro */
+html.dark .card-body .mb-4,
+body.dark .card-body .mb-4 {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+}
+
+/* Formularios */
+html.dark form,
+body.dark form {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+
+/* ✅ Inputs (cobre TODOS: tags + classes Bootstrap) */
+html.dark input,
+html.dark select,
+html.dark textarea,
+body.dark input,
+body.dark select,
+body.dark textarea,
+html.dark .form-control,
+html.dark .form-select,
+body.dark .form-control,
+body.dark .form-select {
+  background-color: #2c2c2c !important;
+  color: #f2f2f2 !important;
+  border-color: #555 !important;
+}
+
+html.dark .form-control::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder,
+body.dark .form-control::placeholder,
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #aaa !important;
+}
+
+html.dark .form-control:focus,
+html.dark .form-select:focus,
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus,
+body.dark .form-control:focus,
+body.dark .form-select:focus,
+body.dark input:focus,
+body.dark select:focus,
+body.dark textarea:focus {
+  border-color: #66b2ff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.25rem rgba(102, 178, 255, 0.25) !important;
+}
+
+/* Form-floating */
+html.dark .form-floating > .form-control,
+html.dark .form-floating > .form-control-plaintext,
+html.dark .form-floating > .form-select,
+body.dark .form-floating > .form-control,
+body.dark .form-floating > .form-control-plaintext,
+body.dark .form-floating > .form-select {
+  background-color: #2c2c2c !important;
+  color: #f2f2f2 !important;
+  border-color: #555 !important;
+}
+html.dark .form-floating > label,
+body.dark .form-floating > label {
+  color: #bbb !important;
+}
+
+/* Tabelas (células podem “forçar” branco) */
+html.dark .table,
+html.dark table,
+body.dark .table,
+body.dark table {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+html.dark .table thead th,
+body.dark .table thead th {
+  background-color: #1f212c !important;
+  color: #fff !important;
+}
+html.dark .table tbody tr > *,
+body.dark .table tbody tr > * {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  box-shadow: none !important;
+}
+html.dark .table-striped tbody tr:nth-of-type(odd) > *,
+body.dark .table-striped tbody tr:nth-of-type(odd) > * {
+  background-color: #2f323c !important;
+}
+
+/* Accordion */
+html.dark .accordion-item,
+body.dark .accordion-item {
+  background-color: #2a2b33 !important;
+  border-color: #444 !important;
+}
+html.dark .accordion-button,
+body.dark .accordion-button {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+}
+html.dark .accordion-button:not(.collapsed),
+body.dark .accordion-button:not(.collapsed) {
+  background-color: #1e1f26 !important;
+  color: #fff !important;
+}
+
+/* List group */
+html.dark .list-group-item,
+body.dark .list-group-item {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+
+/* Text muted */
+html.dark .text-muted,
+body.dark .text-muted {
+  color: #bfc4ca !important;
+}
+
+/* Modais (evita modal branco no dark) */
+html.dark .modal-content,
+html.dark .modal-header,
+html.dark .modal-body,
+html.dark .modal-footer,
+body.dark .modal-content,
+body.dark .modal-header,
+body.dark .modal-body,
+body.dark .modal-footer {
+  background-color: #2a2b33 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+
+/* Select2 (Bootstrap-5) */
+html.dark .select2-container--bootstrap-5 .select2-selection,
+body.dark .select2-container--bootstrap-5 .select2-selection {
+  background-color: #2c2c2c !important;
+  color: #f2f2f2 !important;
+  border-color: #555 !important;
+}
+html.dark .select2-container--bootstrap-5 .select2-dropdown,
+body.dark .select2-container--bootstrap-5 .select2-dropdown {
+  background-color: #1e1f26 !important;
+  color: #f2f2f2 !important;
+  border-color: #444 !important;
+}
+html.dark .select2-container--bootstrap-5 .select2-search__field,
+body.dark .select2-container--bootstrap-5 .select2-search__field {
+  background-color: #2c2c2c !important;
+  color: #f2f2f2 !important;
+  border-color: #555 !important;
+}
+html.dark .select2-container--bootstrap-5 .select2-results__option--highlighted,
+body.dark .select2-container--bootstrap-5 .select2-results__option--highlighted {
+  background-color: #3c4049 !important;
+  color: #fff !important;
+}
+
+/* =========================================================
+   ✅ TEMA AZUL (COMPLETO) — sem fundo branco em cards/inputs
+   (Cole no final do CSS)
+========================================================= */
+html.azul,
+body.azul {
+  color: #e0e0e0 !important;
+  background-image: url('/static/icons/Background_azul.png');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center center;
+}
+
+/* Conteúdo/base */
+html.azul main,
+html.azul #main-content,
+html.azul .content,
+html.azul .container,
+html.azul .container-fluid,
+body.azul main,
+body.azul #main-content,
+body.azul .content,
+body.azul .container,
+body.azul .container-fluid {
+  background-color: rgba(26, 42, 58, 0.90) !important;
+  color: #e0e0e0 !important;
+}
+
+/* ✅ Bootstraps helpers que vazam branco (ESSENCIAL no azul) */
+html.azul .bg-white,
+html.azul .bg-light,
+html.azul .text-bg-light,
+body.azul .bg-white,
+body.azul .bg-light,
+body.azul .text-bg-light {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+/* Cards */
+html.azul .card,
+body.azul .card {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+
+html.azul .card-header,
+body.azul .card-header {
+  background-color: rgba(26, 42, 58, 0.90) !important;
+  color: #f0f0f0 !important;
+  border-bottom-color: #3a5a7a !important;
+}
+
+/* ✅ card-body (principal correção do “card branco” no azul) */
+html.azul .card-body,
+body.azul .card-body {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+/* Seções internas */
+html.azul .card-body .mb-4,
+body.azul .card-body .mb-4 {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+/* Formulários */
+html.azul form,
+body.azul form {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+
+/* ✅ Inputs (cobre tags + classes Bootstrap) */
+html.azul input,
+html.azul select,
+html.azul textarea,
+body.azul input,
+body.azul select,
+body.azul textarea,
+html.azul .form-control,
+html.azul .form-select,
+body.azul .form-control,
+body.azul .form-select {
+  background-color: rgba(50, 70, 90, 0.85) !important;
+  color: #e0e0e0 !important;
+  border-color: #6a9acb !important;
+}
+
+html.azul .form-control::placeholder,
+html.azul input::placeholder,
+html.azul textarea::placeholder,
+body.azul .form-control::placeholder,
+body.azul input::placeholder,
+body.azul textarea::placeholder {
+  color: #a0a0a0 !important;
+}
+
+html.azul .form-control:focus,
+html.azul .form-select:focus,
+html.azul input:focus,
+html.azul select:focus,
+html.azul textarea:focus,
+body.azul .form-control:focus,
+body.azul .form-select:focus,
+body.azul input:focus,
+body.azul select:focus,
+body.azul textarea:focus {
+  border-color: #6a9acb !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.25rem rgba(106, 154, 203, 0.25) !important;
+}
+
+/* Form-floating */
+html.azul .form-floating > .form-control,
+html.azul .form-floating > .form-control-plaintext,
+html.azul .form-floating > .form-select,
+body.azul .form-floating > .form-control,
+body.azul .form-floating > .form-control-plaintext,
+body.azul .form-floating > .form-select {
+  background-color: rgba(50, 70, 90, 0.85) !important;
+  color: #e0e0e0 !important;
+  border-color: #6a9acb !important;
+}
+html.azul .form-floating > label,
+body.azul .form-floating > label {
+  color: #a0a0a0 !important;
+}
+
+/* Tabelas (células podem “forçar” branco) */
+html.azul .table,
+html.azul table,
+body.azul .table,
+body.azul table {
+  background-color: rgba(36, 52, 68, 0.90) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+html.azul .table thead th,
+body.azul .table thead th {
+  background-color: rgba(26, 42, 58, 0.90) !important;
+  color: #fff !important;
+}
+html.azul .table tbody tr > *,
+body.azul .table tbody tr > * {
+  background-color: rgba(36, 52, 68, 0.90) !important;
+  color: #e0e0e0 !important;
+  box-shadow: none !important;
+}
+html.azul .table-striped tbody tr:nth-of-type(odd) > *,
+body.azul .table-striped tbody tr:nth-of-type(odd) > * {
+  background-color: rgba(46, 62, 78, 0.90) !important;
+}
+
+/* Accordion */
+html.azul .accordion-item,
+body.azul .accordion-item {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  border-color: #3a5a7a !important;
+}
+html.azul .accordion-button,
+body.azul .accordion-button {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+html.azul .accordion-button:not(.collapsed),
+body.azul .accordion-button:not(.collapsed) {
+  background-color: rgba(26, 42, 58, 0.90) !important;
+  color: #fff !important;
+}
+
+/* List group */
+html.azul .list-group-item,
+body.azul .list-group-item {
+  background-color: rgba(36, 52, 68, 0.30) !important; /* leve, para não “pesar” */
+  color: #c0c0c0 !important;
+  border-color: rgba(58, 90, 122, 0.65) !important;
+}
+
+/* Text muted */
+html.azul .text-muted,
+body.azul .text-muted {
+  color: #a0a0a0 !important;
+}
+
+/* Modais (evita modal branco no azul) */
+html.azul .modal-content,
+html.azul .modal-header,
+html.azul .modal-body,
+html.azul .modal-footer,
+body.azul .modal-content,
+body.azul .modal-header,
+body.azul .modal-body,
+body.azul .modal-footer {
+  background-color: rgba(36, 52, 68, 0.95) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+
+/* Select2 (Bootstrap-5) */
+html.azul .select2-container--bootstrap-5 .select2-selection,
+body.azul .select2-container--bootstrap-5 .select2-selection {
+  background-color: rgba(50, 70, 90, 0.85) !important;
+  color: #e0e0e0 !important;
+  border-color: #6a9acb !important;
+}
+html.azul .select2-container--bootstrap-5 .select2-dropdown,
+body.azul .select2-container--bootstrap-5 .select2-dropdown {
+  background-color: rgba(26, 42, 58, 0.90) !important;
+  color: #e0e0e0 !important;
+  border-color: #3a5a7a !important;
+}
+html.azul .select2-container--bootstrap-5 .select2-search__field,
+body.azul .select2-container--bootstrap-5 .select2-search__field {
+  background-color: rgba(50, 70, 90, 0.85) !important;
+  color: #e0e0e0 !important;
+  border-color: #6a9acb !important;
+}
+html.azul .select2-container--bootstrap-5 .select2-results__option--highlighted,
+body.azul .select2-container--bootstrap-5 .select2-results__option--highlighted {
+  background-color: rgba(50, 70, 90, 0.85) !important;
+  color: #fff !important;
+}
+
+html.dark input:-webkit-autofill,
+html.dark textarea:-webkit-autofill,
+html.dark select:-webkit-autofill{
+  -webkit-box-shadow: 0 0 0px 1000px #2c2c2c inset !important;
+  -webkit-text-fill-color: #f2f2f2 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+html.azul input:-webkit-autofill,
+html.azul textarea:-webkit-autofill,
+html.azul select:-webkit-autofill{
+  -webkit-box-shadow: 0 0 0px 1000px rgba(50, 70, 90, 0.85) inset !important;
+  -webkit-text-fill-color: #e0e0e0 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }

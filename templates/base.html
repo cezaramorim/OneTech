@@ -14,8 +14,13 @@
     const tema = localStorage.getItem("tema");
     if (tema === "dark") {
       document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("azul"); // Garante que não haja conflito
+    } else if (tema === "azul") {
+      document.documentElement.classList.add("azul");
+      document.documentElement.classList.remove("dark"); // Garante que não haja conflito
     } else {
       document.documentElement.classList.remove("dark");
+      document.documentElement.classList.remove("azul");
     }
     document.documentElement.classList.add("theme-ready");
   </script>
