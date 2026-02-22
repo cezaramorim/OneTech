@@ -9,13 +9,10 @@ from django.db import transaction
 from django.utils import timezone
 import pandas as pd
 from io import BytesIO
-from datetime import time
+from datetime import datetime, time, date
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_http_methods
-import logging
 
-# Configuração básica de logging para exibir mensagens no console
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
@@ -765,17 +762,43 @@ class ListaEventosView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     raise_exception = True
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        termo = self.request.GET.get('termo_evento', '').strip()
-        if termo:
-            qs = qs.filter(
-                Q(tipo_evento__icontains=termo) |
-                Q(lote__nome__icontains=termo)
-            )
-        return qs
+        qs = super().get_queryset().select_related('lote', 'tanque_origem', 'tanque_destino')
+
+        # Filtros
+        tipo_evento = self.request.GET.get('tipo_evento', '').strip()
+        tanque_origem_id = self.request.GET.get('tanque_origem', '').strip()
+        tanque_destino_id = self.request.GET.get('tanque_destino', '').strip()
+        lote_id = self.request.GET.get('lote', '').strip()
+        data_evento = self.request.GET.get('data_evento', '').strip()
+
+        if tipo_evento:
+            qs = qs.filter(tipo_evento=tipo_evento)
+        if tanque_origem_id:
+            qs = qs.filter(tanque_origem_id=tanque_origem_id)
+        if tanque_destino_id:
+            qs = qs.filter(tanque_destino_id=tanque_destino_id)
+        if lote_id:
+            qs = qs.filter(lote_id=lote_id)
+        if data_evento:
+            try:
+                data_formatada = datetime.strptime(data_evento, '%Y-%m-%d').date()
+                qs = qs.filter(data_evento=data_formatada)
+            except (ValueError, TypeError):
+                pass
+
+        return qs.order_by('-data_evento', '-id')
 
     def render_to_response(self, context, **response_kwargs):
-        context['termo_busca'] = self.request.GET.get('termo_evento', '').strip()
+        context['tipos_evento'] = EventoManejo.TIPO_EVENTO_CHOICES
+        context['tanques'] = Tanque.objects.all().order_by('nome')
+        context['lotes'] = Lote.objects.all().order_by('nome')
+        context['filtros'] = {
+            'tipo_evento': self.request.GET.get('tipo_evento', ''),
+            'tanque_origem': self.request.GET.get('tanque_origem', ''),
+            'tanque_destino': self.request.GET.get('tanque_destino', ''),
+            'lote': self.request.GET.get('lote', ''),
+            'data_evento': self.request.GET.get('data_evento', ''),
+        }
         return render_ajax_or_base(self.request, self.template_name, context)
 
 
@@ -1389,7 +1412,9 @@ def api_mortalidade_lotes_ativos(request):
             'qtd_atual': f'{lote.quantidade_atual:.0f}',
             'peso_medio_g': f'{lote.peso_medio_atual:.2f}' if lote.peso_medio_atual else '0.00',
             'biomassa_kg': f'{biomassa_kg:.2f}',
-            'qtd_mortalidade': '' # Campo para o input do usuário
+            'qtd_mortalidade': '', # Campo para o input do usuário
+            'tanque_id': lote.tanque_atual_id,
+            'tipo_movimento': 'Saída',
         })
 
     return JsonResponse({'results': results})
@@ -1401,32 +1426,46 @@ def api_mortalidade_lotes_ativos(request):
 def processar_mortalidade_api(request):
     try:
         data = json.loads(request.body)
-        registros = data.get('registros', [])
-        data_evento = data.get('data_evento')
-
-        if not data_evento:
+        registros = data.get('lancamentos', [])
+        data_evento_str = data.get('data_evento')
+        if not data_evento_str:
             return JsonResponse({'success': False, 'message': 'A data do evento é obrigatória.'}, status=400)
+        try:
+            data_evento = datetime.strptime(data_evento_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'success': False, 'message': 'Formato de data inválido. Use YYYY-MM-DD.'}, status=400)
 
         for registro in registros:
             lote_id = registro.get('lote_id')
-            mortalidade = Decimal(registro.get('mortalidade', 0))
+            mortalidade = Decimal(registro.get('quantidade_mortalidade', 0))
 
             if mortalidade > 0:
-                lote = get_object_or_404(Lote, id=lote_id, ativo=True)
-                EventoManejo.objects.create(
-                    tipo_evento='Mortalidade',
-                    lote=lote,
-                    data_evento=data_evento,
-                    quantidade=mortalidade,
-                    peso_medio=lote.peso_medio_atual, # Usa o peso médio atual do lote
-                    observacoes=f"Registro de mortalidade em massa."
-                )
-                lote.recalcular_estado_atual()
+                try:
+                    lote = get_object_or_404(Lote, id=lote_id, ativo=True)
+                    
+                    evento = EventoManejo.objects.create(
+                        tipo_evento='Mortalidade',
+                        lote=lote,
+                        tanque_origem_id=registro.get('tanque_origem_id'),
+                        tipo_movimento=registro.get('tipo_movimento'),
+                        data_evento=data_evento,
+                        quantidade=mortalidade,
+                        peso_medio=lote.peso_medio_atual,
+                        observacoes=f"Registro de mortalidade em massa."
+                    )
+                    
+                    lote.recalcular_estado_atual()
+                except Lote.DoesNotExist:
+                    continue
+                except Exception as inner_e:
+                    continue
         
         return JsonResponse({'success': True, 'message': 'Registros de mortalidade processados com sucesso.'})
 
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Requisição JSON inválida.'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Erro ao processar mortalidade: {e}'}, status=500)
+        return JsonResponse({'success': False, 'message': f'Erro interno do servidor: {e}'}, status=500)
 
 @login_required
 @require_http_methods(["POST"])

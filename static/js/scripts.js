@@ -400,6 +400,68 @@ document.body.addEventListener('click', async (e) => {
       return;
   }
 
+  // Handler para o botão Excluir genérico
+  const btnExcluir = e.target.closest('#btn-excluir');
+  if (btnExcluir && !btnExcluir.disabled) {
+      e.preventDefault();
+
+      const mainContent = document.getElementById('main-content');
+      const identificadorTela = mainContent.querySelector("#identificador-tela");
+      if (!identificadorTela) return;
+
+      const urlExcluir = identificadorTela.dataset.urlExcluir;
+      const seletorCheckbox = identificadorTela.dataset.seletorCheckbox;
+      const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
+
+      const selectedIds = Array.from(mainContent.querySelectorAll(`${seletorCheckbox}:checked`)).map(cb => cb.value);
+
+      if (selectedIds.length === 0) {
+          mostrarMensagem('warning', 'Nenhum item selecionado para exclusão.');
+          return;
+      }
+
+      Swal.fire({
+          title: 'Você tem certeza?',
+          text: `Você está prestes a excluir ${selectedIds.length} ${entidadePlural}. Esta ação não pode ser desfeita.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Sim, excluir!',
+          cancelButtonText: 'Cancelar'
+      }).then(async (result) => {
+          if (result.isConfirmed) {
+              try {
+                  const response = await fetchWithCreds(urlExcluir, {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'X-CSRFToken': getCSRFToken()
+                      },
+                      body: JSON.stringify({ ids: selectedIds })
+                  });
+
+                  const data = await response.json();
+
+                  if (data.success) {
+                      mostrarMensagem('success', data.message);
+                      if (data.redirect_url) {
+                          loadAjaxContent(data.redirect_url);
+                      } else {
+                          window.location.reload();
+                      }
+                  } else {
+                      mostrarMensagem('danger', data.message || 'Ocorreu um erro ao excluir os itens.');
+                  }
+              } catch (error) {
+                  console.error('Erro ao excluir:', error);
+                  mostrarMensagem('danger', 'Erro de comunicação com o servidor.');
+              }
+          }
+      });
+      return;
+  }
+
   // Handler para os links de tema no menu de perfil
   const themeOption = e.target.closest('.theme-option');
   if (themeOption) {
@@ -479,6 +541,23 @@ function initListaEmpresas() {
   });
 }
 
+function initListaEventos() {
+  const form = document.getElementById('filtro-eventos-form');
+  if (!form || form.dataset.debounced === 'true') return;
+  form.dataset.debounced = 'true';
+
+  const handler = debounce(() => {
+    // O formulário tem a classe 'ajax-form', então o manipulador de envio global irá capturá-lo
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }, 400);
+
+  form.addEventListener('input', (e) => {
+    if (e.target.matches('input, select')) {
+        handler();
+    }
+  });
+}
+
 // --- Inicialização ---
 
 function runInitializers() {
@@ -495,6 +574,7 @@ function runInitializers() {
     // Módulos específicos de página
     const initializers = [
         initListaEmpresas,
+        initListaEventos,
         () => {
             if (window.OneTech && window.OneTech.GerenciarCurvas) {
                 const root = document.querySelector(OneTech.GerenciarCurvas.SELECTOR_ROOT);

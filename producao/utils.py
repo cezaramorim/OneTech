@@ -70,7 +70,11 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
             objects_to_delete = self.model.objects.filter(pk__in=ids)
             deleted_names = [str(obj) for obj in objects_to_delete]
 
-            deleted_count, _ = objects_to_delete.delete()
+            deleted_count = 0
+            # Itera para garantir que os sinais de exclusão (post_delete) sejam disparados
+            for obj in objects_to_delete:
+                obj.delete()
+                deleted_count += 1
 
             if deleted_count > 0:
                 if len(deleted_names) == 1:

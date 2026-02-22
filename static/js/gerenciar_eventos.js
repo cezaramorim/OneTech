@@ -133,6 +133,7 @@ OneTech.GerenciarEventos = (function () {
 
       try {
         const url = `/producao/api/ultimos-eventos/?${params.toString()}`;
+        console.log('Chamando API de Últimos Eventos:', url);
         const response = await (window.fetchWithCreds || fetch)(url);
         const data = await response.json();
 
@@ -196,7 +197,7 @@ OneTech.GerenciarEventos = (function () {
 
         if (Array.isArray(data.results) && data.results.length > 0) {
           tbody.innerHTML = data.results.map((item) => `
-            <tr data-lote="${item.lote_id}">
+            <tr data-lote="${item.lote_id}" data-tanque-origem-id="${item.tanque_id}">
               <td>${item.tanque}</td>
               <td>${item.lote}</td>
               <td>${item.data_inicio}</td>
@@ -295,7 +296,13 @@ OneTech.GerenciarEventos = (function () {
           const qtdMortalidade = toNumLocale(row.querySelector('.input-mort')?.value);
           const biomassaRetirada = toNumLocale(row.querySelector('[data-biomassa-retirada]')?.textContent);
           if (qtdMortalidade > 0) {
-            lancamentos.push({ lote_id: loteId, quantidade_mortalidade: qtdMortalidade, biomassa_retirada: biomassaRetirada });
+            lancamentos.push({
+                lote_id: loteId,
+                quantidade_mortalidade: qtdMortalidade,
+                biomassa_retirada: biomassaRetirada,
+                tanque_origem_id: row.dataset.tanqueOrigemId, // Get from data-attribute
+                tipo_movimento: 'Saída', // Hardcoded for mortality
+            });
           }
         });
 
