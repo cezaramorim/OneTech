@@ -1,8 +1,20 @@
 {% load static %}
-<div class="container-fluid" id="gerenciar-curvas"
+
+<div class="container-fluid container-wide mt-3" id="gerenciar-curvas"
      data-page="gerenciar-curvas"
      data-endpoint-curva-base="/producao/api/curva/"
      data-endpoint-detalhe-sufixo="detalhes/">
+  <div id="identificador-tela" data-tela="gerenciar-curvas"></div>
+
+  <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+    <div>
+      <h4 class="fw-semibold mb-2">
+        <i class="bi bi-graph-up me-2"></i> Gerenciar Curvas
+      </h4>
+      <hr class="mt-0">
+    </div>
+  </header>
+
   <div class="row">
     <!-- Coluna Esquerda: Lista de Curvas -->
     <div class="col-md-4">
@@ -27,6 +39,7 @@
             {% for curva in curvas %}
               <li class="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
                   data-id="{{ curva.pk }}"
+                  data-name="{{ curva.nome }}"
                   style="cursor:pointer">
                 <span class="texto-truncado">{{ curva.nome }}</span>
                 <i class="fas fa-chevron-right small text-muted"></i>
@@ -266,17 +279,7 @@
     </div>
   </div>
 
-  <!-- Identificador/contexto para o scripts.js -->
-  <div id="identificador-tela"
-       data-tela="gerenciar-curvas"
-       data-seletor-tabela="#tabela-detalhes-body"
-       data-form-curva="#form-curva"
-       data-form-detalhe="#form-ponto-crescimento"
-       data-tab-ponto="#ponto-crescimento-tab"
-       data-input-curva-id="#curva-id"
-       data-input-detalhe-id="#detalhe-id">
   </div>
-</div>
 
 <style>
   /* pequenos refinamentos visuais; mantém compatibilidade com tema claro/escuro existente */

@@ -58,27 +58,47 @@ OneTech.GerenciarCurvas = (function () {
 
   function bindBuscaDinamica(raiz, signal) {
     const lista = raiz.querySelector(SELECTORS.listaCurvas);
-    if (!lista) return;
+    const input = raiz.querySelector(SELECTORS.searchCurva);
+    const btn = raiz.querySelector('[data-action="buscar-curva"]');
+
+    if (!lista || !input) return;
 
     const filtrar = () => {
-      const search = raiz.querySelector(SELECTORS.searchCurva);
-      const filtro = (search?.value || '').trim().toUpperCase();
-      Array.from(lista.querySelectorAll('li.list-group-item')).forEach(li => {
+      const filtro = (input.value || '').trim().toUpperCase();
+
+      // pega os itens reais da lista (somente li com data-id)
+      const itens = Array.from(lista.querySelectorAll('li[data-id]'));
+
+      itens.forEach(li => {
+        // prioridade para data-name (mais confiável), fallback para texto
         const texto = ((li.dataset.name || li.textContent) || '').toUpperCase();
-        li.style.display = texto.includes(filtro) ? '' : 'none';
+
+        // força display com prioridade, caso algum CSS esteja “travando”
+        li.style.setProperty('display', texto.includes(filtro) ? '' : 'none', 'important');
       });
     };
 
-    raiz.addEventListener('input', (event) => {
-      if (event.target && event.target.matches(SELECTORS.searchCurva)) filtrar();
-    }, { signal });
+    // Digitação (robusto)
+    input.addEventListener('input', filtrar, { signal });
+    input.addEventListener('keyup', filtrar, { signal });
 
-    raiz.addEventListener('keydown', (event) => {
-      if (event.target && event.target.matches(SELECTORS.searchCurva) && event.key === 'Enter') {
-        event.preventDefault();
+    // Enter filtra e não submete
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        filtrar();
       }
     }, { signal });
 
+    // Clique no botão lupa
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        filtrar();
+      }, { signal });
+    }
+
+    // roda uma vez ao iniciar
     filtrar();
   }
 

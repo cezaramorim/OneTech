@@ -1948,3 +1948,77 @@ html.azul select:-webkit-autofill{
   -webkit-text-fill-color: #e0e0e0 !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* ============================
+   BREADCRUMB THEME FIX
+=============================== */
+
+/* Corrige a cor do item ativo do breadcrumb nos temas escuro e azul */
+html.dark .breadcrumb-item.active {
+  color: #dee2e6; /* Um cinza claro para o tema escuro */
+}
+
+html.azul .breadcrumb-item.active {
+  color: #e0e0e0; /* Um cinza azulado claro para o tema azul */
+}
+
+/* Opcional: Garante que o separador (/) também se adapte */
+html.dark .breadcrumb-item::before {
+    color: #6c757d;
+}
+
+html.azul .breadcrumb-item::before {
+    color: #a0b0c0;
+}
+
+/* ==========================================
+   SCROLLBAR GLOBAL (THEME-AWARE)
+========================================== */
+:root {
+  --scrollbar-size: 10px;
+  --scroll-track: rgba(0, 0, 0, 0.06);
+  --scroll-thumb: rgba(0, 0, 0, 0.25);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.40);
+}
+
+/* Tema DARK */
+html.dark {
+  --scroll-track: rgba(255, 255, 255, 0.06);
+  --scroll-thumb: rgba(255, 255, 255, 0.22);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.35);
+}
+
+/* Tema AZUL */
+html.azul {
+  --scroll-track: rgba(0, 123, 255, 0.12);
+  --scroll-thumb: rgba(0, 123, 255, 0.55);
+  --scroll-thumb-hover: rgba(0, 123, 255, 0.75);
+}
+
+/* Firefox (global) */
+html, body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+}
+
+/* Chrome / Edge / Safari (global) */
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+}

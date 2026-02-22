@@ -2,7 +2,7 @@
 window.OneTech = window.OneTech || {};
 
 OneTech.GerenciarTanques = (function () {
-  const SELECTOR_ROOT = '#gerenciar-tanques[data-page="gerenciar-tanques"]';
+  const SELECTOR_ROOT = '[data-page="gerenciar-tanques"]';
 
   function toNumLocale(value) {
     if (value == null) return 0;
