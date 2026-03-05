@@ -38,9 +38,9 @@
                             <td>{{ lote.nome }}</td>
                             <td>{{ lote.tanque_atual.nome|default:"N/A" }}</td>
                             <td>{{ lote.data_povoamento|date:"d/m/Y" }}</td>
-                            <td>{{ lote.peso_medio_atual|floatformat:2 }}</td>
-                            <td>{{ lote.biomassa_atual_kg|floatformat:2 }}</td>
-                            <td>{{ lote.quantidade_atual|floatformat:0 }}</td>
+                            <td>{{ lote.peso_atual_annotated|floatformat:2 }}</td>
+                            <td>{{ lote.biomassa_atual_kg_annotated|floatformat:2 }}</td>
+                            <td>{{ lote.qtd_atual_annotated|floatformat:0 }}</td>
                             <td>{% if lote.ativo %}Sim{% else %}Não{% endif %}</td>
                         </tr>
                         {% empty %}

@@ -1,0 +1,32 @@
+.reprocessar-lotes-page .page-title {
+  margin: 0 0 .25rem 0;
+  font-weight: 700;
+}
+
+.reprocessar-lotes-page .page-subtitle {
+  margin: 0 0 1rem 0;
+  opacity: .85;
+}
+
+.reprocessar-status {
+  margin-top: .5rem;
+}
+
+.reprocessar-log {
+  margin-top: .5rem;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(0,0,0,.03);
+  min-height: 220px;
+  max-height: 520px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* Dark mode (se você usa html.dark ou body.dark, ajuste conforme seu padrão) */
+html.dark .reprocessar-log,
+body.dark .reprocessar-log {
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+}

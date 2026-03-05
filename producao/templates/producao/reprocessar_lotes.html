@@ -1,0 +1,112 @@
+{% load static %}
+
+<div class="container-fluid py-3" data-page="producao-reprocessar-lotes">
+  <div class="row g-3">
+    <div class="col-12">
+      <h3 class="page-title mb-2">Reprocessar Lotes</h3>
+      <p class="text-muted mb-3">
+        Recalcula LoteDiário (bases + real + projetado) no intervalo selecionado. Use “Simular” antes de executar.
+      </p>
+    </div>
+
+    <div class="col-12">
+      <div class="card shadow-sm ot-card">
+        <div class="card-body">
+          <form id="form-reprocessar-lotes"
+                class="row g-3"
+                method="post"
+                action="{% url 'producao:reprocessar_lotes_api' %}">
+            {% csrf_token %}
+
+            <div class="col-md-4">
+              <label class="form-label">Lote</label>
+              <select name="lote_id" class="form-select" required>
+                <option value="">Selecione</option>
+                {% for l in lotes %}
+                  <option value="{{ l.id }}">{{ l.nome }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Selecione o lote principal a reprocessar.</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Tanque (opcional)</label>
+              <select name="tanque_id" class="form-select">
+                <option value="">Todos</option>
+                {% for t in tanques %}
+                  <option value="{{ t.id }}">{{ t.nome }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Se informado, filtra LoteDiário por tanque.</div>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Data inicial</label>
+              <input type="date" name="data_ini" class="form-control" required>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Data final</label>
+              <input type="date" name="data_fim" class="form-control">
+              <div class="form-text">Em branco = até o último diário.</div>
+            </div>
+
+            <div class="col-12">
+              <hr class="my-2">
+            </div>
+
+            <div class="col-12 col-lg-8">
+              <div class="d-flex flex-wrap gap-3 align-items-center">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="dry_run" id="dry_run" checked>
+                  <label class="form-check-label" for="dry_run">Simular (dry-run)</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="reprojetar" id="reprojetar">
+                  <label class="form-check-label" for="reprojetar">Reprojetar ciclo ao final</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="forcar" id="forcar">
+                  <label class="form-check-label" for="forcar">Forçar recálculo mesmo sem realizado</label>
+                </div>
+              </div>
+              <div class="form-text mt-2">
+                Recomendado: rode primeiro com “Simular”, valide o log e só depois execute.
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-4 text-lg-end">
+              <div class="d-flex flex-wrap justify-content-lg-end gap-2">
+                <button type="reset" class="btn btn-outline-secondary" id="btn-limpar">Limpar</button>
+                <button type="submit" class="btn btn-primary" id="btn-executar">Executar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card shadow-sm ot-card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <strong>Resultado</strong>
+          <div class="d-flex align-items-center gap-2" id="reprocessar-status">
+            <span class="badge text-bg-secondary">Aguardando</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-end mb-2">
+             <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-copiar-log" disabled>Copiar log</button>
+          </div>
+          <pre class="reprocessar-log" id="reprocessar-log">Nenhuma execução ainda.</pre>
+          <div class="mt-3 small text-muted">
+            Dica: se o seu problema começou em 03/11/2025, use essa data como início do reprocessamento.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'producao/css/reprocessar_lotes.css' %}">
+<script src="{% static 'producao/js/reprocessar_lotes.js' %}"></script>

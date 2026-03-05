@@ -12,7 +12,8 @@ from .models import (
     # Novos modelos de arraçoamento
     LoteDiario,
     ArracoamentoSugerido,
-    ArracoamentoRealizado
+    ArracoamentoRealizado,
+    ParametroAmbientalDiario
 )
 
 admin.site.register(LinhaProducao)
@@ -37,3 +38,9 @@ admin.site.register(EventoManejo)
 admin.site.register(LoteDiario)
 admin.site.register(ArracoamentoSugerido)
 admin.site.register(ArracoamentoRealizado)
+
+@admin.register(ParametroAmbientalDiario)
+class ParametroAmbientalDiarioAdmin(admin.ModelAdmin):
+    list_display = ('fase', 'data', 'od_medio', 'temp_media', 'variacao_termica')
+    list_filter = ('fase', 'data')
+    search_fields = ('fase__nome',)

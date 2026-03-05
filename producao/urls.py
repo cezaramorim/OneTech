@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views, views_arracoamento
-from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Tanque, CurvaCrescimento, Lote, EventoManejo
+from . import views, views_arracoamento, views_ambiente
+from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, TipoEvento, Tanque, CurvaCrescimento, Lote, EventoManejo
+from producao.views_ambiente import api_fases_com_tanques, api_get_ambiente, api_ambiente_upsert
 
 app_name = 'producao'
 
@@ -51,6 +52,12 @@ urlpatterns = [
     path('tipos-tanque/<int:pk>/editar/', views.TipoTanqueUpdateView.as_view(), name='editar_tipotanque'),
     path('tipos-tanque/excluir-multiplos/', views.BulkDeleteView.as_view(model=TipoTanque, success_url_name='producao:lista_tipostanque'), name='excluir_tipotanque_multiplo'),
 
+    # Tipos de Evento
+    path('tipos-evento/', views.TipoEventoListView.as_view(), name='lista_tiposevento'),
+    path('tipos-evento/cadastrar/', views.TipoEventoCreateView.as_view(), name='criar_tipoevento'),
+    path('tipos-evento/<int:pk>/editar/', views.TipoEventoUpdateView.as_view(), name='editar_tipoevento'),
+    path('tipos-evento/excluir-multiplos/', views.BulkDeleteView.as_view(model=TipoEvento, success_url_name='producao:lista_tiposevento'), name='excluir_tipoevento_multiplo'),
+
     
 
     # Curvas de Crescimento
@@ -86,6 +93,8 @@ urlpatterns = [
     path('lotes/cadastrar/', views.CadastrarLoteView.as_view(), name='cadastrar_lote'),
     path('lotes/<int:pk>/editar/', views.EditarLoteView.as_view(), name='editar_lote'),
     path('lotes/excluir-multiplos/', views.ExcluirLotesMultiplosView.as_view(), name='excluir_lotes_multiplos'),
+    path("lote/reprocessar/", views.reprocessar_lotes_view, name="reprocessar_lotes"),
+    path("lote/reprocessar/api/", views.reprocessar_lotes_api, name="reprocessar_lotes_api"),
 
     # Povoamento de Lotes
     path('povoamento/', views.povoamento_lotes_view, name='povoamento_lotes'),
@@ -108,8 +117,16 @@ urlpatterns = [
     path('api/arracoamento/sugestoes/', views_arracoamento.api_sugestoes_arracoamento, name='api_sugestoes_arracoamento'),
     path('api/arracoamento/aprovar/', views_arracoamento.api_aprovar_arracoamento, name='api_aprovar_arracoamento'),
     path('api/linhas-producao/', views.api_linhas_producao_list, name='api_linhas_producao_list'),
+    path('api/fases-com-tanques/', views.api_fases_com_tanques, name='api_fases_com_tanques'),
     path('api/arracoamento/realizado/<int:pk>/delete/', views_arracoamento.api_delete_arracoamento_realizado, name='api_delete_arracoamento_realizado'),
     path('api/arracoamento/realizado/bulk-delete/', views_arracoamento.api_bulk_delete_arracoamento_realizado, name='api_bulk_delete_arracoamento_realizado'),
     path('api/arracoamento/realizado/<int:pk>/', views_arracoamento.api_get_arracoamento_realizado, name='api_get_arracoamento_realizado'), # GET for detail
-    path('api/arracoamento/realizado/<int:pk>/update/', views_arracoamento.api_update_arracoamento_realizado, name='api_update_arracoamento_realizado'), # POST for update
+    path('api/arracoamento/realizado/<int:pk>/update/', views_arracoamento.api_update_arracoamento_realizado, name='api_update_arracoamento_realizado'),
+    path('api/historico-povoamento/', views.historico_povoamento_view, name='historico_povoamento_api'),
+    # POST for update
+
+    # Ambiente (Qualidade de Água) - por Fase
+    path('api/fases-com-tanques/', api_fases_com_tanques, name='api_fases_com_tanques'),
+    path('api/ambiente/', views_ambiente.api_get_ambiente, name='api_get_ambiente'),
+    path('api/ambiente/upsert/', views_ambiente.api_ambiente_upsert, name='api_ambiente_upsert'),
 ]

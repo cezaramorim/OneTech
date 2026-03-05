@@ -14,12 +14,9 @@
                   <label for="aba-evento-select" class="form-label">Tipo Evento</label>
                   <select id="aba-evento-select" class="form-select">
                     <option value="" selected>Selecione</option>
-                    <option value="mortalidade">Mortalidade</option>
-                    <option value="despesca">Despesca</option>
-                    <option value="transferencia">Transferência</option>
-                    <option value="classificacao">Classificação</option>
-                    <option value="biometrias">Biometrias</option>
-                    <option value="parametros">Parâmetros</option>
+                    {% for tipo in tipos_evento %}
+                        <option value="{{ tipo.nome|slugify }}">{{ tipo.nome }}</option>
+                    {% endfor %}
                   </select>
                 </div>
                 <div class="col-md-2">

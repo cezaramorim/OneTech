@@ -28,8 +28,8 @@
                     <label for="id_tipo_evento" class="form-label">Tipo de Evento</label>
                     <select name="tipo_evento" id="id_tipo_evento" class="form-select form-select-sm">
                         <option value="">Todos</option>
-                        {% for value, display in tipos_evento %}
-                            <option value="{{ value }}" {% if filtros.tipo_evento == value %}selected{% endif %}>{{ display }}</option>
+                        {% for tipo in tipos_evento %}
+                            <option value="{{ tipo.id }}" {% if filtros.tipo_evento == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -92,14 +92,14 @@
                     {% for evento in eventos %}
                     <tr data-id="{{ evento.pk }}">
                         <td><input type="checkbox" class="check-evento" value="{{ evento.pk }}"></td>
-                        <td>{{ evento.get_tipo_evento_display }}</td>
+                        <td>{{ evento.tipo_evento.nome|default:"N/A" }}</td>
                         <td>{{ evento.lote.nome|default:"N/A" }}</td>
                         <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
                         <td>{{ evento.tanque_destino.nome|default:"N/A" }}</td>
                         <td>{{ evento.data_evento|date:"d/m/Y" }}</td>
                         <td>{{ evento.quantidade|floatformat:2 }}</td>
                         <td>{{ evento.peso_medio|floatformat:2 }}</td>
-                        <td>{{ evento.biomassa|floatformat:2 }}</td>
+                        <td>{{ evento.biomassa_kg|floatformat:2 }}</td>
                         <td>{{ evento.observacoes|default:"" }}</td>
                     </tr>
                     {% empty %}

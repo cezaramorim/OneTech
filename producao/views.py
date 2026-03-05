@@ -1,29 +1,35 @@
 import json
+import logging
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Q
+from django.db.models import Q, Sum, Case, When, F, Value
+from django.db.models.fields import DecimalField
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
 from django.utils import timezone
 import pandas as pd
 from io import BytesIO
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
+
+from .models import Lote, Tanque, LoteDiario  # ajuste nomes exatos
+from .views_arracoamento import recalcular_lote_diario_real, reprojetar_ciclo_de_vida, _apurar_quantidade_real_no_dia
+from .utils import calc_biomassa_kg  # ajuste
 
 
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, 
-    EventoManejo, Unidade, Malha, TipoTela,
+    EventoManejo, Unidade, Malha, TipoTela, TipoEvento,
     FaseProducao, TipoTanque, LinhaProducao, StatusTanque, Atividade, LoteDiario
 )
 from .forms import (
     TanqueForm, CurvaCrescimentoForm, CurvaCrescimentoDetalheForm, ImportarCurvaForm, LoteForm, 
     EventoManejoForm, TanqueImportForm,
     UnidadeForm, MalhaForm, TipoTelaForm, LinhaProducaoForm, FaseProducaoForm,
-    StatusTanqueForm, TipoTanqueForm, AtividadeForm, PovoamentoForm
+    StatusTanqueForm, TipoTanqueForm, TipoEventoForm, AtividadeForm, PovoamentoForm
 )
 from .utils import AjaxFormMixin, BulkDeleteView
 from common.utils import render_ajax_or_base
@@ -270,6 +276,42 @@ class TipoTanqueUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxForm
     def render_to_response(self, context, **response_kwargs):
         context['data_page'] = 'editar_tipotanque'
         context['data_tela'] = 'editar_tipotanque'
+        return render_ajax_or_base(self.request, self.template_name, context)
+
+
+# Tipo de Evento
+class TipoEventoListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = TipoEvento
+    template_name = 'producao/suporte/tipoevento_list.html'
+    permission_required = 'producao.view_tipoevento'
+
+    def render_to_response(self, context, **response_kwargs):
+        context['data_page'] = 'lista_tiposevento'
+        context['data_tela'] = 'lista_tiposevento'
+        return render_ajax_or_base(self.request, self.template_name, context)
+
+class TipoEventoCreateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
+    model = TipoEvento
+    form_class = TipoEventoForm
+    template_name = 'producao/suporte/tipoevento_form.html'
+    success_url = reverse_lazy('producao:lista_tiposevento')
+    permission_required = 'producao.add_tipoevento'
+
+    def render_to_response(self, context, **response_kwargs):
+        context['data_page'] = 'criar_tipoevento'
+        context['data_tela'] = 'criar_tipoevento'
+        return render_ajax_or_base(self.request, self.template_name, context)
+
+class TipoEventoUpdateView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, UpdateView):
+    model = TipoEvento
+    form_class = TipoEventoForm
+    template_name = 'producao/suporte/tipoevento_form.html'
+    success_url = reverse_lazy('producao:lista_tiposevento')
+    permission_required = 'producao.change_tipoevento'
+
+    def render_to_response(self, context, **response_kwargs):
+        context['data_page'] = 'editar_tipoevento'
+        context['data_tela'] = 'editar_tipoevento'
         return render_ajax_or_base(self.request, self.template_name, context)
 
 # Atividade
@@ -666,7 +708,43 @@ class ListaLotesView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     raise_exception = True
 
     def get_queryset(self):
+        from django.db.models import Sum, Case, When, DecimalField, F, OuterRef, Subquery, Value
+        from django.db.models.functions import Coalesce
+        
         qs = super().get_queryset()
+
+        today = timezone.now().date()
+    
+        latest_ld = LoteDiario.objects.filter(
+            lote=OuterRef('pk'),
+            data_evento__lte=today
+        ).order_by('-data_evento')
+
+        # Anota os valores para uso no template, evitando o conflito com as propriedades do modelo
+        qs = qs.annotate(
+            entradas=Coalesce(
+                Sum('eventos_manejo__quantidade', 
+                    filter=Q(eventos_manejo__tipo_evento__nome='Povoamento') | Q(eventos_manejo__tipo_movimento='Entrada')),
+                Value(0, output_field=DecimalField())
+            ),
+            saidas=Coalesce(
+                Sum('eventos_manejo__quantidade', 
+                    filter=Q(eventos_manejo__tipo_evento__nome__in=['Mortalidade', 'Despesca']) | Q(eventos_manejo__tipo_movimento='Saída')),
+                Value(0, output_field=DecimalField())
+            ),
+            qtd_atual_annotated=F('entradas') - F('saidas'),
+            peso_atual_annotated=Coalesce(
+                Subquery(latest_ld.values('peso_medio_real')[:1]),
+                Subquery(latest_ld.values('peso_medio_projetado')[:1]),
+                F('peso_medio_inicial'),
+                output_field=DecimalField()
+            )
+        )
+        # A biomassa também precisa ser anotada, pois depende dos valores acima
+        qs = qs.annotate(
+            biomassa_atual_kg_annotated=(F('qtd_atual_annotated') * F('peso_atual_annotated')) / 1000
+        )
+
         termo = self.request.GET.get('termo_lote', '').strip()
         if termo:
             qs = qs.filter(
@@ -772,7 +850,7 @@ class ListaEventosView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         data_evento = self.request.GET.get('data_evento', '').strip()
 
         if tipo_evento:
-            qs = qs.filter(tipo_evento=tipo_evento)
+            qs = qs.filter(tipo_evento_id=tipo_evento)
         if tanque_origem_id:
             qs = qs.filter(tanque_origem_id=tanque_origem_id)
         if tanque_destino_id:
@@ -789,7 +867,7 @@ class ListaEventosView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         return qs.order_by('-data_evento', '-id')
 
     def render_to_response(self, context, **response_kwargs):
-        context['tipos_evento'] = EventoManejo.TIPO_EVENTO_CHOICES
+        context['tipos_evento'] = TipoEvento.objects.all()
         context['tanques'] = Tanque.objects.all().order_by('nome')
         context['lotes'] = Lote.objects.all().order_by('nome')
         context['filtros'] = {
@@ -802,6 +880,9 @@ class ListaEventosView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         return render_ajax_or_base(self.request, self.template_name, context)
 
 
+from django.contrib import messages
+from decimal import Decimal
+
 class RegistrarEventoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormMixin, CreateView):
     model = EventoManejo
     form_class = EventoManejoForm
@@ -809,6 +890,99 @@ class RegistrarEventoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormM
     success_url = reverse_lazy('producao:lista_eventos')
     permission_required = 'producao.add_eventomanejo'
     raise_exception = True
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                evento = form.save(commit=False)
+
+                if evento.tipo_evento == 'Transferencia':
+                    # --- LÓGICA DE ORQUESTRAÇÃO DE TRANSFERÊNCIA ---
+                    lote_origem = evento.lote
+                    tanque_destino = evento.tanque_destino
+                    quantidade_transferida = evento.quantidade
+                    peso_medio_transferido = evento.peso_medio
+                    is_transferencia_total = evento.transferencia_total
+
+                    if not all([lote_origem, tanque_destino, quantidade_transferida, peso_medio_transferido]):
+                        form.add_error(None, "Para transferências, o lote de origem, tanque de destino, quantidade e peso são obrigatórios.")
+                        return self.form_invalid(form)
+                    
+                    tanque_origem_obj = lote_origem.tanque_atual
+
+                    # Cenário 1: Tanque de destino já tem um lote ativo
+                    lote_destino_existente = Lote.objects.filter(tanque_atual=tanque_destino, ativo=True).first()
+
+                    if lote_destino_existente:
+                        # Cria um evento de ENTRADA no lote de destino
+                        EventoManejo.objects.create(
+                            tipo_evento='Transferencia',
+                            tipo_movimento='Entrada',
+                            lote=lote_destino_existente,
+                            tanque_origem=tanque_origem_obj,
+                            tanque_destino=tanque_destino,
+                            data_evento=evento.data_evento,
+                            quantidade=quantidade_transferida,
+                            peso_medio=peso_medio_transferido,
+                            observacoes=f"Entrada por transferência do lote {lote_origem.nome}."
+                        )
+                    else:
+                        # Cenário 2: Tanque de destino está vazio
+                        novo_lote = Lote.objects.create(
+                            nome=lote_origem.nome,
+                            curva_crescimento=lote_origem.curva_crescimento,
+                            fase_producao=lote_origem.fase_producao,
+                            tanque_atual=tanque_destino,
+                            quantidade_inicial=quantidade_transferida,
+                            peso_medio_inicial=peso_medio_transferido,
+                            data_povoamento=evento.data_evento,
+                            ativo=True
+                        )
+                        EventoManejo.objects.create(
+                            tipo_evento='Povoamento',
+                            tipo_movimento='Entrada',
+                            lote=novo_lote,
+                            tanque_origem=tanque_origem_obj,
+                            tanque_destino=tanque_destino,
+                            data_evento=evento.data_evento,
+                            quantidade=quantidade_transferida,
+                            peso_medio=peso_medio_transferido,
+                            observacoes=f"Lote criado a partir da transferência do lote {lote_origem.nome}."
+                        )
+
+                    # Cria o evento de SAÍDA no lote de origem
+                    evento.tipo_movimento = 'Saída'
+                    evento.save()
+
+                    # Se for transferência total, desativa o lote de origem e libera o tanque
+                    if is_transferencia_total:
+                        lote_origem.ativo = False
+                        lote_origem.tanque_atual = None
+                        lote_origem.save(update_fields=['ativo', 'tanque_atual'])
+                        
+                        if tanque_origem_obj:
+                            tanque_origem_obj.verificar_e_liberar_status()
+
+                    # A lógica de recalcular_estado_atual será chamada pelos sinais de post_save do EventoManejo
+
+                    app_messages = get_app_messages(self.request)
+                    message = f"Transferência de {quantidade_transferida} peixes do lote {lote_origem.nome} processada com sucesso."
+                    
+                    if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                        return JsonResponse({'success': True, 'message': message, 'redirect_url': str(self.get_success_url())})
+                    
+                    messages.success(self.request, message)
+                    return redirect(self.get_success_url())
+
+                else:
+                    # Comportamento padrão para todos os outros tipos de evento
+                    return super().form_valid(form)
+
+        except Exception as e:
+            # Adiciona logging do erro para depuração
+            logging.exception("Erro ao processar evento de manejo.")
+            form.add_error(None, f"Ocorreu um erro inesperado ao processar o evento: {e}")
+            return self.form_invalid(form)
 
     def render_to_response(self, context, **response_kwargs):
         return render_ajax_or_base(self.request, self.template_name, context)
@@ -1204,7 +1378,7 @@ def povoamento_lotes_view(request):
                             )
 
                             # Recalcula o estado do lote após o reforço
-                            lote_existente.recalcular_estado_atual()
+                            # lote_existente.recalcular_estado_atual()
 
                         except Lote.MultipleObjectsReturned:
                             return JsonResponse({'success': False, 'message': f"Erro de Dados: Múltiplos lotes ativos encontrados no tanque '{tanque.nome}'. Corrija o cadastro."}, status=400)
@@ -1233,7 +1407,7 @@ def povoamento_lotes_view(request):
                         )
                         
                         # Recalcula o estado do lote, que também vai cuidar de atualizar o status do tanque
-                        novo_lote.recalcular_estado_atual()
+                        # novo_lote.recalcular_estado_atual()
 
                         # --- INÍCIO DA NOVA INTEGRAÇÃO ---
                         from .utils import projetar_ciclo_de_vida_lote
@@ -1280,7 +1454,7 @@ def povoamento_lotes_view(request):
         'tanques_data': tanques_data,
         'fases_list': fases_list,
         'linhas_list': linhas_list,
-        'tipos_evento': EventoManejo.TIPO_EVENTO_CHOICES,
+        'tipos_evento': TipoEvento.objects.all(),
         'data_page': 'povoamento-lotes'
     }
     return render_ajax_or_base(request, 'producao/povoamento_lotes.html', context)
@@ -1289,43 +1463,49 @@ def povoamento_lotes_view(request):
 def historico_povoamento_view(request):
     """Filtra e retorna o histórico de eventos de manejo."""
     try:
-        # Filtros da query string
         data_inicial = request.GET.get('data_inicial')
         data_final = request.GET.get('data_final')
-        status = request.GET.get('status') # Retrieve the status parameter
+        status = request.GET.get('status')  # Pode ser ID do tipo_evento
 
+        # Base queryset
         eventos = EventoManejo.objects.select_related(
-            'lote', 'tanque_destino'
+            'lote', 'tanque_destino', 'tipo_evento'  # inclui tipo_evento
         ).order_by('-data_evento', '-id')
 
+        # Aplicar filtros de data
         if data_inicial:
             eventos = eventos.filter(data_evento__gte=data_inicial)
         if data_final:
             eventos = eventos.filter(data_evento__lte=data_final)
-        
-        # Add the status filter
-        if status:
-            eventos = eventos.filter(tipo_evento=status)
 
-        eventos = eventos[:100] # Limita a 100 registros para performance
+        # Filtro por status (ID do tipo_evento)
+        if status and status.isdigit():
+            eventos = eventos.filter(tipo_evento_id=status)
 
-        data = [
-            {
+        # Limitar resultados
+        eventos = eventos[:100]
+
+        # Construir lista de dicionários
+        data = []
+        for evento in eventos:
+            data.append({
                 'id': evento.id,
                 'data': evento.data_evento.strftime('%d/%m/%Y'),
-                'lote': evento.lote.nome,
-                'tanque': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
-                'quantidade': f'{evento.quantidade:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.'),
-                'peso_medio': f'{evento.peso_medio:,.2f}'.replace(',', ' ').replace('.', ',').replace(' ', '.'),
-                'tipo_evento': evento.get_tipo_evento_display(),
-            }
-            for evento in eventos
-        ]
+                'lote_nome': evento.lote.nome if evento.lote else 'N/A',
+                'tanque_nome': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
+                'quantidade': evento.quantidade,
+                'peso_medio': evento.peso_medio,
+                'status': evento.tipo_evento.nome if evento.tipo_evento else 'Desconhecido',
+            })
 
-        return JsonResponse({'success': True, 'historico': data})
+        return JsonResponse(data, safe=False)  # Retorna array
 
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Erro ao buscar histórico: {e}'}, status=500)
+        # Log do erro para debug
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.exception("Erro em historico_povoamento_view")
+        return JsonResponse({'error': str(e)}, status=500)
     
 @login_required
 @require_http_methods(["GET"])
@@ -1357,6 +1537,7 @@ def gerenciar_eventos_view(request):
         'unidades': Unidade.objects.all().order_by('nome'),
         'linhas_producao': LinhaProducao.objects.all().order_by('nome'),
         'fases_producao': FaseProducao.objects.all().order_by('nome'),
+        'tipos_evento': TipoEvento.objects.all().order_by('nome'),
         'ultimos_eventos': ultimos_eventos,
         'data_page': 'gerenciar-eventos',
         'data_tela': 'gerenciar-eventos',
@@ -1382,7 +1563,33 @@ def get_lotes_ativos_api(request):
 @require_http_methods(["GET"])
 @permission_required('producao.view_lote', raise_exception=True)
 def api_mortalidade_lotes_ativos(request):
-    lotes_qs = Lote.objects.filter(ativo=True, quantidade_atual__gt=0).select_related(
+    # Lógica de anotação para calcular a quantidade atual no banco de dados
+    base_query = Lote.objects.filter(ativo=True)
+
+    # Anota as entradas e saídas totais para cada lote
+    annotated_lotes = base_query.annotate(
+        total_entradas=Sum(
+            Case(
+                When(Q(eventos_manejo__tipo_evento__nome='Povoamento') | Q(eventos_manejo__tipo_movimento='Entrada'), then='eventos_manejo__quantidade'),
+                default=Value(0),
+                output_field=DecimalField()
+            )
+        ),
+        total_saidas=Sum(
+            Case(
+                When(Q(eventos_manejo__tipo_evento__nome__in=['Mortalidade', 'Despesca']) | Q(eventos_manejo__tipo_movimento='Saída'), then='eventos_manejo__quantidade'),
+                default=Value(0),
+                output_field=DecimalField()
+            )
+        )
+    )
+
+    # Calcula a quantidade atual e filtra os lotes elegíveis
+    lotes_qs = annotated_lotes.annotate(
+        quantidade_atual_calculada=F('total_entradas') - F('total_saidas')
+    ).filter(
+        quantidade_atual_calculada__gt=0
+    ).select_related(
         'tanque_atual', 'fase_producao'
     ).order_by('tanque_atual__sequencia', 'nome')
 
@@ -1536,7 +1743,7 @@ def api_ultimos_eventos(request):
     data = [{
         'id': e.id,
         'data_evento': e.data_evento.strftime('%d/%m/%Y'),
-        'tipo_evento': e.get_tipo_evento_display(),
+        'tipo_evento': e.tipo_evento.nome if e.tipo_evento else 'N/A',
         'lote': e.lote.nome if e.lote else 'Lote Excluído', # Lida com lote órfão
         'tanque_origem': e.tanque_origem.nome if e.tanque_origem else '-',
         'tanque_destino': e.tanque_destino.nome if e.tanque_destino else '-',
@@ -1567,3 +1774,193 @@ def api_linhas_producao_list(request):
     linhas = LinhaProducao.objects.all().order_by('nome')
     data = [{'id': l.id, 'nome': l.nome} for l in linhas]
     return JsonResponse(data, safe=False)
+
+@login_required
+@require_http_methods(["GET"])
+def api_fases_com_tanques(request):
+    """
+    Retorna uma lista de fases de produção, cada uma contendo uma lista de tanques associados.
+    """
+    fases = FaseProducao.objects.all().order_by('nome')
+    data = []
+    for fase in fases:
+        tanques_da_fase = Tanque.objects.filter(fase=fase).order_by('nome')
+        tanques_data = [{'id': tanque.id, 'nome': tanque.nome} for tanque in tanques_da_fase]
+        data.append({
+            'id': fase.id,
+            'nome': fase.nome,
+            'tanques': tanques_data
+        })
+    return JsonResponse(data, safe=False)
+
+@login_required
+@require_http_methods(["GET"])  # Garante que a view só aceite requisições GET
+def reprocessar_lotes_view(request):
+    ctx = {
+        "lotes": Lote.objects.all().order_by("-id")[:500],
+        "tanques": Tanque.objects.all().order_by("nome"),
+        "data_page": "producao-reprocessar-lotes", # Adicionado para consistência
+    }
+    return render_ajax_or_base(request, "producao/reprocessar_lotes.html", ctx)
+
+@login_required
+@require_POST
+def reprocessar_lotes_api(request):
+    """
+    Reprocessa os dados de um lote a partir de uma data de início.
+    - `dry_run`: Simula a execução sem salvar no banco.
+    - `reprojetar`: Ativa a reprojeção do ciclo de vida a partir da data de início.
+    - `forcar`: Força o recálculo de dias sem arraçoamento, usando o peso do dia anterior.
+    """
+    try:
+        # 1. Leitura e Validação dos Parâmetros
+        lote_id = int(request.POST.get("lote_id") or 0)
+        data_inicio = request.POST.get("data_ini")
+        data_fim = request.POST.get("data_fim") or None
+        dry_run = request.POST.get("dry_run") in ("on", "true", "1")
+        reprojetar = request.POST.get("reprojetar") in ("on", "true", "1")
+        forcar = request.POST.get("forcar") in ("on", "true", "1")
+
+        if not lote_id or not data_inicio:
+            return JsonResponse({"ok": False, "message": "Lote e data de início são obrigatórios."}, status=400)
+
+        start = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        end = datetime.strptime(data_fim, "%Y-%m-%d").date() if data_fim else None
+        lote = Lote.objects.get(pk=lote_id)
+
+        # 2. Setup do Log
+        linhas = []
+        from control.utils import get_current_tenant
+        current_tenant = get_current_tenant()
+        if current_tenant:
+            linhas.append(f"DEBUG: Tenant ativo: {current_tenant.slug}, DB: {current_tenant.db_name}")
+        else:
+            linhas.append("DEBUG: Nenhum tenant ativo. Usando DB 'default'.")
+        linhas.append(f"Reprocessamento: lote={lote_id} start={start} end={end or '(até o fim)'}")
+        linhas.append(f"Modo: {'SIMULAÇÃO' if dry_run else 'EXECUÇÃO'} | reprojetar={reprojetar} | forçar={forcar}")
+        linhas.append("-" * 80)
+
+        # 3. Limpeza de Dados Futuros (se forçar e reprojetar)
+        # REMOVIDO: Lógica de limpeza de LoteDiario para evitar perda de dados.
+        # A reprojeção agora sobrescreve apenas os campos projetados, mantendo os reais intactos.
+
+        # 4. Loop Principal de Reprocessamento (Dia a Dia)
+        qs = LoteDiario.objects.filter(lote_id=lote_id, data_evento__gte=start).order_by("data_evento")
+        if end:
+            qs = qs.filter(data_evento__lte=end)
+
+        # Pega o último dia válido ANTES da data de início como base para o primeiro dia do loop.
+        # Prioriza dados reais, senão usa projetados. Se não houver LoteDiario anterior, usa dados do Lote.
+        prev_ld_base = LoteDiario.objects.filter(
+            lote_id=lote_id,
+            data_evento__lt=start
+        ).order_by("-data_evento").first()
+
+        if prev_ld_base:
+            # Usa os valores reais se existirem, senão os projetados do dia anterior
+            prev_quantidade = prev_ld_base.quantidade_real if prev_ld_base.quantidade_real is not None else prev_ld_base.quantidade_projetada
+            prev_peso_medio = prev_ld_base.peso_medio_real if prev_ld_base.peso_medio_real is not None else prev_ld_base.peso_medio_projetado
+        else:
+            # Se não há LoteDiario anterior, usa os dados iniciais do próprio Lote
+            prev_quantidade = lote.quantidade_inicial
+            prev_peso_medio = lote.peso_medio_inicial
+        
+        # Garante que os valores base não são None
+        prev_quantidade = prev_quantidade or Decimal('0')
+        prev_peso_medio = prev_peso_medio or Decimal('0')
+
+        # O loop principal que processa cada dia a partir da data de início
+        for ld in qs:
+            # Define os valores iniciais do dia com base no estado final do dia anterior (prev_quantidade, prev_peso_medio)
+            ld.quantidade_inicial = prev_quantidade
+            ld.peso_medio_inicial = prev_peso_medio
+            ld.biomassa_inicial = calc_biomassa_kg(ld.quantidade_inicial, ld.peso_medio_inicial)
+
+            tem_realizado = ld.realizacoes.exists()
+
+            if tem_realizado:
+                recalcular_lote_diario_real(ld, request.user, commit=(not dry_run))
+                linhas.append(f"[{ld.data_evento}] Recalculado com arraçoamento. Qtd Real: {ld.quantidade_real:.2f}, Peso Real: {ld.peso_medio_real:.2f}g")
+            
+            elif forcar:
+                # Apura a quantidade real (considerando mortalidades/transferências do dia)
+                ld.quantidade_real = _apurar_quantidade_real_no_dia(ld)
+                
+                # Como não há arraçoamento, não há crescimento. O peso se mantém.
+                ld.peso_medio_real = ld.peso_medio_inicial
+                ld.biomassa_real = calc_biomassa_kg(ld.quantidade_real, ld.peso_medio_real)
+                ld.gpd_real = Decimal('0')
+                
+                # Zera campos de ração
+                ld.racao_realizada = None
+                ld.racao_realizada_kg = Decimal('0')
+                ld.gpt_real = Decimal('0')
+                ld.conversao_alimentar_real = None
+
+                # Se forçamos o recálculo de um dia real, o projetado para ESSE dia deve ser igual.
+                ld.quantidade_projetada = ld.quantidade_real
+                ld.peso_medio_projetado = ld.peso_medio_real
+                ld.biomassa_projetada = ld.biomassa_real
+                ld.gpd_projetado = ld.gpd_real
+
+                if not dry_run:
+                    ld.save() # Salva todos os campos atualizados
+
+                linhas.append(f"[{ld.data_evento}] Forçado recálculo sem arraçoamento. Qtd: {ld.quantidade_real:.2f}, Peso: {ld.peso_medio_real:.2f}g")
+
+            else: # Dia sem arraçoamento e sem "Forçar". Apenas pula.
+                linhas.append(f"[{ld.data_evento}] SKIP (sem arraçoamento realizado e sem forçar)")
+                # Se pulou, os valores reais do dia anterior continuam sendo a base para o próximo dia.
+                # Não atualizamos prev_quantidade e prev_peso_medio com os valores de ld,
+                # pois ld não foi processado como "real".
+                # No entanto, para a reprojeção, precisamos que os valores projetados sejam consistentes.
+                # Se não há real, o projetado deve ser o que foi calculado na reprojeção.
+                # Para o próximo dia, a base deve ser o que foi projetado para o dia atual.
+                prev_quantidade = ld.quantidade_projetada if ld.quantidade_projetada is not None else prev_quantidade
+                prev_peso_medio = ld.peso_medio_projetado if ld.peso_medio_projetado is not None else prev_peso_medio
+                continue # Pula para a próxima iteração sem atualizar prev_quantidade/peso com valores reais de ld
+
+            # Atualiza prev_quantidade e prev_peso_medio com os valores REAIS calculados para o dia atual
+            # Isso garante que o próximo dia comece com a base correta.
+            prev_quantidade = ld.quantidade_real
+            prev_peso_medio = ld.peso_medio_real
+
+        # 5. Reprojeção Final (se ativada)
+        # Esta é a única chamada de reprojeção, garantindo um fluxo de dados limpo.
+        if reprojetar and not dry_run:
+            # A base para a reprojeção é o último dia ANTES da data de início.
+            # Se não houver, a função `reprojetar_ciclo_de_vida` usará os dados do próprio lote.
+            baseline_ld = LoteDiario.objects.filter(lote=lote, data_evento__lt=start).order_by("-data_evento").first()
+
+            # (opcional, mas recomendado) garante que baseline esteja “fresco”
+            if baseline_ld:
+                recalcular_lote_diario_real(baseline_ld, request.user, commit=True)
+                baseline_ld.refresh_from_db()
+
+            reprojetar_ciclo_de_vida(
+                lote=lote,
+                data_de_inicio=start,
+                quantidade_base_override=None,
+                peso_base_g_override=None,
+                ultimo_ld_override=baseline_ld  # ✅ base correta: dia anterior ao start
+            )
+            linhas.append("Reprojeção concluída.")
+
+            # Log para verificação dos novos valores projetados
+            reprojected_qs = LoteDiario.objects.filter(lote_id=lote_id, data_evento__gte=start).order_by("data_evento")
+            linhas.append("\n--- Verificação de Valores Projetados (após reprojeção) ---")
+            for r_ld in reprojected_qs[:10]: # Limita o log para não ser excessivo
+                linhas.append(
+                    f"[{r_ld.data_evento}] "
+                    f"Qtd Proj: {r_ld.quantidade_projetada:.2f}, Peso Proj: {r_ld.peso_medio_projetado:.2f}g | "
+                    f"Qtd Real: {r_ld.quantidade_real or 'N/A'}, Peso Real: {r_ld.peso_medio_real or 'N/A'}"
+                )
+
+        return JsonResponse({"ok": True, "dry_run": dry_run, "log": "\n".join(linhas)})
+
+    except Lote.DoesNotExist:
+        return JsonResponse({"ok": False, "message": "Lote não encontrado."}, status=404)
+    except Exception as e:
+        # Adiciona logging para depuração no servidor
+        logging.exception("Erro em reprocessar_lotes_api")
+        return JsonResponse({"ok": False, "message": f"Erro inesperado: {str(e)}"}, status=500)

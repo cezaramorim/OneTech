@@ -1,433 +1,604 @@
 // static/js/arracoamento_diario.js
-window.OneTech = window.OneTech || {};
+(function () {
+    'use strict';
 
-OneTech.ArracoamentoDiario = (function () {
-  const SELECTOR_ROOT = '[data-page="arracoamento-diario"]';
-  let boundRoot = null;
+    window.OneTech = window.OneTech || {};
 
-  function toNumLocale(value) {
-    if (value == null) return 0;
-    let v = String(value).trim();
-    if (!v) return 0;
-    v = v.replace(/[^\d,\.\-]/g, '');
-    const lastComma = v.lastIndexOf(',');
-    const lastDot = v.lastIndexOf('.');
-    let decSep = null;
-    if (lastComma === -1 && lastDot === -1) decSep = null;
-    else if (lastComma > lastDot) decSep = ',';
-    else decSep = '.';
-    if (decSep) {
-      const thouSep = decSep === ',' ? '.' : ',';
-      v = v.split(thouSep).join('');
-      v = v.replace(decSep, '.');
-    }
-    const n = parseFloat(v);
-    return Number.isFinite(n) ? n : 0;
-  }
+    const ArracoamentoDiario = {
+        SELECTOR_ROOT: '[data-page="arracoamento-diario"]',
 
-  function formatBR(n, dec = 2) {
-    const value = Number.isFinite(n) ? n : 0;
-    return value.toFixed(dec).replace('.', ',');
-  }
+        API_URL_SUGESTOES: '/producao/api/arracoamento/sugestoes/',
+        API_URL_LINHAS_PRODUCAO: '/producao/api/linhas-producao/',
+        API_URL_APROVAR: '/producao/api/arracoamento/aprovar/',
+        API_URL_FASES: '/producao/api/fases-com-tanques/',
+        API_URL_AMBIENTE_GET: '/producao/api/ambiente/',
+        API_URL_AMBIENTE_UPSERT: '/producao/api/ambiente/upsert/',
+        API_URL_RACOES: '/produtos/api/racoes/',
 
-  function destroy(root) {
-    if (!root) return;
-    const controller = root._arracoamentoAbortController;
-    if (controller) {
-      controller.abort();
-      delete root._arracoamentoAbortController;
-    }
-    delete root.dataset.bound;
-    if (boundRoot === root) boundRoot = null;
-  }
+        abortController: null,
+        lastAmbienteDateOpened: null,
+        racoes: [],
 
-  function init(rootEl) {
-    const root = rootEl || document.querySelector(SELECTOR_ROOT);
-    if (!root) return;
+        init: function () {
+            try {
+                const root = document.querySelector(this.SELECTOR_ROOT);
+                if (!root) return;
 
-    if (boundRoot && boundRoot !== root) {
-      destroy(boundRoot);
-    }
-    if (root.dataset.bound === '1') return;
+                if (this.abortController) this.abortController.abort();
+                this.abortController = new AbortController();
+                const { signal } = this.abortController;
+                const self = this;
 
-    const controller = new AbortController();
-    const { signal } = controller;
-    root._arracoamentoAbortController = controller;
-    root.dataset.bound = '1';
-    boundRoot = root;
+                // Seletores
+                const dataInicialInput = root.querySelector('#data-inicial');
+                const dataFinalInput = root.querySelector('#data-final');
+                const filtroStatusSelect = root.querySelector('#filtro-status');
+                const filtroLinhaProducaoSelect = root.querySelector('#filtro-linha-producao');
+                const btnBuscar = root.querySelector('#btn-buscar');
+                const loadingSpinner = root.querySelector('#loading-spinner');
+                const tabelaBody = root.querySelector('#corpo-tabela-sugestoes');
+                const selecionarTodosCheckbox = root.querySelector('#selecionar-todos-sugestoes');
+                const aprovarBtn = root.querySelector('#btn-aprovar-selecionados');
 
-    root.dataset.disableAllRows = root.dataset.disableAllRows || '0';
+                const modalAmbiente = document.querySelector('#modalAmbiente');
+                const btnSalvarAmbiente = document.querySelector('#btn-salvar-ambiente');
+                const ambienteDataInput = document.querySelector('#ambiente-data');
+                const ambienteContainer = document.querySelector('#ambiente-container');
+                const btnAmbienteHeader = root.querySelector('#btn-ambiente');
 
-    const dataInput = root.querySelector('#data-arraçoamento');
-    const aprovarBtn = root.querySelector('#btn-aprovar-selecionados');
-    const tabelaBody = root.querySelector('#corpo-tabela-sugestoes');
-    const loadingSpinner = root.querySelector('#loading-spinner');
-    const selecionarTodosCheckbox = root.querySelector('#selecionar-todos-sugestoes');
-    const totalSugeridoEl = root.querySelector('#total-sugerido');
-    const totalRealEl = root.querySelector('#total-real');
-    const filtroLinhaProducaoSelect = root.querySelector('#filtro-linha-producao');
+                const modalEdicao = document.querySelector('#modalEdicao');
+                const formEdicao = document.querySelector('#formEdicao');
 
-    if (!dataInput || !aprovarBtn || !tabelaBody || !loadingSpinner || !selecionarTodosCheckbox) {
-      return;
-    }
+                // ---------- Funções auxiliares ----------
+                const clearTable = () => {
+                    if (tabelaBody) {
+                        tabelaBody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">Utilize os filtros e clique em "Buscar" para ver as sugestões.</td></tr>';
+                    }
+                    const totalSugerido = root.querySelector('#total-sugerido');
+                    const totalReal = root.querySelector('#total-real');
+                    if (totalSugerido) totalSugerido.textContent = '0.000';
+                    if (totalReal) totalReal.textContent = '0.000';
+                };
 
-    const API_URL_SUGESTOES = '/producao/api/arracoamento/sugestoes/';
-    const API_URL_APROVAR = '/producao/api/arracoamento/aprovar/';
-    const API_URL_LINHAS_PRODUCAO = '/producao/api/linhas-producao/';
-    const API_URL_PRODUTOS_RACAO = '/produtos/api/racoes/';
+                const carregarRacoes = async () => {
+                    try {
+                        const response = await fetchWithCreds(self.API_URL_RACOES);
+                        if (response.ok) {
+                            self.racoes = await response.json();
+                        } else {
+                            console.error('Erro ao carregar rações');
+                        }
+                    } catch (error) {
+                        console.error('Erro na requisição de rações:', error);
+                    }
+                };
 
-    let produtosRacaoCache = null;
+                const popularFiltroLinhaProducao = async () => {
+                    if (!filtroLinhaProducaoSelect) return;
+                    try {
+                        const response = await fetchWithCreds(self.API_URL_LINHAS_PRODUCAO);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const data = await response.json();
 
-    async function inicializarSeletoresDeRacao(container) {
-      if (!container) return;
-      if (!produtosRacaoCache) {
-        try {
-          const response = await fetchWithCreds(API_URL_PRODUTOS_RACAO);
-          produtosRacaoCache = await response.json();
-        } catch (error) {
-          console.error('Erro ao buscar produtos de ração:', error);
-          mostrarMensagem('danger', 'Não foi possível carregar as opções de ração.');
-          return;
+                        if (Array.isArray(data)) {
+                            filtroLinhaProducaoSelect.innerHTML = '<option value="">Todas</option>';
+                            data.forEach((linha) => {
+                                const option = new Option(linha.nome, linha.id);
+                                filtroLinhaProducaoSelect.appendChild(option);
+                            });
+                        } else {
+                            console.error('API de linhas de produção não retornou um array como esperado.');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao popular filtro de linha de produção:', error);
+                        filtroLinhaProducaoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                };
+
+                // Funções de controle dos checkboxes
+                function atualizarSelecionarTodos() {
+                    if (!selecionarTodosCheckbox) return;
+                    const totalHabilitados = document.querySelectorAll('.sugestao-checkbox:not([disabled])').length;
+                    const totalSelecionados = document.querySelectorAll('.sugestao-checkbox:checked:not([disabled])').length;
+                    selecionarTodosCheckbox.checked = totalHabilitados > 0 && totalSelecionados === totalHabilitados;
+                    selecionarTodosCheckbox.indeterminate = totalSelecionados > 0 && totalSelecionados < totalHabilitados;
+                }
+
+                function atualizarBotoesAcao() {
+                    const temSelecionados = document.querySelectorAll('.sugestao-checkbox:checked').length > 0;
+                    if (aprovarBtn) aprovarBtn.disabled = !temSelecionados;
+                    // Se houver outros botões que dependam de seleção, adicione aqui
+                }
+
+                const buscarSugestoes = async () => {
+                    if (!tabelaBody) {
+                        console.error('Elemento #corpo-tabela-sugestoes não encontrado');
+                        return;
+                    }
+
+                    const dataInicial = dataInicialInput.value;
+                    const dataFinal = dataFinalInput.value;
+
+                    if (!dataInicial || !dataFinal) {
+                        Swal.fire('Atenção', 'Por favor, selecione a Data Inicial e a Data Final.', 'warning');
+                        return;
+                    }
+
+                    loadingSpinner.style.display = 'block';
+                    tabelaBody.innerHTML = '';
+
+                    const params = new URLSearchParams({
+                        data_inicial: dataInicial,
+                        data_final: dataFinal,
+                        status: filtroStatusSelect.value,
+                        linha_producao_id: filtroLinhaProducaoSelect.value,
+                    });
+
+                    try {
+                        const response = await fetchWithCreds(`${self.API_URL_SUGESTOES}?${params.toString()}`);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const result = await response.json();
+
+                        if (result.success && Array.isArray(result.sugestoes)) {
+                            // Preenche a tabela
+                            if (result.sugestoes.length > 0) {
+                                const racoesOptions = self.racoes.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+
+                                tabelaBody.innerHTML = result.sugestoes.map(s => {
+                                    return `<tr data-id="${s.id}" data-status="${s.status}">
+                                        <td><input type="checkbox" class="sugestao-checkbox" value="${s.id}" ${s.status !== 'Pendente' ? 'disabled' : ''}></td>
+                                        <td>${s.data || ''}</td>
+                                        <td>${s.lote_nome || ''}</td>
+                                        <td>${s.tanque_nome || ''}</td>
+                                        <td>${s.qtd_lote || ''}</td>
+                                        <td>${s.peso_medio || ''}</td>
+                                        <td>${s.linha_producao_nome || ''}</td>
+                                        <td>${s.sequencia || ''}</td>
+                                        <td>${s.racao_sugerida_nome || ''}</td>
+                                        <td>
+                                            <select class="form-select form-select-sm racao-realizada-select" data-sugestao-id="${s.id}" ${s.status !== 'Pendente' ? 'disabled' : ''}>
+                                                <option value="">Sugerida</option>
+                                                ${racoesOptions}
+                                            </select>
+                                        </td>
+                                        <td class="text-end">${s.qtd_sugerida_kg || '0.000'}</td>
+                                        <td class="text-end">${s.qtd_sugerida_ajustada_kg || '0.000'}</td>
+                                        <td><input type="text" class="form-control form-control-sm qtd-real-input" value="${s.qtd_real_kg || ''}" ${s.status !== 'Pendente' ? 'disabled' : ''}></td>
+                                        <td><span class="badge bg-${s.status === 'Pendente' ? 'warning' : 'success'}">${s.status}</span></td>
+                                    </tr>`;
+                                }).join('');
+
+                                // Após montar a tabela, atualiza os checkboxes e botões
+                                atualizarSelecionarTodos();
+                                atualizarBotoesAcao();
+                            } else {
+                                tabelaBody.innerHTML = '<tr><td colspan="15" class="text-center">Nenhuma sugestão encontrada para os filtros aplicados.</td></tr>';
+                            }
+
+                            // Atualiza totais
+                            const totalSugeridoEl = root.querySelector('#total-sugerido');
+                            const totalRealEl = root.querySelector('#total-real');
+                            if (totalSugeridoEl) totalSugeridoEl.textContent = result.totais?.total_sugerido_kg || '0.000';
+                            if (totalRealEl) totalRealEl.textContent = result.totais?.total_real_kg || '0.000';
+
+                            // MODAL DE PENDÊNCIAS (movido para fora do if/else de sugestoes)
+                            if (result.has_pending_previous_approvals && result.pending_previous_approvals) {
+                                let lista = result.pending_previous_approvals.map(p => `• ${p.lote_nome}: ${p.ultima_data}`).join('<br>');
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Aprovações pendentes',
+                                    html: `Existem aprovações pendentes em datas anteriores:<br><br>${lista}`,
+                                    confirmButtonText: 'Entendi'
+                                });
+                            }
+
+                            // Modal de ambiente automático
+                            if (self.lastAmbienteDateOpened !== dataInicial) {
+                                self.lastAmbienteDateOpened = dataInicial;
+                                try {
+                                    const checkResponse = await fetchWithCreds(`${self.API_URL_AMBIENTE_GET}?data=${dataInicial}`);
+                                    const checkData = await checkResponse.json();
+                                    const dadosExistem = Array.isArray(checkData) && checkData.length > 0;
+                                    if (!dadosExistem) {
+                                        await renderModalAmbiente(dataInicial);
+                                        new bootstrap.Modal(modalAmbiente).show();
+                                    }
+                                } catch (error) {
+                                    console.log('Erro ao verificar dados de ambiente, abrindo modal mesmo assim:', error);
+                                    await renderModalAmbiente(dataInicial);
+                                    new bootstrap.Modal(modalAmbiente).show();
+                                }
+                            }
+                        } else {
+                            throw new Error(result.error || 'Erro ao buscar sugestões.');
+                        }
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            console.error('Erro na busca de sugestões:', error);
+                            Swal.fire('Erro', 'Ocorreu um erro ao buscar as sugestões. Verifique o console.', 'error');
+                            clearTable();
+                        }
+                    } finally {
+                        loadingSpinner.style.display = 'none';
+                    }
+                };
+
+                const renderModalAmbiente = async (dataISO) => {
+                    ambienteDataInput.value = dataISO;
+                    ambienteContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></div>';
+
+                    try {
+                        const fasesResponse = await fetchWithCreds(self.API_URL_FASES);
+                        if (!fasesResponse.ok) throw new Error(`Erro ao carregar fases: ${fasesResponse.status}`);
+                        const fasesData = await fasesResponse.json();
+
+                        let fases = [];
+                        if (fasesData.success && Array.isArray(fasesData.fases)) fases = fasesData.fases;
+                        else if (Array.isArray(fasesData)) fases = fasesData;
+                        else throw new Error('Formato de resposta inválido da API de fases');
+
+                        if (fases.length === 0) {
+                            ambienteContainer.innerHTML = '<div class="alert alert-warning">Nenhuma fase de produção encontrada.</div>';
+                            return;
+                        }
+
+                        const ambienteResponse = await fetchWithCreds(`${self.API_URL_AMBIENTE_GET}?data=${dataISO}`);
+                        if (!ambienteResponse.ok) throw new Error(`Erro ao carregar ambiente: ${ambienteResponse.status}`);
+                        const ambienteData = await ambienteResponse.json();
+
+                        const ambienteMap = new Map();
+                        if (Array.isArray(ambienteData)) {
+                            ambienteData.forEach(item => ambienteMap.set(item.fase_id, item));
+                        }
+
+                        let accordionHtml = '<div class="accordion" id="accordionAmbiente">';
+
+                        fases.forEach((fase, index) => {
+                            const dados = ambienteMap.get(fase.id) || {};
+                            const getValue = (obj, field) => {
+                                if (!obj) return '';
+                                const val = obj[field];
+                                return (val !== null && val !== undefined && val !== '') ? val : '';
+                            };
+
+                            accordionHtml += `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading-${fase.id}">
+                                        <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#collapse-${fase.id}">
+                                            <strong>${fase.nome}</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse-${fase.id}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}">
+                                        <div class="accordion-body">
+                                            <input type="hidden" class="amb-fase-id" value="${fase.id}">
+
+                                            <h6 class="mb-3">Leituras de OD e Temperatura por Trato</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Trato</th>
+                                                            <th>OD (mg/L)</th>
+                                                            <th>Temperatura (°C)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>`;
+
+                            for (let i = 1; i <= 5; i++) {
+                                accordionHtml += `
+                                        <tr>
+                                            <td class="text-center fw-bold">${i}</td>
+                                            <td><input type="number" step="0.1" class="form-control form-control-sm amb-od" data-n="${i}" value="${getValue(dados, `od_${i}`)}" placeholder="OD ${i}"></td>
+                                            <td><input type="number" step="0.1" class="form-control form-control-sm amb-temp" data-n="${i}" value="${getValue(dados, `temp_${i}`)}" placeholder="Temp ${i}"></td>
+                                        </tr>`;
+                            }
+
+                            accordionHtml += `
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <h6 class="mt-4 mb-3">Parâmetros Químicos</h6>
+                                            <div class="row g-2">
+                                                <div class="col"><label class="form-label fw-bold small">pH</label><input type="number" step="0.1" class="form-control form-control-sm amb-ph" value="${getValue(dados, 'ph')}" placeholder="Ex: 7.2"></div>
+                                                <div class="col"><label class="form-label fw-bold small">Amônia</label><input type="number" step="0.1" class="form-control form-control-sm amb-amonia" value="${getValue(dados, 'amonia')}" placeholder="Ex: 0.5"></div>
+                                                <div class="col"><label class="form-label fw-bold small">Nitrito</label><input type="number" step="0.1" class="form-control form-control-sm amb-nitrito" value="${getValue(dados, 'nitrito')}" placeholder="Ex: 0.1"></div>
+                                                <div class="col"><label class="form-label fw-bold small">Nitrato</label><input type="number" step="0.1" class="form-control form-control-sm amb-nitrato" value="${getValue(dados, 'nitrato')}" placeholder="Ex: 5.0"></div>
+                                                <div class="col"><label class="form-label fw-bold small">Alcalinidade</label><input type="number" step="0.1" class="form-control form-control-sm amb-alcalinidade" value="${getValue(dados, 'alcalinidade')}" placeholder="Ex: 80"></div>
+                                            </div>`;
+
+                            if (dados.od_medio) {
+                                accordionHtml += `
+                                            <div class="mt-4 p-3 bg-light rounded">
+                                                <h6 class="mb-2">Valores Calculados</h6>
+                                                <div class="row small">
+                                                    <div class="col-md-6"><strong>OD Médio:</strong> ${dados.od_medio} mg/L</div>
+                                                    <div class="col-md-6"><strong>Temperatura Média:</strong> ${dados.temp_media || ''}°C</div>
+                                                    <div class="col-md-6"><strong>Temperatura Mínima:</strong> ${dados.temp_min || ''}°C</div>
+                                                    <div class="col-md-6"><strong>Temperatura Máxima:</strong> ${dados.temp_max || ''}°C</div>
+                                                    <div class="col-md-6"><strong>Variação Térmica:</strong> ${dados.variacao_termica || ''}°C</div>
+                                                </div>
+                                            </div>`;
+                            }
+
+                            accordionHtml += `
+                                        </div>
+                                    </div>
+                                </div>`;
+                        });
+
+                        accordionHtml += '</div>';
+                        ambienteContainer.innerHTML = accordionHtml;
+                    } catch (error) {
+                        console.error('Erro ao renderizar modal de ambiente:', error);
+                        ambienteContainer.innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+                    }
+                };
+
+                const salvarAmbiente = async () => {
+                    const data = ambienteDataInput.value;
+                    const faseItems = ambienteContainer.querySelectorAll('.accordion-item');
+                    if (faseItems.length === 0) {
+                        Swal.fire('Atenção', 'Não há dados para salvar.', 'warning');
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: 'Salvando...',
+                        html: 'Processando dados de ambiente...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    let sucessos = 0, erros = [];
+
+                    for (const faseItem of faseItems) {
+                        const body = faseItem.querySelector('.accordion-body');
+                        const faseId = parseInt(body.querySelector('.amb-fase-id').value);
+                        const faseData = { fase_id: faseId, data: data };
+
+                        for (let i = 1; i <= 5; i++) {
+                            const odInput = body.querySelector(`.amb-od[data-n="${i}"]`);
+                            const tempInput = body.querySelector(`.amb-temp[data-n="${i}"]`);
+                            if (odInput && odInput.value) faseData[`od_${i}`] = odInput.value;
+                            if (tempInput && tempInput.value) faseData[`temp_${i}`] = tempInput.value;
+                        }
+
+                        ['ph', 'amonia', 'nitrito', 'nitrato', 'alcalinidade'].forEach(campo => {
+                            const input = body.querySelector(`.amb-${campo}`);
+                            if (input && input.value) faseData[campo] = input.value;
+                        });
+
+                        try {
+                            const response = await fetchWithCreds(self.API_URL_AMBIENTE_UPSERT, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(faseData)
+                            });
+                            const result = await response.json();
+                            if (result.success) sucessos++;
+                            else erros.push(`Fase ${faseId}: ${result.message || 'Erro desconhecido'}`);
+                        } catch (error) {
+                            erros.push(`Fase ${faseId}: ${error.message}`);
+                        }
+                    }
+
+                    Swal.close();
+
+                    if (erros.length === 0) {
+                        Swal.fire({ icon: 'success', title: 'Sucesso!', html: `<p>Dados salvos para ${sucessos} fase(s)!</p>`, timer: 2000, showConfirmButton: false });
+                        const modal = bootstrap.Modal.getInstance(modalAmbiente);
+                        if (modal) modal.hide();
+                        buscarSugestoes();
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Atenção',
+                            html: `<p>${sucessos} fase(s) salvas, ${erros.length} erro(s):</p><div class="small">${erros.map(e => `<li class="text-danger">${e}</li>`).join('')}</div>`
+                        });
+                    }
+                };
+
+                const aprovarSugestoes = async () => {
+                    const checkboxes = Array.from(document.querySelectorAll('.sugestao-checkbox:checked'));
+                    if (checkboxes.length === 0) {
+                        Swal.fire('Atenção', 'Nenhuma sugestão selecionada.', 'warning');
+                        return;
+                    }
+
+                    const total = checkboxes.length;
+                    let progressHtml = `
+                        <div class="text-center">
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">0%</div>
+                            </div>
+                            <span>Processando 0 de ${total}</span>
+                        </div>
+                    `;
+
+                    Swal.fire({
+                        title: 'Aprovando...',
+                        html: progressHtml,
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    const resultados = [];
+                    for (let i = 0; i < total; i++) {
+                        const cb = checkboxes[i];
+                        const tr = cb.closest('tr');
+                        if (!tr) {
+                            resultados.push({ sugestaoId: cb.value, success: false, message: 'Linha não encontrada' });
+                            continue;
+                        }
+
+                        const sugestaoId = cb.value;
+                        const qtdRealInput = tr.querySelector('.qtd-real-input');
+                        const racaSelect = tr.querySelector('.racao-realizada-select');
+
+                        const payload = {
+                            sugestao_id: sugestaoId,
+                            quantidade_real_kg: qtdRealInput?.value || '',
+                            racao_realizada_id: racaSelect?.value || null
+                        };
+
+                        try {
+                            const response = await fetchWithCreds(self.API_URL_APROVAR, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            const result = await response.json();
+                            resultados.push({ sugestaoId, success: result.success, message: result.message });
+                        } catch (error) {
+                            resultados.push({ sugestaoId, success: false, message: error.message });
+                        }
+
+                        const percent = Math.round(((i + 1) / total) * 100);
+                        const newHtml = `
+                            <div class="text-center">
+                                <div class="progress mb-3" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${percent}%;">${percent}%</div>
+                                </div>
+                                <span>Processando ${i + 1} de ${total}</span>
+                            </div>
+                        `;
+                        Swal.update({ html: newHtml });
+                    }
+
+                    Swal.close();
+
+                    const sucessos = resultados.filter(r => r.success).length;
+                    const falhas = resultados.filter(r => !r.success);
+
+                    if (falhas.length === 0) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: `${sucessos} sugestão(ões) aprovada(s).`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        buscarSugestoes();
+                    } else {
+                        const erroMsg = falhas.map(f => `ID ${f.sugestaoId}: ${f.message}`).join('<br>');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erros na aprovação',
+                            html: `${sucessos} sucesso(s), ${falhas.length} falha(s).<br><br>${erroMsg}`
+                        });
+                    }
+                };
+
+                // ---------- Event Listeners ----------
+                if (btnBuscar) btnBuscar.addEventListener('click', buscarSugestoes, { signal });
+                if (aprovarBtn) aprovarBtn.addEventListener('click', aprovarSugestoes, { signal });
+                if (btnSalvarAmbiente) btnSalvarAmbiente.addEventListener('click', salvarAmbiente, { signal });
+
+                if (btnAmbienteHeader) {
+                    btnAmbienteHeader.addEventListener('click', () => {
+                        const data = dataInicialInput?.value;
+                        if (data) {
+                            renderModalAmbiente(data);
+                            new bootstrap.Modal(modalAmbiente).show();
+                        } else {
+                            Swal.fire('Atenção', 'Selecione uma Data Inicial para ver os parâmetros.', 'info');
+                        }
+                    }, { signal });
+                }
+
+                if (modalEdicao && formEdicao) {
+                    modalEdicao.addEventListener('show.bs.modal', async (event) => {
+                        const button = event.relatedTarget;
+                        const url = button?.dataset?.href;
+                        if (!url) return;
+                        try {
+                            const response = await fetchWithCreds(url);
+                            const result = await response.json();
+                            if (result.success) {
+                                formEdicao.querySelector('#edit-id').value = result.data.id;
+                                formEdicao.querySelector('#edit-lote-nome').value = result.data.lote_nome;
+                                formEdicao.querySelector('#edit-produto-racao-nome').value = result.data.produto_racao_nome;
+                                formEdicao.querySelector('#edit-quantidade-g').value = result.data.quantidade_g;
+                                formEdicao.querySelector('#edit-observacoes').value = result.data.observacoes;
+                                formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${result.data.id}/update/`;
+                            } else {
+                                Swal.fire('Erro', result.message || 'Erro ao carregar dados.', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao carregar dados para edição:', error);
+                        }
+                    }, { signal });
+
+                    formEdicao.addEventListener('submit', async (event) => {
+                        event.preventDefault();
+                        const apiUrl = formEdicao.dataset.apiUrl;
+                        if (!apiUrl) return;
+                        const formData = new FormData(formEdicao);
+                        const payload = Object.fromEntries(formData.entries());
+
+                        try {
+                            const response = await fetchWithCreds(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                                Swal.fire('Sucesso', result.message, 'success');
+                                bootstrap.Modal.getInstance(modalEdicao)?.hide();
+                                buscarSugestoes();
+                            } else {
+                                Swal.fire('Erro', result.message || 'Erro ao salvar.', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao salvar edição:', error);
+                        }
+                    }, { signal });
+                }
+
+                // Lógica do checkbox "selecionar todos"
+                if (selecionarTodosCheckbox) {
+                    selecionarTodosCheckbox.addEventListener('change', function (e) {
+                        const checked = e.target.checked;
+                        document.querySelectorAll('.sugestao-checkbox:not([disabled])').forEach(cb => {
+                            cb.checked = checked;
+                        });
+                        atualizarBotoesAcao();
+                    }, { signal });
+                }
+
+                // Atualiza estado do checkbox principal e botões quando um checkbox filho muda
+                if (tabelaBody) {
+                    tabelaBody.addEventListener('change', (e) => {
+                        if (e.target.classList.contains('sugestao-checkbox')) {
+                            atualizarSelecionarTodos();
+                            atualizarBotoesAcao();
+                        }
+                    }, { signal });
+                }
+
+                // ---------- Inicialização ----------
+                clearTable();
+                popularFiltroLinhaProducao();
+                carregarRacoes();
+                console.log('Módulo de Arraçoamento Diário inicializado.');
+            } catch (err) {
+                console.error('Erro na inicialização do módulo Arraçoamento Diário:', err);
+            }
         }
-      }
+    };
 
-      container.querySelectorAll('.racao-realizada-select').forEach((select) => {
-        while (select.options.length > 1) select.remove(1);
-        produtosRacaoCache.forEach((produto) => {
-          const option = new Option(produto.nome, produto.id);
-          select.add(option);
-        });
+    window.OneTech.ArracoamentoDiario = ArracoamentoDiario;
 
-        // *** NOVA LÓGICA DE SELEÇÃO ***
-        const racaoRealizadaId = select.dataset.racaoRealizadaId;
-        if (racaoRealizadaId) {
-          select.value = racaoRealizadaId;
+    if (document.querySelector(ArracoamentoDiario.SELECTOR_ROOT)) {
+        ArracoamentoDiario.init();
+    }
+
+    document.addEventListener('ajaxContentLoaded', () => {
+        if (document.querySelector(ArracoamentoDiario.SELECTOR_ROOT)) {
+            ArracoamentoDiario.init();
         }
-      });
-    }
-
-    async function popularFiltroLinhaProducao() {
-      if (!filtroLinhaProducaoSelect) return;
-      try {
-        const response = await fetchWithCreds(API_URL_LINHAS_PRODUCAO);
-        const linhas = await response.json();
-        linhas.forEach((linha) => {
-          const option = document.createElement('option');
-          option.value = linha.id;
-          option.textContent = linha.nome;
-          filtroLinhaProducaoSelect.appendChild(option);
-        });
-      } catch (error) {
-        console.error('Erro ao popular filtro de linha de produção:', error);
-        mostrarMensagem('danger', 'Erro ao carregar linhas de produção.');
-      }
-    }
-
-    function updateTotais() {
-      let totalSugerido = 0;
-      let totalReal = 0;
-      tabelaBody.querySelectorAll('tr').forEach((row) => {
-        // Fonte de verdade consistente para o valor sugerido, vindo do dataset corrigido.
-        const sugerida = parseFloat(row.dataset.qtdSugerida) || 0;
-        totalSugerido += sugerida;
-
-        // Para o total real, a fonte de verdade é o input do usuário.
-        const qtdRealInput = row.querySelector('.qtd-real-input');
-        if (qtdRealInput) {
-          // Se o input tiver um valor, use-o. Senão, o valor real é 0 para a soma.
-          const valorReal = qtdRealInput.value.trim();
-          totalReal += valorReal ? toNumLocale(valorReal) : 0;
-        }
-      });
-
-      // Exibe os totais formatados com 3 casas decimais para representar kg
-      if (totalSugeridoEl) totalSugeridoEl.textContent = totalSugerido.toFixed(3);
-      if (totalRealEl) totalRealEl.textContent = totalReal.toFixed(3);
-    }
-
-    async function buscarSugestoes() {
-      root.dataset.disableAllRows = '0';
-      const data = dataInput.value;
-      const linhaProducaoId = filtroLinhaProducaoSelect?.value || '';
-
-      if (!data) {
-        tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Selecione uma data para ver as sugestões.</td></tr>';
-        updateTotais();
-        return;
-      }
-
-      const dataAlvo = new Date(data);
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      const isDataFutura = dataAlvo > hoje;
-
-      loadingSpinner.style.display = 'block';
-      tabelaBody.innerHTML = '';
-      aprovarBtn.disabled = true;
-
-      try {
-        const params = new URLSearchParams({ data });
-        if (linhaProducaoId) params.append('linha_producao_id', linhaProducaoId);
-        const response = await fetchWithCreds(`${API_URL_SUGESTOES}?${params.toString()}`);
-        const result = await response.json();
-
-        const shouldDisableAll = isDataFutura || !!result.has_pending_previous_approvals;
-        root.dataset.disableAllRows = shouldDisableAll ? '1' : '0';
-
-        if (result.success) {
-          if (result.has_pending_previous_approvals) {
-            const dates = (result.pending_previous_approval_dates || []).join(', ');
-            await Swal.fire({
-              icon: 'warning',
-              title: 'Atenção!',
-              html: `Existem arraçoamentos pendentes para datas anteriores: <strong>${dates}</strong>.`,
-              confirmButtonText: 'Entendi'
-            });
-          }
-
-          if (Array.isArray(result.sugestoes) && result.sugestoes.length > 0) {
-            tabelaBody.innerHTML = result.sugestoes.map((s) => {
-              const statusLower = String(s.status || '').toLowerCase();
-              const isPendente = statusLower === 'pendente';
-              const qtdSugerida = parseFloat(s.quantidade_kg ?? s.quantidade_sugerida_kg ?? 0).toFixed(3);
-              const qtdReal = s.quantidade_realizada_kg ? parseFloat(s.quantidade_realizada_kg).toFixed(3) : '';
-              const disableRow = shouldDisableAll || !isPendente;
-              return `
-                <tr data-sugestao-id="${s.sugestao_id ?? s.id}" data-qtd-sugerida="${s.quantidade_kg ?? s.quantidade_sugerida_kg ?? 0}">
-                  <td class="text-center" style="width: 40px;">
-                    <input type="checkbox" class="form-check-input sugestao-checkbox" value="${s.sugestao_id ?? s.id}" ${disableRow ? 'disabled' : ''}>
-                  </td>
-                  <td>${s.lote_nome || ''}</td>
-                  <td>${s.tanque_nome || ''}</td>
-                  <td>${s.lote_quantidade_atual || ''}</td>
-                  <td>${s.lote_peso_medio_atual || ''}</td>
-                  <td>${s.lote_linha_producao || ''}</td>
-                  <td>${s.lote_sequencia || ''}</td>
-                  <td>${s.produto_racao_nome || ''}</td>
-                  <td style="width: 150px;">
-                    <select class="form-select form-select-sm racao-realizada-select" data-racao-realizada-id="${s.racao_realizada_id || ''}" ${disableRow ? 'disabled' : ''}>
-                      <option value="">Padrão</option>
-                    </select>
-                  </td>
-                  <td class="text-center">${qtdSugerida}</td>
-                  <td><input type="text" class="form-control form-control-sm qtd-real-input" value="${qtdReal}" ${disableRow ? 'disabled' : ''} style="max-width: 80px;"></td>
-                  <td><span class="badge bg-${isPendente ? 'warning' : 'success'}">${s.status}</span></td>
-                </tr>`;
-            }).join('');
-          } else {
-            tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center">Nenhuma sugestão encontrada para esta data.</td></tr>';
-          }
-
-          if (result.erros && result.erros.length > 0) {
-            mostrarMensagem('warning', `Erros encontrados: ${result.erros.join('; ')}`);
-          }
-        } else {
-          mostrarMensagem('danger', result.message || 'Erro ao buscar sugestões.');
-          tabelaBody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Falha ao carregar dados.</td></tr>';
-        }
-      } catch (error) {
-        console.error('Erro na busca de sugestões:', error);
-        mostrarMensagem('danger', 'Erro de comunicação com o servidor.');
-      } finally {
-        loadingSpinner.style.display = 'none';
-        updateAprovarBtnState();
-        updateTotais();
-        inicializarSeletoresDeRacao(tabelaBody);
-      }
-    }
-
-    function updateAprovarBtnState() {
-      const disableAll = root.dataset.disableAllRows === '1';
-      const selecionados = root.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-      aprovarBtn.disabled = disableAll || selecionados.length === 0;
-    }
-function updateAprovarBtnState(disableAll = false) {
-      const selecionados = root.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-      aprovarBtn.disabled = disableAll || selecionados.length === 0;
-    }
-
-    async function aprovarSugestoes() {
-      const selecionados = root.querySelectorAll('.sugestao-checkbox:checked:not(:disabled)');
-      if (selecionados.length === 0) {
-        mostrarMensagem('warning', 'Selecione pelo menos uma sugestão pendente para aprovar.');
-        return;
-      }
-
-      aprovarBtn.disabled = true;
-      const total = selecionados.length;
-      let concluidos = 0;
-      const erros = [];
-
-      for (const cb of selecionados) {
-        concluidos += 1;
-        aprovarBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Aprovando (${concluidos}/${total})...`;
-
-        const row = cb.closest('tr');
-        const sugerida = parseFloat(row.dataset.qtdSugerida) || 0;
-        const realInput = row.querySelector('.qtd-real-input');
-        const real = realInput?.value.trim() ? toNumLocale(realInput.value) : sugerida;
-        const racaoSelect = row.querySelector('.racao-realizada-select');
-
-        const payload = {
-          sugestao_id: cb.value,
-          quantidade_real_kg: real,
-          racao_realizada_id: racaoSelect ? racaoSelect.value : null,
-        };
-
-        try {
-          const response = await fetchWithCreds(API_URL_APROVAR, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          const data = await response.json();
-          if (!response.ok || data.success === false) {
-            erros.push(data.message || 'Erro desconhecido');
-          }
-        } catch (error) {
-          console.error('Erro na requisição de aprovação:', error);
-          erros.push('Erro de comunicação');
-        }
-      }
-
-      if (erros.length === 0) {
-        mostrarMensagem('success', `${total} arraçoamento(s) aprovado(s) com sucesso.`);
-      } else {
-        mostrarMensagem('danger', `Falha ao aprovar ${erros.length} item(ns): ${erros.join('; ')}`);
-      }
-
-      aprovarBtn.disabled = false;
-      aprovarBtn.innerHTML = '<i class="fas fa-check me-2"></i>Aprovar Selecionados';
-      await buscarSugestoes(); // Garante que a lista foi recarregada antes de desmarcar
-      selecionarTodosCheckbox.checked = false; // Desmarca o checkbox pai
-    }
-
-    aprovarBtn.addEventListener('click', aprovarSugestoes, { signal });
-
-    selecionarTodosCheckbox.addEventListener('change', (event) => {
-      tabelaBody.querySelectorAll('.sugestao-checkbox:not(:disabled)').forEach((cb) => {
-        cb.checked = event.target.checked;
-      });
-      const data = dataInput.value;
-      const isFuture = data ? new Date(data) > new Date().setHours(0, 0, 0, 0) : false;
-      updateAprovarBtnState(isFuture);
-    }, { signal });
-
-    tabelaBody.addEventListener('change', (event) => {
-      if (event.target.classList.contains('sugestao-checkbox')) {
-        const data = dataInput.value;
-        const isFuture = data ? new Date(data) > new Date().setHours(0, 0, 0, 0) : false;
-        updateAprovarBtnState(isFuture);
-      }
-    }, { signal });
-
-    tabelaBody.addEventListener('input', (event) => {
-      if (event.target.classList.contains('qtd-real-input')) {
-        updateTotais();
-      }
-    }, { signal });
-
-    tabelaBody.addEventListener('keydown', (event) => {
-      if (event.key !== 'Tab') return;
-      const currentInput = event.target;
-      if (!currentInput.classList.contains('qtd-real-input')) return;
-
-      event.preventDefault();
-      const inputs = Array.from(tabelaBody.querySelectorAll('.qtd-real-input:not([disabled])'));
-      const currentIndex = inputs.indexOf(currentInput);
-      if (currentIndex === -1) return;
-
-      let nextIndex;
-      if (event.shiftKey) {
-        nextIndex = currentIndex - 1;
-        if (nextIndex < 0) nextIndex = inputs.length - 1;
-      } else {
-        nextIndex = currentIndex + 1;
-        if (nextIndex >= inputs.length) nextIndex = 0;
-      }
-
-      const nextInput = inputs[nextIndex];
-      nextInput.focus();
-      nextInput.select();
-    }, { signal });
-
-    filtroLinhaProducaoSelect?.addEventListener('change', buscarSugestoes, { signal });
-    dataInput.addEventListener('change', buscarSugestoes, { signal });
-
-    const modalEdicao = document.getElementById('modalEdicao');
-    const formEdicao = document.getElementById('formEdicao');
-    const editIdInput = document.getElementById('edit-id');
-    const editLoteNomeInput = document.getElementById('edit-lote-nome');
-    const editProdutoRacaoNomeInput = document.getElementById('edit-produto-racao-nome');
-    const editQuantidadeKgInput = document.getElementById('edit-quantidade-kg');
-    const editObservacoesInput = document.getElementById('edit-observacoes');
-
-    if (modalEdicao && formEdicao) {
-      modalEdicao.addEventListener('show.bs.modal', async (event) => {
-        const button = event.relatedTarget;
-        const url = button?.dataset?.href;
-        if (!url) {
-          console.error('O botão de edição não possui um data-href.');
-          event.preventDefault();
-          return;
-        }
-        try {
-          const response = await fetchWithCreds(url);
-          const result = await response.json();
-          if (result.success) {
-            const data = result.data;
-            if (editIdInput) editIdInput.value = data.id;
-            if (editLoteNomeInput) editLoteNomeInput.value = data.lote_nome;
-            if (editProdutoRacaoNomeInput) editProdutoRacaoNomeInput.value = data.produto_racao_nome;
-            if (editQuantidadeKgInput) editQuantidadeKgInput.value = data.quantidade_kg;
-            if (editObservacoesInput) editObservacoesInput.value = data.observacoes;
-            formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${data.id}/update/`;
-          } else {
-            mostrarMensagem('danger', result.message || 'Erro ao carregar dados para edição.');
-            bootstrap.Modal.getInstance(modalEdicao)?.hide();
-          }
-        } catch (error) {
-          console.error('Erro ao carregar dados para edição:', error);
-          mostrarMensagem('danger', 'Erro de comunicação ao carregar dados para edição.');
-          bootstrap.Modal.getInstance(modalEdicao)?.hide();
-        }
-      }, { signal });
-
-      formEdicao.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const apiUrl = formEdicao.dataset.apiUrl;
-        if (!apiUrl) return;
-        const payload = {
-          quantidade_kg: parseFloat(editQuantidadeKgInput?.value) || 0,
-          observacoes: editObservacoesInput?.value || '',
-        };
-        try {
-          const response = await fetchWithCreds(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          const result = await response.json();
-          if (result.success) {
-            mostrarMensagem('success', result.message);
-            bootstrap.Modal.getInstance(modalEdicao)?.hide();
-            buscarSugestoes();
-          } else {
-            mostrarMensagem('danger', result.message || 'Erro ao salvar alterações.');
-          }
-        } catch (error) {
-          console.error('Erro ao salvar alterações:', error);
-          mostrarMensagem('danger', 'Erro de comunicação ao salvar alterações.');
-        }
-      }, { signal });
-    }
-
-    popularFiltroLinhaProducao();
-  }
-
-  return {
-    init,
-    destroy,
-    SELECTOR_ROOT,
-  };
+    });
 })();

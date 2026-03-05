@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from .models import (
     Tanque, CurvaCrescimento, CurvaCrescimentoDetalhe, Lote, EventoManejo,
-    Unidade, Malha, TipoTela, LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Atividade
+    Unidade, Malha, TipoTela, LinhaProducao, FaseProducao, StatusTanque, TipoTanque, Atividade, TipoEvento
 )
 
 # --- Formulários de Suporte ---
@@ -47,6 +47,12 @@ class AtividadeForm(forms.ModelForm):
     class Meta:
         model = Atividade
         fields = '__all__'
+
+class TipoEventoForm(forms.ModelForm):
+    class Meta:
+        model = TipoEvento
+        fields = '__all__'
+
 
 # --- Formulário Principal de Tanque ---
 
@@ -128,10 +134,25 @@ class LoteForm(forms.ModelForm):
 class EventoManejoForm(forms.ModelForm):
     class Meta:
         model = EventoManejo
-        fields = '__all__'
+        fields = [
+            'tipo_evento',
+            'lote',
+            'tanque_origem',
+            'tanque_destino',
+            'data_evento',
+            'quantidade',
+            'peso_medio',
+            'transferencia_total',
+            'observacoes',
+            'tipo_movimento',
+        ]
         labels = {
             'quantidade': 'Qtde',
             'peso_medio': 'P.Médio(g)',
+            'transferencia_total': 'Transferência Total?',
+        }
+        widgets = {
+            'tipo_movimento': forms.HiddenInput(),
         }
 
     def clean(self):
@@ -139,6 +160,13 @@ class EventoManejoForm(forms.ModelForm):
         for field_name in ['quantidade', 'peso_medio']:
             if cleaned_data.get(field_name) is not None and cleaned_data.get(field_name) < 0:
                 self.add_error(field_name, "Este valor não pode ser negativo.")
+
+        tipo_evento = cleaned_data.get('tipo_evento')
+        is_transferencia_total = cleaned_data.get('transferencia_total')
+
+        if is_transferencia_total and tipo_evento != 'Transferencia':
+            self.add_error('transferencia_total', 'A opção "Transferência Total" só é válida para eventos do tipo "Transferência".')
+
         return cleaned_data
 
 class CurvaCrescimentoDetalheForm(forms.ModelForm):

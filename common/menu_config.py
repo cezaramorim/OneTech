@@ -21,7 +21,15 @@ MENU_ITEMS = [
             {'name': 'Novo Grupo', 'icon': '🛡️', 'url_name': 'accounts:cadastrar_grupo', 'required_perms': ['auth.add_group']},
             {'name': 'Lista de Grupos', 'icon': '🛡️', 'url_name': 'accounts:lista_grupos', 'required_perms': ['auth.view_group']},
         ]
-    },
+    },    
+    {
+        'name': 'Lotes',
+        'icon': '⚙️',
+        'children': [
+            {'name': 'Reprocessar Lotes', 'icon': '🏢', 'url_name': 'producao:reprocessar_lotes', 'required_perms': ['producao.view_reprocessar_lotes']},
+            
+        ]
+    },    
     {
         'name': 'Empresas',
         'icon': '🏢',
@@ -66,6 +74,7 @@ MENU_ITEMS = [
             {'name': 'Fases de Produção', 'url_name': 'producao:lista_fasesproducao', 'required_perms': ['producao.view_faseproducao']},
             {'name': 'Status de Tanque', 'url_name': 'producao:lista_statustanque', 'required_perms': ['producao.view_statustanque']},
             {'name': 'Tipos de Tanque', 'url_name': 'producao:lista_tipostanque', 'required_perms': ['producao.view_tipotanque']},
+            {'name': 'Tipos de Evento', 'url_name': 'producao:lista_tiposevento', 'required_perms': ['producao.view_tipoevento']},
             ]
     },
     {

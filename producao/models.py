@@ -8,6 +8,7 @@ from decimal import Decimal
 import math
 
 # Importa as funções de cálculo para uso nas propriedades
+from django.db.models import Q
 from .utils_uom import calc_biomassa_kg, g_to_kg
 
 # NOVOS MODELOS DE SUPORTE
@@ -85,6 +86,18 @@ class Atividade(models.Model):
 
     def __str__(self):
         return self.nome
+
+class TipoEvento(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = "Tipo de Evento"
+        verbose_name_plural = "Tipos de Evento"
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
 
 class CurvaCrescimento(models.Model):
     nome = models.CharField(max_length=255, unique=True, help_text="Nome único para a curva, ex: Curva Tilápia Verão 2025")
@@ -169,31 +182,6 @@ class Tanque(models.Model):
         # Adicionar lógica para tanques circulares se houver campo de diâmetro
         return Decimal('0.000')
 
-    @property
-    def densidade_peixes_m3(self):
-        """Calcula a densidade de peixes por m³ (peixes/m³)."""
-        volume = self.volume_calculado_m3
-        if not volume or volume == 0:
-            return Decimal('0.00')
-        
-        total_peixes = self.lotes_no_tanque.filter(ativo=True).aggregate(
-            total=models.Sum('quantidade_atual')
-        )['total'] or 0
-        
-        return Decimal(total_peixes) / volume
-
-    @property
-    def densidade_kg_m3(self):
-        """Calcula a densidade de biomassa por m³ (kg/m³)."""
-        volume = self.volume_calculado_m3
-        if not volume or volume == 0:
-            return Decimal('0.000')
-            
-        lotes_ativos = self.lotes_no_tanque.filter(ativo=True)
-        total_biomassa_kg = sum(lote.biomassa_atual_kg for lote in lotes_ativos)
-        
-        return total_biomassa_kg / volume
-
     class Meta:
         ordering = ['id']
 
@@ -223,9 +211,6 @@ class Lote(models.Model):
     data_povoamento = models.DateField()
     ativo = models.BooleanField(default=True)
 
-    quantidade_atual = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    peso_medio_atual = models.DecimalField(max_digits=10, decimal_places=3, default=0, validators=[MinValueValidator(0)], help_text="Peso médio atual em gramas (g)")
-
     @property
     def biomassa_inicial_g(self):
         """Retorna a biomassa inicial calculada em gramas."""
@@ -235,6 +220,53 @@ class Lote(models.Model):
     def biomassa_inicial_kg(self):
         """Retorna a biomassa inicial convertida para kg."""
         return calc_biomassa_kg(self.quantidade_inicial, self.peso_medio_inicial)
+
+    @property
+    def quantidade_atual(self):
+        """
+        Calcula a quantidade atual de peixes no lote em tempo real,
+        somando e subtraindo a partir dos eventos de manejo.
+        """
+        from django.db.models import Sum, Case, When, DecimalField
+
+        # Agrega todas as quantidades de eventos, separando por tipo
+        agregado = self.eventos_manejo.aggregate(
+            entradas=Sum(
+                Case(
+                    When(Q(tipo_evento__nome='Povoamento') | Q(tipo_movimento='Entrada'), then='quantidade'),
+                    output_field=DecimalField()
+                )
+            ),
+            saidas=Sum(
+                Case(
+                    When(Q(tipo_evento__nome__in=['Mortalidade', 'Despesca']) | Q(tipo_movimento='Saída'), then='quantidade'),
+                    output_field=DecimalField()
+                )
+            )
+        )
+        
+        total_entradas = agregado.get('entradas') or Decimal('0')
+        total_saidas = agregado.get('saidas') or Decimal('0')
+        
+        return total_entradas - total_saidas
+
+    @property
+    def peso_medio_atual(self):
+        """
+        Busca o peso médio mais recente do histórico diário do lote (LoteDiario).
+        """
+        from django.utils import timezone
+        today = timezone.now().date()
+
+        latest_lote_diario = self.historico_diario.filter(data_evento__lte=today).order_by('-data_evento').first()
+
+        if latest_lote_diario:
+            # Prioriza o peso real; se não houver, usa o projetado.
+            peso = latest_lote_diario.peso_medio_real if latest_lote_diario.peso_medio_real is not None else latest_lote_diario.peso_medio_projetado
+            return peso if peso is not None else self.peso_medio_inicial
+        
+        # Se não houver nenhum registro diário, reverte para o peso inicial
+        return self.peso_medio_inicial
 
     @property
     def biomassa_atual_g(self):
@@ -254,67 +286,25 @@ class Lote(models.Model):
                 return (self.peso_medio_atual - self.peso_medio_inicial) / dias_cultivo
         return Decimal('0.0')
 
-    def recalcular_estado_atual(self):
-        tanque_original = self.tanque_atual
-        povoamento_inicial_evento = self.eventos_manejo.filter(tipo_evento='Povoamento').order_by('data_evento', 'id').first()
-
-        if not povoamento_inicial_evento:
-            self.quantidade_atual = Decimal('0')
-            self.peso_medio_atual = Decimal('0')
-        else:
-            current_quantidade = povoamento_inicial_evento.quantidade
-            current_peso_medio = povoamento_inicial_evento.peso_medio
-            current_tanque = povoamento_inicial_evento.tanque_destino
-
-            eventos_subsequentes = self.eventos_manejo.filter(
-                data_evento__gte=povoamento_inicial_evento.data_evento
-            ).exclude(id=povoamento_inicial_evento.id).order_by('data_evento', 'id')
-
-            for evento in eventos_subsequentes:
-                if evento.tipo_evento == 'Povoamento':
-                    quantidade_evento = evento.quantidade or Decimal('0')
-                    peso_medio_evento = evento.peso_medio or Decimal('0')
-                    if quantidade_evento > 0:
-                        biomassa_existente = current_quantidade * current_peso_medio
-                        biomassa_adicionada = quantidade_evento * peso_medio_evento
-                        nova_quantidade = current_quantidade + quantidade_evento
-                        nova_biomassa = biomassa_existente + biomassa_adicionada
-                        if nova_quantidade > 0:
-                            current_peso_medio = nova_biomassa / nova_quantidade
-                        else:
-                            # Se a quantidade for zero, o peso médio também deve ser zero ou o peso do evento se for um reforço
-                            current_peso_medio = Decimal('0')
-                        current_quantidade = nova_quantidade
-                elif evento.tipo_evento in ['Mortalidade', 'Despesca']:
-                    current_quantidade -= (evento.quantidade or Decimal('0'))
-                elif evento.tipo_evento == 'Transferencia':
-                    current_quantidade = evento.quantidade
-                    current_peso_medio = evento.peso_medio
-                    current_tanque = evento.tanque_destino
-
-            self.quantidade_atual = current_quantidade if current_quantidade >= 0 else Decimal('0')
-            self.peso_medio_atual = current_peso_medio
-            self.tanque_atual = current_tanque
-
-        if self.quantidade_atual <= 0:
-            self.ativo = False
-            self.tanque_atual = None
-        else:
-            self.ativo = True
-
-        self.save(update_fields=['quantidade_atual', 'peso_medio_atual', 'ativo', 'tanque_atual'])
-
-        if self.ativo and self.tanque_atual:
+    def verificar_e_liberar_status(self, lote_sendo_deletado=None):
+        lotes_ativos_no_tanque = self.lotes_no_tanque.filter(ativo=True)
+        if lote_sendo_deletado:
+            lotes_ativos_no_tanque = lotes_ativos_no_tanque.exclude(pk=lote_sendo_deletado.pk)
+        if not lotes_ativos_no_tanque.exists():
             try:
-                status_em_uso = StatusTanque.objects.get(nome__iexact='Em uso')
-                if self.tanque_atual.status_tanque != status_em_uso:
-                    self.tanque_atual.status_tanque = status_em_uso
-                    self.tanque_atual.save(update_fields=['status_tanque'])
+                status_livre = StatusTanque.objects.get(nome__iexact='Livre')
+                if self.status_tanque != status_livre:
+                    self.status_tanque = status_livre
+                    self.save(update_fields=['status_tanque'])
             except StatusTanque.DoesNotExist:
                 pass
 
-        if tanque_original and tanque_original != self.tanque_atual:
-            tanque_original.verificar_e_liberar_status()
+    class Meta:
+        verbose_name = "Lote"
+        verbose_name_plural = "Lotes"
+
+    def __str__(self):
+        return self.nome
 
     class Meta:
         verbose_name = "Lote"
@@ -324,21 +314,22 @@ class Lote(models.Model):
         return self.nome
 
 class EventoManejo(models.Model):
-    TIPO_EVENTO_CHOICES = [
-        ('Povoamento', 'Povoamento'),
-        ('Transferencia', 'Transferência'),
-        ('Classificacao', 'Classificação'),
-        ('Despesca', 'Despesca'),
-        ('Mortalidade', 'Mortalidade'),
-        ('Outro', 'Outro'),
-    ]
-    tipo_evento = models.CharField(max_length=50, choices=TIPO_EVENTO_CHOICES)
+    tipo_evento = models.ForeignKey(
+        'producao.TipoEvento',
+        on_delete=models.PROTECT,
+        related_name='eventos_manejo',
+        help_text="Tipo do evento de manejo."
+    )
 
     tipo_movimento = models.CharField(
         max_length=10,
         null=True,
         blank=True,
         help_text="Indica se o evento representa uma entrada ou saída de peixes."
+    )
+    transferencia_total = models.BooleanField(
+        default=False,
+        help_text="Marque se esta é uma transferência total, que desativará o lote de origem."
     )
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='eventos_manejo')
     tanque_origem = models.ForeignKey(Tanque, on_delete=models.SET_NULL, null=True, blank=True, related_name='eventos_origem')
@@ -370,6 +361,13 @@ class EventoManejo(models.Model):
 
 class LoteDiario(models.Model):
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='historico_diario')
+    tanque = models.ForeignKey(
+        Tanque,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Tanque em que o lote se encontrava nesta data. Garante a precisão histórica."
+    )
     data_evento = models.DateField(help_text="A data de referência para este registro diário.")
 
     quantidade_inicial = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Qtd. de peixes no início do dia")
@@ -378,6 +376,28 @@ class LoteDiario(models.Model):
 
     racao_sugerida = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_diarios_sugeridos')
     racao_sugerida_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+
+    # --- PASSO 5: Snapshot do Ajuste Ambiental (auditoria) ---
+    racao_sugerida_ajustada_kg = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True,
+        help_text="Ração sugerida ajustada por ambiente/manejo (kg)"
+    )
+    fator_ambiente = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Fator total de ajuste ambiental aplicado na sugestão (ex: 0.85)"
+    )
+    fator_manejo = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Fator de manejo (acima/abaixo/100%) aplicado na sugestão (ex: 1.00)"
+    )
+
+    # Snapshot dos parâmetros ambientais do dia (médias e variação)
+    od_medio = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    temp_media = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    temp_min = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    temp_max = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    variacao_termica = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    # --- FIM PASSO 5 ---
     quantidade_projetada = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Qtd. de peixes projetada para o FIM do dia")
     peso_medio_projetado = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True, help_text="Peso médio projetado para o FIM do dia (g)")
     biomassa_projetada = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, help_text="Biomassa projetada para o FIM do dia (kg)")
@@ -436,7 +456,8 @@ class ArracoamentoRealizado(models.Model):
     lote_diario = models.ForeignKey(LoteDiario, on_delete=models.CASCADE, related_name='realizacoes')
     produto_racao = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, help_text="Ração efetivamente utilizada.")
     quantidade_kg = models.DecimalField(max_digits=10, decimal_places=3)
-    data_realizacao = models.DateTimeField()
+    data_realizacao = models.DateTimeField(null=True, blank=True)
+    data_evento = models.DateField(null=True, blank=True, db_index=True)
     observacoes = models.TextField(blank=True, null=True)
     
     data_lancamento = models.DateTimeField(auto_now_add=True)
@@ -451,3 +472,75 @@ class ArracoamentoRealizado(models.Model):
 
     def __str__(self):
         return f"Realizado para {self.lote_diario} - {self.quantidade_kg} kg"
+
+class ParametroAmbientalDiario(models.Model):
+    """
+    Registro ambiental diário por FASE de produção.
+    Permite até 5 leituras por dia (um por trato).
+    Calcula automaticamente médias e variações térmicas.
+    """
+
+    fase = models.ForeignKey(
+        FaseProducao,
+        on_delete=models.CASCADE,
+        related_name='parametros_ambientais'
+    )
+
+    data = models.DateField()
+
+    # Leituras de Oxigênio (até 5 tratos)
+    od_1 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    od_2 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    od_3 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    od_4 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    od_5 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+
+    # Leituras de Temperatura (até 5 tratos)
+    temp_1 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_2 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_3 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_4 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_5 = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+
+    # Parâmetros químicos adicionais
+    ph = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    amonia = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    nitrito = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    nitrato = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    alcalinidade = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+
+    # Campos calculados automaticamente
+    od_medio = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_media = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_min = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    temp_max = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    variacao_termica = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('fase', 'data')
+        verbose_name = "Parâmetro Ambiental Diário"
+        verbose_name_plural = "Parâmetros Ambientais Diários"
+        ordering = ['-data']
+
+    def __str__(self):
+        return f"{self.fase} - {self.data}"
+
+    def calcular_estatisticas(self):
+        """
+        Calcula médias, mínimo, máximo e variação térmica automaticamente.
+        """
+        ods = [v for v in [self.od_1, self.od_2, self.od_3, self.od_4, self.od_5] if v is not None]
+        temps = [v for v in [self.temp_1, self.temp_2, self.temp_3, self.temp_4, self.temp_5] if v is not None]
+
+        if ods:
+            self.od_medio = sum(ods) / len(ods)
+
+        if temps:
+            self.temp_media = sum(temps) / len(temps)
+            self.temp_min = min(temps)
+            self.temp_max = max(temps)
+            self.variacao_termica = self.temp_max - self.temp_min
+
+    def save(self, *args, **kwargs):
+        self.calcular_estatisticas()
+        super().save(*args, **kwargs)

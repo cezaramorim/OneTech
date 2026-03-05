@@ -73,10 +73,13 @@ class TenantRouter:
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         is_tenant_app = app_label in TENANT_APPS
 
-        if db == 'default':
-            # No banco 'default', só permite migrar apps que NÃO são de tenant.
-            return not is_tenant_app
-        else:
-            # Em qualquer outro banco (que será um banco de tenant),
-            # só permite migrar apps que SÃO de tenant.
-            return is_tenant_app
+        # Apps globais/de controle (não-tenant) só podem ser migrados no banco 'default'.
+        if not is_tenant_app:
+            return db == 'default'
+
+        # Apps de tenant podem ser migrados em qualquer banco de dados.
+        # A responsabilidade de direcionar a migração para o banco correto
+        # fica a cargo do comando executado (`migrate` para o default,
+        # `migrate_tenants` para os demais). Isso viabiliza o fluxo de
+        # desenvolvimento no banco default como um "tenant mestre".
+        return True

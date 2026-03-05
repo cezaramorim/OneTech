@@ -139,7 +139,7 @@
     }
     return true;
   }
-  
+
   function sanitizeOrigem(tipoOrigemValor) {
     return (tipoOrigemValor || '')
       .toUpperCase()
@@ -182,13 +182,13 @@
     const loteAtivo = isReforco ? await verificarLoteAtivo(tanqueSelect.value) : null;
 
     const curvaIdParaLinha = isReforco ? (loteAtivo?.curva_id || '') : (curvaSelect.value || '');
-    const curvaTexto = isReforco 
-        ? (loteAtivo?.curva_nome || '—') 
-        : (curvaSelect.value ? curvaSelect.options[curvaSelect.selectedIndex].text : '—');
+    const curvaTexto = isReforco
+      ? (loteAtivo?.curva_nome || '—')
+      : (curvaSelect.value ? curvaSelect.options[curvaSelect.selectedIndex].text : '—');
 
     const nomeLoteValor = loteAtivo ? loteAtivo.nome : '';
     const nomeLoteReadonly = loteAtivo ? 'readonly' : '';
-    
+
     const faseIdSelecionada = loteAtivo ? loteAtivo.fase_id : '';
     const faseDisabled = loteAtivo ? 'disabled' : '';
 
@@ -212,8 +212,8 @@
     const novaLinha = document.getElementById(linhaId);
 
     if (loteAtivo && faseIdSelecionada) {
-        const faseSelect = novaLinha.querySelector('[data-field="fase_id"]');
-        faseSelect.value = faseIdSelecionada;
+      const faseSelect = novaLinha.querySelector('[data-field="fase_id"]');
+      faseSelect.value = faseIdSelecionada;
     }
 
     if (hasSelect2()) {
@@ -239,7 +239,8 @@
       if (pesoMedio <= 0) erros.push(`Linha ${ordem}: peso médio inválido.`);
       if (!fase) erros.push(`Linha ${ordem}: selecione a fase.`);
       if (!linhaProducao) erros.push(`Linha ${ordem}: selecione a linha.`);
-      if (tipoTanqueAtual === 'Tanque Vazio' && !curva) erros.push(`Linha ${ordem}: curva obrigatória.`);
+      // Corrigido: usa 'VAZIO' em vez de 'Tanque Vazio'
+      if (tipoTanqueAtual === 'VAZIO' && !curva) erros.push(`Linha ${ordem}: curva obrigatória.`);
     });
 
     if (erros.length) {
@@ -339,14 +340,14 @@
       processarBtn.innerHTML = 'Processar Povoamentos';
     }
   }
-  
+
   function setupEventListeners(page, context) {
     const tipoTanqueSelect = page.querySelector('[data-role="tipo-tanque"]') || page.querySelector('#id_tipo_tanque');
     const tipoOrigemSelect = page.querySelector('#id_tipo_origem');
     const curvaSelect = page.querySelector('#curva');
     const tanqueSelect = page.querySelector('[data-role="tanque"]') || page.querySelector('#id_tanque');
     const curvaContainer = page.querySelector('[data-container="curva-crescimento"]');
-    
+
     const addBtn = page.querySelector('[data-action="adicionar-linha"]');
     const processarBtn = page.querySelector('[data-action="processar"]');
     const limparBtn = page.querySelector('[data-action="limpar-linhas"]');
@@ -354,47 +355,114 @@
     const emptyState = page.querySelector('[data-state="empty"]');
     const totaisRefs = obterTotaisRefs(page);
 
+    // ===== Botão Adicionar Linha =====
     if (addBtn) {
-        addBtn.addEventListener('click', () => adicionarLinha({
-            tipoTanqueSelect, tipoOrigemSelect, curvaSelect, tanqueSelect,
-            listagemBody, emptyState, totaisRefs
-        }));
+      addBtn.addEventListener('click', () => adicionarLinha({
+        tipoTanqueSelect, tipoOrigemSelect, curvaSelect, tanqueSelect,
+        listagemBody, emptyState, totaisRefs
+      }));
     }
 
+    // ===== Botão Processar =====
     if (processarBtn) {
-        processarBtn.addEventListener('click', () => processarPovoamentos({
-            tipoTanqueSelect, listagemBody, processarBtn, emptyState, totaisRefs
-        }));
+      processarBtn.addEventListener('click', () => processarPovoamentos({
+        tipoTanqueSelect, listagemBody, processarBtn, emptyState, totaisRefs
+      }));
     }
 
+    // ===== Botão Limpar =====
     if (limparBtn) {
-        limparBtn.addEventListener('click', () => limparListagem(listagemBody, emptyState, totaisRefs));
+      limparBtn.addEventListener('click', () => limparListagem(listagemBody, emptyState, totaisRefs));
     }
 
+    // ===== Eventos na tabela de linhas (excluir linha e recalcular totais) =====
     if (listagemBody) {
-        listagemBody.addEventListener('click', (e) => {
-            if (e.target.closest('[data-action="desfazer"]')) {
-                e.target.closest('tr').remove();
-                atualizarEstadoListagem(listagemBody, emptyState);
-                recalcularTotais(listagemBody, totaisRefs);
-            }
-        });
-        listagemBody.addEventListener('input', (e) => {
-            if (e.target.matches('[data-field="quantidade"], [data-field="peso_medio"]')) {
-                recalcularTotais(listagemBody, totaisRefs);
-            }
-        });
+      listagemBody.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="desfazer"]')) {
+          e.target.closest('tr').remove();
+          atualizarEstadoListagem(listagemBody, emptyState);
+          recalcularTotais(listagemBody, totaisRefs);
+        }
+      });
+      listagemBody.addEventListener('input', (e) => {
+        if (e.target.matches('[data-field="quantidade"], [data-field="peso_medio"]')) {
+          recalcularTotais(listagemBody, totaisRefs);
+        }
+      });
     }
-    
+
+    // ===== Tipo de tanque (Vazio / Povoado) controla visibilidade da curva =====
     if (tipoTanqueSelect) {
-        tipoTanqueSelect.addEventListener('change', () => {
-            const povoado = (tipoTanqueSelect.value === 'POVOADO');
-            if(curvaContainer) curvaContainer.style.display = povoado ? 'none' : '';
-            if (povoado && curvaSelect) {
-                curvaSelect.value = '';
-                if (hasSelect2()) window.jQuery(curvaSelect).val(null).trigger('change');
-            }
+      tipoTanqueSelect.addEventListener('change', () => {
+        const povoado = (tipoTanqueSelect.value === 'POVOADO');
+        if (curvaContainer) curvaContainer.style.display = povoado ? 'none' : '';
+        if (povoado && curvaSelect) {
+          curvaSelect.value = '';
+          if (hasSelect2()) window.jQuery(curvaSelect).val(null).trigger('change');
+        }
+      });
+    }
+
+    // ===== BUSCA HISTÓRICO =====
+    const btnBuscarHistorico = page.querySelector('[data-action="buscar-historico"]');
+    const filtroDataInicial = page.querySelector('#filtro-data-inicial');
+    const filtroDataFinal = page.querySelector('#filtro-data-final');
+    const filtroStatus = page.querySelector('#filtro-status');
+    const historicoBody = page.querySelector('[data-container="historico-body"]');
+
+    async function buscarHistorico() {
+      if (!filtroDataInicial || !filtroDataFinal || !historicoBody) return;
+
+      // Validação básica
+      if (!filtroDataInicial.value || !filtroDataFinal.value) {
+        mostrarMensagem('warning', 'Selecione as datas inicial e final.');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        data_inicial: filtroDataInicial.value,
+        data_final: filtroDataFinal.value,
+        status: filtroStatus?.value || ''
+      });
+
+      try {
+        const response = await fetchWithCreds(`/producao/api/historico-povoamento/?${params.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.message || 'Erro ao buscar histórico');
+        }
+        const data = await response.json();
+
+        // Limpa a tabela
+        historicoBody.innerHTML = '';
+
+        if (!Array.isArray(data) || data.length === 0) {
+          historicoBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
+          return;
+        }
+
+        // Popula a tabela
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.data || ''}</td>
+          <td>${item.lote_nome || ''}</td>
+          <td>${item.tanque_nome || ''}</td>
+          <td class="text-end">${item.quantidade || 0}</td>
+          <td class="text-end">${item.peso_medio || 0}</td>
+          <td>${item.status || ''}</td>
+        `;
+          historicoBody.appendChild(row);
         });
+      } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        mostrarMensagem('danger', 'Erro ao carregar histórico: ' + error.message);
+      }
+    }
+
+    if (btnBuscarHistorico) {
+      btnBuscarHistorico.addEventListener('click', buscarHistorico);
     }
   }
 
@@ -436,7 +504,7 @@
     if (tanqueSelect.value) {
       atualizarChips(tanqueSelect.value);
     }
-    
+
     setupEventListeners(page);
   }
 

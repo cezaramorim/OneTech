@@ -260,6 +260,11 @@ function handleJsonFormResponse(form, data) {
   }
   if (data.message) notify(data.success ? 'success' : 'error', data.message);
   if (data.reload) window.location.reload();
+
+  // Dispara um evento global para que módulos específicos possam reagir à resposta.
+  document.dispatchEvent(new CustomEvent("ajaxForm:jsonResponse", {
+    detail: { form, data }
+  }));
 }
 
 function handleHtmlFormResponse(form, html) {
@@ -576,6 +581,11 @@ function runInitializers() {
         initListaEmpresas,
         initListaEventos,
         () => {
+            if (typeof initReprocessarLotes === 'function') {
+                initReprocessarLotes();
+            }
+        },
+        () => {
             if (window.OneTech && window.OneTech.GerenciarCurvas) {
                 const root = document.querySelector(OneTech.GerenciarCurvas.SELECTOR_ROOT);
                 if (root) OneTech.GerenciarCurvas.init(root);
@@ -637,6 +647,12 @@ function runInitializers() {
             if (window.OneTech && window.OneTech.CriarUsuario) {
                 const root = document.querySelector(OneTech.CriarUsuario.SELECTOR_ROOT);
                 if (root) OneTech.CriarUsuario.init(root);
+            }
+        },
+        () => {
+            if (window.OneTech && window.OneTech.ReprocessarLotes) {
+                const root = document.querySelector(window.OneTech.ReprocessarLotes.SELECTOR_ROOT);
+                if (root) window.OneTech.ReprocessarLotes.init(root);
             }
         }
     ];
