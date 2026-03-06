@@ -1,0 +1,219 @@
+<div class="container-fluid py-4" data-page="impressao-relatorios">
+  <div class="card shadow-sm">
+    <div class="card-header">
+      <h5 class="mb-0">Impressao de Relatorios</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+        <div class="col-md-3">
+          <div class="list-group" id="lista-relatorios-impressao" role="tablist">
+            <button type="button" class="list-group-item list-group-item-action active" data-report="tanques">
+              Cadastro de Tanques
+            </button>
+            <button type="button" class="list-group-item list-group-item-action" data-report="empresas">
+              Cadastro de Empresas
+            </button>
+          </div>
+        </div>
+
+        <div class="col-md-9">
+          <div id="relatorio-form-tanques" class="report-form-panel">
+            <h6 class="mb-3">Filtros - Cadastro de Tanques</h6>
+            <form method="get" action="{% url 'relatorios:impressao_relatorios_preview' %}" target="_blank" class="row g-3">
+              <input type="hidden" name="report_type" value="tanques" />
+
+              <div class="col-md-3">
+                <label class="form-label">Data Cadastro Inicial</label>
+                <input type="date" name="data_cadastro_inicial" class="form-control" />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Data Cadastro Final</label>
+                <input type="date" name="data_cadastro_final" class="form-control" />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Ativo</label>
+                <select name="ativo" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status_tanque_id" class="form-select">
+                  <option value="">Todos</option>
+                  {% for st in status_tanques %}
+                    <option value="{{ st.id }}">{{ st.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Nome do Tanque</label>
+                <input type="text" name="tanque_nome" class="form-control" placeholder="Digite parte do nome" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Tag do Tanque</label>
+                <input type="text" name="tag_tanque" class="form-control" placeholder="Tag do tanque" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Linha de Producao</label>
+                <select name="linha_producao_id" class="form-select">
+                  <option value="">Todas</option>
+                  {% for linha in linhas_producao %}
+                    <option value="{{ linha.id }}">{{ linha.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Unidade</label>
+                <select name="unidade_id" class="form-select">
+                  <option value="">Todas</option>
+                  {% for unidade in unidades %}
+                    <option value="{{ unidade.id }}">{{ unidade.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Fase</label>
+                <select name="fase_id" class="form-select">
+                  <option value="">Todas</option>
+                  {% for fase in fases_producao %}
+                    <option value="{{ fase.id }}">{{ fase.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Tipo de Tanque</label>
+                <select name="tipo_tanque_id" class="form-select">
+                  <option value="">Todos</option>
+                  {% for tipo in tipos_tanque %}
+                    <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Malha</label>
+                <select name="malha_id" class="form-select">
+                  <option value="">Todas</option>
+                  {% for malha in malhas %}
+                    <option value="{{ malha.id }}">{{ malha.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Tipo de Tela</label>
+                <select name="tipo_tela_id" class="form-select">
+                  <option value="">Todos</option>
+                  {% for tela in tipos_tela %}
+                    <option value="{{ tela.id }}">{{ tela.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-printer me-1"></i>Gerar Relatorio
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div id="relatorio-form-empresas" class="report-form-panel d-none">
+            <h6 class="mb-3">Filtros - Cadastro de Empresas</h6>
+            <form method="get" action="{% url 'relatorios:impressao_relatorios_preview' %}" target="_blank" class="row g-3">
+              <input type="hidden" name="report_type" value="empresas" />
+
+              <div class="col-md-3">
+                <label class="form-label">Data Cadastro Inicial</label>
+                <input type="date" name="data_cadastro_inicial" class="form-control" />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Data Cadastro Final</label>
+                <input type="date" name="data_cadastro_final" class="form-control" />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select name="tipo_empresa" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="pj">PJ</option>
+                  <option value="pf">PF</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status_empresa" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="ativa">Ativa</option>
+                  <option value="inativa">Inativa</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Empresa / Documento</label>
+                <input type="text" name="empresa_nome" class="form-control" placeholder="Razao social, nome, CNPJ ou CPF" />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Categoria</label>
+                <select name="categoria_id" class="form-select">
+                  <option value="">Todas</option>
+                  {% for c in categorias_empresas %}
+                    <option value="{{ c.id }}">{{ c.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">UF</label>
+                <input type="text" name="uf" class="form-control" maxlength="2" placeholder="UF" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Cidade</label>
+                <input type="text" name="cidade" class="form-control" placeholder="Cidade" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Cliente</label>
+                <select name="cliente" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Fornecedor</label>
+                <select name="fornecedor" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-printer me-1"></i>Gerar Relatorio
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

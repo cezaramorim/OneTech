@@ -49,6 +49,8 @@
                 const modalEdicao = document.querySelector('#modalEdicao');
                 const formEdicao = document.querySelector('#formEdicao');
 
+                const getAmbienteModal = () => modalAmbiente ? bootstrap.Modal.getOrCreateInstance(modalAmbiente) : null;
+
                 // ---------- Funções auxiliares ----------
                 const clearTable = () => {
                     if (tabelaBody) {
@@ -146,7 +148,7 @@
 
                                 tabelaBody.innerHTML = result.sugestoes.map(s => {
                                     return `<tr data-id="${s.id}" data-status="${s.status}">
-                                        <td><input type="checkbox" class="sugestao-checkbox" value="${s.id}" ${s.status !== 'Pendente' ? 'disabled' : ''}></td>
+                                        <td><input type="checkbox" class="sugestao-checkbox" value="${s.realizado_id || s.id}" data-sugestao-id="${s.id}" data-lote-diario-id="${s.lote_diario_id}" data-status="${s.status}"></td>
                                         <td>${s.data || ''}</td>
                                         <td>${s.lote_nome || ''}</td>
                                         <td>${s.tanque_nome || ''}</td>
@@ -172,7 +174,7 @@
                                 atualizarSelecionarTodos();
                                 atualizarBotoesAcao();
                             } else {
-                                tabelaBody.innerHTML = '<tr><td colspan="15" class="text-center">Nenhuma sugestão encontrada para os filtros aplicados.</td></tr>';
+                                tabelaBody.innerHTML = '<tr><td colspan="15" class="text-center">Nenhuma sugest\u00e3o encontrada para os filtros aplicados.</td></tr>';
                             }
 
                             // Atualiza totais
@@ -181,32 +183,34 @@
                             if (totalSugeridoEl) totalSugeridoEl.textContent = result.totais?.total_sugerido_kg || '0.000';
                             if (totalRealEl) totalRealEl.textContent = result.totais?.total_real_kg || '0.000';
 
-                            // MODAL DE PENDÊNCIAS (movido para fora do if/else de sugestoes)
+                            // MODAL DE PENDENCIAS (movido para fora do if/else de sugestoes)
                             if (result.has_pending_previous_approvals && result.pending_previous_approvals) {
-                                let lista = result.pending_previous_approvals.map(p => `• ${p.lote_nome}: ${p.ultima_data}`).join('<br>');
+                                const lista = result.pending_previous_approvals
+                                    .map(p => `&bull; ${p.lote_nome}: ${p.ultima_data}`)
+                                    .join('<br>');
                                 Swal.fire({
                                     icon: 'warning',
-                                    title: 'Aprovações pendentes',
-                                    html: `Existem aprovações pendentes em datas anteriores:<br><br>${lista}`,
+                                    title: 'Aprova\u00e7\u00f5es pendentes',
+                                    html: `Existem aprova\u00e7\u00f5es pendentes em datas anteriores:<br><br>${lista}`,
                                     confirmButtonText: 'Entendi'
                                 });
                             }
-
-                            // Modal de ambiente automático
                             if (self.lastAmbienteDateOpened !== dataInicial) {
                                 self.lastAmbienteDateOpened = dataInicial;
                                 try {
                                     const checkResponse = await fetchWithCreds(`${self.API_URL_AMBIENTE_GET}?data=${dataInicial}`);
                                     const checkData = await checkResponse.json();
-                                    const dadosExistem = Array.isArray(checkData) && checkData.length > 0;
+                                    const dadosExistem =
+                                        (checkData && checkData.success && Array.isArray(checkData.fases) && checkData.fases.length > 0) ||
+                                        (Array.isArray(checkData) && checkData.length > 0);
                                     if (!dadosExistem) {
                                         await renderModalAmbiente(dataInicial);
-                                        new bootstrap.Modal(modalAmbiente).show();
+                                        getAmbienteModal()?.show();
                                     }
                                 } catch (error) {
                                     console.log('Erro ao verificar dados de ambiente, abrindo modal mesmo assim:', error);
                                     await renderModalAmbiente(dataInicial);
-                                    new bootstrap.Modal(modalAmbiente).show();
+                                    getAmbienteModal()?.show();
                                 }
                             }
                         } else {
@@ -247,9 +251,10 @@
                         const ambienteData = await ambienteResponse.json();
 
                         const ambienteMap = new Map();
-                        if (Array.isArray(ambienteData)) {
-                            ambienteData.forEach(item => ambienteMap.set(item.fase_id, item));
-                        }
+                        const ambienteFases =
+                            (ambienteData && ambienteData.success && Array.isArray(ambienteData.fases)) ? ambienteData.fases :
+                            (Array.isArray(ambienteData) ? ambienteData : []);
+                        ambienteFases.forEach(item => ambienteMap.set(item.fase_id, item));
 
                         let accordionHtml = '<div class="accordion" id="accordionAmbiente">';
 
@@ -433,12 +438,14 @@
                             continue;
                         }
 
-                        const sugestaoId = cb.value;
+                        const sugestaoId = cb.dataset.sugestaoId || cb.value;
+                        const loteDiarioId = cb.dataset.loteDiarioId || null;
                         const qtdRealInput = tr.querySelector('.qtd-real-input');
                         const racaSelect = tr.querySelector('.racao-realizada-select');
 
                         const payload = {
                             sugestao_id: sugestaoId,
+                            lote_diario_id: loteDiarioId,
                             quantidade_real_kg: qtdRealInput?.value || '',
                             racao_realizada_id: racaSelect?.value || null
                         };
@@ -501,13 +508,45 @@
                         const data = dataInicialInput?.value;
                         if (data) {
                             renderModalAmbiente(data);
-                            new bootstrap.Modal(modalAmbiente).show();
+                            getAmbienteModal()?.show();
                         } else {
                             Swal.fire('Atenção', 'Selecione uma Data Inicial para ver os parâmetros.', 'info');
                         }
                     }, { signal });
                 }
 
+                if (modalAmbiente) {
+                    modalAmbiente.addEventListener('hide.bs.modal', () => {
+                        // Evita warning de acessibilidade: move o foco para fora do modal antes do aria-hidden.
+                        if (btnAmbienteHeader && typeof btnAmbienteHeader.focus === 'function') {
+                            btnAmbienteHeader.focus({ preventScroll: true });
+                            return;
+                        }
+
+                        if (document.body && typeof document.body.focus === 'function') {
+                            if (!document.body.hasAttribute('tabindex')) {
+                                document.body.setAttribute('tabindex', '-1');
+                            }
+                            document.body.focus({ preventScroll: true });
+                        }
+                    }, { signal });
+
+                    modalAmbiente.addEventListener('hidden.bs.modal', () => {
+                        // Limpeza defensiva para evitar tela bloqueada por estado residual de modal.
+                        document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
+                        document.body.classList.remove('modal-open');
+                        document.body.style.removeProperty('padding-right');
+
+                        const mainContent = document.getElementById('main-content');
+                        if (mainContent && mainContent.getAttribute('aria-hidden') === 'true') {
+                            mainContent.removeAttribute('aria-hidden');
+                        }
+
+                        if (btnAmbienteHeader) {
+                            btnAmbienteHeader.focus();
+                        }
+                    }, { signal });
+                }
                 if (modalEdicao && formEdicao) {
                     modalEdicao.addEventListener('show.bs.modal', async (event) => {
                         const button = event.relatedTarget;
@@ -520,7 +559,7 @@
                                 formEdicao.querySelector('#edit-id').value = result.data.id;
                                 formEdicao.querySelector('#edit-lote-nome').value = result.data.lote_nome;
                                 formEdicao.querySelector('#edit-produto-racao-nome').value = result.data.produto_racao_nome;
-                                formEdicao.querySelector('#edit-quantidade-g').value = result.data.quantidade_g;
+                                formEdicao.querySelector('#edit-quantidade-kg').value = result.data.quantidade_kg;
                                 formEdicao.querySelector('#edit-observacoes').value = result.data.observacoes;
                                 formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${result.data.id}/update/`;
                             } else {
@@ -602,3 +641,8 @@
         }
     });
 })();
+
+
+
+
+

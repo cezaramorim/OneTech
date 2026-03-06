@@ -1,0 +1,47 @@
+<div class="container-fluid py-4" data-page="impressao-relatorios-preview">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">{{ report.title }}</h5>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i>Imprimir
+        </button>
+        <a class="btn btn-outline-primary btn-sm" href="{{ download_url }}">
+          <i class="bi bi-download me-1"></i>Baixar CSV
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">Pre-visualizacao do relatorio para impressao e exportacao.</p>
+
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle table-sm" style="white-space: nowrap;">
+          <thead>
+            <tr>
+              {% for _, label in report.columns %}
+                <th class="text-nowrap">{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% if matrix %}
+              {% for row in matrix %}
+                <tr>
+                  {% for cell in row %}
+                    <td class="text-nowrap">{{ cell }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="{{ report.columns|length|default:1 }}" class="text-center text-muted">
+                  Nenhum registro encontrado para os filtros informados.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

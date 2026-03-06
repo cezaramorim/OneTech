@@ -29,16 +29,16 @@
     </div>
     <div class="card-body">
       <!-- Filtros -->
-      <div class="row mb-4">
-        <div class="col-md-3">
+      <div class="row g-2 mb-4 align-items-end">
+        <div class="col-12 col-sm-6 col-md-2">
           <label for="data-inicial" class="form-label">Data Inicial</label>
           <input type="date" id="data-inicial" class="form-control" />
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-2">
           <label for="data-final" class="form-label">Data Final</label>
           <input type="date" id="data-final" class="form-control" />
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-2">
           <label for="filtro-status" class="form-label">Status</label>
           <select id="filtro-status" class="form-select">
             <option value="">Todos</option>
@@ -46,16 +46,16 @@
             <option value="Aprovado">Aprovado</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <label for="filtro-linha-producao" class="form-label"
-            >Linha de Produção</label
+        <div class="col-12 col-sm-6 col-md-2">
+          <label for="filtro-linha-producao" class="form-label">
+            Linha de Produção</label
           >
           <select id="filtro-linha-producao" class="form-select">
             <option value="">Todas</option>
             <!-- Opções serão carregadas via JS -->
           </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end">
+        <div class="col-12 col-sm-6 col-md-2 d-grid">
           <button id="btn-buscar" class="btn btn-primary">
             <i class="fas fa-search me-2"></i>Buscar
           </button>
@@ -185,14 +185,14 @@
           </div>
           <div class="mb-3">
             <label for="edit-quantidade-kg" class="form-label"
-              >Quantidade (g)</label
+              >Quantidade (kg)</label
             >
             <input
               type="number"
               class="form-control"
-              id="edit-quantidade-g"
-              name="quantidade_g"
-              step="0.01"
+              id="edit-quantidade-kg"
+              name="quantidade_kg"
+              step="0.001"
             />
           </div>
           <div class="mb-3">
@@ -269,3 +269,4 @@
     </div>
   </div>
 </div>
+

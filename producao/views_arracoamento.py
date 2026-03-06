@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from django.db.models import Sum, Q, F, Value, Case, When
+from django.db.models import Sum, Q, F, Value, Case, When, Max
 from django.db.models.fields import DecimalField
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -13,7 +13,7 @@ from django.utils.timezone import localdate
 import logging
 
 from .models import Lote, LoteDiario, ArracoamentoSugerido, ArracoamentoRealizado, LinhaProducao, EventoManejo, ParametroAmbientalDiario
-from .utils import sugerir_racao_para_dia, reprojetar_ciclo_de_vida, _apurar_quantidade_real_no_dia, recalcular_lote_diario_real, obter_base_sugerida, fator_resposta_biologica, calcular_fator_ambiente
+from .utils import sugerir_racao_para_dia, reprojetar_ciclo_de_vida, _apurar_quantidade_real_no_dia, recalcular_lote_diario_real, obter_base_sugerida, fator_resposta_biologica, calcular_fator_ambiente, obter_tanque_lote_em_data, construir_resolvedor_tanque_lote
 from .utils_uom import calc_biomassa_kg, calc_fcr, g_to_kg, q2, q3
 from produto.models import Produto
 
@@ -76,14 +76,14 @@ def api_sugestoes_arracoamento(request):
         try:
             entradas = EventoManejo.objects.filter(
                 lote=lote,
-                data__lte=data_final
+                data_evento__lte=data_final
             ).filter(
                 Q(tipo_evento__nome='Povoamento') | Q(tipo_movimento='Entrada')
             ).aggregate(total=Sum('quantidade'))['total'] or 0
             
             saidas = EventoManejo.objects.filter(
                 lote=lote,
-                data__lte=data_final
+                data_evento__lte=data_final
             ).filter(
                 Q(tipo_evento__nome__in=['Mortalidade', 'Despesca']) | Q(tipo_movimento='Saída')
             ).aggregate(total=Sum('quantidade'))['total'] or 0
@@ -102,53 +102,45 @@ def api_sugestoes_arracoamento(request):
     with transaction.atomic():
         for lote in lotes_com_estoque:
             try:
-                data_atual = data_inicial
-                while data_atual <= data_final:
-                    lote_diario, created = LoteDiario.objects.get_or_create(
-                        lote=lote,
-                        data_evento=data_atual,
-                    )
+                data_inicio_lote = data_inicial
+                if lote.data_povoamento:
+                    data_inicio_lote = max(data_inicial, lote.data_povoamento)
 
-                    if created:
-                        dia_anterior = data_atual - timedelta(days=1)
-                        lote_diario_anterior = LoteDiario.objects.filter(
-                            lote=lote, 
-                            data_evento=dia_anterior
-                        ).first()
+                # Não cria histórico para período anterior ao povoamento do lote.
+                if data_inicio_lote > data_final:
+                    continue
 
-                        if lote_diario_anterior:
-                            base_qtd = lote_diario_anterior.quantidade_real
-                            base_peso = lote_diario_anterior.peso_medio_real
-                        else:
-                            base_qtd = lote.quantidade_inicial
-                            base_peso = lote.peso_medio_inicial
+                tanque_resolver = construir_resolvedor_tanque_lote(lote)
+                lotes_diarios = LoteDiario.objects.filter(
+                    lote=lote,
+                    data_evento__gte=data_inicio_lote,
+                    data_evento__lte=data_final
+                ).order_by('data_evento')
 
-                        lote_diario.quantidade_inicial = base_qtd if base_qtd is not None else Decimal('0')
-                        lote_diario.peso_medio_inicial = base_peso if base_peso is not None else Decimal('0')
-                        lote_diario.biomassa_inicial = calc_biomassa_kg(
-                            lote_diario.quantidade_inicial, 
-                            lote_diario.peso_medio_inicial
-                        )
-                        lote_diario.save()
+                for lote_diario in lotes_diarios:
+                    data_atual = lote_diario.data_evento
+                    tanque_snapshot = tanque_resolver(data_atual)
+                    tanque_snapshot_id = tanque_snapshot.id if tanque_snapshot else None
+                    if lote_diario.tanque_id != tanque_snapshot_id:
+                        lote_diario.tanque = tanque_snapshot
+                        lote_diario.save(update_fields=['tanque'])
 
                     # CORREÇÃO: gera sugestão apenas se o filtro for adequado (evita gerar para 'Aprovado')
                     if status_filtro in ['', 'Todos', 'Pendente']:
                         sugestao_existente = ArracoamentoSugerido.objects.filter(
                             lote_diario=lote_diario
                         ).first()
-                        
+
                         if sugestao_existente and sugestao_existente.status == 'Aprovado':
-                            data_atual += timedelta(days=1)
                             continue
-                        
+
                         try:
                             resultado_sugestao = sugerir_racao_para_dia(lote_diario)
                         except Exception as e:
                             logger.error(f"Erro ao gerar sugestão: {str(e)}")
                             erros.append(f"Lote {lote.nome} data {data_atual}: Erro ao gerar sugestão - {str(e)}")
-                            data_atual += timedelta(days=1)
                             continue
-                        
+
                         if 'error' not in resultado_sugestao:
                             try:
                                 sugestao, created_sug = ArracoamentoSugerido.objects.get_or_create(
@@ -169,8 +161,6 @@ def api_sugestoes_arracoamento(request):
                         else:
                             erros.append(f"Lote {lote.nome} data {data_atual}: {resultado_sugestao['error']}")
                     
-                    data_atual += timedelta(days=1)
-                    
             except Exception as e:
                 erro_msg = f"Lote {lote.nome}: {str(e)}"
                 logger.error(erro_msg, exc_info=True)
@@ -186,6 +176,7 @@ def api_sugestoes_arracoamento(request):
                 lote_diario__data_evento__lte=data_final
             ).select_related(
                 'lote_diario__lote',
+                'lote_diario__tanque__linha_producao',
                 'lote_diario__lote__tanque_atual__linha_producao',
                 'lote_diario__lote__fase_producao',
                 'produto_racao'
@@ -193,7 +184,8 @@ def api_sugestoes_arracoamento(request):
 
             if linha_producao_id:
                 sugestoes_qs = sugestoes_qs.filter(
-                    lote_diario__lote__tanque_atual__linha_producao_id=linha_producao_id
+                    Q(lote_diario__tanque__linha_producao_id=linha_producao_id) |
+                    Q(lote_diario__tanque__isnull=True, lote_diario__lote__tanque_atual__linha_producao_id=linha_producao_id)
                 )
 
             # CORREÇÃO: se status_filtro for vazio ou 'Todos', não filtra por status
@@ -212,7 +204,7 @@ def api_sugestoes_arracoamento(request):
         list(sugestoes_qs), 
         key=lambda s: (
             s.lote_diario.data_evento,
-            s.lote_diario.lote.tanque_atual.sequencia if s.lote_diario.lote.tanque_atual else 999999
+            s.lote_diario.tanque.sequencia if s.lote_diario.tanque else (s.lote_diario.lote.tanque_atual.sequencia if s.lote_diario.lote.tanque_atual else 999999)
         )
     )
 
@@ -243,20 +235,28 @@ def api_sugestoes_arracoamento(request):
     lotes_com_pendencias = []
     for lote in lotes_com_estoque:
         try:
-            # Último realizado antes da data inicial
-            ultimo_realizado = ArracoamentoRealizado.objects.filter(
+            # ?ltima data realizada antes da data inicial (baseada no evento realizado)
+            data_ultimo = ArracoamentoRealizado.objects.filter(
                 lote_diario__lote=lote,
-                lote_diario__data_evento__lt=data_inicial
-            ).order_by('-lote_diario__data_evento').first()
+                data_evento__lt=data_inicial
+            ).aggregate(max_data=Max('data_evento'))['max_data']
             
-            if ultimo_realizado:
-                data_ultimo = ultimo_realizado.lote_diario.data_evento
-                # Dias entre a última realização e a data inicial (exclusive a data inicial)
+            if data_ultimo:
+                data_inicio_pendencia = max(data_ultimo + timedelta(days=1), lote.data_povoamento)
+                # Pend?ncia ? calculada por data:
+                # existe LoteDiario no intervalo cuja data n?o aparece em nenhuma realiza??o.
+                datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
+                    lote_diario__lote=lote,
+                    data_evento__gte=data_inicio_pendencia,
+                    data_evento__lt=data_inicial
+                ).values('data_evento')
+
                 dias_sem_aprovacao = LoteDiario.objects.filter(
                     lote=lote,
-                    data_evento__gt=data_ultimo,
-                    data_evento__lt=data_inicial,
-                    realizacoes__isnull=True
+                    data_evento__gte=data_inicio_pendencia,
+                    data_evento__lt=data_inicial
+                ).exclude(
+                    data_evento__in=datas_realizadas_no_intervalo
                 ).exists()
                 if dias_sem_aprovacao:
                     lotes_com_pendencias.append({
@@ -264,17 +264,27 @@ def api_sugestoes_arracoamento(request):
                         'ultima_data': data_ultimo.strftime("%d/%m/%Y")
                     })
             else:
-                # Nunca houve realização antes da data inicial
+                # Nunca houve realiza??o antes da data inicial
+                data_inicio_pendencia = lote.data_povoamento
+                datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
+                    lote_diario__lote=lote,
+                    data_evento__gte=data_inicio_pendencia,
+                    data_evento__lt=data_inicial
+                ).values('data_evento')
                 dias_sem_aprovacao = LoteDiario.objects.filter(
                     lote=lote,
-                    data_evento__lt=data_inicial,
-                    realizacoes__isnull=True
+                    data_evento__gte=data_inicio_pendencia,
+                    data_evento__lt=data_inicial
+                ).exclude(
+                    data_evento__in=datas_realizadas_no_intervalo
                 ).exists()
                 if dias_sem_aprovacao:
                     lotes_com_pendencias.append({
                         'lote_nome': lote.nome,
                         'ultima_data': 'Nunca aprovado'
                     })
+        except Exception as e:
+            logger.error(f"Erro ao verificar pend?ncias para lote {lote.id}: {str(e)}")
         except Exception as e:
             logger.error(f"Erro ao verificar pendências para lote {lote.id}: {str(e)}")
     # Serializa as sugestões
@@ -289,6 +299,7 @@ def api_sugestoes_arracoamento(request):
             realizado = s.lote_diario.realizacoes.first()
             realizado_id = realizado.id if realizado else None
             racao_realizada_obj = s.lote_diario.racao_realizada
+            tanque_no_dia = s.lote_diario.tanque or s.lote_diario.lote.tanque_atual
 
             fase = s.lote_diario.lote.fase_producao
             data = s.lote_diario.data_evento
@@ -310,16 +321,17 @@ def api_sugestoes_arracoamento(request):
 
             sugestoes_serializadas.append({
                 'id': s.id,
+                'lote_diario_id': s.lote_diario.id,
                 'realizado_id': realizado_id,
                 'data': data.strftime("%d/%m/%Y"),
                 'data_iso': data.isoformat(),
                 'lote_id': s.lote_diario.lote.id,
                 'lote_nome': s.lote_diario.lote.nome,
-                'tanque_nome': s.lote_diario.lote.tanque_atual.nome if s.lote_diario.lote.tanque_atual else 'N/A',
+                'tanque_nome': tanque_no_dia.nome if tanque_no_dia else 'N/A',
                 'fase_id': s.lote_diario.lote.fase_producao.id if s.lote_diario.lote.fase_producao else None,
                 'fase_nome': s.lote_diario.lote.fase_producao.nome if s.lote_diario.lote.fase_producao else 'N/A',
-                'linha_producao_nome': s.lote_diario.lote.tanque_atual.linha_producao.nome if s.lote_diario.lote.tanque_atual and s.lote_diario.lote.tanque_atual.linha_producao else 'N/A',
-                'sequencia': s.lote_diario.lote.tanque_atual.sequencia if s.lote_diario.lote.tanque_atual else 'N/A',
+                'linha_producao_nome': tanque_no_dia.linha_producao.nome if tanque_no_dia and tanque_no_dia.linha_producao else 'N/A',
+                'sequencia': tanque_no_dia.sequencia if tanque_no_dia else 'N/A',
                 'qtd_lote': f"{s.lote_diario.quantidade_inicial:.0f}" if s.lote_diario.quantidade_inicial is not None else "0",
                 'peso_medio': f"{s.lote_diario.peso_medio_inicial:.2f}" if s.lote_diario.peso_medio_inicial is not None else "0.00",
                 'racao_sugerida_nome': s.produto_racao.nome if s.produto_racao else 'N/A',
@@ -357,14 +369,34 @@ def api_aprovar_arracoamento(request):
     try:
         data = json.loads(request.body)
         sugestao_id = data.get('sugestao_id')
+        lote_diario_id = data.get('lote_diario_id')
         racao_realizada_id = data.get('racao_realizada_id')
         observacoes = data.get('observacoes', '')
 
         with transaction.atomic():
             sugestao = ArracoamentoSugerido.objects.select_related(
-                'lote_diario__lote', 
+                'lote_diario__lote',
                 'produto_racao'
-            ).get(id=sugestao_id)
+            ).filter(id=sugestao_id).first()
+
+            if not sugestao and lote_diario_id:
+                ld = LoteDiario.objects.filter(id=lote_diario_id).first()
+                if ld:
+                    if ld.realizacoes.exists():
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Lançamento já aprovado anteriormente.'
+                        })
+                    sugestao = ArracoamentoSugerido.objects.select_related(
+                        'lote_diario__lote',
+                        'produto_racao'
+                    ).filter(lote_diario=ld).order_by('-id').first()
+
+            if not sugestao:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Sugestão de arraçoamento não encontrada.'
+                }, status=404)
             
             # Verificar se o lote ainda está ativo
             if not sugestao.lote_diario.lote.ativo:
@@ -375,9 +407,9 @@ def api_aprovar_arracoamento(request):
             
             if sugestao.status == 'Aprovado':
                 return JsonResponse({
-                    'success': False, 
-                    'message': 'Esta sugestão já foi aprovada.'
-                }, status=400)
+                    'success': True,
+                    'message': 'Sugestão já aprovada anteriormente.'
+                })
 
             # Lógica para determinar a quantidade a ser usada
             quantidade_real_kg_str = data.get('quantidade_real_kg')
@@ -393,8 +425,11 @@ def api_aprovar_arracoamento(request):
                     pass
 
             if quantidade_a_usar is None:
-                # Fallback para a quantidade sugerida ajustada se a entrada do usuário for vazia ou inválida
-                quantidade_a_usar = sugestao.lote_diario.racao_sugerida_ajustada_kg
+                # Fallback padr?o: usa exatamente a quantidade da sugest?o aprovada na linha.
+                quantidade_a_usar = sugestao.quantidade_kg
+
+            if quantidade_a_usar is not None:
+                quantidade_a_usar = q3(quantidade_a_usar)
 
             # Validação final
             if not quantidade_a_usar or quantidade_a_usar <= 0:
@@ -558,7 +593,7 @@ def api_delete_arracoamento_realizado(request, pk):
                 logger.info(f"Estoque do produto '{produto.nome}' revertido. Saídas decrementadas em {quantidade_devolver} kg.")
             except DatabaseError as e:
                 logger.error(f"Erro ao reverter estoque: {e}")
-                # Continuar mesmo com erro no estoque? Decidir baseado na regra de negócio
+                # Continuar mesmo com erro no estoque Decidir baseado na regra de negócio
 
         if hasattr(lote_diario, 'sugestao'):
             sugestao = lote_diario.sugestao
@@ -603,28 +638,64 @@ def api_delete_arracoamento_realizado(request, pk):
 def api_bulk_delete_arracoamento_realizado(request):
     try:
         data = json.loads(request.body)
-        ids = data.get('ids', [])
-        if not ids:
+        ids_recebidos = data.get('ids', [])
+        if not ids_recebidos:
             return JsonResponse({
                 'success': False, 
-                'message': 'Nenhum item selecionado para exclusão.'
+                'message': 'Nenhum item selecionado para exclusao.'
             }, status=400)
-        
-        if len(ids) > 100:  # Limite de segurança
+
+        ids_validos = []
+        ids_invalidos = []
+        for raw_id in ids_recebidos:
+            try:
+                item_id = int(raw_id)
+                if item_id > 0:
+                    ids_validos.append(item_id)
+                else:
+                    ids_invalidos.append(raw_id)
+            except (TypeError, ValueError):
+                ids_invalidos.append(raw_id)
+
+        if not ids_validos:
+            return JsonResponse({
+                'success': False,
+                'message': 'Nenhum ID valido foi enviado para exclusao.',
+                'invalid_ids': ids_invalidos
+            }, status=400)
+
+        if len(ids_validos) > 100:  # Limite de seguran�a
             return JsonResponse({
                 'success': False, 
-                'message': 'Máximo de 100 itens por operação em lote.'
+                'message': 'Maximo de 100 itens por operacao em lote.'
             }, status=400)
         
         lotes_afetados = {}
         erros = []
         
         realizados_para_excluir = ArracoamentoRealizado.objects.filter(
-            id__in=ids
+            id__in=ids_validos
         ).select_related(
             'lote_diario__lote',
             'produto_racao'
         )
+
+        ids_encontrados = set(realizados_para_excluir.values_list('id', flat=True))
+        ids_nao_encontrados = sorted(set(ids_validos) - ids_encontrados)
+
+        if not ids_encontrados:
+            return JsonResponse({
+                'success': False,
+                'message': 'Nenhum lancamento realizado encontrado para os IDs enviados.',
+                'missing_ids': ids_nao_encontrados,
+                'invalid_ids': ids_invalidos
+            }, status=404)
+
+        if ids_nao_encontrados:
+            erros.append(f'Lote/tanque sem lancamento aprovado para exclusao (itens: {ids_nao_encontrados})')
+
+        if ids_invalidos:
+            erros.append(f'IDs invalidos ignorados: {ids_invalidos}')
 
         for obj in realizados_para_excluir:
             try:
@@ -664,7 +735,7 @@ def api_bulk_delete_arracoamento_realizado(request):
             except Exception as e:
                 erros.append(f"Erro ao reprojetar lote {lote_id}: {str(e)}")
 
-        mensagem = f'{deleted_count} lançamento(s) excluído(s)'
+        mensagem = f'{deleted_count} lancamento(s) excluido(s)'
         if erros:
             mensagem += f' com {len(erros)} erro(s)'
 
@@ -676,13 +747,13 @@ def api_bulk_delete_arracoamento_realizado(request):
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False, 
-            'message': 'Requisição JSON inválida.'
+            'message': 'Requisicao JSON invalida.'
         }, status=400)
     except Exception as e:
-        logger.exception(f"Erro ao excluir lançamentos em lote: {e}")
+        logger.exception(f"Erro ao excluir lancamentos em lote: {e}")
         return JsonResponse({
             'success': False, 
-            'message': f'Erro ao excluir lançamentos: {str(e)}'
+            'message': f'Erro ao excluir lancamentos: {str(e)}'
         }, status=500)
 
 
@@ -1004,3 +1075,14 @@ def api_ambiente_upsert(request):
             'success': False,
             'message': str(e)
         }, status=500)
+
+
+
+
+
+
+
+
+
+
+

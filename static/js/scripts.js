@@ -396,7 +396,7 @@ document.body.addEventListener('click', async (e) => {
   
   // Handler para o botão Editar genérico
   const btnEditar = e.target.closest('#btn-editar');
-  if (btnEditar && !btnEditar.disabled) {
+  if (btnEditar && !btnEditar.disabled && !btnEditar.hasAttribute('data-bs-toggle')) {
       e.preventDefault();
       const href = btnEditar.getAttribute('data-href');
       if (href) {
@@ -449,11 +449,24 @@ document.body.addEventListener('click', async (e) => {
                   const data = await response.json();
 
                   if (data.success) {
-                      mostrarMensagem('success', data.message);
-                      if (data.redirect_url) {
-                          loadAjaxContent(data.redirect_url);
+                      const finalizarExclusao = () => {
+                          if (data.redirect_url) {
+                              loadAjaxContent(data.redirect_url);
+                          } else {
+                              window.location.reload();
+                          }
+                      };
+
+                      const errosExclusao = Array.isArray(data.errors) ? data.errors.filter(Boolean) : [];
+                      if (errosExclusao.length > 0) {
+                          Swal.fire({
+                              icon: 'warning',
+                              title: 'Exclusao parcial',
+                              html: `${data.message || 'Operacao concluida com ressalvas.'}<br><br>${errosExclusao.map(e => `<li class="text-start">${e}</li>`).join('')}`
+                          }).then(() => finalizarExclusao());
                       } else {
-                          window.location.reload();
+                          mostrarMensagem('success', data.message);
+                          finalizarExclusao();
                       }
                   } else {
                       mostrarMensagem('danger', data.message || 'Ocorreu um erro ao excluir os itens.');
@@ -672,3 +685,5 @@ document.addEventListener("ajaxContentLoaded", (event) => {
     console.log("✅ Conteúdo AJAX carregado. Re-inicializando scripts.");
     runInitializers();
 });
+
+

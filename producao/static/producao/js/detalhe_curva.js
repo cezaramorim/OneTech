@@ -1,12 +1,12 @@
 window.pageInitializers['detalhe_curva'] = function() {
     const identificadorTela = document.getElementById('identificador-tela');
-    const API_URL = identificadorTela ? identificadorTela.dataset.apiAtualizarUrl : '';
+    const API_URL = identificadorTela  identificadorTela.dataset.apiAtualizarUrl : '';
     const CSRF_TOKEN = $('input[name="csrfmiddlewaretoken"]').val();
 
     // Função para buscar produtos de ração via API
     async function fetchRacoes() {
         const identificadorTela = document.getElementById('identificador-tela');
-        const racoesApiUrl = identificadorTela ? identificadorTela.dataset.apiRacoesUrl : '';
+        const racoesApiUrl = identificadorTela  identificadorTela.dataset.apiRacoesUrl : '';
 
         if (!racoesApiUrl) {
             console.error('URL da API de rações não encontrada no identificador-tela.');

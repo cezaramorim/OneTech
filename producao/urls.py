@@ -1,7 +1,6 @@
 from django.urls import path
 from . import views, views_arracoamento, views_ambiente
 from .models import LinhaProducao, FaseProducao, StatusTanque, TipoTanque, TipoEvento, Tanque, CurvaCrescimento, Lote, EventoManejo
-from producao.views_ambiente import api_fases_com_tanques, api_get_ambiente, api_ambiente_upsert
 
 app_name = 'producao'
 
@@ -126,7 +125,6 @@ urlpatterns = [
     # POST for update
 
     # Ambiente (Qualidade de Água) - por Fase
-    path('api/fases-com-tanques/', api_fases_com_tanques, name='api_fases_com_tanques'),
     path('api/ambiente/', views_ambiente.api_get_ambiente, name='api_get_ambiente'),
     path('api/ambiente/upsert/', views_ambiente.api_ambiente_upsert, name='api_ambiente_upsert'),
 ]

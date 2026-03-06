@@ -79,7 +79,7 @@
             throw new Error(data.message || `Erro HTTP ${response.status}`);
           }
           
-          setStatus(data.dry_run ? "Simulação Concluída" : "Concluído", "success");
+          setStatus(data.dry_run ? "Simula\u00e7\u00e3o Conclu\u00edda" : "Conclu\u00eddo", "success");
           setLog(data.log || "Processo finalizado sem log de retorno.");
           if (btnCopiar) btnCopiar.disabled = false;
 

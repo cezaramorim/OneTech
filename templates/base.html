@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 
 <html lang="pt-br">
@@ -14,10 +14,10 @@
     const tema = localStorage.getItem("tema");
     if (tema === "dark") {
       document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("azul"); // Garante que não haja conflito
+      document.documentElement.classList.remove("azul"); // Garante que nÃ£o haja conflito
     } else if (tema === "azul") {
       document.documentElement.classList.add("azul");
-      document.documentElement.classList.remove("dark"); // Garante que não haja conflito
+      document.documentElement.classList.remove("dark"); // Garante que nÃ£o haja conflito
     } else {
       document.documentElement.classList.remove("dark");
       document.documentElement.classList.remove("azul");
@@ -40,16 +40,16 @@
   
 </head>
 <body class="{% if request.user.is_authenticated %}logged-in{% endif %}" id="page-body" data-login-url="{% url 'accounts:login' %}">
-  <script>window.pageInitializers = {};</script> <!-- ✅ Garante que o objeto global exista -->
+  <script>window.pageInitializers = {};</script> <!-- Ã¢Å“â€¦ Garante que o objeto global exista -->
   
   <div id="navbar-container"></div>
   
-  <!-- ✅ Container para Toasts (mensagens instantâneas) -->
+  <!-- Ã¢Å“â€¦ Container para Toasts (mensagens instantÃƒÂ¢neas) -->
   <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11;">
-    <!-- Toasts serão injetados aqui pelo JavaScript -->
+    <!-- Toasts serÃ£o injetados aqui pelo JavaScript -->
   </div>
 
-    <!--  Conteúdo Principal -->
+    <!--  ConteÃºdo Principal -->
     <main id="main-content"
           class="content flex-grow-1 bg-light"
           role="main"
@@ -61,19 +61,19 @@
       {% endif %}
     </main>
 
-<!-- templates/base.html (VERSÃO CORRIGIDA) -->
+<!-- templates/base.html (VERSÃƒÆ’O CORRIGIDA) -->
 ...
   <!--  JavaScript Global -->
 
-  <!-- ✅ jQuery -->
+  <!-- Ã¢Å“â€¦ jQuery -->
   <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-  <!-- ✅ SweetAlert2 -->
+  <!-- Ã¢Å“â€¦ SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- ✅ Bootstrap Bundle -->
+  <!-- Ã¢Å“â€¦ Bootstrap Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- ✅ colResizable -->
+  <!-- Ã¢Å“â€¦ colResizable -->
   <script src="https://cdn.jsdelivr.net/npm/colresizable@1.6.0/colResizable-1.6.min.js"></script>
-  <!-- ✅ Select2 -->
+  <!-- Ã¢Å“â€¦ Select2 -->
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
 
   <!--  Plugins e scripts principais do sistema -->
@@ -83,9 +83,10 @@
   <script src="{% static 'js/gerenciar_curvas.js' %}" defer></script>
   <script src="{% static 'js/gerenciar_tanques.js' %}" defer></script>
   <script src="{% static 'js/gerenciar_eventos.js' %}" defer></script>
-  <script src="{% static 'js/arracoamento_diario.js' %}" defer></script>
+  <script src="{% static 'producao/js/arracoamento_diario.js' %}?v=20260305-7" defer></script>
   <script src="{% static 'js/nota_fiscal_entradas.js' %}" defer></script>
   <script src="{% static 'js/relatorios/notas_entradas.js' %}" defer></script>
+  <script src="{% static 'relatorios/js/impressao_relatorios.js' %}" defer></script>
   <script src="{% static 'js/povoamento_lotes.js' %}" defer></script>
   <script src="{% static 'js/importar_xml.js' %}" defer></script>
   <script src="{% static 'js/permissions.js' %}" defer></script>
@@ -95,14 +96,14 @@
   
 
 
-  <!--  Bloco para scripts INLINE específicos de páginas -->
+  <!--  Bloco para scripts INLINE especÃ­ficos de pÃ¡ginas -->
   {% block extra_js %}
   {% endblock %}
 
   {% include 'partials/mensagens_js.html' %}
 
   <script>
-    // Teste de Execução de Script
+    // Teste de ExecuÃ§Ã£o de Script
     // alert("base.html script executado!");
   </script>
 
@@ -128,3 +129,9 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+

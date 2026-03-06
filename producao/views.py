@@ -17,7 +17,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import Lote, Tanque, LoteDiario  # ajuste nomes exatos
 from .views_arracoamento import recalcular_lote_diario_real, reprojetar_ciclo_de_vida, _apurar_quantidade_real_no_dia
-from .utils import calc_biomassa_kg  # ajuste
+from .utils import calc_biomassa_kg, obter_tanque_lote_em_data, construir_resolvedor_tanque_lote  # ajuste
 
 
 from .models import (
@@ -908,7 +908,7 @@ class RegistrarEventoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormM
                         form.add_error(None, "Para transferências, o lote de origem, tanque de destino, quantidade e peso são obrigatórios.")
                         return self.form_invalid(form)
                     
-                    tanque_origem_obj = lote_origem.tanque_atual
+                    tanque_origem_obj = obter_tanque_lote_em_data(lote_origem, evento.data_evento)
 
                     # Cenário 1: Tanque de destino já tem um lote ativo
                     lote_destino_existente = Lote.objects.filter(tanque_atual=tanque_destino, ativo=True).first()
@@ -1469,7 +1469,7 @@ def historico_povoamento_view(request):
 
         # Base queryset
         eventos = EventoManejo.objects.select_related(
-            'lote', 'tanque_destino', 'tipo_evento'  # inclui tipo_evento
+            'lote', 'tanque_origem', 'tanque_destino', 'tipo_evento'
         ).order_by('-data_evento', '-id')
 
         # Aplicar filtros de data
@@ -1483,16 +1483,22 @@ def historico_povoamento_view(request):
             eventos = eventos.filter(tipo_evento_id=status)
 
         # Limitar resultados
-        eventos = eventos[:100]
-
-        # Construir lista de dicionários
+        eventos = eventos[:100]        # Construir lista de dicionários
         data = []
+        resolvedores_tanque = {}
         for evento in eventos:
+            tanque_fallback = None
+            if evento.lote:
+                if evento.lote_id not in resolvedores_tanque:
+                    resolvedores_tanque[evento.lote_id] = construir_resolvedor_tanque_lote(evento.lote)
+                tanque_fallback = resolvedores_tanque[evento.lote_id](evento.data_evento)
             data.append({
                 'id': evento.id,
                 'data': evento.data_evento.strftime('%d/%m/%Y'),
                 'lote_nome': evento.lote.nome if evento.lote else 'N/A',
-                'tanque_nome': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
+                'tanque_nome': (evento.tanque_destino.nome if evento.tanque_destino else (evento.tanque_origem.nome if evento.tanque_origem else (tanque_fallback.nome if tanque_fallback else 'N/A'))),
+                'tanque_origem_nome': evento.tanque_origem.nome if evento.tanque_origem else 'N/A',
+                'tanque_destino_nome': evento.tanque_destino.nome if evento.tanque_destino else 'N/A',
                 'quantidade': evento.quantidade,
                 'peso_medio': evento.peso_medio,
                 'status': evento.tipo_evento.nome if evento.tipo_evento else 'Desconhecido',
@@ -1511,16 +1517,49 @@ def historico_povoamento_view(request):
 @require_http_methods(["GET"])
 def get_active_lote_for_tanque_api(request, tanque_id):
     """
-    API endpoint para buscar o lote ativo de um tanque específico.
-    Retorna o nome e ID do lote se encontrado.
+    API endpoint para buscar o lote de um tanque.
+    - Sem data_evento: retorna o lote ativo atual (comportamento legado).
+    - Com data_evento=YYYY-MM-DD: retorna o lote do tanque naquela data.
     """
     try:
+        data_evento_str = request.GET.get('data_evento')
+        if data_evento_str:
+            try:
+                data_evento = datetime.strptime(data_evento_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse(
+                    {'success': False, 'message': 'Formato de data inválido. Use YYYY-MM-DD.'},
+                    status=400
+                )
+
+            lote_ids = list(
+                LoteDiario.objects.filter(
+                    tanque_id=tanque_id,
+                    data_evento=data_evento
+                ).values_list('lote_id', flat=True).distinct()
+            )
+
+            if not lote_ids:
+                return JsonResponse(
+                    {'success': False, 'message': 'Nenhum lote encontrado para o tanque na data informada.'},
+                    status=404
+                )
+
+            if len(lote_ids) > 1:
+                return JsonResponse(
+                    {'success': False, 'message': 'Múltiplos lotes encontrados para o tanque na data informada.'},
+                    status=409
+                )
+
+            lote = Lote.objects.get(id=lote_ids[0])
+            return JsonResponse({'success': True, 'lote': {'id': lote.id, 'nome': lote.nome}})
+
         lote = Lote.objects.get(tanque_atual_id=tanque_id, ativo=True)
         return JsonResponse({'success': True, 'lote': {'id': lote.id, 'nome': lote.nome}})
     except Lote.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Nenhum lote ativo encontrado.'}, status=404)
     except Lote.MultipleObjectsReturned:
-        return JsonResponse({'success': False, 'message': 'Múltiplos lotes ativos encontrados.'}, status=409) # 409 Conflict
+        return JsonResponse({'success': False, 'message': 'Múltiplos lotes ativos encontrados.'}, status=409)
 
 
 @login_required
@@ -1706,7 +1745,7 @@ def api_ultimos_eventos(request):
     limit = 20
 
     # Correção definitiva: prefetch_related para garantir LEFT OUTER JOIN no lote
-    eventos_qs = EventoManejo.objects.prefetch_related(
+    eventos_qs = EventoManejo.objects.select_related(
         'lote', 'tanque_origem', 'tanque_destino'
     ).order_by('-data_evento', '-id')
 
@@ -1725,9 +1764,23 @@ def api_ultimos_eventos(request):
             Q(observacoes__icontains=termo)
         )
     if unidade_id:
-        eventos_qs = eventos_qs.filter(Q(lote__tanque_atual__unidade_id=unidade_id) | Q(tanque_origem__unidade_id=unidade_id) | Q(tanque_destino__unidade_id=unidade_id))
+        eventos_qs = eventos_qs.filter(
+            Q(tanque_origem__unidade_id=unidade_id) |
+            Q(tanque_destino__unidade_id=unidade_id) |
+            (
+                Q(tanque_origem__isnull=True, tanque_destino__isnull=True) &
+                Q(lote__tanque_atual__unidade_id=unidade_id)
+            )
+        )
     if linha_id:
-        eventos_qs = eventos_qs.filter(Q(lote__tanque_atual__linha_producao_id=linha_id) | Q(tanque_origem__linha_producao_id=linha_id) | Q(tanque_destino__linha_producao_id=linha_id))
+        eventos_qs = eventos_qs.filter(
+            Q(tanque_origem__linha_producao_id=linha_id) |
+            Q(tanque_destino__linha_producao_id=linha_id) |
+            (
+                Q(tanque_origem__isnull=True, tanque_destino__isnull=True) &
+                Q(lote__tanque_atual__linha_producao_id=linha_id)
+            )
+        )
     if fase_id:
         eventos_qs = eventos_qs.filter(lote__fase_producao_id=fase_id)
     if data_str:

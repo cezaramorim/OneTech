@@ -106,10 +106,11 @@ MENU_ITEMS = [
         ]
     },
     {
-        'name': 'Relatórios',
+        'name': 'Relat\u00f3rios',
         'icon': '📊',
         'children': [
             {'name': 'Nota Fiscal', 'url_name': 'relatorios:api_nota_detalhada', 'required_perms': ['relatorios.view_notafiscalrelatorio']},
+            {'name': 'Impress\u00e3o de Relat\u00f3rios', 'url_name': 'relatorios:impressao_relatorios'},
         ]
     },
 ]

@@ -21,7 +21,7 @@ function initGerenciarEventos() {
   function sanitize(v) {
     if (!v) return "";
     const s = String(v).trim().toLowerCase();
-    return (s === "todas" || s === "todos") ? "" : v;
+    return (s === "todas" || s === "todos")  "" : v;
   }
 
   function setLoading() {
@@ -50,7 +50,7 @@ function initGerenciarEventos() {
         <td class="text-end">${it.peso_medio_g}</td>
         <td class="text-end">${it.biomassa_kg}</td>
         <td class="text-end"><input type="number" min="0" class="form-control form-control-sm input-mort" value="${it.qtd_mortalidade || 0}"></td>
-        <td class="text-end">${(it.peso_medio_dia_g ?? "-")}</td>
+        <td class="text-end">${(it.peso_medio_dia_g  "-")}</td>
         <td class="text-end">0.00</td>
       </tr>
     `).join("");
@@ -94,7 +94,7 @@ function initGerenciarEventos() {
       }
 
       const dataJson = await resp.json();
-      const items = Array.isArray(dataJson) ? dataJson : (dataJson.results || []);
+      const items = Array.isArray(dataJson)  dataJson : (dataJson.results || []);
       render(items);
     } catch (err) {
       console.error("Erro JS ao carregar mortalidade:", err);
