@@ -1,7 +1,7 @@
-window.OneTech = window.OneTech || {};
+﻿window.OneTech = window.OneTech || {};
 
 OneTech.EmpresaForm = (function () {
-  const SELECTOR_ROOT = '#form-empresa, #form-empresa-avancada';
+  const SELECTOR_ROOT = '#form-empresa';
   const SELECTOR_TIPO = '[name="tipo_empresa"]';
   const SELECTOR_PF = '#campos-pf';
   const SELECTOR_PJ = '#campos-pj';
@@ -63,4 +63,5 @@ OneTech.EmpresaForm = (function () {
 
   return { init, destroy, SELECTOR_ROOT };
 })();
+
 

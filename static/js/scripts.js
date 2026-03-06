@@ -546,8 +546,7 @@ window.addEventListener('popstate', async () => {
 // --- Módulos de Página Específicos ---
 
 function initListaEmpresas() {
-  const form = document.getElementById('filtro-empresas')
-    || document.getElementById('filtro-empresas-avancadas');
+  const form = document.getElementById('filtro-empresas');
   if (!form || form.dataset.debounced === 'true') return;
   form.dataset.debounced = 'true';
 

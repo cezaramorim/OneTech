@@ -27,10 +27,6 @@ PERMISSOES_PT_BR = {
     "Can change empresa": "Alterar empresa",
     "Can delete empresa": "Excluir empresa",
     "Can view empresa": "Visualizar empresa",
-    "Can add empresa avancada": "Adicionar empresa avançada",
-    "Can change empresa avancada": "Alterar empresa avançada",
-    "Can delete empresa avancada": "Excluir empresa avançada",
-    "Can view empresa avancada": "Visualizar empresa avançada",
 
     # fiscal
     "Can add CFOP": "Adicionar CFOP",

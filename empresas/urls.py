@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from common.api.empresa import FornecedorViewSet
@@ -16,7 +16,7 @@ router.register(r'api/v1/fornecedores', FornecedorViewSet, basename='fornecedore
 urlpatterns = [
     # Categorias
     path('categorias/', views.lista_categorias_view, name='lista_categorias'),
-    path('nova-avancada/categoria/', views.categoria_form_view, name='cadastrar_categoria_avancada_new'),
+    path('categorias/nova/', views.categoria_form_view, name='cadastrar_categoria'),
     path('categorias/<int:pk>/editar/', views.categoria_form_view, name='editar_categoria'),
     path('categorias/excluir-multiplos/', views.excluir_categorias_view, name='excluir_categorias_multiplos'),
 
@@ -30,3 +30,4 @@ urlpatterns = [
 ]
 
 urlpatterns += router.urls
+

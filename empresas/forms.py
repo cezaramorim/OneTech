@@ -18,7 +18,7 @@ class CategoriaEmpresaForm(forms.ModelForm):
 
 
 
-# Formulario oficial do fluxo atual, associado a `empresas_empresaavancada`.
+# Formul?rio oficial do fluxo atual.
 class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
@@ -115,4 +115,5 @@ class EmpresaForm(forms.ModelForm):
         for field in obrigatorios:
             if field in self.fields:
                 self.fields[field].required = True
+
 
