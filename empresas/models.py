@@ -9,7 +9,7 @@ class CategoriaEmpresa(models.Model):
         return self.nome
 
 
-# Modelo oficial do fluxo atual, associado fisicamente a `empresas_empresaavancada`.
+# Modelo oficial do fluxo atual.
 class Empresa(models.Model):
     """Cadastro completo de empresas para o fluxo atual do sistema."""
 
@@ -104,7 +104,7 @@ class Empresa(models.Model):
     categoria = models.ForeignKey(CategoriaEmpresa, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
-        db_table = 'empresas_empresaavancada'
+        db_table = 'empresas_empresa'
         verbose_name = 'Empresa'
         verbose_name_plural = 'Empresas'
 
