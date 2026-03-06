@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from django.urls import reverse_lazy
 from decimal import Decimal
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM
@@ -58,8 +59,20 @@ class ProdutoForm(forms.ModelForm):
         if self.instance.pk and self.instance.data_cadastro:
             self.fields['data_cadastro'].initial = self.instance.data_cadastro.strftime('%d/%m/%Y')
 
-        # ✅ Corrige filtro do fornecedor
-        self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(tipo_empresa__in=["Fornecedor", "Ambos"], status_empresa=True)
+        # Fornecedores validos no fluxo atual: ativos, marcados como fornecedor
+        # ou ja vinculados a produtos existentes. Em edicao, preserva o fornecedor atual.
+        fornecedor_qs = self.fields['fornecedor'].queryset
+        fornecedor_atual_id = getattr(self.instance, 'fornecedor_id', None)
+
+        fornecedor_qs = fornecedor_qs.filter(
+            Q(status_empresa='ativa') & (
+                Q(fornecedor=True)
+                | Q(produtos_fornecidos__isnull=False)
+                | Q(pk=fornecedor_atual_id)
+            )
+        ).distinct()
+
+        self.fields['fornecedor'].queryset = fornecedor_qs.order_by('razao_social', 'nome_fantasia', 'nome', 'id')
 
 class CategoriaProdutoForm(forms.ModelForm):
     class Meta:

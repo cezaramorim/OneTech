@@ -1,26 +1,22 @@
 {% load static %}
 
-<div id="identificador-tela" data-tela="empresa_avancada"></div>
-
-<!-- 🔔 Mensagens instantâneas -->
-
+<div id="identificador-tela" data-tela="empresa_form"></div>
 
 <div class="row justify-content-center">
   <div class="card shadow-sm mx-auto" style="max-width: 1200px;">
     <div class="card shadow-sm">
       <div class="card-body">
+        <h2 class="mb-1 text-center">Cadastro de Empresa</h2>
+        <p class="text-center text-muted mb-4">Preencha os campos abaixo para registrar ou editar uma empresa.</p>
 
-        <!-- 🔹 Título -->
-        <h2 class="mb-1 text-center">Cadastro Avançado de Empresa</h2>
-        <p class="text-center text-muted mb-4">Preencha os campos abaixo para registrar uma nova empresa.</p>
-
-        <form method="post" id="form-empresa-avancada" class="ajax-form" 
-    data-url="{% if empresa %}{% url 'empresas:editar_empresa_avancada' pk=empresa.pk %}{% else %}{% url 'empresas:cadastrar_empresa_avancada' %}{% endif %}" 
-    data-response-type="json"
-    autocomplete="off">
+        <form method="post"
+              id="form-empresa"
+              class="ajax-form"
+              data-url="{% if empresa %}{% url 'empresas:editar_empresa' pk=empresa.pk %}{% else %}{% url 'empresas:cadastrar_empresa' %}{% endif %}"
+              data-response-type="json"
+              autocomplete="off">
           {% csrf_token %}
 
-          <!-- Abas -->
           <ul class="nav nav-tabs mb-3" id="empresaTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="identificacao-tab" data-bs-toggle="tab" data-bs-target="#identificacao" type="button" role="tab">Identificação</button>
@@ -42,16 +38,13 @@
             </li>
           </ul>
 
-          <!-- Conteúdo das Abas -->
           <div class="tab-content" id="empresaTabsContent">
-            <!-- Identificação -->
             <div class="tab-pane fade show active p-3" id="identificacao" role="tabpanel">
               <div class="mb-3">
                 <label for="id_tipo_empresa" class="form-label">Tipo de Empresa</label>
                 {{ form.tipo_empresa }}
               </div>
 
-              <!-- Pessoa Jurídica -->
               <div id="campos-pj" class="d-none">
                 <div class="mb-3"><label for="id_cnpj">CNPJ</label>{{ form.cnpj }}</div>
                 <div class="mb-3"><label for="id_razao_social">Razão Social</label>{{ form.razao_social }}</div>
@@ -61,7 +54,6 @@
                 <div class="mb-3">{{ form.data_abertura.label_tag }} {{ form.data_abertura }}</div>
               </div>
 
-              <!-- Pessoa Física -->
               <div id="campos-pf" class="d-none">
                 <div class="mb-3"><label for="id_cpf">CPF</label>{{ form.cpf }}</div>
                 <div class="mb-3"><label for="id_nome">Nome Completo</label>{{ form.nome }}</div>
@@ -74,7 +66,6 @@
               <div class="mb-3">{{ form.data_cadastro.label_tag }} {{ form.data_cadastro }}</div>
             </div>
 
-            <!-- Endereço -->
             <div class="tab-pane fade p-3" id="endereco" role="tabpanel">
               <div class="mb-3">{{ form.cep.label_tag }} {{ form.cep }}</div>
               <div class="mb-3">{{ form.logradouro.label_tag }} {{ form.logradouro }}</div>
@@ -85,7 +76,6 @@
               <div class="mb-3">{{ form.uf.label_tag }} {{ form.uf }}</div>
             </div>
 
-            <!-- Contato -->
             <div class="tab-pane fade p-3" id="contato" role="tabpanel">
               <div class="mb-3">{{ form.telefone.label_tag }} {{ form.telefone }}</div>
               <div class="mb-3">{{ form.celular.label_tag }} {{ form.celular }}</div>
@@ -94,7 +84,6 @@
               <div class="mb-3">{{ form.site.label_tag }} {{ form.site }}</div>
             </div>
 
-            <!-- Financeiro -->
             <div class="tab-pane fade p-3" id="financeiro" role="tabpanel">
               <div class="mb-3">{{ form.contato_financeiro_nome.label_tag }} {{ form.contato_financeiro_nome }}</div>
               <div class="mb-3">{{ form.contato_financeiro_email.label_tag }} {{ form.contato_financeiro_email }}</div>
@@ -102,7 +91,6 @@
               <div class="mb-3">{{ form.contato_financeiro_celular.label_tag }} {{ form.contato_financeiro_celular }}</div>
             </div>
 
-            <!-- Comercial -->
             <div class="tab-pane fade p-3" id="comercial" role="tabpanel">
               <div class="mb-3">{{ form.contato_comercial_nome.label_tag }} {{ form.contato_comercial_nome }}</div>
               <div class="mb-3">{{ form.contato_comercial_email.label_tag }} {{ form.contato_comercial_email }}</div>
@@ -114,7 +102,6 @@
               <div class="mb-3">{{ form.observacoes.label_tag }} {{ form.observacoes }}</div>
             </div>
 
-            <!-- Fiscal -->
             <div class="tab-pane fade p-3" id="fiscal" role="tabpanel">
               <div class="mb-3">{{ form.ie.label_tag }} {{ form.ie }}</div>
               <div class="mb-3">{{ form.regime_tributario.label_tag }} {{ form.regime_tributario }}</div>
@@ -127,15 +114,13 @@
             <button type="submit" class="btn btn-primary mt-3">Salvar Empresa</button>
           </div>
         </form>
-
       </div>
     </div>
   </div>
 </div>
 
-<!-- Injeção de dados da empresa para JS (apenas em modo de edição) -->
 {% if empresa_data %}
   {{ empresa_data|json_script:"empresa-data" }}
 {% endif %}
 
-<script defer src="{% static 'js/empresa_avancada_form.js' %}"></script>
+<script defer src="{% static 'js/empresa_form.js' %}"></script>

@@ -11,8 +11,8 @@ def definir_data_tela(request):
         tela = "gerenciar-permissoes-grupo-selector"
     elif "/accounts/grupos/" in path:
         tela = "lista-grupos"
-    elif "/empresas/nova-avancada/" in path:
-        tela = "empresa_avancada"
+    elif "/empresas/nova/" in path:
+        tela = "empresa_form"
     else:
         try:
             tela = request.resolver_match.url_name

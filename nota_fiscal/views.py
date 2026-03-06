@@ -336,7 +336,7 @@ def processar_importacao_xml_view(request):
         # Mapeamento de código de produto para categoria para acesso rápido
         categorias_mapeadas = {str(p.get('codigo_produto')): p.get('categoria_id') for p in payload.get('itens_para_revisar', [])}
 
-        # 3. PRÉ-PROCESSAMENTO AGREGADO PARA ATUALIZAÇÃO DE PRODUTOS
+        # 3. PRE-PROCESSAMENTO AGREGADO PARA ATUALIZACAO DE PRODUTOS
         produtos_agregados = {}
         det_list = infNFe.get('det', [])
         if not isinstance(det_list, list):

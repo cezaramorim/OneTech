@@ -34,8 +34,8 @@ MENU_ITEMS = [
         'name': 'Empresas',
         'icon': '🏢',
         'children': [
-            {'name': 'Cadastrar Empresa', 'url_name': 'empresas:cadastrar_empresa_avancada', 'required_perms': ['empresas.add_empresaavancada']},
-            {'name': 'Lista de Empresas', 'url_name': 'empresas:lista_empresas_avancadas', 'required_perms': ['empresas.view_empresaavancada']},
+            {'name': 'Cadastrar Empresa', 'url_name': 'empresas:cadastrar_empresa', 'required_perms': ['empresas.add_empresaavancada']},
+            {'name': 'Lista de Empresas', 'url_name': 'empresas:lista_empresas', 'required_perms': ['empresas.view_empresaavancada']},
             {'name': 'Categorias', 'url_name': 'empresas:lista_categorias', 'required_perms': ['empresas.view_categoriaempresa']},
         ]
     },

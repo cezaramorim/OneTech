@@ -1,5 +1,5 @@
 // ============================================================================
-// ARQUIVO scripts.js - ARQUITETURA AJAX REATORADA (COM BOTÕES DE AÇÃO)
+// ARQUIVO scripts.js - ARQUITETURA AJAX REATORADA (COM BOTOES DE ACAO)
 // ============================================================================
 
 // Aplica o tema salvo no localStorage (antes do paint)
@@ -546,7 +546,8 @@ window.addEventListener('popstate', async () => {
 // --- Módulos de Página Específicos ---
 
 function initListaEmpresas() {
-  const form = document.getElementById('filtro-empresas-avancadas');
+  const form = document.getElementById('filtro-empresas')
+    || document.getElementById('filtro-empresas-avancadas');
   if (!form || form.dataset.debounced === 'true') return;
   form.dataset.debounced = 'true';
 
@@ -639,9 +640,10 @@ function runInitializers() {
             // para garantir a execução correta e eliminar condições de corrida.
         },
         () => {
-            if (window.OneTech && window.OneTech.EmpresaForm) {
-                const root = document.querySelector(OneTech.EmpresaForm.SELECTOR_ROOT);
-                if (root) OneTech.EmpresaForm.init(root);
+            const empresaModule = window.OneTech && window.OneTech.EmpresaForm;
+            if (empresaModule) {
+                const root = document.querySelector(empresaModule.SELECTOR_ROOT);
+                if (root) empresaModule.init(root);
             }
         },
         () => {

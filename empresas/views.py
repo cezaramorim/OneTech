@@ -1,39 +1,20 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.contrib import messages
-from common.messages_utils import get_app_messages
-from .forms import EmpresaForm, CategoriaEmpresaForm
-from .models import Empresa, CategoriaEmpresa
-from django.contrib.auth.decorators import permission_required
-from accounts.utils.decorators import login_required_json
-from django.utils.timezone import now
+import json
+
 from django.contrib.auth import get_user_model
-from common.utils import render_ajax_or_base
+from django.contrib.auth.decorators import permission_required
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
-from django.http import HttpResponse, HttpResponseBadRequest
-from django.template.loader import render_to_string
-from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-import json
-from empresas.forms import EmpresaAvancadaForm
 
-from django.shortcuts import render
-from empresas.models import EmpresaAvancada
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from empresas.models import EmpresaAvancada
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.db.models import Q
-from .models import EmpresaAvancada
+from accounts.utils.decorators import login_required_json
+from common.messages_utils import get_app_messages
 from common.mixins import AjaxListMixin
-
-
-
-
+from common.utils import render_ajax_or_base
+from .forms import CategoriaEmpresaForm, EmpresaForm
+from .models import CategoriaEmpresa, EmpresaAvancada
 
 
 # === Categorias ===
@@ -42,7 +23,7 @@ from common.mixins import AjaxListMixin
 @permission_required('empresas.view_categoriaempresa', raise_exception=True)
 def lista_categorias_view(request):
     categorias = CategoriaEmpresa.objects.all().order_by('nome')
-    return render_ajax_or_base(request, 'partials/nova_empresa/lista_categorias.html', {
+    return render_ajax_or_base(request, 'partials/empresas/lista_categorias.html', {
         'categorias': categorias
     })
 
@@ -61,13 +42,13 @@ def categoria_form_view(request, pk=None):
             message = app_messages.error('Você não tem permissão para adicionar categorias.')
             return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = None
-    
+
     form = CategoriaEmpresaForm(request.POST or None, instance=categoria)
 
     if request.method == 'POST':
         if form.is_valid():
             form.save()
-            
+
             if pk:
                 message = app_messages.success_updated(form.instance)
             else:
@@ -75,19 +56,23 @@ def categoria_form_view(request, pk=None):
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'redirect_url': reverse('empresas:lista_categorias'), 'message': message})
-            else:
-                return redirect('empresas:lista_empresas_avancadas') # Redireciona para a lista de empresas
-        else:
-            # Formulário inválido
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors, 'message': app_messages.error('Erro ao salvar categoria. Verifique os campos.')}, status=400)
-            else:
-                app_messages.error('Erro ao salvar categoria. Verifique os campos.')
+            return redirect('empresas:lista_empresas')
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse(
+                {
+                    'success': False,
+                    'errors': form.errors,
+                    'message': app_messages.error('Erro ao salvar categoria. Verifique os campos.'),
+                },
+                status=400,
+            )
+        app_messages.error('Erro ao salvar categoria. Verifique os campos.')
 
     context = {
         'form': form,
     }
-    return render_ajax_or_base(request, 'partials/nova_empresa/categoria_form.html', context)
+    return render_ajax_or_base(request, 'partials/empresas/categoria_form.html', context)
 
 
 @require_POST
@@ -101,67 +86,56 @@ def excluir_categorias_view(request):
         if not ids:
             message = app_messages.error('Nenhum ID fornecido.')
             return JsonResponse({'success': False, 'message': message}, status=400)
-        
+
         count = len(ids)
         CategoriaEmpresa.objects.filter(pk__in=ids).delete()
-        
-        message = app_messages.success_deleted("Categoria(s)", f"{count} selecionada(s)")
+
+        message = app_messages.success_deleted('Categoria(s)', f'{count} selecionada(s)')
         return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_categorias')})
     except json.JSONDecodeError:
         message = app_messages.error('Requisição inválida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
-    except Exception as e:
-        message = app_messages.error(f'Erro ao excluir categorias: {str(e)}')
+    except Exception as exc:
+        message = app_messages.error(f'Erro ao excluir categorias: {str(exc)}')
         return JsonResponse({'success': False, 'message': message}, status=500)
 
 
-# === Nova Empresa (Unificada: Cadastro e Edição) ===
+# === Empresas (cadastro e edicao) ===
 @login_required_json
 @permission_required('empresas.add_empresaavancada', raise_exception=True)
-def empresa_avancada_form_view(request, pk=None):
+def empresa_form_view(request, pk=None):
     app_messages = get_app_messages(request)
-    """
-    View unificada para cadastrar e editar uma EmpresaAvancada.
-    - Se `pk` for fornecido, edita a empresa existente.
-    - Se `pk` for None, cria uma nova empresa.
-    """
     if pk:
         empresa = get_object_or_404(EmpresaAvancada, pk=pk)
-        # Garante que o usuário tem permissão para alterar esta empresa específica
-        # (Implementar lógica de permissão de objeto se necessário)
     else:
         empresa = None
 
-    # O formulário é instanciado com os dados da requisição (se houver) e a instância da empresa
-    form = EmpresaAvancadaForm(request.POST or None, instance=empresa)
+    form = EmpresaForm(request.POST or None, instance=empresa)
 
     if request.method == 'POST':
         if form.is_valid():
             form.save()
-            
-            # Mensagem de sucesso dinâmica
+
             if pk:
                 message = app_messages.success_updated(form.instance)
             else:
                 message = app_messages.success_created(form.instance)
 
-            # Resposta para requisições AJAX
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': message,
-                    'redirect_url': reverse('empresas:lista_empresas_avancadas')
-                })
-            
-            # Redirecionamento padrão
-            return redirect('empresas:lista_empresas_avancadas')
-        else:
-            # Em caso de formulário inválido, retorna os erros
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                message = app_messages.error('Erro ao salvar empresa. Verifique os campos.')
-                return JsonResponse({'success': False, 'message': message, 'errors': form.errors}, status=400)
-            else:
-                app_messages.error('Erro ao salvar empresa. Verifique os campos.')
+                return JsonResponse(
+                    {
+                        'success': True,
+                        'message': message,
+                        'redirect_url': reverse('empresas:lista_empresas'),
+                    }
+                )
+
+            return redirect('empresas:lista_empresas')
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            message = app_messages.error('Erro ao salvar empresa. Verifique os campos.')
+            return JsonResponse({'success': False, 'message': message, 'errors': form.errors}, status=400)
+        app_messages.error('Erro ao salvar empresa. Verifique os campos.')
 
     context = {
         'form': form,
@@ -169,37 +143,36 @@ def empresa_avancada_form_view(request, pk=None):
         'estados': [
             'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
             'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
         ],
-        'empresa': empresa, # Passa a instância para o template
+        'empresa': empresa,
     }
-    return render_ajax_or_base(request, 'partials/nova_empresa/cadastrar_empresa_avancada.html', context)
+    return render_ajax_or_base(request, 'partials/empresas/cadastrar_empresa.html', context)
 
-
-
-#from empresas.forms import EmpresaAvancadaFiltroForm  # Form opcional para organizar filtros
 
 @login_required_json
-def lista_empresas_avancadas_view(request):
+def lista_empresas_view(request):
     """
-    View que lista empresas avançadas com suporte a:
-    - filtro unificado por termo (razão social ou CNPJ)
+    View que lista empresas com suporte a:
+    - filtro unificado por termo (razao social, nome fantasia, nome, CNPJ ou CPF)
     - filtro por tipo de empresa (PF ou PJ)
     - filtro por status (ativa/inativa)
-    - compatível com AJAX e base.html
+    - compativel com AJAX e base.html
     """
-    # Lógica de filtragem
     empresas = EmpresaAvancada.objects.select_related('categoria').all()
     termo = request.GET.get('termo_empresa', '').strip()
-    tipo = request.GET.get('tipo', '').strip()
+    tipo = request.GET.get('tipo', '').strip().lower()
     status = request.GET.get('status', '').strip()
 
     if termo:
         empresas = empresas.filter(
-            Q(razao_social__icontains=termo) | Q(cnpj__icontains=termo) |
-            Q(nome__icontains=termo) | Q(nome_fantasia__icontains=termo)
+            Q(razao_social__icontains=termo)
+            | Q(cnpj__icontains=termo)
+            | Q(nome__icontains=termo)
+            | Q(nome_fantasia__icontains=termo)
+            | Q(cpf__icontains=termo)
         )
-    if tipo:
+    if tipo in {'pj', 'pf'}:
         empresas = empresas.filter(tipo_empresa=tipo)
     if status:
         status_map = {'ativo': 'ativa', 'inativo': 'inativa'}
@@ -208,27 +181,27 @@ def lista_empresas_avancadas_view(request):
 
     context = {'empresas': empresas, 'request': request}
 
-    # O Mixin lida com a lógica de renderização
     mixin = AjaxListMixin()
-    mixin.template_page = 'partials/nova_empresa/lista_empresas.html'
-    mixin.template_partial = 'partials/nova_empresa/_lista_empresas_table.html'
-    
-    # A função render_list do mixin decide qual template usar
+    mixin.template_page = 'partials/empresas/lista_empresas.html'
+    mixin.template_partial = 'partials/empresas/_lista_empresas_table.html'
     return mixin.render_list(request, context)
-
 
 
 @login_required_json
 @csrf_exempt
 @require_POST
-def atualizar_status_empresa_avancada(request, pk):
+def atualizar_status_empresa(request, pk):
     app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
         empresa = EmpresaAvancada.objects.get(pk=pk)
-        empresa.ativo = data.get('ativo', False)
-        empresa.save()
-        message = app_messages.success_updated(empresa, custom_message=f'Status da empresa "{empresa.razao_social or empresa.nome}" atualizado com sucesso.')
+        ativo = data.get('ativo', False)
+        empresa.status_empresa = 'ativa' if ativo else 'inativa'
+        empresa.save(update_fields=['status_empresa'])
+        message = app_messages.success_updated(
+            empresa,
+            custom_message=f'Status da empresa "{empresa.razao_social or empresa.nome}" atualizado com sucesso.',
+        )
         return JsonResponse({'success': True, 'message': message})
     except Exception:
         message = app_messages.error('Erro ao atualizar o status da empresa.')
@@ -238,7 +211,7 @@ def atualizar_status_empresa_avancada(request, pk):
 @require_POST
 @login_required_json
 @permission_required('empresas.delete_empresaavancada', raise_exception=True)
-def excluir_empresas_avancadas_view(request):
+def excluir_empresas_view(request):
     app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
@@ -246,17 +219,22 @@ def excluir_empresas_avancadas_view(request):
         if not ids:
             message = app_messages.error('Nenhum ID fornecido.')
             return JsonResponse({'success': False, 'message': message}, status=400)
-        
+
         count = len(ids)
         EmpresaAvancada.objects.filter(pk__in=ids).delete()
-        
-        message = app_messages.success_deleted("Empresa(s)", f"{count} selecionada(s)")
-        return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_empresas_avancadas')})
+
+        message = app_messages.success_deleted('Empresa(s)', f'{count} selecionada(s)')
+        return JsonResponse(
+            {
+                'success': True,
+                'message': message,
+                'redirect_url': reverse('empresas:lista_empresas'),
+            }
+        )
     except json.JSONDecodeError:
         message = app_messages.error('Requisição inválida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
-    except Exception as e:
-        message = app_messages.error(f'Erro ao excluir empresas: {str(e)}')
+    except Exception as exc:
+        message = app_messages.error(f'Erro ao excluir empresas: {str(exc)}')
         return JsonResponse({'success': False, 'message': message}, status=500)
-
 

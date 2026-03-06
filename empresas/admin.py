@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import EmpresaAvancada
 
 @admin.register(EmpresaAvancada)
-class EmpresaAvancadaAdmin(admin.ModelAdmin):
+class EmpresaAdmin(admin.ModelAdmin):
     list_display = ('tipo_empresa', 'razao_social', 'nome', 'cpf', 'cnpj', 'email', 'cidade', 'vendedor')
     list_filter = ('tipo_empresa', 'uf', 'cidade')
     search_fields = ('razao_social', 'nome_fantasia', 'nome', 'cpf', 'cnpj', 'email')

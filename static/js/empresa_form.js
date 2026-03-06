@@ -1,10 +1,10 @@
-// static/js/empresa_avancada_form.js
 window.OneTech = window.OneTech || {};
+
 OneTech.EmpresaForm = (function () {
-  const SELECTOR_ROOT = '#form-empresa-avancada';
+  const SELECTOR_ROOT = '#form-empresa, #form-empresa-avancada';
   const SELECTOR_TIPO = '[name="tipo_empresa"]';
-  const SELECTOR_PF   = '#campos-pf';
-  const SELECTOR_PJ   = '#campos-pj';
+  const SELECTOR_PF = '#campos-pf';
+  const SELECTOR_PJ = '#campos-pj';
 
   function toggleSection(root, tipo) {
     const pf = root.querySelector(SELECTOR_PF);
@@ -15,9 +15,13 @@ OneTech.EmpresaForm = (function () {
     pf.classList.toggle('d-none', !showPF);
     pj.classList.toggle('d-none', showPF);
 
-    // Habilita/Desabilita inputs para evitar submissão de dados ocultos
-    pf.querySelectorAll('input,select,textarea').forEach(el => el.disabled = !showPF);
-    pj.querySelectorAll('input,select,textarea').forEach(el => el.disabled = showPF);
+    // Habilita/desabilita inputs para evitar envio de campos ocultos.
+    pf.querySelectorAll('input,select,textarea').forEach((el) => {
+      el.disabled = !showPF;
+    });
+    pj.querySelectorAll('input,select,textarea').forEach((el) => {
+      el.disabled = showPF;
+    });
   }
 
   function readTipo(selectEl) {
@@ -31,30 +35,32 @@ OneTech.EmpresaForm = (function () {
 
     const selectTipo = rootEl.querySelector(SELECTOR_TIPO);
 
-    // Estado inicial (importante para a edição)
+    // Estado inicial, inclusive na edicao.
     toggleSection(rootEl, readTipo(selectTipo));
 
-    // Listener para futuras mudanças
     if (selectTipo) {
       selectTipo.addEventListener('change', () => {
         toggleSection(rootEl, readTipo(selectTipo));
       });
     }
 
-    // Lógica para abas Bootstrap, se aplicável
-    rootEl.closest('.tab-content')?.addEventListener('shown.bs.tab', (ev) => {
-      const target = ev.target?.getAttribute('data-bs-target') || '';
-      if (target && target.includes('identificacao')) {
-        toggleSection(rootEl, readTipo(selectTipo));
-      }
-    }, true);
+    rootEl.closest('.tab-content')?.addEventListener(
+      'shown.bs.tab',
+      (ev) => {
+        const target = ev.target?.getAttribute('data-bs-target') || '';
+        if (target && target.includes('identificacao')) {
+          toggleSection(rootEl, readTipo(selectTipo));
+        }
+      },
+      true,
+    );
   }
 
   function destroy(rootEl) {
     if (!rootEl) return;
     delete rootEl.dataset.initialized;
-    // Lógica para remover listeners se necessário no futuro
   }
 
   return { init, destroy, SELECTOR_ROOT };
 })();
+

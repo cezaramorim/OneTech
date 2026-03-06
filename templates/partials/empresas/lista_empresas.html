@@ -1,37 +1,35 @@
 {% load static %}
 
-<!-- ✅ Identificador da tela para a lógica de botões genérica -->
-<div id="identificador-tela" 
-     data-tela="lista_empresas_avancadas"
-     data-entidade-singular="empresa" 
-     data-entidade-plural="empresas" 
-     data-url-editar="{% url 'empresas:editar_empresa_avancada' 0 %}" 
-     data-url-excluir="{% url 'empresas:excluir_empresas_avancadas_multiplos' %}" 
+<div id="identificador-tela"
+     data-tela="lista_empresas"
+     data-entidade-singular="empresa"
+     data-entidade-plural="empresas"
+     data-url-editar="{% url 'empresas:editar_empresa' 0 %}"
+     data-url-excluir="{% url 'empresas:excluir_empresas_multiplos' %}"
      data-seletor-checkbox=".check-empresa"
      data-seletor-pai="#select-all-empresas">
 </div>
 
-<!-- ✅ Cartão com sombra e largura máxima controlada -->
 <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
   <div class="card-body">
+    <h2 class="mb-4">Empresas</h2>
 
-    <h2 class="mb-4">Empresas Avançadas</h2>
-
-    <form id="filtro-empresas-avancadas"
+    <form id="filtro-empresas"
           class="row g-2 mb-4 ajax-form"
           method="get"
-          action="{% url 'empresas:lista_empresas_avancadas' %}"
-          data-target-container="#empresas-avancadas-tabela-wrapper"
+          action="{% url 'empresas:lista_empresas' %}"
+          data-target-container="#empresas-tabela-wrapper"
           data-response-type="html">
-      <!-- 🔍 Campo de busca unificada por razão social ou CNPJ -->
       <div class="col-md-4">
-        <input type="text" id="busca-empresa" name="termo_empresa" class="form-control"
-               placeholder="Buscar por razão social ou CNPJ"
+        <input type="text"
+               id="busca-empresa"
+               name="termo_empresa"
+               class="form-control"
+               placeholder="Buscar por razão social, nome ou documento"
                value="{{ request.GET.termo_empresa|default_if_none:'' }}"
                autocomplete="off">
       </div>
 
-      <!-- 🔽 Filtro por tipo de empresa -->
       <div class="col-md-3">
         <select name="tipo" class="form-select">
           <option value="">Tipo de Empresa</option>
@@ -40,7 +38,6 @@
         </select>
       </div>
 
-      <!-- 🔽 Filtro por status da empresa -->
       <div class="col-md-3">
         <select name="status" class="form-select">
           <option value="">Status</option>
@@ -49,14 +46,13 @@
         </select>
       </div>
 
-      <!-- 🔁 Botão para limpar os filtros (redireciona à URL base) -->
       <div class="col-md-2 text-end">
-        <a href="{% url 'empresas:lista_empresas_avancadas' %}" class="btn btn-outline-secondary w-100 ajax-link">Limpar</a>
+        <a href="{% url 'empresas:lista_empresas' %}" class="btn btn-outline-secondary w-100 ajax-link">Limpar</a>
       </div>
     </form>
 
     <div class="d-flex justify-content-end gap-2 mb-3">
-      <a href="{% url 'empresas:cadastrar_empresa_avancada' %}" class="btn btn-success ajax-link">
+      <a href="{% url 'empresas:cadastrar_empresa' %}" class="btn btn-success ajax-link">
         <i class="bi bi-plus-circle"></i> Novo
       </a>
       <a id="btn-editar" class="btn btn-primary disabled" role="button">
@@ -67,9 +63,8 @@
       </button>
     </div>
 
-    <div id="empresas-avancadas-tabela-wrapper">
-      {% include 'partials/nova_empresa/_lista_empresas_table.html' %}
+    <div id="empresas-tabela-wrapper">
+      {% include 'partials/empresas/_lista_empresas_table.html' %}
     </div>
-
   </div>
 </div>

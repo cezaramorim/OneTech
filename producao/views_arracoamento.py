@@ -44,7 +44,7 @@ def api_sugestoes_arracoamento(request):
         data_final = datetime.strptime(data_final_str, '%Y-%m-%d').date()
         
         linha_producao_id = request.GET.get('linha_producao_id')
-        # CORREÇÃO: valor padrão vazio para status
+        # CORRECAO: valor padr?o vazio para status
         status_filtro = request.GET.get('status', '')
         logger.info(f"linha_producao_id: {linha_producao_id}, status_filtro: '{status_filtro}'")
         
@@ -125,7 +125,7 @@ def api_sugestoes_arracoamento(request):
                         lote_diario.tanque = tanque_snapshot
                         lote_diario.save(update_fields=['tanque'])
 
-                    # CORREÇÃO: gera sugestão apenas se o filtro for adequado (evita gerar para 'Aprovado')
+                    # CORRECAO: gera sugest?o apenas se o filtro for adequado (evita gerar para 'Aprovado')
                     if status_filtro in ['', 'Todos', 'Pendente']:
                         sugestao_existente = ArracoamentoSugerido.objects.filter(
                             lote_diario=lote_diario
@@ -188,7 +188,7 @@ def api_sugestoes_arracoamento(request):
                     Q(lote_diario__tanque__isnull=True, lote_diario__lote__tanque_atual__linha_producao_id=linha_producao_id)
                 )
 
-            # CORREÇÃO: se status_filtro for vazio ou 'Todos', não filtra por status
+            # CORRECAO: se status_filtro for vazio ou 'Todos', n?o filtra por status
             if status_filtro and status_filtro != 'Todos':
                 sugestoes_qs = sugestoes_qs.filter(status=status_filtro)
 
@@ -244,7 +244,7 @@ def api_sugestoes_arracoamento(request):
             if data_ultimo:
                 data_inicio_pendencia = max(data_ultimo + timedelta(days=1), lote.data_povoamento)
                 # Pend?ncia ? calculada por data:
-                # existe LoteDiario no intervalo cuja data n?o aparece em nenhuma realiza??o.
+                # existe LoteDiario no intervalo cuja data n?o aparece em nenhuma realizaOKo.
                 datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
                     lote_diario__lote=lote,
                     data_evento__gte=data_inicio_pendencia,
@@ -264,7 +264,7 @@ def api_sugestoes_arracoamento(request):
                         'ultima_data': data_ultimo.strftime("%d/%m/%Y")
                     })
             else:
-                # Nunca houve realiza??o antes da data inicial
+                # Nunca houve realizaOKo antes da data inicial
                 data_inicio_pendencia = lote.data_povoamento
                 datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
                     lote_diario__lote=lote,
@@ -642,7 +642,7 @@ def api_bulk_delete_arracoamento_realizado(request):
         if not ids_recebidos:
             return JsonResponse({
                 'success': False, 
-                'message': 'Nenhum item selecionado para exclusao.'
+                'message': 'Nenhum item selecionado para exclus?o.'
             }, status=400)
 
         ids_validos = []
@@ -660,14 +660,14 @@ def api_bulk_delete_arracoamento_realizado(request):
         if not ids_validos:
             return JsonResponse({
                 'success': False,
-                'message': 'Nenhum ID valido foi enviado para exclusao.',
+                'message': 'Nenhum ID v?lido foi enviado para exclus?o.',
                 'invalid_ids': ids_invalidos
             }, status=400)
 
-        if len(ids_validos) > 100:  # Limite de seguran�a
+        if len(ids_validos) > 100:  # Limite de segurança
             return JsonResponse({
                 'success': False, 
-                'message': 'Maximo de 100 itens por operacao em lote.'
+                'message': 'M?ximo de 100 itens por operaOKo em lote.'
             }, status=400)
         
         lotes_afetados = {}
@@ -1075,6 +1075,8 @@ def api_ambiente_upsert(request):
             'success': False,
             'message': str(e)
         }, status=500)
+
+
 
 
 

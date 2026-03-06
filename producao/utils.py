@@ -12,7 +12,7 @@ from .models import Lote, LoteDiario, CurvaCrescimento, CurvaCrescimentoDetalhe,
 from datetime import date, timedelta
 import logging
 
-# Importa as novas funÃ§Ãµes de cÃ¡lculo padronizadas
+# Importa as novas funções de cálculo padronizadas
 from .utils_uom import calc_biomassa_kg, calc_racao_kg, calc_fcr, g_to_kg, q2, q3
 
 def _resolver_tanque_por_evento(lote: Lote, ultimo_evento: EventoManejo):
@@ -41,8 +41,8 @@ def _resolver_tanque_por_evento(lote: Lote, ultimo_evento: EventoManejo):
 
 def construir_resolvedor_tanque_lote(lote: Lote, eventos_ordenados=None):
     """
-    Resolve tanque historico de um lote sem consultas repetidas ao banco.
-    Ideal para loops por data (reprojecao/backfill).
+    Resolve tanque hist?rico de um lote sem consultas repetidas ao banco.
+    Ideal para loops por data (reprojeOKo/backfill).
     """
     if eventos_ordenados is None:
         eventos_ordenados = list(
@@ -67,8 +67,8 @@ def construir_resolvedor_tanque_lote(lote: Lote, eventos_ordenados=None):
 
 def obter_tanque_lote_em_data(lote: Lote, data_referencia: date):
     """
-    Resolve o tanque historico do lote na data informada.
-    Prioriza os dados do proprio evento e usa tanque_atual apenas como fallback legado.
+    Resolve o tanque hist?rico do lote na data informada.
+    Prioriza os dados do pr?prio evento e usa tanque_atual apenas como fallback legado.
     """
     ultimo_evento = (
         EventoManejo.objects
@@ -83,8 +83,8 @@ def obter_tanque_lote_em_data(lote: Lote, data_referencia: date):
 
 class AjaxFormMixin:
     """
-    Mixin para CreateView e UpdateView que lida com submissÃµes de formulÃ¡rio
-    via AJAX, retornando JSON, ou redirecionando em requisiÃ§Ãµes normais.
+    Mixin para CreateView e UpdateView que lida com submissões de formulário
+    via AJAX, retornando JSON, ou redirecionando em requisições normais.
     """
     success_url = None
 
@@ -94,7 +94,7 @@ class AjaxFormMixin:
         
         if hasattr(self, 'object') and self.object.pk: # Se o objeto foi salvo (update)
             message = app_messages.success_updated(self.object)
-        else: # Se Ã© um novo objeto (create)
+        else: # Se é um novo objeto (create)
             message = app_messages.success_created(self.object)
 
         if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -116,7 +116,7 @@ class AjaxFormMixin:
 
 class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """
-    View genÃ©rica para exclusÃ£o em massa de objetos via POST com JSON.
+    View genérica para exclusão em massa de objetos via POST com JSON.
     Espera uma lista de IDs.
     """
     model = None
@@ -130,14 +130,14 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
             data = json.loads(request.body)
             ids = data.get('ids', [])
             if not ids:
-                message = app_messages.error('Nenhum item selecionado para exclusÃ£o.')
+                message = app_messages.error('Nenhum item selecionado para exclusão.')
                 return JsonResponse({'success': False, 'message': message}, status=400)
 
             objects_to_delete = self.model.objects.filter(pk__in=ids)
             deleted_names = [str(obj) for obj in objects_to_delete]
 
             deleted_count = 0
-            # Itera para garantir que os sinais de exclusÃ£o (post_delete) sejam disparados
+            # Itera para garantir que os sinais de exclusão (post_delete) sejam disparados
             for obj in objects_to_delete:
                 obj.delete()
                 deleted_count += 1
@@ -149,7 +149,7 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     message_detail = f"'{', '.join(deleted_names)}'"
                 message = app_messages.success_deleted(self.model._meta.verbose_name_plural, message_detail)
             else:
-                message = app_messages.error('Nenhum item foi excluÃ­do.')
+                message = app_messages.error('Nenhum item foi excluído.')
             
             return JsonResponse({
                 'success': True, 
@@ -157,7 +157,7 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 'redirect_url': str(reverse_lazy(self.success_url_name))
             })
         except json.JSONDecodeError:
-            message = app_messages.error('RequisiÃ§Ã£o JSON invÃ¡lida.')
+            message = app_messages.error('Requisição JSON inválida.')
             return JsonResponse({'success': False, 'message': message}, status=400)
         except Exception as e:
             message = app_messages.error(f'Ocorreu um erro inesperado: {e}')
@@ -166,10 +166,10 @@ class BulkDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
 def projetar_ciclo_de_vida_lote(lote: Lote):
     """
-    Cria ou recria a projeÃ§Ã£o de vida completa para um lote, usando a TCA da curva como fonte da verdade para o crescimento.
+    Cria ou recria a projeção de vida completa para um lote, usando a TCA da curva como fonte da verdade para o crescimento.
     """
     if not lote.curva_crescimento:
-        raise ValueError("Lote nÃ£o possui curva de crescimento associada.")
+        raise ValueError("Lote não possui curva de crescimento associada.")
 
     LoteDiario.objects.filter(lote=lote, data_evento__gte=lote.data_povoamento).delete()
 
@@ -246,7 +246,7 @@ def projetar_ciclo_de_vida_lote(lote: Lote):
 
 def get_detalhe_curva_para_peso(curva: CurvaCrescimento, peso_em_g: Decimal):
     """
-    Encontra o detalhe da curva de crescimento correspondente a um peso especÃ­fico em gramas.
+    Encontra o detalhe da curva de crescimento correspondente a um peso específico em gramas.
     """
     if not curva:
         return None
@@ -265,26 +265,26 @@ def get_detalhe_curva_para_peso(curva: CurvaCrescimento, peso_em_g: Decimal):
 
 def sugerir_racao_para_dia(lote_diario: LoteDiario) -> dict:
     """
-    Gera uma sugestÃ£o de arraÃ§oamento para um LoteDiario especÃ­fico,
+    Gera uma sugestão de arraçoamento para um LoteDiario específico,
     usando a biomassa inicial do dia como base.
     """
     lote = lote_diario.lote
-    logging.info(f"[SUGESTÃƒO] Lote {lote.id}, Dia {lote_diario.data_evento}: Iniciando.")
+    logging.info(f"[SUGESTAO] Lote {lote.id}, Dia {lote_diario.data_evento}: Iniciando.")
 
-    # ValidaÃ§Ãµes essenciais
+    # Validações essenciais
     if not lote.ativo:
-        return {'error': 'Lote estÃ¡ inativo.'}
+        return {'error': 'Lote está inativo.'}
     if not lote.curva_crescimento:
         return {'error': 'Lote sem curva de crescimento.'}
     if lote_diario.quantidade_inicial is None or lote_diario.quantidade_inicial <= 0:
-        return {'error': 'Quantidade inicial do dia Ã© zero ou invÃ¡lida.'}
+        return {'error': 'Quantidade inicial do dia é zero ou inválida.'}
     if lote_diario.peso_medio_inicial is None or lote_diario.peso_medio_inicial <= 0:
-        return {'error': 'Peso mÃ©dio inicial do dia Ã© invÃ¡lido.'}
+        return {'error': 'Peso médio inicial do dia é inválido.'}
 
     peso_base_g = lote_diario.peso_medio_inicial
     detalhe_curva = get_detalhe_curva_para_peso(lote.curva_crescimento, peso_base_g)
     
-    logging.info(f"[SUGESTÃƒO] Lote {lote.id}: Peso base do dia: {peso_base_g}g. Detalhe curva: {detalhe_curva}")
+    logging.info(f"[SUGESTAO] Lote {lote.id}: Peso base do dia: {peso_base_g}g. Detalhe curva: {detalhe_curva}")
 
     if not detalhe_curva:
         return {'error': f'Nenhum ponto na curva para o peso de {peso_base_g}g.'}
@@ -293,15 +293,15 @@ def sugerir_racao_para_dia(lote_diario: LoteDiario) -> dict:
     produto_racao = detalhe_curva.racao
 
     if not percentual_pv or percentual_pv <= 0:
-        return {'error': f'Ponto da curva para {peso_base_g}g sem % arraÃ§oamento.'}
+        return {'error': f'Ponto da curva para {peso_base_g}g sem % arraçoamento.'}
     if not produto_racao:
-        return {'error': f'Ponto da curva para {peso_base_g}g sem raÃ§Ã£o definida.'}
+        return {'error': f'Ponto da curva para {peso_base_g}g sem ração definida.'}
 
-    # Usa a biomassa inicial do dia, que jÃ¡ foi calculada corretamente.
+    # Usa a biomassa inicial do dia, que já foi calculada corretamente.
     biomassa_kg = lote_diario.biomassa_inicial
     quantidade_sugerida_kg = calc_racao_kg(biomassa_kg, percentual_pv)
     
-    logging.info(f"[SUGESTÃƒO] Lote {lote.id}: Biomassa inicial do dia: {biomassa_kg}kg, RaÃ§Ã£o Sugerida: {quantidade_sugerida_kg}kg")
+    logging.info(f"[SUGESTÃO] Lote {lote.id}: Biomassa inicial do dia: {biomassa_kg}kg, Ração Sugerida: {quantidade_sugerida_kg}kg")
 
     return {
         'lote': lote,
@@ -314,15 +314,15 @@ def sugerir_racao_para_dia(lote_diario: LoteDiario) -> dict:
 
 def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_override: Decimal = None, peso_base_g_override: Decimal = None, ultimo_ld_override: LoteDiario = None):
     """
-    Recalcula a projeÃ§Ã£o de vida de um lote a partir de uma data, usando o Ãºltimo estado conhecido.
-    Pode receber quantidade_base_override e peso_base_g_override para forÃ§ar o ponto de partida.
-    Pode receber ultimo_ld_override para forÃ§ar o LoteDiario do dia anterior.
+    Recalcula a projeção de vida de um lote a partir de uma data, usando o último estado conhecido.
+    Pode receber quantidade_base_override e peso_base_g_override para forçar o ponto de partida.
+    Pode receber ultimo_ld_override para forçar o LoteDiario do dia anterior.
     """
     if not lote.curva_crescimento:
         return
 
-    # Encontra o Ãºltimo estado conhecido (dia anterior ao inÃ­cio da reprojeÃ§Ã£o)
-    # Usa o override se fornecido, caso contrÃ¡rio, busca no banco de dados.
+    # Encontra o último estado conhecido (dia anterior ao início da reprojeção)
+    # Usa o override se fornecido, caso contrário, busca no banco de dados.
     ultimo_ld = ultimo_ld_override
     if not ultimo_ld and (quantidade_base_override is None or peso_base_g_override is None):
         ultimo_ld = LoteDiario.objects.filter(
@@ -331,32 +331,32 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
         ).order_by('-data_evento').first()
 
     if ultimo_ld:
-        # Garante que o ultimo_ld estÃ¡ com os dados reais mais recentes antes de usÃ¡-lo como base.
+        # Garante que o ultimo_ld está com os dados reais mais recentes antes de usá-lo como base.
         recalcular_lote_diario_real(ultimo_ld, commit=True)
 
         # RECARREGA o objeto do banco de dados para garantir que temos os dados mais frescos
-        # apÃ³s o recÃ¡lculo, evitando problemas com objetos 'stale' em memÃ³ria.
+        # após o recálculo, evitando problemas com objetos 'stale' em memória.
         ultimo_ld.refresh_from_db()
 
-        # A base mais precisa Ã© o dado real. Se nÃ£o existir, usa o projetado do dia anterior.
+        # A base mais precisa é o dado real. Se não existir, usa o projetado do dia anterior.
         peso_base_g = ultimo_ld.peso_medio_real if ultimo_ld.peso_medio_real is not None else ultimo_ld.peso_medio_projetado
         quantidade_base = ultimo_ld.quantidade_real if ultimo_ld.quantidade_real is not None else ultimo_ld.quantidade_projetada
     else:
-        # Se nÃ£o hÃ¡ histÃ³rico, usa os dados iniciais do prÃ³prio lote.
+        # Se não há histórico, usa os dados iniciais do próprio lote.
         peso_base_g = lote.peso_medio_inicial
         quantidade_base = lote.quantidade_inicial
 
-    # Aplica os overrides se fornecidos, garantindo que a reprojeÃ§Ã£o comece do ponto desejado.
+    # Aplica os overrides se fornecidos, garantindo que a reprojeção comece do ponto desejado.
     if quantidade_base_override is not None:
         quantidade_base = quantidade_base_override
     if peso_base_g_override is not None:
         peso_base_g = peso_base_g_override
     
-    # Fallback final para garantir que as bases nÃ£o sejam nulas.
+    # Fallback final para garantir que as bases não sejam nulas.
     if peso_base_g is None: peso_base_g = lote.peso_medio_inicial
     if quantidade_base is None: quantidade_base = lote.quantidade_inicial
 
-    logging.debug(f"DEBUG REPROJETAR: ApÃ³s overrides/fallback - quantidade_base: {quantidade_base}, peso_base_g: {peso_base_g}")
+    logging.debug(f"DEBUG REPROJETAR: Após overrides/fallback - quantidade_base: {quantidade_base}, peso_base_g: {peso_base_g}")
     
     qs = LoteDiario.objects.filter(lote=lote, data_evento__gte=data_de_inicio)
 
@@ -368,7 +368,7 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
         sugestao__isnull=True
     ).delete()
 
-    # Pega as datas que jÃ¡ existem para nÃ£o sobrescrevÃª-las
+    # Pega as datas que já existem para não sobrescrevê-las
     # REMOVIDO: datas_existentes = set(LoteDiario.objects.filter(lote=lote, data_evento__gte=data_de_inicio).values_list('data_evento', flat=True))
 
     detalhes_curva = lote.curva_crescimento.detalhes.order_by('periodo_semana')
@@ -388,7 +388,7 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
     peso_corrente_g = peso_base_g
     tanque_resolver = construir_resolvedor_tanque_lote(lote)
 
-    logging.debug(f"DEBUG REPROJETAR: InÃ­cio do loop - data_corrente: {data_corrente}, quantidade_projetada_corrente: {quantidade_projetada_corrente}, peso_corrente_g: {peso_corrente_g}")
+    logging.debug(f"DEBUG REPROJETAR: Início do loop - data_corrente: {data_corrente}, quantidade_projetada_corrente: {quantidade_projetada_corrente}, peso_corrente_g: {peso_corrente_g}")
 
     # REMOVIDO: registros_lote_diario = []
 
@@ -398,12 +398,12 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
         mortalidade_diaria_perc = q3(detalhe.mortalidade_presumida_perc / Decimal(detalhe.periodo_dias) if detalhe.periodo_dias > 0 else Decimal('0'))
 
         for _ in range(detalhe.periodo_dias):
-            logging.debug(f"DEBUG REPROJETAR: Dentro do loop diÃ¡rio - data: {data_corrente}, Qtd Proj Corrente: {quantidade_projetada_corrente}, Peso Proj Corrente: {peso_corrente_g}")
+            logging.debug(f"DEBUG REPROJETAR: Dentro do loop diário - data: {data_corrente}, Qtd Proj Corrente: {quantidade_projetada_corrente}, Peso Proj Corrente: {peso_corrente_g}")
             # --- MODIFIED LOGIC: Tenta obter ou cria o LoteDiario e atualiza campos projetados ---
-            # NÃ£o pula mais a criaÃ§Ã£o/atualizaÃ§Ã£o se a data jÃ¡ existe.
+            # Não pula mais a criação/atualização se a data já existe.
             # Apenas atualiza os campos projetados do registro existente.
             
-            # CÃLCULOS PADRONIZADOS
+            # CÁLCULOS PADRONIZADOS
             biomassa_inicio_dia_kg = calc_biomassa_kg(quantidade_projetada_corrente, peso_corrente_g)
             racao_sugerida_kg = calc_racao_kg(biomassa_inicio_dia_kg, detalhe.arracoamento_biomassa_perc)
 
@@ -418,9 +418,9 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
             mortalidade_do_dia = quantidade_projetada_corrente * (mortalidade_diaria_perc / 100)
             quantidade_final_dia = quantidade_projetada_corrente - mortalidade_do_dia
             
-            # CORREÃ‡ÃƒO: Apura eventos de manejo que ocorreram no dia (entradas/saÃ­das)
+            # CORRECAO: Apura eventos de manejo que ocorreram no dia (entradas/sa?das)
             # e ajusta a quantidade projetada para refletir a realidade do dia antes de salvar.
-            # Isso torna a projeÃ§Ã£o "inteligente" a eventos histÃ³ricos.
+            # Isso torna a projeção "inteligente" a eventos históricos.
             eventos_do_dia = EventoManejo.objects.filter(lote=lote, data_evento=data_corrente)
 
             for ev in eventos_do_dia:
@@ -428,7 +428,7 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
                 t = ev.tipo_evento.nome.lower() if ev.tipo_evento else ''
                 mov = (ev.tipo_movimento or '').lower()
 
-                # âœ… nÃ£o duplicar povoamento do dia inicial (jÃ¡ estÃ¡ no lote.quantidade_inicial)
+                # ✅ não duplicar povoamento do dia inicial (já está no lote.quantidade_inicial)
                 if data_corrente == lote.data_povoamento and t == 'povoamento':
                     continue
 
@@ -436,13 +436,13 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
                 if mov == 'entrada' and t in ('povoamento', 'classificacao', 'transferencia'):
                     quantidade_final_dia += q
 
-                # SAÃDAS que afetam estoque
-                elif mov in ('saida', 'saÃ­da') and t in ('mortalidade', 'despesca', 'transferencia'):
+                # SAÍDAS que afetam estoque
+                elif mov in ('saida', 'saída') and t in ('mortalidade', 'despesca', 'transferencia'):
                     quantidade_final_dia -= q
 
             biomassa_final_dia_kg = calc_biomassa_kg(quantidade_final_dia, peso_final_dia_g)
             gpt_projetado_valor_g = peso_final_dia_g - lote.peso_medio_inicial
-            # FIM CÃLCULOS PADRONIZADOS
+            # FIM CÁLCULOS PADRONIZADOS
 
             ld_obj, created = LoteDiario.objects.get_or_create(
                 lote=lote,
@@ -463,7 +463,7 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
                 }
             )
 
-            # Se o objeto jÃ¡ existia, atualiza os campos projetados.
+            # Se o objeto já existia, atualiza os campos projetados.
             if not created:
                 ld_obj.tanque = tanque_resolver(data_corrente)
                 ld_obj.quantidade_inicial = quantidade_projetada_corrente
@@ -483,7 +483,7 @@ def reprojetar_ciclo_de_vida(lote: Lote, data_de_inicio: date, quantidade_base_o
                     'gpd_projetado', 'gpt_projetado', 'racao_sugerida', 'racao_sugerida_kg',
                     'conversao_alimentar_projetada'
                 ])
-            logging.debug(f"DEBUG REPROJETAR: ApÃ³s save/update - data: {data_corrente}, Qtd Proj Salva: {ld_obj.quantidade_projetada}, Peso Proj Salvo: {ld_obj.peso_medio_projetado}")
+            logging.debug(f"DEBUG REPROJETAR: Após save/update - data: {data_corrente}, Qtd Proj Salva: {ld_obj.quantidade_projetada}, Peso Proj Salvo: {ld_obj.peso_medio_projetado}")
             # --- FIM MODIFIED LOGIC ---
 
             peso_corrente_g = peso_final_dia_g
@@ -503,17 +503,17 @@ def _apurar_quantidade_real_no_dia(lote_diario: LoteDiario) -> Decimal:
     entradas = Decimal('0')
     saidas   = Decimal('0')
 
-    # A data de povoamento do lote, para comparaÃ§Ã£o.
+    # A data de povoamento do lote, para comparação.
     data_povoamento_lote = lote.data_povoamento
 
     for ev in eventos:
         q = Decimal(str(ev.quantidade or 0))
-        # CORREÃ‡ÃƒO: Acessa o atributo .nome do objeto ForeignKey
+        # CORRECAO: Acessa o atributo .nome do objeto ForeignKey
         t = ev.tipo_evento.nome.lower() if ev.tipo_evento else ''
         mov = (ev.tipo_movimento or '').lower()
 
-        # CORREÃ‡ÃƒO: No dia do povoamento inicial do lote, o evento 'Povoamento'
-        # nÃ£o deve ser somado, pois ele jÃ¡ estÃ¡ refletido na 'quantidade_inicial'.
+        # CORRECAO: No dia do povoamento inicial do lote, o evento 'Povoamento'
+        # não deve ser somado, pois ele já está refletido na 'quantidade_inicial'.
         if data == data_povoamento_lote and t == 'povoamento':
             continue
 
@@ -523,7 +523,7 @@ def _apurar_quantidade_real_no_dia(lote_diario: LoteDiario) -> Decimal:
         elif t == 'transferencia' and mov == 'entrada':
             entradas += q
 
-        # SAÃDAS
+        # SAÍDAS
         elif t in ('mortalidade', 'despesca') or (t == 'transferencia' and mov == 'saida'):
             saidas += q
 
@@ -545,16 +545,16 @@ def _clamp_decimal(x, mn, mx):
 
 def fator_resposta_biologica(p: Decimal) -> Decimal:
     """
-    FunÃ§Ã£o nÃ£o-linear de resposta de crescimento ao % da raÃ§Ã£o.
+    Função não-linear de resposta de crescimento ao % da ração.
     p = racao_real / racao_base (base = sugerida_ajustada ou sugerida)
 
-    FÃ³rmula: 2p / (1+p)
-    - SaturaÃ§Ã£o para p > 1
+    Fórmula: 2p / (1+p)
+    - Saturação para p > 1
     - Queda acelerada para p < 1
 
-    Clamp aplicado para evitar projeÃ§Ãµes irreais:
-      min 0.50 (restriÃ§Ã£o forte)
-      max 1.05 (acima de 110% quase nÃ£o cresce mais na prÃ¡tica)
+    Clamp aplicado para evitar projeções irreais:
+      min 0.50 (restrição forte)
+      max 1.05 (acima de 110% quase não cresce mais na prática)
     """
     if p <= Decimal('0'):
         return Decimal('0.50')
@@ -565,9 +565,9 @@ def fator_resposta_biologica(p: Decimal) -> Decimal:
 
 def obter_base_sugerida(ld: LoteDiario) -> Decimal:
     """
-    Base para comparaÃ§Ã£o e cÃ¡lculo:
+    Base para comparação e cálculo:
     - se existir sugerida ajustada: usa ela
-    - senÃ£o: usa sugerida base
+    - senão: usa sugerida base
     """
     if ld.racao_sugerida_ajustada_kg is not None and ld.racao_sugerida_ajustada_kg > 0:
         return Decimal(ld.racao_sugerida_ajustada_kg)
@@ -583,25 +583,25 @@ from .models import ArracoamentoRealizado, LoteDiario # LoteDiario already impor
 
 def recalcular_lote_diario_real(ld: LoteDiario, user=None, commit=True):
     """
-    Recalcula todas as mÃ©tricas reais de um LoteDiario com base nos ArracoamentoRealizado do dia.
-    Esta Ã© a fonte Ãºnica de verdade para o cÃ¡lculo do FCR nÃ£o-linear.
-    O parÃ¢metro 'commit' controla se as alteraÃ§Ãµes sÃ£o salvas no banco.
+    Recalcula todas as métricas reais de um LoteDiario com base nos ArracoamentoRealizado do dia.
+    Esta é a fonte única de verdade para o cálculo do FCR não-linear.
+    O parâmetro 'commit' controla se as alterações são salvas no banco.
     """
-    # --- CorreÃ§Ã£o 3.2 & 4.B: Hardening e consistÃªncia ---
+    # --- Correção 3.2 & 4.B: Hardening e consistência ---
 
-    # Garante que a FK da raÃ§Ã£o estÃ¡ setada, usando o Ãºltimo lanÃ§amento como fonte da verdade.
+    # Garante que a FK da ração está setada, usando o último lançamento como fonte da verdade.
     ultimo_real = ld.realizacoes.order_by("-data_realizacao", "-data_lancamento").first()
     ld.racao_realizada = ultimo_real.produto_racao if ultimo_real and getattr(ultimo_real, 'produto_racao_id', None) else None
 
-    # Garante que a quantidade real do dia estÃ¡ apurada, caso ainda nÃ£o esteja.
+    # Garante que a quantidade real do dia está apurada, caso ainda não esteja.
     if ld.quantidade_real is None:
         ld.quantidade_real = _apurar_quantidade_real_no_dia(ld)
 
-    # 1. racao_realizada_kg = soma das realizaÃ§Ãµes do dia
+    # 1. racao_realizada_kg = soma das realizações do dia
     total_real_do_dia = ld.realizacoes.aggregate(s=Sum('quantidade_kg'))['s'] or Decimal('0')
     ld.racao_realizada_kg = total_real_do_dia
 
-    # 2. base_sugerida = ajustada se existir senÃ£o base
+    # 2. base_sugerida = ajustada se existir senão base
     base_sugerida = obter_base_sugerida(ld)
 
     # 3. p = real/base
@@ -613,18 +613,18 @@ def recalcular_lote_diario_real(ld: LoteDiario, user=None, commit=True):
     # 5. Evita "mismatch" no ganho ideal, recalculando com base na quantidade consistente.
     qtd = Decimal(ld.quantidade_real or ld.quantidade_inicial or 0)
 
-    # Busca o peso mÃ©dio real do dia anterior para usar como base para o cÃ¡lculo do crescimento.
+    # Busca o peso médio real do dia anterior para usar como base para o cálculo do crescimento.
     ld_anterior = LoteDiario.objects.filter(lote=ld.lote, data_evento=ld.data_evento - timedelta(days=1)).first()
     if ld_anterior and ld_anterior.peso_medio_real is not None:
         peso_ini_real_do_dia = ld_anterior.peso_medio_real
     else:
-        # Se nÃ£o hÃ¡ dia anterior ou peso real, usa o peso mÃ©dio inicial do lote como fallback.
+        # Se não há dia anterior ou peso real, usa o peso médio inicial do lote como fallback.
         peso_ini_real_do_dia = ld.lote.peso_medio_inicial
 
     # O peso projetado para o final do dia, usando o peso inicial real como fallback.
-    # peso_proj = Decimal(ld.peso_medio_projetado or peso_ini_real_do_dia) # Removido, nÃ£o serÃ¡ mais usado diretamente aqui
+    # peso_proj = Decimal(ld.peso_medio_projetado or peso_ini_real_do_dia) # Removido, não será mais usado diretamente aqui
 
-    # --- NOVO CÃLCULO PARA ganho_ideal_total_kg ---
+    # --- NOVO CÁLCULO PARA ganho_ideal_total_kg ---
     # Calcula o ganho ideal com base na curva de crescimento para o peso real atual,
     # tornando-o independente dos valores projetados do LoteDiario.
     curva = ld.lote.curva_crescimento
@@ -632,9 +632,9 @@ def recalcular_lote_diario_real(ld: LoteDiario, user=None, commit=True):
     if curva:
         detalhe_curva = get_detalhe_curva_para_peso(curva, peso_ini_real_do_dia)
         if detalhe_curva and detalhe_curva.gpd > 0:
-            gpd_ideal_g = detalhe_curva.gpd # GPD da curva Ã© por peixe
+            gpd_ideal_g = detalhe_curva.gpd # GPD da curva é por peixe
             ganho_ideal_total_kg = (gpd_ideal_g * qtd) / Decimal('1000') # Converte para kg total
-    # --- FIM NOVO CÃLCULO ---
+    # --- FIM NOVO CÁLCULO ---
 
     # Old lines (removidas):
     # biom_ini = calc_biomassa_kg(qtd, peso_ini_real_do_dia)
@@ -650,29 +650,29 @@ def recalcular_lote_diario_real(ld: LoteDiario, user=None, commit=True):
         ld.peso_medio_real = peso_ini_real_do_dia + ganho_real_por_peixe_g
         ld.gpd_real = ganho_real_por_peixe_g
     else:
-        ld.peso_medio_real = peso_ini_real_do_dia # MantÃ©m o peso do dia anterior se nÃ£o houver peixes
+        ld.peso_medio_real = peso_ini_real_do_dia # Mantém o peso do dia anterior se não houver peixes
         ld.gpd_real = Decimal('0')
 
     # 8. biomassa_real = quantidade * peso_medio_real / 1000
     ld.biomassa_real = calc_biomassa_kg(qtd, ld.peso_medio_real)
 
-    # 9. FCR_real = real / ganho_real com trava de mÃ­nimo
+    # 9. FCR_real = real / ganho_real com trava de mínimo
     if ganho_real_total_kg > Decimal('0.001'):
         ld.conversao_alimentar_real = total_real_do_dia / ganho_real_total_kg
     else:
         ld.conversao_alimentar_real = None
 
-    # GPT (ganho por peixe no perÃ­odo do dia) = peso_final - peso_inicial
+    # GPT (ganho por peixe no período do dia) = peso_final - peso_inicial
     ld.gpt_real = (Decimal(ld.peso_medio_real or 0) - peso_ini_real_do_dia)
 
-    # Atualiza usuÃ¡rio e timestamps
+    # Atualiza usuário e timestamps
     if user:
-        if not ld.usuario_lancamento: # SÃ³ atribui se nÃ£o houver um
+        if not ld.usuario_lancamento: # Só atribui se não houver um
             ld.usuario_lancamento = user
         ld.usuario_edicao = user
         ld.data_edicao = timezone.now()
 
-    # Salva todas as alteraÃ§Ãµes no LoteDiario, incluindo os campos de base para consistÃªncia.
+    # Salva todas as alterações no LoteDiario, incluindo os campos de base para consistência.
     if commit:
         ld.save(update_fields=[
             'racao_realizada',
@@ -697,12 +697,12 @@ from .models import ParametroAmbientalDiario # Import needed for calcular_fator_
 
 def fator_od(od_mg_l: Decimal | None) -> Decimal:
     """
-    Fator por oxigÃªnio dissolvido (mg/L).
-    Regras simples e seguras (tilÃ¡pia):
+    Fator por oxigênio dissolvido (mg/L).
+    Regras simples e seguras (tilápia):
     - >= 5.0: 1.00
-    - 4.0â€“4.99: 0.95
-    - 3.0â€“3.99: 0.85
-    - 2.0â€“2.99: 0.70
+    - 4.0–4.99: 0.95
+    - 3.0–3.99: 0.85
+    - 2.0–2.99: 0.70
     - < 2.0: 0.50
     """
     if od_mg_l is None:
@@ -722,12 +722,12 @@ def fator_od(od_mg_l: Decimal | None) -> Decimal:
 
 def fator_temp(temp_c: Decimal | None) -> Decimal:
     """
-    Fator por temperatura (Â°C).
-    Regras simples e seguras (tilÃ¡pia):
-    - 26â€“30: 1.00 (faixa Ã³tima)
-    - 24â€“25.99 ou 30.01â€“32: 0.95
-    - 22â€“23.99 ou 32.01â€“34: 0.85
-    - 20â€“21.99 ou 34.01â€“36: 0.70
+    Fator por temperatura (°C).
+    Regras simples e seguras (tilápia):
+    - 26–30: 1.00 (faixa ótima)
+    - 24–25.99 ou 30.01–32: 0.95
+    - 22–23.99 ou 32.01–34: 0.85
+    - 20–21.99 ou 34.01–36: 0.70
     - fora disso: 0.50
     """
     if temp_c is None:
@@ -747,8 +747,8 @@ def fator_temp(temp_c: Decimal | None) -> Decimal:
 
 def calcular_fator_ambiente(param_amb) -> dict:
     """
-    Retorna snapshot de ambiente + fator_ambiente (clamp 0.50â€“1.10).
-    param_amb Ã© ParametroAmbientalDiario (ou None).
+    Retorna snapshot de ambiente + fator_ambiente (clamp 0.50–1.10).
+    param_amb é ParametroAmbientalDiario (ou None).
     """
     if not param_amb:
         return {
