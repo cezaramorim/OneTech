@@ -111,10 +111,3 @@ class Empresa(models.Model):
     def __str__(self):
         return self.razao_social or self.nome or 'Empresa'
 
-
-# Proxy temporario de compatibilidade para imports e referencias historicas.
-class EmpresaAvancada(Empresa):
-    class Meta:
-        proxy = True
-        verbose_name = 'Empresa'
-        verbose_name_plural = 'Empresas'

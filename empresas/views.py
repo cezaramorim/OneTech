@@ -102,7 +102,7 @@ def excluir_categorias_view(request):
 
 # === Empresas (cadastro e edicao) ===
 @login_required_json
-@permission_required('empresas.add_empresaavancada', raise_exception=True)
+@permission_required('empresas.add_empresa', raise_exception=True)
 def empresa_form_view(request, pk=None):
     app_messages = get_app_messages(request)
     if pk:
@@ -210,7 +210,7 @@ def atualizar_status_empresa(request, pk):
 
 @require_POST
 @login_required_json
-@permission_required('empresas.delete_empresaavancada', raise_exception=True)
+@permission_required('empresas.delete_empresa', raise_exception=True)
 def excluir_empresas_view(request):
     app_messages = get_app_messages(request)
     try:

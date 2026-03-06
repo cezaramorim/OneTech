@@ -192,7 +192,7 @@ NOMES_APPS_PT_BR = {
 
 NOMES_ENTIDADES_PT_BR = {
     'groupprofile': 'Perfil de grupo',
-    'user': 'Usu?rio',
+    'user': 'Usuário',
     'tenant': 'Tenant',
 }
 
@@ -258,5 +258,6 @@ def ordem_acao_permissao(codename):
         'delete': 3,
     }
     return ordem.get(acao, 99)
+
 
 
