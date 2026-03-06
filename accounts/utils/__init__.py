@@ -1,4 +1,4 @@
-# accounts/utils/__init__.py
+﻿# accounts/utils/__init__.py
 
 def is_super_or_group_admin(user):
     """Verifica se o usuário é superusuário ou pertence a um grupo chamado 'Admin'."""
@@ -169,3 +169,94 @@ PERMISSOES_PT_BR = {
     "Can delete unidade medida": "Excluir unidade de medida",
     "Can view unidade medida": "Visualizar unidade de medida",
 }
+
+ACOES_PERMISSAO_PT_BR = {
+    'add': 'Adicionar',
+    'change': 'Alterar',
+    'delete': 'Excluir',
+    'view': 'Visualizar',
+}
+
+
+NOMES_APPS_PT_BR = {
+    'accounts': 'Contas e Acesso',
+    'control': 'Controle',
+    'empresas': 'Empresas',
+    'produto': 'Produtos',
+    'nota_fiscal': 'Nota Fiscal',
+    'fiscal': 'Fiscal',
+    'relatorios': 'Relatórios',
+    'producao': 'Produção',
+}
+
+
+NOMES_ENTIDADES_PT_BR = {
+    'groupprofile': 'Perfil de grupo',
+    'user': 'Usu?rio',
+    'tenant': 'Tenant',
+}
+
+
+ORDEM_APPS_PERMISSOES = [
+    'accounts',
+    'control',
+    'empresas',
+    'produto',
+    'nota_fiscal',
+    'fiscal',
+    'relatorios',
+    'producao',
+]
+
+
+def traduzir_nome_app(app_label):
+    return NOMES_APPS_PT_BR.get(app_label, app_label.replace('_', ' ').title())
+
+
+def ordem_app_permissao(app_label):
+    try:
+        return ORDEM_APPS_PERMISSOES.index(app_label)
+    except ValueError:
+        return len(ORDEM_APPS_PERMISSOES)
+
+
+def _get_model_verbose_name(permission):
+    model_class = permission.content_type.model_class()
+    if model_class is not None:
+        return str(model_class._meta.verbose_name)
+    return permission.content_type.model.replace('_', ' ')
+
+
+def nome_entidade_permissao(permission):
+    nome_customizado = NOMES_ENTIDADES_PT_BR.get(permission.content_type.model)
+    if nome_customizado:
+        return nome_customizado
+
+    nome = _get_model_verbose_name(permission)
+    return nome[:1].upper() + nome[1:] if nome else permission.content_type.model.replace('_', ' ').title()
+
+
+def traduzir_permissao(permission):
+    traducao_direta = PERMISSOES_PT_BR.get(permission.name)
+    if traducao_direta:
+        return traducao_direta
+
+    acao = permission.codename.split('_', 1)[0]
+    acao_traduzida = ACOES_PERMISSAO_PT_BR.get(acao)
+    if not acao_traduzida:
+        return permission.name
+
+    return f'{acao_traduzida} {_get_model_verbose_name(permission)}'
+
+
+def ordem_acao_permissao(codename):
+    acao = codename.split('_', 1)[0]
+    ordem = {
+        'view': 0,
+        'add': 1,
+        'change': 2,
+        'delete': 3,
+    }
+    return ordem.get(acao, 99)
+
+

@@ -1,4 +1,4 @@
-
+﻿
 # Create your tests here.
 
 from django.test import TestCase, Client
@@ -6,20 +6,20 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 import json
 
-from nota_fiscal.models import EmpresaAvancada
+from nota_fiscal.models import Empresa
 
 User = get_user_model()
 
 class SalvarImportacaoViewTest(TestCase):
     def setUp(self):
         self.client = Client()
-        # Cria e autentica um usuário para passar pelo @login_required
+        # Cria e autentica um usuÃ¡rio para passar pelo @login_required
         self.user = User.objects.create_user(username='tester', password='secret')
         self.client.force_login(self.user)
 
-        self.url = reverse('nota_fiscal:salvar_importacao')  # ajuste se necessário
+        self.url = reverse('nota_fiscal:salvar_importacao')  # ajuste se necessÃ¡rio
 
-        # Campos mínimos em "nota" para não falhar validação
+        # Campos mÃ­nimos em "nota" para nÃ£o falhar validaÃ§Ã£o
         self.common_payload = {
             "nota": {
                 "numero_nota": "",
@@ -46,7 +46,7 @@ class SalvarImportacaoViewTest(TestCase):
             content_type="application/json"
         )
         self.assertEqual(response.status_code, 200)
-        emp = EmpresaAvancada.objects.get(cnpj="12345678000190")
+        emp = Empresa.objects.get(cnpj="12345678000190")
         self.assertEqual(emp.tipo_empresa, 'PJ')
 
     def test_inferencia_cpf_cria_empresa_pf(self):
@@ -61,7 +61,7 @@ class SalvarImportacaoViewTest(TestCase):
             content_type="application/json"
         )
         self.assertEqual(response.status_code, 200)
-        emp = EmpresaAvancada.objects.get(cnpj="12345678909")
+        emp = Empresa.objects.get(cnpj="12345678909")
         self.assertEqual(emp.tipo_empresa, 'PF')
 
     def test_falha_sem_identificador(self):

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test, permission_required
 from accounts.utils.decorators import login_required_json
@@ -21,7 +21,7 @@ from django.template.response import TemplateResponse
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
-from accounts.utils import PERMISSOES_PT_BR, is_super_or_group_admin
+from accounts.utils import nome_entidade_permissao, ordem_acao_permissao, ordem_app_permissao, traduzir_nome_app, traduzir_permissao, is_super_or_group_admin
 from common.utils import render_ajax_or_base
 from common.context_processors import dynamic_menu
 
@@ -246,42 +246,45 @@ def excluir_usuario_multiplo(request):
 
 def _get_permissoes_context():
     """
-    Busca e organiza as permissões do sistema, agrupando por app e traduzindo os nomes.
+    Busca e organiza as permiss?es do sistema, agrupando por app e traduzindo os nomes.
     Filtra apps irrelevantes para a interface de gerenciamento.
     """
-    # Apps a serem excluídos da lista de permissões, pois não são gerenciáveis pela interface
-    EXCLUDED_APPS = [
-        'admin', 'auth', 'contenttypes', 'sessions', 'authtoken', 
+    excluded_apps = [
+        'admin', 'auth', 'contenttypes', 'sessions', 'authtoken',
         'django_celery_beat', 'integracao_nfe', 'painel'
     ]
-    
-    permissoes = Permission.objects.select_related('content_type')                                   .exclude(content_type__app_label__in=EXCLUDED_APPS)                                   .order_by('content_type__app_label', 'codename')
+
+    permissoes = list(
+        Permission.objects.select_related('content_type')
+        .exclude(content_type__app_label__in=excluded_apps)
+        .order_by('content_type__app_label', 'codename')
+    )
+
+    permissoes.sort(
+        key=lambda permissao: (
+            ordem_app_permissao(permissao.content_type.app_label),
+            traduzir_nome_app(permissao.content_type.app_label),
+            ordem_acao_permissao(permissao.codename),
+            traduzir_permissao(permissao),
+        )
+    )
 
     permissoes_agrupadas = {}
-    # Mapeia o app_label para um nome amigável e traduzido
-    nomes_apps_traduzidos = {
-        'accounts': 'Contas e Acesso',
-        'empresas': 'Empresas',
-        'produto': 'Produtos',
-        'nota_fiscal': 'Nota Fiscal',
-        'fiscal': 'Fiscal',
-        'relatorios': 'Relatórios',
-        'producao': 'Produção'
-    }
+    for permissao in permissoes:
+        nome_app_display = traduzir_nome_app(permissao.content_type.app_label)
+        nome_entidade = nome_entidade_permissao(permissao)
+        permissao.traduzida = traduzir_permissao(permissao)
 
-    for p in permissoes:
-        app = p.content_type.app_label
-        # Usa o nome traduzido do app, ou o nome capitalizado como fallback
-        nome_app_display = nomes_apps_traduzidos.get(app, app.capitalize())
-        
-        # Traduz o nome da permissão individual
-        p.traduzida = PERMISSOES_PT_BR.get(p.name, p.name)
-        
-        # Agrupa as permissões pelo nome de exibição do app
-        if nome_app_display not in permissoes_agrupadas:
-            permissoes_agrupadas[nome_app_display] = []
-        permissoes_agrupadas[nome_app_display].append(p)
-        
+        grupo_app = permissoes_agrupadas.setdefault(nome_app_display, {'app_label': permissao.content_type.app_label, 'entidades': {}})
+        grupo_entidade = grupo_app['entidades'].setdefault(nome_entidade, [])
+        grupo_entidade.append(permissao)
+
+    for grupo_app in permissoes_agrupadas.values():
+        grupo_app['entidades'] = [
+            {'nome': nome_entidade, 'slug': nome_entidade.lower().replace(' ', '-'), 'permissoes': permissoes_entidade}
+            for nome_entidade, permissoes_entidade in grupo_app['entidades'].items()
+        ]
+
     return permissoes_agrupadas
 
 @login_required_json

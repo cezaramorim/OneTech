@@ -1,4 +1,4 @@
-# nota_fiscal/forms.py
+﻿# nota_fiscal/forms.py
 
 from django import forms
 from django.forms import inlineformset_factory
@@ -39,7 +39,7 @@ class TransporteNotaFiscalForm(forms.ModelForm):
         fields = ['modalidade_frete', 'transportadora_nome', 'transportadora_cnpj', 'placa_veiculo', 'uf_veiculo', 'quantidade_volumes', 'peso_liquido', 'peso_bruto']
 
 
-# Formsets para editar os modelos relacionados na mesma página da Nota Fiscal
+# Formsets para editar os modelos relacionados na mesma pÃ¡gina da Nota Fiscal
 ItemNotaFiscalFormSet = inlineformset_factory(
     NotaFiscal, 
     ItemNotaFiscal, 
@@ -58,7 +58,7 @@ DuplicataNotaFiscalFormSet = inlineformset_factory(
     fk_name='nota_fiscal'
 )
 
-# Transporte geralmente é um por nota, então não permitimos adicionar/remover, apenas editar.
+# Transporte geralmente Ã© um por nota, entÃ£o nÃ£o permitimos adicionar/remover, apenas editar.
 TransporteNotaFiscalFormSet = inlineformset_factory(
     NotaFiscal, 
     TransporteNotaFiscal, 
@@ -69,10 +69,10 @@ TransporteNotaFiscalFormSet = inlineformset_factory(
 )
 
 # ==============================================================================
-# 🚀 FORMULÁRIO PARA NOTA FISCAL DE SAÍDA
+# ðŸš€ FORMULÃRIO PARA NOTA FISCAL DE SAÃDA
 # ==============================================================================
 from control.models import Emitente
-from empresas.models import EmpresaAvancada
+from empresas.models import Empresa
 
 class NotaFiscalSaidaForm(forms.ModelForm):
     emitente_proprio = forms.ModelChoiceField(
@@ -81,8 +81,8 @@ class NotaFiscalSaidaForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     destinatario = forms.ModelChoiceField(
-        queryset=EmpresaAvancada.objects.filter(cliente=True),
-        label="Destinatário (Cliente)",
+        queryset=Empresa.objects.filter(cliente=True),
+        label="DestinatÃ¡rio (Cliente)",
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
@@ -109,11 +109,11 @@ class NotaFiscalSaidaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Tenta pré-selecionar o emitente padrão
+        # Tenta prÃ©-selecionar o emitente padrÃ£o
         default_emitente = Emitente.objects.filter(is_default=True).first()
         if default_emitente:
             self.fields['emitente_proprio'].initial = default_emitente
         
-        # Define o tipo de operação como 'Saída' por padrão e o torna somente leitura
-        self.fields['tipo_operacao'].initial = '1' # '1' para Saída
+        # Define o tipo de operaÃ§Ã£o como 'SaÃ­da' por padrÃ£o e o torna somente leitura
+        self.fields['tipo_operacao'].initial = '1' # '1' para SaÃ­da
         self.fields['tipo_operacao'].widget.attrs['readonly'] = True

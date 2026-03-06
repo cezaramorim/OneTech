@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+﻿from django.contrib.auth import get_user_model
 from django.db import models
 
 
@@ -9,9 +9,8 @@ class CategoriaEmpresa(models.Model):
         return self.nome
 
 
-# Modelo oficial do fluxo atual, associado a `empresas_empresaavancada`.
-# O nome tecnico permanece `EmpresaAvancada` por compatibilidade com o schema.
-class EmpresaAvancada(models.Model):
+# Modelo oficial do fluxo atual, associado fisicamente a `empresas_empresaavancada`.
+class Empresa(models.Model):
     """Cadastro completo de empresas para o fluxo atual do sistema."""
 
     tipo_empresa = models.CharField(max_length=10, choices=[('pj', 'Pessoa Jurídica'), ('pf', 'Pessoa Física')])
@@ -104,5 +103,18 @@ class EmpresaAvancada(models.Model):
     )
     categoria = models.ForeignKey(CategoriaEmpresa, on_delete=models.SET_NULL, null=True, blank=True)
 
+    class Meta:
+        db_table = 'empresas_empresaavancada'
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'
+
     def __str__(self):
         return self.razao_social or self.nome or 'Empresa'
+
+
+# Proxy temporario de compatibilidade para imports e referencias historicas.
+class EmpresaAvancada(Empresa):
+    class Meta:
+        proxy = True
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'

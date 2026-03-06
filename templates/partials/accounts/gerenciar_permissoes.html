@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 {% load custom_tags %}
 
 <div id="identificador-tela" data-tela="gerenciar_permissoes" class="d-none"></div>
@@ -17,28 +17,47 @@
             <form method="post" id="form-permissoes" class="ajax-form" data-response-type="json">
                 {% csrf_token %}
 
-                {% for nome_app, permissoes_app in permissoes_agrupadas.items %}
-                    <div class="mb-4 p-3 border rounded bg-white" data-permission-group>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input permission-group-toggle" type="checkbox" id="check-group-{{ forloop.counter }}">
-                            <label class="form-check-label fw-bold" for="check-group-{{ forloop.counter }}">
-                                {{ nome_app }}
-                            </label>
-                        </div>
-                        <hr class="my-2">
-                        <div class="row ps-3">
-                            {% for p in permissoes_app %}
-                                <div class="col-md-4 col-sm-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input permission-item" type="checkbox" name="permissoes" value="{{ p.id }}" id="perm-{{ p.id }}" 
-                                               {% if p.id in permissoes_entidade_ids %}checked{% endif %}>
-                                        <label class="form-check-label" for="perm-{{ p.id }}">{{ p.traduzida }}</label>
-                                    </div>
+                <div class="d-flex flex-column gap-3">
+                    {% for nome_app, grupo_app in permissoes_agrupadas.items %}
+                        <section class="permission-app border rounded overflow-hidden" data-permission-group>
+                            <div class="permission-app-header d-flex align-items-center justify-content-between px-3 py-3 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input class="form-check-input permission-group-toggle mt-0" type="checkbox" id="check-group-{{ forloop.counter }}">
+                                    <button type="button" class="btn btn-link p-0 text-decoration-none text-reset fw-bold permission-app-trigger" data-permission-group-trigger aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                                        {{ nome_app }}
+                                    </button>
                                 </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endfor %}
+                                <small class="text-muted">{{ grupo_app.entidades|length }} entidade(s)</small>
+                            </div>
+
+                            <div class="permission-app-body {% if not forloop.first %}d-none{% endif %} px-3 py-3" data-permission-group-body>
+                                <div class="d-flex flex-column gap-2">
+                                    {% for entidade in grupo_app.entidades %}
+                                        <div class="permission-entity" data-permission-entity>
+                                            <div class="permission-entity-header d-flex align-items-center gap-2 py-2 ps-3">
+                                                <input class="form-check-input permission-entity-toggle mt-0" type="checkbox" id="check-entity-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                                                <button type="button" class="btn btn-link p-0 text-decoration-none text-reset fw-semibold permission-entity-trigger" data-permission-entity-trigger aria-expanded="false">
+                                                    {{ entidade.nome }}
+                                                </button>
+                                            </div>
+                                            <div class="permission-entity-body d-none ps-5 pt-1 pb-2" data-permission-entity-body>
+                                                <div class="d-flex flex-column gap-2">
+                                                    {% for p in entidade.permissoes %}
+                                                        <label class="form-check d-flex align-items-center gap-2 mb-0">
+                                                            <input class="form-check-input permission-item mt-0" type="checkbox" name="permissoes" value="{{ p.id }}" id="perm-{{ p.id }}"
+                                                                   {% if p.id in permissoes_entidade_ids %}checked{% endif %}>
+                                                            <span class="form-check-label">{{ p.traduzida }}</span>
+                                                        </label>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
 
                 <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn btn-primary">
@@ -49,4 +68,3 @@
         </div>
     </div>
 </div>
-

@@ -1,4 +1,4 @@
-import json
+﻿import json
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import permission_required
@@ -14,7 +14,7 @@ from common.messages_utils import get_app_messages
 from common.mixins import AjaxListMixin
 from common.utils import render_ajax_or_base
 from .forms import CategoriaEmpresaForm, EmpresaForm
-from .models import CategoriaEmpresa, EmpresaAvancada
+from .models import CategoriaEmpresa, Empresa
 
 
 # === Categorias ===
@@ -34,12 +34,12 @@ def categoria_form_view(request, pk=None):
 
     if pk:
         if not request.user.has_perm('empresas.change_categoriaempresa'):
-            message = app_messages.error('Você não tem permissão para editar categorias.')
+            message = app_messages.error('VocÃª nÃ£o tem permissÃ£o para editar categorias.')
             return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
     else:
         if not request.user.has_perm('empresas.add_categoriaempresa'):
-            message = app_messages.error('Você não tem permissão para adicionar categorias.')
+            message = app_messages.error('VocÃª nÃ£o tem permissÃ£o para adicionar categorias.')
             return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = None
 
@@ -93,7 +93,7 @@ def excluir_categorias_view(request):
         message = app_messages.success_deleted('Categoria(s)', f'{count} selecionada(s)')
         return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_categorias')})
     except json.JSONDecodeError:
-        message = app_messages.error('Requisição inválida (JSON malformatado).')
+        message = app_messages.error('RequisiÃ§Ã£o invÃ¡lida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir categorias: {str(exc)}')
@@ -106,7 +106,7 @@ def excluir_categorias_view(request):
 def empresa_form_view(request, pk=None):
     app_messages = get_app_messages(request)
     if pk:
-        empresa = get_object_or_404(EmpresaAvancada, pk=pk)
+        empresa = get_object_or_404(Empresa, pk=pk)
     else:
         empresa = None
 
@@ -159,7 +159,7 @@ def lista_empresas_view(request):
     - filtro por status (ativa/inativa)
     - compativel com AJAX e base.html
     """
-    empresas = EmpresaAvancada.objects.select_related('categoria').all()
+    empresas = Empresa.objects.select_related('categoria').all()
     termo = request.GET.get('termo_empresa', '').strip()
     tipo = request.GET.get('tipo', '').strip().lower()
     status = request.GET.get('status', '').strip()
@@ -194,7 +194,7 @@ def atualizar_status_empresa(request, pk):
     app_messages = get_app_messages(request)
     try:
         data = json.loads(request.body)
-        empresa = EmpresaAvancada.objects.get(pk=pk)
+        empresa = Empresa.objects.get(pk=pk)
         ativo = data.get('ativo', False)
         empresa.status_empresa = 'ativa' if ativo else 'inativa'
         empresa.save(update_fields=['status_empresa'])
@@ -221,7 +221,7 @@ def excluir_empresas_view(request):
             return JsonResponse({'success': False, 'message': message}, status=400)
 
         count = len(ids)
-        EmpresaAvancada.objects.filter(pk__in=ids).delete()
+        Empresa.objects.filter(pk__in=ids).delete()
 
         message = app_messages.success_deleted('Empresa(s)', f'{count} selecionada(s)')
         return JsonResponse(
@@ -232,7 +232,7 @@ def excluir_empresas_view(request):
             }
         )
     except json.JSONDecodeError:
-        message = app_messages.error('Requisição inválida (JSON malformatado).')
+        message = app_messages.error('RequisiÃ§Ã£o invÃ¡lida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir empresas: {str(exc)}')

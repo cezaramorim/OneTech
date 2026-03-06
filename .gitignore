@@ -23,6 +23,7 @@ __pycache__/
 # Banco de dados e backups
 *.bak
 *.sql
+backups
 
 # Sistema operacional
 .DS_Store

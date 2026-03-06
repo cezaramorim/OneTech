@@ -1,35 +1,35 @@
-# common/serializers/produto.py
+﻿# common/serializers/produto.py
 
 from rest_framework import serializers
 from produto.models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFiscaisProduto
-from empresas.models import EmpresaAvancada
+from empresas.models import Empresa
 
 
-# 🔹 Serializer da categoria do produto (nome e descrição)
+# ðŸ”¹ Serializer da categoria do produto (nome e descriÃ§Ã£o)
 class CategoriaProdutoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CategoriaProduto
         fields = ['id', 'nome', 'descricao']
 
 
-# 🔹 Serializer da unidade de medida (sigla e descrição)
+# ðŸ”¹ Serializer da unidade de medida (sigla e descriÃ§Ã£o)
 class UnidadeMedidaSerializer(serializers.ModelSerializer):
     class Meta:
         model = UnidadeMedida
         fields = ['id', 'sigla', 'descricao']
 
 
-# 🔹 Serializer do NCM (código e descrição)
+# ðŸ”¹ Serializer do NCM (cÃ³digo e descriÃ§Ã£o)
 class NCMSerializer(serializers.ModelSerializer):
     class Meta:
         model = NCM
         fields = ['codigo', 'descricao']
 
 
-# 🔹 Serializer do fornecedor (EmpresaAvancada) com campos relevantes apenas
-class EmpresaAvancadaSerializer(serializers.ModelSerializer):
+# ðŸ”¹ Serializer do fornecedor (Empresa) com campos relevantes apenas
+class EmpresaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = EmpresaAvancada
+        model = Empresa
         fields = [
             'id',
             'tipo_empresa',
@@ -41,25 +41,25 @@ class EmpresaAvancadaSerializer(serializers.ModelSerializer):
             'telefone',
             'status_empresa'
         ]
-        # 🔒 Apenas dados úteis para exibição na API de produtos
+        # ðŸ”’ Apenas dados Ãºteis para exibiÃ§Ã£o na API de produtos
 
 
-# 🔹 Serializer para DetalhesFiscaisProduto
+# ðŸ”¹ Serializer para DetalhesFiscaisProduto
 class DetalhesFiscaisProdutoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DetalhesFiscaisProduto
-        exclude = ['id', 'produto'] # Exclui campos que não são relevantes na representação aninhada
+        exclude = ['id', 'produto'] # Exclui campos que nÃ£o sÃ£o relevantes na representaÃ§Ã£o aninhada
 
 
-# ✅ Serializer principal do Produto com relacionamentos aninhados
+# âœ… Serializer principal do Produto com relacionamentos aninhados
 class ProdutoSerializer(serializers.ModelSerializer):
     categoria = CategoriaProdutoSerializer(read_only=True)
     unidade_medida = UnidadeMedidaSerializer(read_only=True)
     ncm = NCMSerializer(read_only=True)
-    fornecedor = EmpresaAvancadaSerializer(read_only=True)
+    fornecedor = EmpresaSerializer(read_only=True)
     detalhes_fiscais = DetalhesFiscaisProdutoSerializer(read_only=True) # Aninha o serializer de detalhes fiscais
 
     class Meta:
         model = Produto
         fields = '__all__'
-        # 🔁 Inclui todos os campos do produto e substitui FK por dados legíveis
+        # ðŸ” Inclui todos os campos do produto e substitui FK por dados legÃ­veis

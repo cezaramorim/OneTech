@@ -1,6 +1,6 @@
-from django import forms
+﻿from django import forms
 
-from .models import CategoriaEmpresa, EmpresaAvancada
+from .models import CategoriaEmpresa, Empresa
 
 
 class CategoriaEmpresaForm(forms.ModelForm):
@@ -21,7 +21,7 @@ class CategoriaEmpresaForm(forms.ModelForm):
 # Formulario oficial do fluxo atual, associado a `empresas_empresaavancada`.
 class EmpresaForm(forms.ModelForm):
     class Meta:
-        model = EmpresaAvancada
+        model = Empresa
         fields = '__all__'
         widgets = {
             'tipo_empresa': forms.Select(attrs={'class': 'form-select'}),

@@ -1,4 +1,4 @@
-# relatorios/views.py
+﻿# relatorios/views.py
 
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -23,7 +23,7 @@ def api_notas_entradas(request):
     """
     API endpoint REST (JSON) para listar todas as Notas Fiscais:
       - URL: GET /relatorios/api/v1/notas-entradas/
-      - Requer autenticação (token/session).
+      - Requer autenticaÃ§Ã£o (token/session).
       - Retorna: numero, fornecedor, data_emissao, data_saida, valor_total_nota, usuario.
     """
     qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
@@ -36,7 +36,7 @@ def api_notas_entradas(request):
 def notas_entradas_view(request):
     """
     View HTML para listagem de Notas:
-      - GET normal: renderiza 'relatorios/notas_entradas.html' (página completa).
+      - GET normal: renderiza 'relatorios/notas_entradas.html' (pÃ¡gina completa).
       - AJAX (XHR): renderiza apenas 'partials/relatorios/notas_entradas.html'.
     """
     qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
@@ -65,7 +65,7 @@ def editar_entrada_view(request, pk):
     duplicatas = nota.duplicatas.all()
     for d in duplicatas:
         if d.valor:
-            d.valor = Decimal(d.valor) / Decimal('100')  # Corrige centavos → reais
+            d.valor = Decimal(d.valor) / Decimal('100')  # Corrige centavos â†’ reais
 
 
     return render(request, 'partials/relatorios/editar_entrada.html', {
@@ -74,19 +74,19 @@ def editar_entrada_view(request, pk):
         'produtos': produtos,
         'transporte': transporte,
         'duplicatas': duplicatas,
-        'data_page': 'editar-entrada',  # ✅ Adicionado
+        'data_page': 'editar-entrada',  # âœ… Adicionado
     })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_nota_detalhada(request, pk):
     """
-    Retorna os dados completos da Nota Fiscal para preencher a tela de edição.
+    Retorna os dados completos da Nota Fiscal para preencher a tela de ediÃ§Ã£o.
     """
     try:
         nota = NotaFiscal.objects.prefetch_related('itens__produto').get(pk=pk)
     except NotaFiscal.DoesNotExist:
-        return Response({"erro": "Nota não encontrada"}, status=404)
+        return Response({"erro": "Nota nÃ£o encontrada"}, status=404)
 
     # Dados principais da nota
     nota_data = {
@@ -174,8 +174,8 @@ def api_nota_detalhada(request, pk):
 @login_required
 def relatorio_nota_fiscal_view(request):
     """
-    Exibe a tela de relatório de notas fiscais com filtros (cliente, data, etc.).
-    A tabela é carregada via API.
+    Exibe a tela de relatÃ³rio de notas fiscais com filtros (cliente, data, etc.).
+    A tabela Ã© carregada via API.
     """
     return render(request, 'partials/relatorios/relatorio_nota_fiscal.html')
 
@@ -189,7 +189,7 @@ from producao.models import (
     Malha,
     TipoTela,
 )
-from empresas.models import EmpresaAvancada, CategoriaEmpresa
+from empresas.models import Empresa, CategoriaEmpresa
 from django.db.models import Q
 from django.urls import reverse
 import csv
@@ -325,7 +325,7 @@ def _build_report_data(report_type, params):
         }
 
     if report_type == 'empresas':
-        qs = EmpresaAvancada.objects.select_related('categoria', 'vendedor').all().order_by('razao_social', 'nome_fantasia', 'nome', 'id')
+        qs = Empresa.objects.select_related('categoria', 'vendedor').all().order_by('razao_social', 'nome_fantasia', 'nome', 'id')
 
         termo = (params.get('empresa_nome') or '').strip()
         data_cadastro_inicial = (params.get('data_cadastro_inicial') or '').strip()
@@ -541,7 +541,7 @@ def impressao_relatorios_download_csv_view(request):
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{safe_key}.csv"'
 
-    response.write('﻿')
+    response.write('ï»¿')
     writer = csv.writer(response, delimiter=';')
 
     columns = report.get('columns', [])

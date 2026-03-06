@@ -1,7 +1,7 @@
-from django.contrib import admin
-from .models import EmpresaAvancada
+﻿from django.contrib import admin
+from .models import Empresa
 
-@admin.register(EmpresaAvancada)
+@admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
     list_display = ('tipo_empresa', 'razao_social', 'nome', 'cpf', 'cnpj', 'email', 'cidade', 'vendedor')
     list_filter = ('tipo_empresa', 'uf', 'cidade')
