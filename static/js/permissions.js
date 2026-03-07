@@ -74,6 +74,7 @@ OneTech.Permissions = (function () {
         if (!groupEl) return;
 
         groupEl.querySelectorAll('.permission-item').forEach(item => {
+          if (item.dataset.readonly === 'true') return;
           item.checked = this.checked;
         });
         groupEl.querySelectorAll('[data-permission-entity]').forEach(updateEntityState);
@@ -87,6 +88,7 @@ OneTech.Permissions = (function () {
         if (!entityEl) return;
 
         entityEl.querySelectorAll('.permission-item').forEach(item => {
+          if (item.dataset.readonly === 'true') return;
           item.checked = this.checked;
         });
         updateEntityState(entityEl);
@@ -116,6 +118,7 @@ OneTech.Permissions = (function () {
     });
 
     permissionItems.forEach(item => {
+      if (item.dataset.readonly === 'true') return;
       item.addEventListener('change', function () {
         const entityEl = this.closest('[data-permission-entity]');
         if (entityEl) updateEntityState(entityEl);

@@ -647,7 +647,9 @@ function runInitializers() {
         },
         () => {
             if (window.OneTech && window.OneTech.Permissions) {
-                const root = document.querySelector(OneTech.Permissions.SELECTOR_ROOT);
+                const mainContent = document.getElementById('main-content');
+                const root = (mainContent && mainContent.querySelector(OneTech.Permissions.SELECTOR_ROOT))
+                    || document.querySelector(OneTech.Permissions.SELECTOR_ROOT);
                 if (root) OneTech.Permissions.init(root);
             }
         },

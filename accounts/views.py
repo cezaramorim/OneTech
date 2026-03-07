@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test, permission_required
 from accounts.utils.decorators import login_required_json
@@ -51,28 +51,26 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        print(f"Attempting to authenticate user: {username} with password: {password}")
         user = authenticate(request, username=username, password=password)
-        print(f"Authentication result for {username}: {user} (type: {type(user)})")
 
         if user:
             login(request, user)
 
-            # ✅ Se for AJAX, retorna JSON com a URL do painel
+            # ? Se for AJAX, retorna JSON com a URL do painel
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'redirect_url': reverse('painel:home')})
 
-            # ✅ Redirecionamento padrão (acesso não-AJAX)
+            # ? Redirecionamento padrão (acesso não-AJAX)
             return redirect('painel:home')
 
-        # ❌ Credenciais inválidas
+        # ? Credenciais inválidas
         error = "Usuário ou senha inválidos."
 
-        # ⚠️ Se for AJAX, retorna JSON com mensagem de erro
+        # ?? Se for AJAX, retorna JSON com mensagem de erro
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': error})
 
-    # 📄 Exibição do formulário
+    # ?? Exibição do formulário
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
     template = 'partials/accounts/login.html' if is_ajax else 'accounts/login_full.html'
     return render(request, template, {'error': error})
@@ -121,30 +119,30 @@ def criar_usuario(request):
             novo_usuario = form.save()
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ✅ Retorna JSON com sucesso e mensagem
+                # ? Retorna JSON com sucesso e mensagem
                 return JsonResponse({
                     'success': True,
                     'message': app_messages.success_created(novo_usuario), # Mensagem será gerada aqui
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
 
-            # ✅ Comum: exibe mensagem e redireciona
+            # ? Comum: exibe mensagem e redireciona
             app_messages.success_created(novo_usuario)
             return redirect('accounts:lista_usuarios')
 
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ❌ Retorna erros e mensagem via JSON
+                # ? Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'success': False,
                     'errors': form.errors,
                     'message': app_messages.error('Erro ao criar usuário. Verifique os campos.')
                 }, status=400)
 
-            # ❌ Comum: exibe erro e renderiza novamente o formulário
+            # ? Comum: exibe erro e renderiza novamente o formulário
             app_messages.error('Erro ao criar usuário. Verifique os campos.')
 
-    # 🧾 GET inicial ou POST inválido sem AJAX
+    # ?? GET inicial ou POST inválido sem AJAX
     return render_ajax_or_base(request, 'partials/accounts/criar_usuario.html', {
         'form': form,
         'data_page': 'criar_usuario'
@@ -187,16 +185,15 @@ def editar_usuario(request, usuario_id):
             app_messages.success_updated(usuario)
             return redirect('accounts:lista_usuarios')
         else:
-            print(f"DEBUG: form.errors: {form.errors}")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ❌ Retorna erros e mensagem via JSON
+                # ? Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'sucesso': False,
                     'mensagem': app_messages.error("Erro ao atualizar usuário. Verifique os campos."),
                     'errors': form.errors # Mantém os erros do formulário para o frontend
                 }, status=400)
 
-    # ✅ Aqui está o ponto importante
+    # ? Aqui está o ponto importante
     contexto = {
         'form': form,
         'usuario': usuario,
@@ -287,6 +284,15 @@ def _get_permissoes_context():
 
     return permissoes_agrupadas
 
+
+def _get_ids_permissoes_herdadas(usuario):
+    return {
+        permissao_id
+        for permissao_id in usuario.groups.values_list('permissions__id', flat=True)
+        if permissao_id is not None
+    }
+
+
 @login_required_json
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_grupo(request, group_id):
@@ -296,30 +302,30 @@ def gerenciar_permissoes_grupo(request, group_id):
 
     if request.method == 'POST':
         permissoes_ids = request.POST.getlist('permissoes')
-        print(f"DEBUG: gerenciar_permissoes_grupo - permissoes_ids recebidos no POST: {permissoes_ids}")
         grupo.permissions.set(permissoes_ids)
         if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            app_messages.success_updated(grupo, custom_message=f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!')
-        
+            app_messages.success_updated(grupo, custom_message=f'Permissoes do grupo "{grupo.name}" atualizadas com sucesso!')
+
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': app_messages.success_updated(grupo, custom_message=f'Permissões do grupo "{grupo.name}" atualizadas com sucesso!'),
+                'message': app_messages.success_updated(grupo, custom_message=f'Permissoes do grupo "{grupo.name}" atualizadas com sucesso!'),
                 'redirect_url': reverse('accounts:lista_grupos')
             })
         return redirect('accounts:lista_grupos')
 
     permissoes_grupo_ids = set(grupo.permissions.values_list('id', flat=True))
-    print(f"DEBUG: gerenciar_permissoes_grupo - permissoes_entidade_ids (GET/Após POST): {permissoes_grupo_ids}")
 
     context = {
         'entidade': grupo,
         'permissoes_agrupadas': permissoes_agrupadas,
         'permissoes_entidade_ids': permissoes_grupo_ids,
+        'permissoes_herdadas_ids': set(),
         'tipo_entidade': 'Grupo',
         'data_page': 'gerenciar_permissoes'
     }
     return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes.html', context)
+
 
 @login_required_json
 @user_passes_test(is_super_or_group_admin)
@@ -330,32 +336,30 @@ def gerenciar_permissoes_usuario(request, user_id):
 
     if request.method == 'POST':
         permissoes_ids = request.POST.getlist('permissoes')
-        print(f"DEBUG: gerenciar_permissoes_usuario - permissoes_ids recebidos no POST: {permissoes_ids}")
         usuario.user_permissions.set(permissoes_ids)
         if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            app_messages.success_updated(usuario, custom_message=f'Permissões do usuário "{usuario.get_full_name()}" atualizadas com sucesso!')
-        
+            app_messages.success_updated(usuario, custom_message=f'Permissoes do usuario "{usuario.get_full_name()}" atualizadas com sucesso!')
+
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': app_messages.success_updated(usuario, custom_message=f'Permissões do usuário "{usuario.get_full_name() or usuario.username}" atualizadas com sucesso!'),
+                'message': app_messages.success_updated(usuario, custom_message=f'Permissoes do usuario "{usuario.get_full_name() or usuario.username}" atualizadas com sucesso!'),
                 'redirect_url': reverse('accounts:lista_usuarios')
             })
         return redirect('accounts:lista_usuarios')
 
     permissoes_usuario_ids = set(usuario.user_permissions.values_list('id', flat=True))
-    print(f"DEBUG: gerenciar_permissoes_usuario - permissoes_entidade_ids (GET/Após POST): {permissoes_usuario_ids}")
-    print(f"DEBUG: gerenciar_permissoes_usuario - usuario.first_name: {usuario.first_name}, usuario.last_name: {usuario.last_name}")
+    permissoes_herdadas_ids = _get_ids_permissoes_herdadas(usuario)
 
     context = {
         'entidade': usuario,
         'permissoes_agrupadas': permissoes_agrupadas,
         'permissoes_entidade_ids': permissoes_usuario_ids,
-        'tipo_entidade': 'Usuário',
+        'permissoes_herdadas_ids': permissoes_herdadas_ids,
+        'tipo_entidade': 'Usuario',
         'data_page': 'gerenciar_permissoes'
     }
     return render_ajax_or_base(request, 'partials/accounts/gerenciar_permissoes.html', context)
-
 
 
 @login_required_json
@@ -590,3 +594,6 @@ def get_navbar(request):
             '</nav>',
             status=200
         )
+
+
+

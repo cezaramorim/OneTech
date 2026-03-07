@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 {% load custom_tags %}
 
 <div id="identificador-tela" data-tela="gerenciar_permissoes" class="d-none"></div>
@@ -6,7 +6,7 @@
     <div class="card shadow-lg border-0">
         <div class="card-header p-3 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Gerenciar Permissões - {{ tipo_entidade }}: <strong>{% if tipo_entidade == 'Grupo' %}{{ entidade.name }}{% else %}{{ entidade.get_full_name|default:entidade.username }}{% endif %}</strong></h5>
+                <h5 class="mb-0">Gerenciar Permissoes - {{ tipo_entidade }}: <strong>{% if tipo_entidade == 'Grupo' %}{{ entidade.name }}{% else %}{{ entidade.get_full_name|default:entidade.username }}{% endif %}</strong></h5>
                 <a href="{% if tipo_entidade == 'Grupo' %}{% url 'accounts:lista_grupos' %}{% else %}{% url 'accounts:lista_usuarios' %}{% endif %}" class="btn btn-outline-secondary btn-sm ajax-link">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
@@ -14,6 +14,12 @@
         </div>
 
         <div class="card-body p-4">
+            {% if tipo_entidade == 'Usuario' %}
+                <div class="alert alert-light border mb-4" role="alert">
+                    Esta tela edita apenas permissoes diretas do usuario. Permissoes herdadas do grupo aparecem marcadas como leitura.
+                </div>
+            {% endif %}
+
             <form method="post" id="form-permissoes" class="ajax-form" data-response-type="json">
                 {% csrf_token %}
 
@@ -43,11 +49,22 @@
                                             <div class="permission-entity-body d-none ps-5 pt-1 pb-2" data-permission-entity-body>
                                                 <div class="d-flex flex-column gap-2">
                                                     {% for p in entidade.permissoes %}
-                                                        <label class="form-check d-flex align-items-center gap-2 mb-0">
-                                                            <input class="form-check-input permission-item mt-0" type="checkbox" name="permissoes" value="{{ p.id }}" id="perm-{{ p.id }}"
-                                                                   {% if p.id in permissoes_entidade_ids %}checked{% endif %}>
-                                                            <span class="form-check-label">{{ p.traduzida }}</span>
-                                                        </label>
+                                                        {% if p.id in permissoes_herdadas_ids and p.id not in permissoes_entidade_ids %}
+                                                            <div class="form-check d-flex align-items-center gap-2 mb-0 permission-item-readonly-wrapper">
+                                                                <input class="form-check-input permission-item permission-item-readonly mt-0" type="checkbox" checked="checked" disabled data-readonly="true" aria-disabled="true" style="opacity: 1; filter: none;">
+                                                                <span class="form-check-label">{{ p.traduzida }}</span>
+                                                                <span class="badge text-bg-secondary">Via grupo</span>
+                                                            </div>
+                                                        {% else %}
+                                                            <label class="form-check d-flex align-items-center gap-2 mb-0">
+                                                                <input class="form-check-input permission-item mt-0" type="checkbox" name="permissoes" value="{{ p.id }}" id="perm-{{ p.id }}"
+                                                                       {% if p.id in permissoes_entidade_ids %}checked{% endif %}>
+                                                                <span class="form-check-label">{{ p.traduzida }}</span>
+                                                                {% if p.id in permissoes_herdadas_ids %}
+                                                                    <span class="badge text-bg-secondary">Direta + grupo</span>
+                                                                {% endif %}
+                                                            </label>
+                                                        {% endif %}
                                                     {% endfor %}
                                                 </div>
                                             </div>
@@ -61,7 +78,7 @@
 
                 <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle"></i> Salvar Permissões
+                        <i class="bi bi-check-circle"></i> Salvar Permissoes
                     </button>
                 </div>
             </form>

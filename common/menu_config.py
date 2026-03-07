@@ -24,9 +24,9 @@ MENU_ITEMS = [
     },    
     {
         'name': 'Lotes',
-        'icon': '⚙️',
+        'icon': '🐠',
         'children': [
-            {'name': 'Reprocessar Lotes', 'icon': '🏢', 'url_name': 'producao:reprocessar_lotes', 'required_perms': ['producao.view_reprocessar_lotes']},
+            {'name': 'Reprocessar Lotes', 'icon': '🔄', 'url_name': 'producao:reprocessar_lotes', 'required_perms': ['producao.view_reprocessar_lotes']},
             
         ]
     },    
