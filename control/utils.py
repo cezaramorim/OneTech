@@ -71,3 +71,18 @@ def get_default_emitente():
     if not emitente:
         emitente = Emitente.objects.first()
     return emitente
+
+
+def get_request_tenant(request):
+    """Retorna o tenant associado a requisicao, se existir."""
+    return getattr(request, 'tenant', None)
+
+
+def has_tenant_context(request):
+    """Indica se a requisicao esta sendo atendida dentro de um tenant."""
+    return get_request_tenant(request) is not None
+
+
+def is_principal_context(request):
+    """Indica se a requisicao pertence ao ambiente principal do software."""
+    return not has_tenant_context(request)

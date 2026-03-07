@@ -50,6 +50,10 @@ class Tenant(models.Model):
     class Meta:
         verbose_name = "Tenant (Cliente)"
         verbose_name_plural = "Tenants (Clientes)"
+        permissions = [
+            ("view_admin_menu", "Pode visualizar submenu Admin"),
+            ("view_django_admin_link", "Pode visualizar link do Painel Django"),
+        ]
 
 
 # ==============================================================================

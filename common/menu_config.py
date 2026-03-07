@@ -4,11 +4,13 @@ MENU_ITEMS = [
     {
         'name': 'Admin',
         'icon': '👑',
+        'required_perms': ['control.view_admin_menu'],
         'children': [
             {'name': 'Listar Clientes', 'icon': '👥', 'url_name': 'control:tenant_list', 'required_perms': ['control.view_tenant']},
             {'name': 'Novo Cliente', 'icon': '➕', 'url_name': 'control:tenant_create', 'required_perms': ['control.add_tenant']},
             {'name': 'Usuários por Cliente', 'icon': '🔍', 'url_name': 'control:tenant_user_list', 'required_perms': ['accounts.view_user']},
-            {'name': 'Painel Django', 'icon': '🛠️', 'url': '/admin/', 'is_external': True},
+            {'name': 'Painel Django', 'icon': '🔒', 'url': '/admin/', 'is_external': True, 'required_perms': ['control.view_django_admin_link'], 'staff_only': True},
+            {'name': 'Central de Migracoes', 'icon': '<i class="bi bi-database-gear"></i>', 'url_name': 'control:central_migracoes', 'superuser_only': True},
         ]
     },
     {

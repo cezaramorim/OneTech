@@ -1,7 +1,8 @@
 # control/middleware.py
 import logging
+from django.shortcuts import redirect
 from .models import Tenant
-from .utils import set_current_tenant
+from .utils import is_principal_context, set_current_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,9 @@ class TenantMiddleware:
             # Se ocorrer um erro (ex: banco de dados 'default' indisponível),
             # loga o erro mas permite que a aplicação continue (pode ser uma página de erro do Django).
             logger.exception("Erro no TenantMiddleware ao resolver tenant para host '%s'", host)
+
+        if not is_principal_context(request) and request.path.startswith('/admin/'):
+            return redirect('/painel/?admin_restrito=1')
 
         response = self.get_response(request)
         return response

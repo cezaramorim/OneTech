@@ -18,6 +18,18 @@ PERMISSOES_PT_BR = {
     "Can delete Usuário": "Excluir Usuário",
     "Can view Usuário": "Visualizar Usuário",
 
+    # control
+    "Pode visualizar submenu Admin": "Visualizar submenu Admin",
+    "Pode visualizar link do Painel Django": "Visualizar link do Painel Django",
+    "Can add Emitente (Matriz/Filial)": "Adicionar Emitente (Matriz/Filial)",
+    "Can change Emitente (Matriz/Filial)": "Alterar Emitente (Matriz/Filial)",
+    "Can delete Emitente (Matriz/Filial)": "Excluir Emitente (Matriz/Filial)",
+    "Can view Emitente (Matriz/Filial)": "Visualizar Emitente (Matriz/Filial)",
+    "Can add Tenant (Cliente)": "Adicionar Tenant (Cliente)",
+    "Can change Tenant (Cliente)": "Alterar Tenant (Cliente)",
+    "Can delete Tenant (Cliente)": "Excluir Tenant (Cliente)",
+    "Can view Tenant (Cliente)": "Visualizar Tenant (Cliente)",
+
     # empresas
     "Can add categoria empresa": "Adicionar categoria de empresa",
     "Can change categoria empresa": "Alterar categoria de empresa",

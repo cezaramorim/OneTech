@@ -213,8 +213,10 @@ async function submitAjaxForm(form) {
   const options = { method };
   if (method === 'GET' || method === 'HEAD') {
     const qs = serializeFormToQuery(form);
-    const base = url.split('#')[0];
-    url = qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
+    const parsedUrl = new URL(url, window.location.origin);
+    parsedUrl.search = qs;
+    parsedUrl.hash = '';
+    url = `${parsedUrl.pathname}${parsedUrl.search}`;
   } else {
     options.body = new FormData(form);
     options.headers = { ...(options.headers || {}), 'X-CSRFToken': getCSRFToken() };
@@ -351,9 +353,10 @@ document.body.addEventListener('submit', async (e) => {
 
     if ((form.getAttribute('method') || 'GET').toUpperCase() === 'GET' && form.dataset.pushState !== 'false') {
       const qs = serializeFormToQuery(form);
-      const base = (form.action || window.location.pathname).split('#')[0];
-      const nextUrl = qs ? `${base}?${qs}` : base;
-      history.pushState({}, '', nextUrl);
+      const parsedUrl = new URL(form.action || window.location.href, window.location.origin);
+      parsedUrl.search = qs;
+      parsedUrl.hash = '';
+      history.pushState({}, '', `${parsedUrl.pathname}${parsedUrl.search}`);
     }
   } catch (err) {
     console.error('❌ [DEBUG] Erro CAPTURADO na submissão do formulário AJAX:', err);
@@ -559,6 +562,63 @@ function initListaEmpresas() {
   });
 }
 
+function initMigrationTenantSelect(root = document) {
+    if (!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2)) return;
+
+    root.querySelectorAll('.migration-tenant-select').forEach(el => {
+        const $el = window.jQuery(el);
+        if ($el.data('select2')) {
+            $el.off('.migrationSelectSummary');
+            $el.select2('destroy');
+        }
+
+        let dropdownCssClass = 'select2-dropdown-custom migration-select2-dropdown';
+        if (document.documentElement.classList.contains('dark')) dropdownCssClass += ' select2-dropdown-dark';
+
+        const $dropdownParent = $el.closest('.migration-status-panel').length
+            ? $el.closest('.migration-status-panel')
+            : ($el.closest('.card-body').length ? $el.closest('.card-body') : window.jQuery('body'));
+
+        $el.select2({
+            theme: 'bootstrap-5',
+            width: 'style',
+            placeholder: el.dataset.placeholder || 'Selecione tenants',
+            closeOnSelect: false,
+            selectionCssClass: 'migration-select2-selection',
+            dropdownParent: $dropdownParent,
+            dropdownCssClass,
+        });
+
+        const updateSummary = () => {
+            const selectedCount = Array.isArray($el.val()) ? $el.val().length : 0;
+            const summary = selectedCount === 0
+                ? (el.dataset.placeholder || 'Selecione tenants')
+                : selectedCount === 1
+                    ? '1 tenant selecionado'
+                    : `${selectedCount} tenants selecionados`;
+            const $selection = $el.next('.select2-container').find('.select2-selection');
+            $selection.attr('data-summary', summary);
+            $selection.toggleClass('has-selection', selectedCount > 0);
+        };
+
+        $el.on('change.migrationSelectSummary select2:select.migrationSelectSummary select2:unselect.migrationSelectSummary', updateSummary);
+        updateSummary();
+    });
+}
+
+function initTooltips(root = document) {
+    if (!window.bootstrap || !bootstrap.Tooltip) return;
+
+    root.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        const existing = bootstrap.Tooltip.getInstance(el);
+        if (existing) existing.dispose();
+        new bootstrap.Tooltip(el, {
+            trigger: 'hover focus',
+            container: 'body'
+        });
+    });
+}
+
 function initListaEventos() {
   const form = document.getElementById('filtro-eventos-form');
   if (!form || form.dataset.debounced === 'true') return;
@@ -588,6 +648,8 @@ function runInitializers() {
     if (mainContent && typeof updateButtonStates === 'function') {
         updateButtonStates(mainContent);
     }
+    initTooltips(document);
+    initMigrationTenantSelect(document);
 
     // Módulos específicos de página
     const initializers = [

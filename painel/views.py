@@ -1,12 +1,17 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
 @login_required(login_url='/accounts/login/')
 def painel_onetech(request):
     """
     View principal que renderiza o layout base do sistema (base.html).
-    O conteúdo será carregado dinamicamente via AJAX dentro da div #main-content.
+    O conteudo sera carregado dinamicamente via AJAX dentro da div #main-content.
     """
+    if request.GET.get('admin_restrito') == '1':
+        messages.error(request, 'Area restrita. Entre em contato com o suporte tecnico.')
+        return redirect('painel:home')
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return render(request, 'partials/_main_content_wrapper.html', {'data_page': 'home', 'data_tela': 'home'})
 

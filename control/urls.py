@@ -21,4 +21,5 @@ urlpatterns = [
     path('emitentes/novo/', views.criar_emitente, name='criar_emitente'),
     path('emitentes/<int:pk>/editar/', views.editar_emitente, name='editar_emitente'),
     path('emitentes/<int:pk>/excluir/', views.excluir_emitente, name='excluir_emitente'),
+    path('migracoes/', views.central_migracoes_view, name='central_migracoes'),
 ]

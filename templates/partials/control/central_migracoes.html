@@ -1,0 +1,204 @@
+{% load custom_tags %}
+<div class="container-fluid p-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="h4 mb-1 text-primary">
+                    <i class="bi bi-database-gear me-2"></i>Central de Migracoes
+                </h2>
+                <p class="text-muted mb-0">Execute migracoes no banco principal e nos tenants a partir da interface administrativa.</p>
+            </div>
+            <a href="{% url 'control:tenant_list' %}" class="btn btn-outline-secondary ajax-link">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-warning" role="alert">
+                Use esta tela apenas no ambiente principal. O banco <code>default</code> funciona como tenant mestre.
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <form method="post" class="ajax-form" data-response-type="json">
+                        {% csrf_token %}
+                        <div class="card border-0 bg-light">
+                            <div class="card-body d-flex flex-column gap-3">
+                                <div>
+                                    <label class="form-label fw-semibold">Destinos</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="executar-default" name="executar_default" checked>
+                                        <label class="form-check-label" for="executar-default">Banco principal (<code>default</code>)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="executar-tenants" name="executar_tenants">
+                                        <label class="form-check-label" for="executar-tenants">Bancos dos tenants</label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="form-label fw-semibold">Selecao de tenants</label>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="todos-tenants" name="todos_tenants">
+                                        <label class="form-check-label" for="todos-tenants">Todos os tenants ativos</label>
+                                    </div>
+                                    <div class="border rounded p-2 bg-white" style="max-height: 240px; overflow-y: auto;">
+                                        {% for tenant in tenants %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="tenant-{{ tenant.id }}" name="tenants" value="{{ tenant.slug }}">
+                                                <label class="form-check-label" for="tenant-{{ tenant.id }}">{{ tenant.nome }} <small class="text-muted">({{ tenant.slug }})</small></label>
+                                            </div>
+                                        {% empty %}
+                                            <p class="text-muted mb-0">Nenhum tenant ativo encontrado.</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modo-fake" name="modo_fake">
+                                    <label class="form-check-label" for="modo-fake">Executar em modo fake</label>
+                                    <span class="ms-2 text-muted" data-bs-toggle="tooltip" title="Marca as migracoes como aplicadas sem executar alteracoes reais no banco.">
+                                        <i class="bi bi-info-circle"></i>
+                                    </span>
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-play-circle me-1"></i>Executar migracoes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h3 class="h5 mb-3">Mapa de apps e destinos</h3>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>App</th>
+                                            <th>Nome</th>
+                                            <th class="text-center">Default</th>
+                                            <th class="text-center">Tenants</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for app in apps_migration_scope %}
+                                            <tr>
+                                                <td><code>{{ app.label }}</code></td>
+                                                <td>{{ app.name }}</td>
+                                                <td class="text-center">{% if app.runs_on_default %}<span class="fw-bold text-success fs-4" title="Disponivel no default">&#10003;</span>{% else %}<span class="fw-bold text-danger fs-4" title="Nao disponivel no default">&#10007;</span>{% endif %}</td>
+                                                <td class="text-center">{% if app.runs_on_tenants %}<span class="fw-bold text-success fs-4" title="Disponivel nos tenants">&#10003;</span>{% else %}<span class="fw-bold text-danger fs-4" title="Nao disponivel nos tenants">&#10007;</span>{% endif %}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 bg-light mt-4 migration-status-panel">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Status de Migra&ccedil;&otilde;es</h3>
+                            <p class="text-muted mb-0">A grade mostra resumo agregado dos tenants por app e, opcionalmente, tenants especificos.</p>
+                        </div>
+                        <form method="get" class="ajax-form">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <label class="form-label mb-0 fw-semibold" for="tenant-view-select">Exibir tenants</label>
+                                <select id="tenant-view-select" name="tenant_view" class="form-select form-select-sm migration-tenant-select" multiple data-placeholder="Selecione tenants">
+                                    {% for tenant in tenants %}
+                                        <option value="{{ tenant.slug }}" {% if tenant.slug in selected_tenant_slugs %}selected{% endif %}>{{ tenant.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-check form-check-inline mb-0 migration-pending-filter">
+                                    <input class="form-check-input" type="checkbox" id="only-pending-tenants" name="only_pending" value="1" {% if only_pending_tenants %}checked{% endif %}>
+                                    <label class="form-check-label" for="only-pending-tenants">Somente pendentes</label>
+                                </div>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar</button>
+                                {% if selected_tenant_slugs or only_pending_tenants %}
+                                    <a href="{% url 'control:central_migracoes' %}" class="btn btn-outline-secondary btn-sm ajax-link">Limpar</a>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>App</th>
+                                    <th>Nome</th>
+                                    <th class="text-center">default</th>
+                                    <th class="text-center">Resumo tenants</th>
+                                    {% for tenant in visible_tenants %}
+                                        <th class="text-center">{{ tenant.slug }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in apps_migration_scope %}
+                                    <tr>
+                                        <td><code>{{ app.label }}</code></td>
+                                        <td>{{ app.name }}</td>
+                                        {% with cell=migration_status_by_target.default|get_item:app.label %}
+                                            <td class="text-center">
+                                                {% if cell.state == 'ok' %}
+                                                    <span class="fw-bold text-success fs-4" title="{{ cell.title }}">&#10003;</span>
+                                                {% elif cell.state == 'pending' %}
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="{{ cell.title }}">Pendente{% if cell.pending_count %} ({{ cell.pending_count }}){% endif %}</span>
+                                                {% elif cell.state == 'error' %}
+                                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle" title="{{ cell.title }}">Erro</span>
+                                                {% else %}
+                                                    <span class="fw-bold text-danger fs-4" title="{{ cell.title }}">&#10007;</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endwith %}
+                                        {% with summary=tenant_status_summary|get_item:app.label %}
+                                            <td class="text-center">
+                                                {% if summary.state == 'ok' %}
+                                                    <span class="fw-bold text-success fs-4" title="{{ summary.title }}">&#10003;</span>
+                                                    <small class="text-muted">({{ summary.ok }}/{{ summary.total }})</small>
+                                                {% elif summary.state == 'pending' %}
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="{{ summary.title }}">Pendente ({{ summary.pending }}/{{ summary.total }})</span>
+                                                {% elif summary.state == 'error' %}
+                                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle" title="{{ summary.title }}">Erro ({{ summary.error }}/{{ summary.total }})</span>
+                                                {% else %}
+                                                    <span class="fw-bold text-danger fs-4" title="{{ summary.title }}">&#10007;</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endwith %}
+                                        {% for tenant in visible_tenants %}
+                                            {% with target=migration_status_by_target|get_item:tenant.slug %}
+                                                {% with cell=target|get_item:app.label %}
+                                                    <td class="text-center">
+                                                        {% if cell.state == 'ok' %}
+                                                            <span class="fw-bold text-success fs-4" title="{{ cell.title }}">&#10003;</span>
+                                                        {% elif cell.state == 'pending' %}
+                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="{{ cell.title }}">Pendente{% if cell.pending_count %} ({{ cell.pending_count }}){% endif %}</span>
+                                                        {% elif cell.state == 'error' %}
+                                                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle" title="{{ cell.title }}">Erro</span>
+                                                        {% else %}
+                                                            <span class="fw-bold text-danger fs-4" title="{{ cell.title }}">&#10007;</span>
+                                                        {% endif %}
+                                                    </td>
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
