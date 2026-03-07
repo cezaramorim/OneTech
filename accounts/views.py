@@ -56,7 +56,7 @@ def login_view(request):
         if user:
             login(request, user)
 
-            # ? Se for AJAX, retorna JSON com a URL do painel
+            # Se for AJAX, retorna JSON com a URL do painel
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'redirect_url': reverse('painel:home')})
 
@@ -66,7 +66,7 @@ def login_view(request):
         # ? Credenciais inválidas
         error = "Usuário ou senha inválidos."
 
-        # ?? Se for AJAX, retorna JSON com mensagem de erro
+        # Se for AJAX, retorna JSON com mensagem de erro
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': error})
 
@@ -119,20 +119,20 @@ def criar_usuario(request):
             novo_usuario = form.save()
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ? Retorna JSON com sucesso e mensagem
+                # Retorna JSON com sucesso e mensagem
                 return JsonResponse({
                     'success': True,
                     'message': app_messages.success_created(novo_usuario), # Mensagem será gerada aqui
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
 
-            # ? Comum: exibe mensagem e redireciona
+            # Comum: exibe mensagem e redireciona
             app_messages.success_created(novo_usuario)
             return redirect('accounts:lista_usuarios')
 
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ? Retorna erros e mensagem via JSON
+                # Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'success': False,
                     'errors': form.errors,
@@ -186,7 +186,7 @@ def editar_usuario(request, usuario_id):
             return redirect('accounts:lista_usuarios')
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # ? Retorna erros e mensagem via JSON
+                # Retorna erros e mensagem via JSON
                 return JsonResponse({
                     'sucesso': False,
                     'mensagem': app_messages.error("Erro ao atualizar usuário. Verifique os campos."),
@@ -243,7 +243,7 @@ def excluir_usuario_multiplo(request):
 
 def _get_permissoes_context():
     """
-    Busca e organiza as permiss?es do sistema, agrupando por app e traduzindo os nomes.
+    Busca e organiza as permissoes do sistema, agrupando por app e traduzindo os nomes.
     Filtra apps irrelevantes para a interface de gerenciamento.
     """
     excluded_apps = [
@@ -492,7 +492,7 @@ def logout_automatico_view(request):
     logout(request)
     return JsonResponse({'redirect_url': '/login/'})  # ou reverse('accounts:login')
 
-# === RECUPERAÇÃO DE SENHA CUSTOMIZADA ===
+# === RECUPERACAO DE SENHA CUSTOMIZADA ===
 
 from django.contrib.auth.forms import PasswordResetForm
 from django.template.loader import render_to_string

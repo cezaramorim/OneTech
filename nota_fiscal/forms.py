@@ -1,8 +1,9 @@
-﻿# nota_fiscal/forms.py
+# nota_fiscal/forms.py
 
 from django import forms
 from django.forms import inlineformset_factory
 from .models import NotaFiscal, ItemNotaFiscal, DuplicataNotaFiscal, TransporteNotaFiscal
+from produto.ncm_utils import normalizar_codigo_ncm
 
 class NotaFiscalForm(forms.ModelForm):
     class Meta:
@@ -13,6 +14,11 @@ class NotaFiscalForm(forms.ModelForm):
         ]
         labels = {
             'numero': 'Nota Fiscal',
+            'data_emissao': 'Data de Emissão',
+            'data_saida': 'Data de Saída/Entrada',
+            'natureza_operacao': 'Natureza da Operação',
+            'valor_total_nota': 'Valor Total da Nota',
+            'informacoes_adicionais': 'Informações Adicionais',
         }
         widgets = {
             'data_emissao': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
@@ -24,6 +30,9 @@ class ItemNotaFiscalForm(forms.ModelForm):
     class Meta:
         model = ItemNotaFiscal
         fields = ['produto', 'codigo', 'descricao', 'ncm', 'cfop', 'unidade', 'quantidade', 'valor_unitario', 'valor_total', 'desconto']
+
+    def clean_ncm(self):
+        return normalizar_codigo_ncm(self.cleaned_data.get('ncm')) or None
 
 class DuplicataNotaFiscalForm(forms.ModelForm):
     class Meta:
@@ -39,7 +48,7 @@ class TransporteNotaFiscalForm(forms.ModelForm):
         fields = ['modalidade_frete', 'transportadora_nome', 'transportadora_cnpj', 'placa_veiculo', 'uf_veiculo', 'quantidade_volumes', 'peso_liquido', 'peso_bruto']
 
 
-# Formsets para editar os modelos relacionados na mesma pÃ¡gina da Nota Fiscal
+# Formsets para editar os modelos relacionados na mesma página da Nota Fiscal
 ItemNotaFiscalFormSet = inlineformset_factory(
     NotaFiscal, 
     ItemNotaFiscal, 
@@ -58,7 +67,7 @@ DuplicataNotaFiscalFormSet = inlineformset_factory(
     fk_name='nota_fiscal'
 )
 
-# Transporte geralmente Ã© um por nota, entÃ£o nÃ£o permitimos adicionar/remover, apenas editar.
+# Transporte geralmente é um por nota, então não permitimos adicionar/remover, apenas editar.
 TransporteNotaFiscalFormSet = inlineformset_factory(
     NotaFiscal, 
     TransporteNotaFiscal, 
@@ -69,7 +78,7 @@ TransporteNotaFiscalFormSet = inlineformset_factory(
 )
 
 # ==============================================================================
-# ðŸš€ FORMULÃRIO PARA NOTA FISCAL DE SAÃDA
+# ðŸš€ FORMULARIO PARA NOTA FISCAL DE SAIDA
 # ==============================================================================
 from control.models import Emitente
 from empresas.models import Empresa
@@ -82,7 +91,7 @@ class NotaFiscalSaidaForm(forms.ModelForm):
     )
     destinatario = forms.ModelChoiceField(
         queryset=Empresa.objects.filter(cliente=True),
-        label="DestinatÃ¡rio (Cliente)",
+        label="Destinatário (Cliente)",
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
@@ -109,11 +118,11 @@ class NotaFiscalSaidaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Tenta prÃ©-selecionar o emitente padrÃ£o
+        # Tenta pré-selecionar o emitente padrão
         default_emitente = Emitente.objects.filter(is_default=True).first()
         if default_emitente:
             self.fields['emitente_proprio'].initial = default_emitente
         
-        # Define o tipo de operaÃ§Ã£o como 'SaÃ­da' por padrÃ£o e o torna somente leitura
-        self.fields['tipo_operacao'].initial = '1' # '1' para SaÃ­da
+        # Define o tipo de operação como 'Saída' por padrão e o torna somente leitura
+        self.fields['tipo_operacao'].initial = '1' # '1' para Saída
         self.fields['tipo_operacao'].widget.attrs['readonly'] = True

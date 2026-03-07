@@ -802,7 +802,7 @@ class ExcluirLotesMultiplosView(BulkDeleteView):
             deleted_names = [str(obj) for obj in lotes_para_deletar]
 
             with transaction.atomic():
-                # CORREÇÃO: Deletar 'filhos' explicitamente primeiro
+                # CORRECAO: Deletar filhos explicitamente primeiro
                 LoteDiario.objects.filter(lote__in=lotes_para_deletar).delete()
                 
                 # Agora, deletar os lotes 'pais'
@@ -897,7 +897,7 @@ class RegistrarEventoView(LoginRequiredMixin, PermissionRequiredMixin, AjaxFormM
                 evento = form.save(commit=False)
 
                 if evento.tipo_evento == 'Transferencia':
-                    # --- LÓGICA DE ORQUESTRAÇÃO DE TRANSFERÊNCIA ---
+                    # --- LOGICA DE ORQUESTRACAO DE TRANSFERENCIA ---
                     lote_origem = evento.lote
                     tanque_destino = evento.tanque_destino
                     quantidade_transferida = evento.quantidade
@@ -1409,7 +1409,7 @@ def povoamento_lotes_view(request):
                         # Recalcula o estado do lote, que também vai cuidar de atualizar o status do tanque
                         # novo_lote.recalcular_estado_atual()
 
-                        # --- INÍCIO DA NOVA INTEGRAÇÃO ---
+                        # --- INICIO DA NOVA INTEGRACAO ---
                         from .utils import projetar_ciclo_de_vida_lote
                         
                         try:
@@ -1418,7 +1418,7 @@ def povoamento_lotes_view(request):
                             # Logar o erro de projeção, mas não impedir o sucesso do povoamento.
                             # É crucial que o povoamento não falhe se a projeção tiver um problema.
                             logging.error(f"Erro ao projetar o ciclo de vida para o novo lote {novo_lote.id}: {e}")
-                        # --- FIM DA NOVA INTEGRAÇÃO ---
+                        # --- FIM DA NOVA INTEGRACAO ---
             
             success_message = app_messages.success_process(f'{len(povoamentos)} povoamento(s) processado(s) com sucesso!')
             return JsonResponse({'success': True, 'message': success_message})
@@ -1890,7 +1890,7 @@ def reprocessar_lotes_api(request):
         else:
             linhas.append("DEBUG: Nenhum tenant ativo. Usando DB 'default'.")
         linhas.append(f"Reprocessamento: lote={lote_id} start={start} end={end or '(até o fim)'}")
-        linhas.append(f"Modo: {'SIMULAÇÃO' if dry_run else 'EXECUÇÃO'} | reprojetar={reprojetar} | forçar={forcar}")
+        linhas.append(f"Modo: {'SIMULACAO' if dry_run else 'EXECUCAO'} | reprojetar={reprojetar} | forcar={forcar}")
         linhas.append("-" * 80)
 
         # 3. Limpeza de Dados Futuros (se forçar e reprojetar)

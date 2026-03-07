@@ -42,4 +42,4 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f'Removendo empresa duplicada {empresa_duplicada.id}'))
                 empresa_duplicada.delete()
 
-        self.stdout.write(self.style.SUCCESS('VerificaÃ§Ã£o de duplicatas concluÃ­da.'))
+        self.stdout.write(self.style.SUCCESS('Verificacao de duplicatas concluida.'))

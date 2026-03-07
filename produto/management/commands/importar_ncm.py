@@ -1,6 +1,8 @@
 import json
 from django.core.management.base import BaseCommand
 from produto.models import NCM
+from produto.ncm_utils import normalizar_codigo_ncm, normalizar_texto_mojibake
+
 
 class Command(BaseCommand):
     help = 'Importa ou atualiza os dados NCM a partir de um arquivo JSON local oficial da Receita.'
@@ -17,7 +19,7 @@ class Command(BaseCommand):
                 codigo = item.get("Codigo")
                 descricao = item.get("Descricao")
                 if codigo and descricao:
-                    NCM.objects.update_or_create(codigo=codigo.strip(), defaults={"descricao": descricao.strip()})
+                    NCM.objects.update_or_create(codigo=normalizar_codigo_ncm(codigo), defaults={"descricao": normalizar_texto_mojibake(descricao.strip())})
                     count += 1
 
             self.stdout.write(self.style.SUCCESS(f"{count} códigos NCM importados/atualizados com sucesso."))

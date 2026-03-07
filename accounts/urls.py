@@ -6,14 +6,14 @@ app_name = 'accounts'
 
 urlpatterns = [
 
-    # === AUTENTICAÇÃO ===
+    # === AUTENTICACAO ===
     path('signup/', views.signup_view, name='signup'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('logout-auto/', views.logout_automatico_view, name='logout_automatico'),
     path('get-navbar/', views.get_navbar, name='get_navbar'),
 
-    # === RECUPERAÇÃO DE SENHA ===
+    # === RECUPERACAO DE SENHA ===
     path('password_reset/', views.password_reset_request_view, name='password_reset'),  # View customizada
     path('password_reset/done/', views.CustomPasswordResetDoneView.as_view(template_name='accounts/password_reset_done.html'), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', views.CustomPasswordResetConfirmView.as_view(template_name='accounts/password_reset_confirm.html'), name='password_reset_confirm'),

@@ -34,12 +34,12 @@ def categoria_form_view(request, pk=None):
 
     if pk:
         if not request.user.has_perm('empresas.change_categoriaempresa'):
-            message = app_messages.error('VocÃª nÃ£o tem permissÃ£o para editar categorias.')
+            message = app_messages.error('Você não tem permissão para editar categorias.')
             return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
     else:
         if not request.user.has_perm('empresas.add_categoriaempresa'):
-            message = app_messages.error('VocÃª nÃ£o tem permissÃ£o para adicionar categorias.')
+            message = app_messages.error('Você não tem permissão para adicionar categorias.')
             return JsonResponse({'success': False, 'message': message}, status=403)
         categoria = None
 
@@ -93,7 +93,7 @@ def excluir_categorias_view(request):
         message = app_messages.success_deleted('Categoria(s)', f'{count} selecionada(s)')
         return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('empresas:lista_categorias')})
     except json.JSONDecodeError:
-        message = app_messages.error('RequisiÃ§Ã£o invÃ¡lida (JSON malformatado).')
+        message = app_messages.error('Requisição inválida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir categorias: {str(exc)}')
@@ -232,7 +232,7 @@ def excluir_empresas_view(request):
             }
         )
     except json.JSONDecodeError:
-        message = app_messages.error('RequisiÃ§Ã£o invÃ¡lida (JSON malformatado).')
+        message = app_messages.error('Requisição inválida (JSON malformatado).')
         return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir empresas: {str(exc)}')

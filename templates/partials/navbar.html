@@ -12,20 +12,29 @@
               {% for item in dynamic_menu_items %}
                 {% if item.children %}
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle ajax-link" href="#" id="navbarDropdown-{{ forloop.counter }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle ajax-link" href="#" id="navbarDropdown-{{ forloop.counter }}" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                       {{ item.icon|safe }} {{ item.name }}
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown-{{ forloop.counter }}">
                       {% for child in item.children %}
                         {% if child.children %}
-                          <!-- Dropdown de segundo nível, se necessário -->
                           <li>
-                            <a class="dropdown-item" href="#">{{ child.icon|safe }} {{ child.name }} &raquo;</a>
-                            <ul class="submenu dropdown-menu">
-                              {% for grandchild in child.children %}
-                                <li><a class="dropdown-item{% if not grandchild.is_external %} ajax-link{% endif %}" href="{{ grandchild.url }}"{% if grandchild.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ grandchild.name }}</a></li>
-                              {% endfor %}
-                            </ul>
+                            <button class="dropdown-item d-flex justify-content-between align-items-center nested-submenu-toggle"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#submenu-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                                    aria-expanded="false"
+                                    aria-controls="submenu-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                              <span>{{ child.icon|safe }} {{ child.name }}</span>
+                              <span class="submenu-arrow">&#9656;</span>
+                            </button>
+                            <div id="submenu-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" class="collapse nested-submenu-collapse">
+                              <ul class="submenu-list list-unstyled mb-0">
+                                {% for grandchild in child.children %}
+                                  <li><a class="dropdown-item{% if not grandchild.is_external %} ajax-link{% endif %}" href="{{ grandchild.url }}"{% if grandchild.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ grandchild.name }}</a></li>
+                                {% endfor %}
+                              </ul>
+                            </div>
                           </li>
                         {% else %}
                           <li><a class="dropdown-item{% if not child.is_external %} ajax-link{% endif %}" href="{{ child.url }}"{% if child.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ child.icon|safe }} {{ child.name }}</a></li>
@@ -43,18 +52,29 @@
             <ul class="navbar-nav ms-auto">
                 <!-- Perfil -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarPerfil" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        👤 Perfil
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarPerfil" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-person-circle profile-menu-icon"></i> Perfil
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarPerfil">
                         <li><a class="dropdown-item ajax-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a></li>
-                        <!-- Opções de Tema -->
                         <li>
-                            <h6 class="dropdown-header">Temas</h6>
+                            <button class="dropdown-item d-flex justify-content-between align-items-center nested-submenu-toggle"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#submenu-perfil-temas"
+                                    aria-expanded="false"
+                                    aria-controls="submenu-perfil-temas">
+                                <span>Temas</span>
+                                <span class="submenu-arrow">&#9656;</span>
+                            </button>
+                            <div id="submenu-perfil-temas" class="collapse nested-submenu-collapse">
+                                <ul class="submenu-list list-unstyled mb-0">
+                                    <li><a class="dropdown-item theme-option" href="#" data-theme="light">Branco</a></li>
+                                    <li><a class="dropdown-item theme-option" href="#" data-theme="dark">Escuro</a></li>
+                                    <li><a class="dropdown-item theme-option" href="#" data-theme="azul">Azul</a></li>
+                                </ul>
+                            </div>
                         </li>
-                        <li><a class="dropdown-item theme-option" href="#" data-theme="light">Branco</a></li>
-                        <li><a class="dropdown-item theme-option" href="#" data-theme="dark">Escuro</a></li>
-                        <li><a class="dropdown-item theme-option" href="#" data-theme="azul">Azul</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form id="logout-form-superior" method="post" action="{% url 'accounts:logout' %}" style="display: none;">

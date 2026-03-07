@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST, require_GET
 from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm, DetalhesFiscaisProdutoForm
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFiscaisProduto
 from common.utils import render_ajax_or_base
+from .ncm_utils import formatar_codigo_ncm, normalizar_codigo_ncm, normalizar_texto_mojibake
 
 DetalhesFiscaisProdutoFormSet = inlineformset_factory(
     Produto, 
@@ -82,7 +83,7 @@ def editar_produto_view(request, pk):
                 "redirect_url": reverse("produto:lista_produtos")
             })
         else:
-            print("Formulário de Produto NÃO é válido.")
+            print("Formulario de Produto NAO e valido.")
             print("Form.errors:", form.errors)
             message = app_messages.error("Erro ao atualizar produto. Verifique os campos.")
             return JsonResponse({"success": False, "message": message, "errors": form.errors, "formset_errors": formset.errors}, status=400)
@@ -350,7 +351,7 @@ def manutencao_ncm_view(request):
 
     if termo:
         ncm_lista = ncm_lista.filter(
-            Q(codigo__icontains=termo) | Q(descricao__icontains=termo)
+            Q(codigo__icontains=normalizar_codigo_ncm(termo)) | Q(descricao__icontains=termo)
         ).order_by("codigo")[:20]
     else:
         ncm_lista = ncm_lista.order_by("codigo")
@@ -377,12 +378,13 @@ def manutencao_ncm_view(request):
 
 @login_required_json
 def buscar_ncm_ajax(request):
-    termo = request.GET.get('term', '')
+    termo = request.GET.get('term', '') or request.GET.get('search', '')
     resultados = []
 
     if termo:
-        qs = NCM.objects.filter(descricao__icontains=termo)[:20]
-        resultados = [{"id": ncm.codigo, "text": f"{ncm.codigo} - {ncm.descricao}"} for ncm in qs]
+        codigo_busca = normalizar_codigo_ncm(termo)
+        qs = NCM.objects.filter(Q(descricao__icontains=termo) | Q(codigo__icontains=codigo_busca))[:20]
+        resultados = [{"id": ncm.codigo, "text": f"{ncm.codigo_formatado} - {ncm.descricao}"} for ncm in qs]
 
     return JsonResponse({"results": resultados})
 
@@ -410,7 +412,7 @@ def importar_ncm_manual_view(request):
         for item in data:
             if '|' in item:
                 codigo, descricao = item.split('|', 1)
-                NCM.objects.update_or_create(codigo=codigo.strip(), defaults={"descricao": descricao.strip()})
+                NCM.objects.update_or_create(codigo=normalizar_codigo_ncm(codigo), defaults={"descricao": normalizar_texto_mojibake(descricao.strip())})
                 count += 1
         message = app_messages.success_imported(instance=None, custom_message=f"{count} códigos NCM importados com sucesso.")
         return JsonResponse({"success": True, "message": message})

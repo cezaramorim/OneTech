@@ -23,7 +23,7 @@ def api_notas_entradas(request):
     """
     API endpoint REST (JSON) para listar todas as Notas Fiscais:
       - URL: GET /relatorios/api/v1/notas-entradas/
-      - Requer autenticaÃ§Ã£o (token/session).
+      - Requer autenticação (token/session).
       - Retorna: numero, fornecedor, data_emissao, data_saida, valor_total_nota, usuario.
     """
     qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
@@ -36,7 +36,7 @@ def api_notas_entradas(request):
 def notas_entradas_view(request):
     """
     View HTML para listagem de Notas:
-      - GET normal: renderiza 'relatorios/notas_entradas.html' (pÃ¡gina completa).
+      - GET normal: renderiza 'relatorios/notas_entradas.html' (página completa).
       - AJAX (XHR): renderiza apenas 'partials/relatorios/notas_entradas.html'.
     """
     qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
@@ -65,7 +65,7 @@ def editar_entrada_view(request, pk):
     duplicatas = nota.duplicatas.all()
     for d in duplicatas:
         if d.valor:
-            d.valor = Decimal(d.valor) / Decimal('100')  # Corrige centavos â†’ reais
+            d.valor = Decimal(d.valor) / Decimal('100')  # Corrige centavos -> reais
 
 
     return render(request, 'partials/relatorios/editar_entrada.html', {
@@ -74,19 +74,19 @@ def editar_entrada_view(request, pk):
         'produtos': produtos,
         'transporte': transporte,
         'duplicatas': duplicatas,
-        'data_page': 'editar-entrada',  # âœ… Adicionado
+        'data_page': 'editar-entrada',  # Adicionado
     })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_nota_detalhada(request, pk):
     """
-    Retorna os dados completos da Nota Fiscal para preencher a tela de ediÃ§Ã£o.
+    Retorna os dados completos da Nota Fiscal para preencher a tela de edição.
     """
     try:
         nota = NotaFiscal.objects.prefetch_related('itens__produto').get(pk=pk)
     except NotaFiscal.DoesNotExist:
-        return Response({"erro": "Nota nÃ£o encontrada"}, status=404)
+        return Response({"erro": "Nota não encontrada"}, status=404)
 
     # Dados principais da nota
     nota_data = {
@@ -174,8 +174,8 @@ def api_nota_detalhada(request, pk):
 @login_required
 def relatorio_nota_fiscal_view(request):
     """
-    Exibe a tela de relatÃ³rio de notas fiscais com filtros (cliente, data, etc.).
-    A tabela Ã© carregada via API.
+    Exibe a tela de relatório de notas fiscais com filtros (cliente, data, etc.).
+    A tabela é carregada via API.
     """
     return render(request, 'partials/relatorios/relatorio_nota_fiscal.html')
 

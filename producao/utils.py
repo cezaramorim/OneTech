@@ -41,8 +41,8 @@ def _resolver_tanque_por_evento(lote: Lote, ultimo_evento: EventoManejo):
 
 def construir_resolvedor_tanque_lote(lote: Lote, eventos_ordenados=None):
     """
-    Resolve tanque hist?rico de um lote sem consultas repetidas ao banco.
-    Ideal para loops por data (reprojeOKo/backfill).
+    Resolve tanque historico de um lote sem consultas repetidas ao banco.
+    Ideal para loops por data (reprojecao/backfill).
     """
     if eventos_ordenados is None:
         eventos_ordenados = list(
@@ -67,8 +67,8 @@ def construir_resolvedor_tanque_lote(lote: Lote, eventos_ordenados=None):
 
 def obter_tanque_lote_em_data(lote: Lote, data_referencia: date):
     """
-    Resolve o tanque hist?rico do lote na data informada.
-    Prioriza os dados do pr?prio evento e usa tanque_atual apenas como fallback legado.
+    Resolve o tanque historico do lote na data informada.
+    Prioriza os dados do proprio evento e usa tanque_atual apenas como fallback legado.
     """
     ultimo_evento = (
         EventoManejo.objects
@@ -301,7 +301,7 @@ def sugerir_racao_para_dia(lote_diario: LoteDiario) -> dict:
     biomassa_kg = lote_diario.biomassa_inicial
     quantidade_sugerida_kg = calc_racao_kg(biomassa_kg, percentual_pv)
     
-    logging.info(f"[SUGESTÃO] Lote {lote.id}: Biomassa inicial do dia: {biomassa_kg}kg, Ração Sugerida: {quantidade_sugerida_kg}kg")
+    logging.info(f"[SUGESTAO] Lote {lote.id}: Biomassa inicial do dia: {biomassa_kg}kg, Racao Sugerida: {quantidade_sugerida_kg}kg")
 
     return {
         'lote': lote,

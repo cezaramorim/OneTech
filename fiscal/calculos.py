@@ -14,42 +14,42 @@ def calcular_impostos_item(
 ) -> dict:
     """
     Calcula os impostos (ICMS, IPI, PIS, COFINS) para um item de nota fiscal.
-    Esta Ã© uma implementaÃ§Ã£o simplificada e deve ser expandida com as regras tributÃ¡rias reais.
+    Esta é uma implementação simplificada e deve ser expandida com as regras tributárias reais.
 
     Args:
         item_nota_fiscal: O objeto ItemNotaFiscal a ser calculado.
         produto: O objeto Produto associado ao item.
         emitente: O objeto Empresa do emitente da nota.
-        destinatario: O objeto Empresa do destinatÃ¡rio da nota.
+        destinatario: O objeto Empresa do destinatário da nota.
 
     Returns:
-        Um dicionÃ¡rio contendo os valores calculados dos impostos e os CSTs aplicados.
+        Um dicionário contendo os valores calculados dos impostos e os CSTs aplicados.
     """
-    # Valores padrÃ£o
+    # Valores padrão
     base_calculo_icms = Decimal('0.00')
     aliquota_icms = Decimal('0.00')
     valor_icms = Decimal('0.00')
     valor_icms_desonerado = Decimal('0.00')
     motivo_desoneracao_icms = ''
-    cst_icms_aplicado = '90' # Exemplo: Outras SaÃ­das
+    cst_icms_aplicado = '90' # Exemplo: Outras Saídas
 
     base_calculo_ipi = Decimal('0.00')
     aliquota_ipi = Decimal('0.00')
     valor_ipi = Decimal('0.00')
-    cst_ipi_aplicado = '99' # Exemplo: Outras SaÃ­das
+    cst_ipi_aplicado = '99' # Exemplo: Outras Saídas
 
     base_calculo_pis = Decimal('0.00')
     aliquota_pis = Decimal('0.00')
     valor_pis = Decimal('0.00')
-    cst_pis_aplicado = '99' # Exemplo: Outras OperaÃ§Ãµes
+    cst_pis_aplicado = '99' # Exemplo: Outras Operações
 
     base_calculo_cofins = Decimal('0.00')
     aliquota_cofins = Decimal('0.00')
     valor_cofins = Decimal('0.00')
-    cst_cofins_aplicado = '99' # Exemplo: Outras OperaÃ§Ãµes
+    cst_cofins_aplicado = '99' # Exemplo: Outras Operações
 
-    # LÃ³gica de cÃ¡lculo (EXEMPLO - SUBSTITUIR POR REGRAS REAIS)
-    # A complexidade aqui dependerÃ¡ de NCM, CFOP, CST, regimes tributÃ¡rios, UF, etc.
+    # Lógica de cálculo (EXEMPLO - SUBSTITUIR POR REGRAS REAIS)
+    # A complexidade aqui dependerá de NCM, CFOP, CST, regimes tributários, UF, etc.
     # Use os campos de DetalhesFiscaisProduto como ponto de partida.
 
     # Exemplo simplificado para ICMS:
@@ -65,19 +65,19 @@ def calcular_impostos_item(
         aliquota_ipi = produto.detalhes_fiscais.aliquota_ipi or Decimal('0.00')
         base_calculo_ipi = item_nota_fiscal.valor_total
         valor_ipi = base_calculo_ipi * (aliquota_ipi / Decimal('100'))
-        cst_ipi_aplicado = produto.detalhes_fiscais.cst_ipi or '50' # SaÃ­da Tributada
+        cst_ipi_aplicado = produto.detalhes_fiscais.cst_ipi or '50' # Saída Tributada
 
     # Exemplo simplificado para PIS/COFINS:
     if produto.detalhes_fiscais:
         aliquota_pis = produto.detalhes_fiscais.aliquota_pis or Decimal('0.00')
         base_calculo_pis = item_nota_fiscal.valor_total
         valor_pis = base_calculo_pis * (aliquota_pis / Decimal('100'))
-        cst_pis_aplicado = produto.detalhes_fiscais.cst_pis or '01' # OperaÃ§Ã£o TributÃ¡vel
+        cst_pis_aplicado = produto.detalhes_fiscais.cst_pis or '01' # Operação Tributável
 
         aliquota_cofins = produto.detalhes_fiscais.aliquota_cofins or Decimal('0.00')
         base_calculo_cofins = item_nota_fiscal.valor_total
         valor_cofins = base_calculo_cofins * (aliquota_cofins / Decimal('100'))
-        cst_cofins_aplicado = produto.detalhes_fiscais.cst_cofins or '01' # OperaÃ§Ã£o TributÃ¡vel
+        cst_cofins_aplicado = produto.detalhes_fiscais.cst_cofins or '01' # Operação Tributável
 
     return {
         'base_calculo_icms': base_calculo_icms,
@@ -105,7 +105,7 @@ def calcular_impostos_item(
 
 def aplicar_impostos_na_nota(nota_fiscal: NotaFiscal):
     """
-    Aplica os cÃ¡lculos de impostos a todos os itens de uma Nota Fiscal e atualiza os totais da nota.
+    Aplica os cálculos de impostos a todos os itens de uma Nota Fiscal e atualiza os totais da nota.
 
     Args:
         nota_fiscal: O objeto NotaFiscal a ser processado.
@@ -115,13 +115,13 @@ def aplicar_impostos_na_nota(nota_fiscal: NotaFiscal):
     total_cofins_nf = Decimal('0.00')
 
     for item in nota_fiscal.itens.all():
-        # Garante que o produto e os detalhes fiscais estÃ£o carregados
+        # Garante que o produto e os detalhes fiscais estão carregados
         produto = item.produto
         if not produto:
             # Lidar com item sem produto associado, talvez logar um erro ou pular
             continue
 
-        # Chama a funÃ§Ã£o de cÃ¡lculo para o item
+        # Chama a função de cálculo para o item
         impostos_calculados = calcular_impostos_item(
             item,
             produto,

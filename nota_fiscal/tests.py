@@ -1,4 +1,4 @@
-﻿
+
 # Create your tests here.
 
 from django.test import TestCase, Client
@@ -13,13 +13,13 @@ User = get_user_model()
 class SalvarImportacaoViewTest(TestCase):
     def setUp(self):
         self.client = Client()
-        # Cria e autentica um usuÃ¡rio para passar pelo @login_required
+        # Cria e autentica um usuário para passar pelo @login_required
         self.user = User.objects.create_user(username='tester', password='secret')
         self.client.force_login(self.user)
 
-        self.url = reverse('nota_fiscal:salvar_importacao')  # ajuste se necessÃ¡rio
+        self.url = reverse('nota_fiscal:salvar_importacao')  # ajuste se necessário
 
-        # Campos mÃ­nimos em "nota" para nÃ£o falhar validaÃ§Ã£o
+        # Campos mínimos em "nota" para não falhar validação
         self.common_payload = {
             "nota": {
                 "numero_nota": "",

@@ -136,6 +136,7 @@ function loadNavbar() {
             const navbarContainer = document.getElementById('navbar-container');
             if (navbarContainer) {
                 navbarContainer.innerHTML = html;
+                initNestedNavbarSubmenus(navbarContainer);
             } else {
                 // Silencioso em páginas que não têm o container, como a de login.
             }
@@ -619,6 +620,27 @@ function initTooltips(root = document) {
     });
 }
 
+function initNestedNavbarSubmenus(root = document) {
+    root.querySelectorAll('.nested-submenu-toggle, .nested-submenu-collapse').forEach(el => {
+        if (el.dataset.navbarNestedBound === '1') return;
+        el.dataset.navbarNestedBound = '1';
+        el.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+    });
+
+    root.querySelectorAll('.navbar-superior .nav-item.dropdown').forEach(dropdown => {
+        if (dropdown.dataset.navbarDropdownBound === '1') return;
+        dropdown.dataset.navbarDropdownBound = '1';
+        dropdown.addEventListener('hidden.bs.dropdown', () => {
+            dropdown.querySelectorAll('.nested-submenu-collapse.show').forEach(submenu => {
+                const instance = bootstrap.Collapse.getInstance(submenu) || new bootstrap.Collapse(submenu, { toggle: false });
+                instance.hide();
+            });
+        });
+    });
+}
+
 function initListaEventos() {
   const form = document.getElementById('filtro-eventos-form');
   if (!form || form.dataset.debounced === 'true') return;
@@ -650,6 +672,7 @@ function runInitializers() {
     }
     initTooltips(document);
     initMigrationTenantSelect(document);
+    initNestedNavbarSubmenus(document);
 
     // Módulos específicos de página
     const initializers = [
