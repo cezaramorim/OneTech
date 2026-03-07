@@ -1,7 +1,6 @@
-import json
-from django.core.management.base import BaseCommand
-from produto.models import NCM
-from produto.ncm_utils import normalizar_codigo_ncm, normalizar_texto_mojibake
+﻿from django.core.management.base import BaseCommand
+
+from produto.ncm_services import import_ncm_from_local_json
 
 
 class Command(BaseCommand):
@@ -9,22 +8,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            with open('produto/data/ncm.json', encoding='utf-8') as f:
-                data = json.load(f)
-
-            nomenclaturas = data.get("Nomenclaturas", [])
-            count = 0
-
-            for item in nomenclaturas:
-                codigo = item.get("Codigo")
-                descricao = item.get("Descricao")
-                if codigo and descricao:
-                    NCM.objects.update_or_create(codigo=normalizar_codigo_ncm(codigo), defaults={"descricao": normalizar_texto_mojibake(descricao.strip())})
-                    count += 1
-
-            self.stdout.write(self.style.SUCCESS(f"{count} códigos NCM importados/atualizados com sucesso."))
-
+            result = import_ncm_from_local_json()
+            self.stdout.write(self.style.SUCCESS(f"{result['count']} codigos NCM importados/atualizados com sucesso."))
         except FileNotFoundError:
-            self.stderr.write(self.style.ERROR("Arquivo ncm.json não encontrado em produto/data/."))
+            self.stderr.write(self.style.ERROR('Arquivo ncm.json nao encontrado em produto/data/.'))
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Erro: {str(e)}"))
+            self.stderr.write(self.style.ERROR(f'Erro: {str(e)}'))

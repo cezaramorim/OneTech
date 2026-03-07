@@ -1,35 +1,70 @@
-{% load static %}
-<div class="container-fluid" data-page="manutencao-ncm">
+﻿{% load static %}
+<div class="container-fluid" data-page="manutencao-ncm" data-refresh-url="{% url 'produto:manutencao_ncm' %}">
   <div id="identificador-tela" data-tela="manutencao_ncm"></div>
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">Tabela NCM</h2>
-    <button class="btn btn-outline-primary" id="btn-importar-ncm">
-      <i class="bi bi-cloud-arrow-down"></i> Importar/Atualizar NCM
-    </button>
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+      <h2 class="mb-1">Tabela NCM</h2>
+      <p class="text-muted mb-0">Base normalizada no banco e exibicao formatada para leitura.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-primary" id="btn-atualizar-base-ncm" data-url="{% url 'produto:atualizar_ncm_base_oficial' %}">
+        <i class="bi bi-cloud-download"></i> Atualizar Base Oficial
+      </button>
+      <button class="btn btn-primary" id="btn-importar-ncm-local" data-url="{% url 'produto:importar_ncm_local' %}">
+        <i class="bi bi-database-down"></i> Importar Base Local
+      </button>
+      <button class="btn btn-outline-secondary" id="btn-consolidar-ncm" data-url="{% url 'produto:consolidar_ncm' %}">
+        <i class="bi bi-arrow-repeat"></i> Consolidar NCM
+      </button>
+    </div>
   </div>
 
-  <div class="mb-3">
-    <input type="text"
-           id="busca-ncm"
-           class="form-control"
-           placeholder="Buscar NCM por código ou descrição"
-           autocomplete="off">
+  <div class="ncm-meta-grid mb-4">
+    <div class="ncm-meta-card">
+      <strong>BASE VIGENTE:</strong> {{ ncm_meta.vigencia|default:"Nao informado" }}
+    </div>
+    <div class="ncm-meta-card">
+      <strong>ATO:</strong> {{ ncm_meta.ato|default:"Nao informado" }}
+    </div>
+    <div class="ncm-meta-card">
+      <strong>ITENS NA BASE:</strong> {{ ncm_meta.total_itens|default:ncm_lista|length }}
+    </div>
   </div>
 
-  <hr class="mb-4">
+  <form id="ncm-search-form"
+        class="ajax-form mb-4"
+        method="get"
+        action="{% url 'produto:manutencao_ncm' %}"
+        data-target-container="#ncm-tabela-wrapper"
+        data-push-state="false">
+    <input type="hidden" name="partial" value="1">
+    <div class="ncm-search-row">
+      <div class="ncm-search-field">
+        <input type="text"
+               id="busca-ncm"
+               name="term"
+               class="form-control"
+               value="{{ request.GET.term|default:'' }}"
+               placeholder="Buscar NCM por codigo ou descricao"
+               autocomplete="off"
+               data-autocomplete-url="{% url 'produto:buscar_ncm_ajax' %}"
+               data-autocomplete-display-field="text"
+               data-autocomplete-value-field="codigo_formatado"
+               data-autocomplete-min-length="2"
+               data-autocomplete-submit-on-select="true"
+               data-autocomplete-submit-target-form="#ncm-search-form">
+      </div>
+      <button type="submit" class="btn btn-primary ncm-search-btn">
+        <i class="bi bi-search"></i> Buscar
+      </button>
+      <button type="button" class="btn btn-outline-secondary ncm-search-btn" id="btn-limpar-ncm">
+        <i class="bi bi-x-circle"></i> Limpar
+      </button>
+    </div>
+  </form>
 
   <div id="ncm-tabela-wrapper">
     {% include "partials/produtos/tabela_ncm.html" %}
   </div>
 </div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Configura o autocompletar para o campo de busca NCM
-    const ncmBuscaInput = document.getElementById('busca-ncm');
-    if (ncmBuscaInput) {
-      setupAutocomplete(ncmBuscaInput.id, '{% url 'produto:buscar_ncm_ajax' %}', 'text', 'id');
-    }
-  });
-</script>
-

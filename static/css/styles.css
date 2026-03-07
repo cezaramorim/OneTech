@@ -1,9 +1,9 @@
-html:not(.theme-ready) body {
+﻿html:not(.theme-ready) body {
   visibility: hidden;
 }
 
 /* ============================
-   RESET E CONFIGURAÇÃO BASE
+   RESET E CONFIGURAÃ‡ÃƒO BASE
 =============================== */
 * {
   margin: 0;
@@ -104,7 +104,7 @@ body.dark .menu-list li a:hover {
 }
 
 /* ============================
-   CONTEÚDO PRINCIPAL
+   CONTEÃšDO PRINCIPAL
 =============================== */
 .content {
   flex: 1;
@@ -121,7 +121,7 @@ h1, h2, h3 {
 }
 
 /* ============================
-   FORMULÁRIOS E CAMPOS
+   FORMULÃRIOS E CAMPOS
 =============================== */
 form {
   background: #fff;
@@ -160,7 +160,7 @@ input, select, textarea {
 
 
 /* ============================
-   BOTÕES (PADRÃO)
+   BOTÃ•ES (PADRÃƒO)
 =============================== */
 .btn,
 form button,
@@ -309,7 +309,7 @@ html.dark .welcome-card .text-muted {
 
 
 /* ============================  
-   LISTA DE USUÁRIOS - MELHORIAS DE VISUAL  
+   LISTA DE USUÃRIOS - MELHORIAS DE VISUAL  
 =============================== */
 .list-group-item {
   background-color: transparent;
@@ -322,7 +322,7 @@ html.dark .list-group-item:hover {
   background-color: #323640;
 }
 
-/* ===== Nome de usuário (login) - estilo texto puro ===== */
+/* ===== Nome de usuÃ¡rio (login) - estilo texto puro ===== */
 .form-control-plaintext {
   display: block;
   padding: 0.375rem 0;
@@ -342,14 +342,14 @@ body.dark .form-control-plaintext {
 }
 
 /* ============================  
-   ESTILO PARA TEMA ESCURO - COMPONENTES DE CARTÕES
+   ESTILO PARA TEMA ESCURO - COMPONENTES DE CARTÃ•ES
 =============================== */
 
 
 
 
 
-/* ✅ Rótulo dos checkboxes */
+/* âœ… RÃ³tulo dos checkboxes */
 html.dark .form-check-label {
   color: #ddd;                /* Texto claro para legibilidade em fundo escuro */
 }
@@ -378,17 +378,17 @@ body {
 }
 
 
-/* 🎯 Estiliza o card de login */
+/* ðŸŽ¯ Estiliza o card de login */
 .login-card {
   border-radius: 1rem;  /* arredondado em todos os lados */
-  background-color: rgba(0, 0, 0, 0.6); /* fundo escuro translúcido */
+  background-color: rgba(0, 0, 0, 0.6); /* fundo escuro translÃºcido */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   padding: 2rem;
 }
 
 
 
-/* 🎯 Botões de submenus em "Configurações" */
+/* ðŸŽ¯ BotÃµes de submenus em "ConfiguraÃ§Ãµes" */
 #submenu-configuracoes button[data-bs-toggle="collapse"] {
   background-color: transparent !important;
   color: inherit !important;
@@ -404,32 +404,32 @@ body {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* ❌ Remove bolinhas dos submenus */
+/* âŒ Remove bolinhas dos submenus */
 #submenu-configuracoes ul {
   list-style: none;
   padding-left: 0;
   margin-bottom: 0;
 }
 
-/* ✅ Itens dos submenus */
+/* âœ… Itens dos submenus */
 #submenu-configuracoes .list-group-item {
   border: none !important;
   background-color: transparent !important;
   padding: 0.25rem 0.75rem;
   margin: 0;
-  font-weight: normal;  /* 🔧 Aqui está o ajuste principal */
+  font-weight: normal;  /* ðŸ”§ Aqui estÃ¡ o ajuste principal */
   font-size: 0.925rem;
   color: inherit;
   border-radius: 0.3rem;
   transition: background-color 0.2s ease;
 }
 
-/* ☀️ Hover no tema claro */
+/* â˜€ï¸ Hover no tema claro */
 #submenu-configuracoes .list-group-item:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* 🌙 Estilo no tema escuro */
+/* ðŸŒ™ Estilo no tema escuro */
 html.dark #submenu-configuracoes .list-group-item {
   color: #f0f0f0;
   background-color: rgba(255, 255, 255, 0.015);
@@ -462,7 +462,7 @@ html.dark .btn-sair-link:hover {
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* ✅ Estilo para o botão "Sair" do menu */
+/* âœ… Estilo para o botÃ£o "Sair" do menu */
 
 
 .logout-link:hover {
@@ -512,7 +512,7 @@ html.dark .logout-link:hover {
 
 
 
-/* ✅ Remove completamente o contorno do botão da lua */
+/* âœ… Remove completamente o contorno do botÃ£o da lua */
 #theme-toggle {
   outline: none;
   box-shadow: none;
@@ -558,22 +558,22 @@ body {
   box-shadow: none !important;
   border-radius: 0 !important;
   transition: none !important;
-  min-height: 100%; /* ✅ garante altura mínima para evitar movimentos */
+  min-height: 100%; /* âœ… garante altura mÃ­nima para evitar movimentos */
 }
 
-/* Conteúdo interno carregado via AJAX */
+/* ConteÃºdo interno carregado via AJAX */
 #main-content > div {
   max-width: 100%;
-  margin: 0 auto; /* garante centralização */
+  margin: 0 auto; /* garante centralizaÃ§Ã£o */
 }
 
-/* 🌓 Suporte ao modo escuro */
+/* ðŸŒ“ Suporte ao modo escuro */
 html.dark #main-content.bg-light {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
-/* 🖼️ Logo central na tela inicial */
+/* ðŸ–¼ï¸ Logo central na tela inicial */
 #main-content[data-tela="home"]::before {
   content: '';
   position: absolute;
@@ -591,7 +591,7 @@ html.dark #main-content.bg-light {
 }
 
 
-/* 🌅 Tela de fundo da página inicial */
+/* ðŸŒ… Tela de fundo da pÃ¡gina inicial */
 #welcome-screen.home-background {
   content: '';
   position: absolute;
@@ -608,7 +608,7 @@ html.dark #main-content.bg-light {
   pointer-events: none;
 }
 
-/* 🎨 Estilo das abas (nav-tabs) ajustado para o tema do projeto */
+/* ðŸŽ¨ Estilo das abas (nav-tabs) ajustado para o tema do projeto */
 .nav-tabs .nav-link {
   color: inherit;
   background-color: transparent;
@@ -626,31 +626,31 @@ html.dark #main-content.bg-light {
 }
 
 .nav-tabs .nav-link.active {
-  background-color: rgba(255, 255, 255, 0.05); /* 🔸 leve destaque escuro */
+  background-color: rgba(255, 255, 255, 0.05); /* ðŸ”¸ leve destaque escuro */
   color: inherit;
   font-weight: 600;
   border-bottom: 2px solid var(--bs-gray-600); /* ou #444 */
 }
 
-/* 🌙 Ajustes para o tema escuro */
+/* ðŸŒ™ Ajustes para o tema escuro */
 html.dark .nav-tabs .nav-link.active {
   background-color: #2c2c2e;
   border-bottom: 2px solid #666;
 }
 
-/* 📋 Lista de resultados do Select2 com scroll vertical */
+/* ðŸ“‹ Lista de resultados do Select2 com scroll vertical */
 .select2-container--bootstrap-5 .select2-results__options {
   max-height: 200px;
   overflow-y: auto;
 }
 
-/* 🧩 Dropdown com largura flexível (herda do campo) */
+/* ðŸ§© Dropdown com largura flexÃ­vel (herda do campo) */
 .select2-container--bootstrap-5 .select2-dropdown {
   width: auto;
   box-sizing: border-box;
 }
 
-/* Select2 (Bootstrap-5) – Dark dropdown + opções */
+/* Select2 (Bootstrap-5) â€“ Dark dropdown + opÃ§Ãµes */
 
 
 
@@ -663,7 +663,7 @@ html.dark .select2-container--bootstrap-5 .select2-results__option[aria-selected
 
 
 
-/* 🔹 Campo padrão */
+/* ðŸ”¹ Campo padrÃ£o */
 .select2-container--bootstrap-5 .select2-selection {
   display: flex;
   align-items: center;
@@ -678,14 +678,14 @@ html.dark .select2-container--bootstrap-5 .select2-results__option[aria-selected
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-/* 🔹 Campo pequeno (sm) */
+/* ðŸ”¹ Campo pequeno (sm) */
 .select2-container--bootstrap-5.select2-sm .select2-selection {
   height: calc(1.8125rem + 2px);
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
 }
 
-/* 🔹 Campo grande (lg) */
+/* ðŸ”¹ Campo grande (lg) */
 .select2-container--bootstrap-5.select2-lg .select2-selection {
   height: calc(2.875rem + 2px);
   padding: 0.5rem 1rem;
@@ -694,13 +694,13 @@ html.dark .select2-container--bootstrap-5 .select2-results__option[aria-selected
 
 
 
-/* 🌙 Escuro com foco */
+/* ðŸŒ™ Escuro com foco */
 html.dark .select2-container--bootstrap-5 .select2-selection:focus {
   border-color: #666;
   box-shadow: 0 0 0 0.2rem rgba(200, 200, 200, 0.25);
 }
 
-/* ✅ Garante largura total */
+/* âœ… Garante largura total */
 .select2-wrapper .select2-container,
 .select2-container--bootstrap-5 {
   width: 100% !important;
@@ -717,7 +717,7 @@ html.dark .select2-container--bootstrap-5 .select2-selection:focus {
 
 
 /* ================================
-   🔍 Autocomplete NCM - Dropdown
+   ðŸ” Autocomplete NCM - Dropdown
 ================================= */
 
 /* Estilo base do dropdown */
@@ -737,13 +737,21 @@ html.dark .select2-container--bootstrap-5 .select2-selection:focus {
 }
 
 /* Estilo dos itens */
-.autocomplete-ncm-item {
+.autocomplete-ncm-list .autocomplete-ncm-item {
+  display: block;
+  width: 100%;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
   transition: background 0.2s;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
 }
 
-.autocomplete-ncm-item:hover {
+.autocomplete-ncm-list .autocomplete-ncm-item:hover {
   background-color: #f1f1f1;
 }
 
@@ -755,11 +763,11 @@ html.dark .autocomplete-ncm-list {
   box-shadow: 0 0.25rem 0.5rem rgba(255, 255, 255, 0.05);
 }
 
-html.dark .autocomplete-ncm-item:hover {
+html.dark .autocomplete-ncm-list .autocomplete-ncm-item:hover {
   background-color: #3c4049;
 }
 
-/* ✅ Resultado da importação de XML de NFe */
+/* âœ… Resultado da importaÃ§Ã£o de XML de NFe */
 #resultado-xml {
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
@@ -782,7 +790,7 @@ html.dark .autocomplete-ncm-item:hover {
   margin-bottom: 0.25rem;
 }
 
-/* 🌙 Compatível com tema escuro */
+/* ðŸŒ™ CompatÃ­vel com tema escuro */
 html.dark #resultado-xml {
   background-color: #2b2d3a;
   border-color: #444;
@@ -805,7 +813,7 @@ html.dark #resultado-xml h5 {
   overflow-x: hidden;          /* impede deslocamento lateral */
 }
 
-/* 🟢 Mensagens instantâneas flutuantes no topo direito */
+/* ðŸŸ¢ Mensagens instantÃ¢neas flutuantes no topo direito */
 #mensagens {
   position: fixed;
   top: 1rem;
@@ -816,7 +824,7 @@ html.dark #resultado-xml h5 {
   align-items: flex-end;
   max-width: 400px;
   width: 100%;
-  pointer-events: none; /* permite clicar em elementos atrás */
+  pointer-events: none; /* permite clicar em elementos atrÃ¡s */
 }
 
 #mensagens .alert {
@@ -835,10 +843,10 @@ html.dark #resultado-xml h5 {
   border-radius: 0.4rem;
   width: 100%;
   max-width: 100%;
-  pointer-events: auto; /* reativa clique no botão fechar */
+  pointer-events: auto; /* reativa clique no botÃ£o fechar */
 }
 
-/* 🟥 Erro */
+/* ðŸŸ¥ Erro */
 #mensagens .alert-danger,
 #mensagens .alert-error {
   background-image: url('/static/icons/img_erro.png');
@@ -847,7 +855,7 @@ html.dark #resultado-xml h5 {
   border-color: #a52828;
 }
 
-/* 🟩 Sucesso */
+/* ðŸŸ© Sucesso */
 #mensagens .alert-success {
   background-image: url('/static/icons/img_sucesso.png');
   background-color: #bce5cc;
@@ -855,7 +863,7 @@ html.dark #resultado-xml h5 {
   border-color: #97d5b4;
 }
 
-/* ⚠️ Warning/Info */
+/* âš ï¸ Warning/Info */
 #mensagens .alert-warning i,
 #mensagens .alert-info i {
   margin-right: 0.5rem;
@@ -868,7 +876,7 @@ html.dark #resultado-xml h5 {
 }
 
 
-/* Evita que o input aumente ou empurre conteúdo ao receber foco */
+/* Evita que o input aumente ou empurre conteÃºdo ao receber foco */
 input.form-control:focus {
   box-shadow: none !important;
   border-color: #6c757d !important;  /* ou a cor atual */
@@ -893,7 +901,7 @@ input.form-control:focus {
   margin-top: 0 !important;
 }
 
-/* ✅ Impede redimensionamento ou pulo do campo de busca por foco ou input */
+/* âœ… Impede redimensionamento ou pulo do campo de busca por foco ou input */
 #busca-nota {
   transition: none !important;
   outline: none !important;
@@ -904,7 +912,7 @@ input.form-control:focus {
 }
 
 /* ============================
-   AJUSTES ESPECÍFICOS PARA MODAIS DE SELEÇÃO DE EMPRESA (Solução Final)
+   AJUSTES ESPECÃFICOS PARA MODAIS DE SELEÃ‡ÃƒO DE EMPRESA (SoluÃ§Ã£o Final)
 =============================== */
 
 /* Tema Escuro */
@@ -915,7 +923,7 @@ html.dark .modal-selecao-empresa {
 }
 
 html.dark .modal-selecao-empresa .modal-header {
-  background-color: #1e1f26; /* Fundo do cabeçalho do modal */
+  background-color: #1e1f26; /* Fundo do cabeÃ§alho do modal */
   color: #f0f0f0;
   border-bottom-color: #444;
 }
@@ -926,7 +934,7 @@ html.dark .modal-selecao-empresa .modal-body {
 }
 
 html.dark .modal-selecao-empresa .modal-footer {
-  background-color: #1e1f26; /* Fundo do rodapé do modal */
+  background-color: #1e1f26; /* Fundo do rodapÃ© do modal */
   color: #f0f0f0;
   border-top-color: #444;
 }
@@ -990,7 +998,7 @@ html:not(.dark):not(.azul) .modal-selecao-empresa {
 }
 
 html:not(.dark):not(.azul) .modal-selecao-empresa .modal-header {
-  background-color: transparent; /* Fundo do cabeçalho do modal */
+  background-color: transparent; /* Fundo do cabeÃ§alho do modal */
   color: #212529;
   border-bottom-color: #dee2e6;
 }
@@ -1001,7 +1009,7 @@ html:not(.dark):not(.azul) .modal-selecao-empresa .modal-body {
 }
 
 html:not(.dark):not(.azul) .modal-selecao-empresa .modal-footer {
-  background-color: transparent; /* Fundo do rodapé do modal */
+  background-color: transparent; /* Fundo do rodapÃ© do modal */
   color: #212529;
   border-top-color: #dee2e6;
 }
@@ -1033,20 +1041,20 @@ html:not(.dark):not(.azul) .modal-selecao-empresa .form-check-input:checked {
 
 /* Tabela de resultados da busca dentro do modal no tema claro */
 html:not(.dark):not(.azul) .modal-selecao-empresa .table {
-  color: #212529; /* Cor do texto padrão para a tabela no tema claro */
+  color: #212529; /* Cor do texto padrÃ£o para a tabela no tema claro */
   border-color: #dee2e6;
 }
 
 html:not(.dark):not(.azul) .modal-selecao-empresa .table tbody tr > * {
-  background-color: #fff !important; /* Fundo branco para todas as células do corpo da tabela */
+  background-color: #fff !important; /* Fundo branco para todas as cÃ©lulas do corpo da tabela */
   box-shadow: none !important; /* Remove o box-shadow que cria o fundo */
   color: #212529 !important; /* Cor do texto escura para o tema claro */
 }
 
 html:not(.dark):not(.azul) .modal-selecao-empresa .table thead th {
-  background-color: #f8f9fa !important; /* Fundo claro para o cabeçalho da tabela */
+  background-color: #f8f9fa !important; /* Fundo claro para o cabeÃ§alho da tabela */
   color: #212529 !important; /* Cor do texto escura para o tema claro */
-  box-shadow: none !important; /* Remove o box-shadow do cabeçalho */
+  box-shadow: none !important; /* Remove o box-shadow do cabeÃ§alho */
 }
 
 html:not(.dark):not(.azul) .modal-selecao-empresa .table-striped tbody tr:nth-of-type(odd) > * {
@@ -1232,15 +1240,15 @@ body.azul .tooltip.bs-tooltip-auto[data-popper-placement^="bottom"] .tooltip-arr
 /* Garante que o container do Select2 ocupe a largura do input */
 .select2-container { width: 100% !important; }
 
-/* Em áreas com .table-responsive, evite recorte/posicionamento estranho */
+/* Em Ã¡reas com .table-responsive, evite recorte/posicionamento estranho */
 .table-responsive .select2-container { position: static; }
 
-/* Força o dropdown do Select2 a aparecer sobre todos os outros elementos */
+/* ForÃ§a o dropdown do Select2 a aparecer sobre todos os outros elementos */
 .select2-container--open {
   z-index: 9999 !important;
 }
 
-/* Força o dropdown do Select2 a aparecer sobre todos os outros elementos */
+/* ForÃ§a o dropdown do Select2 a aparecer sobre todos os outros elementos */
 .select2-container--open {
   z-index: 9999 !important;
 }
@@ -1252,24 +1260,24 @@ body.azul .tooltip.bs-tooltip-auto[data-popper-placement^="bottom"] .tooltip-arr
 
 /* 1. Alinha a altura do Select2 com os inputs .form-control-sm */
 .select2-container .select2-selection--single {
-  height: calc(1.5em + 0.5rem + 2px); /* Altura padrão do Bootstrap para .form-control-sm */
+  height: calc(1.5em + 0.5rem + 2px); /* Altura padrÃ£o do Bootstrap para .form-control-sm */
 }
 
 /* 2. Centraliza o texto verticalmente */
 .select2-container .select2-selection--single .select2-selection__rendered {
   line-height: calc(1.5em + 0.5rem); /* Ajusta a linha para centralizar */
   padding-left: 0.5rem;
-  padding-right: 1.5rem; /* Espaço para a seta */
+  padding-right: 1.5rem; /* EspaÃ§o para a seta */
 }
 
-/* 3. Ajusta a posição da seta */
+/* 3. Ajusta a posiÃ§Ã£o da seta */
 .select2-container .select2-selection--single .select2-selection__arrow {
   height: calc(1.5em + 0.5rem);
   top: 50%;
   transform: translateY(-50%);
 }
 
-/* 4. Garante que o campo de busca dentro do dropdown também seja 'sm' */
+/* 4. Garante que o campo de busca dentro do dropdown tambÃ©m seja 'sm' */
 .select2-dropdown .select2-search__field {
   font-size: 0.875rem;
 }
@@ -1304,7 +1312,7 @@ html.dark .select2-container--default.select2-container--open .select2-selection
 
 
 
-/* Remove o brilho de foco para botões de ícone */
+/* Remove o brilho de foco para botÃµes de Ã­cone */
 .btn-icon-no-focus,
 .btn-icon-no-focus:focus,
 .btn-icon-no-focus:active {
@@ -1429,7 +1437,7 @@ html.azul .autocomplete-ncm-list {
   border-color: #3a5a7a;
 }
 
-html.azul .autocomplete-ncm-item:hover {
+html.azul .autocomplete-ncm-list .autocomplete-ncm-item:hover {
   background-color: rgba(50, 70, 90, 0.8);
 }
 
@@ -1516,7 +1524,7 @@ html.azul .modal-selecao-empresa .list-group-item:hover {
   background-color: rgba(50, 70, 90, 0.8);
 }
 
-.select2-dropdown-azul { /* Classe específica para o dropdown do Select2 no tema azul */
+.select2-dropdown-azul { /* Classe especÃ­fica para o dropdown do Select2 no tema azul */
   background-color: rgba(26, 42, 58, 0.9) !important;
   color: #e0e0e0 !important;
   border-color: #3a5a7a !important;
@@ -1534,7 +1542,7 @@ html.azul .modal-selecao-empresa .list-group-item:hover {
   border-color: #6a9acb !important;
 }
 /* =========================================================
-   ✅ TEMA DARK (COMPLETO) — sem fundo branco em cards/inputs
+   âœ… TEMA DARK (COMPLETO) â€” sem fundo branco em cards/inputs
    (Cole no final do CSS)
 ========================================================= */
 html.dark,
@@ -1543,7 +1551,7 @@ body.dark {
   color: #f2f2f2 !important;
 }
 
-/* Conteúdo/base (evita “ilhas” claras) */
+/* ConteÃºdo/base (evita â€œilhasâ€ claras) */
 html.dark main,
 html.dark #main-content,
 html.dark .content,
@@ -1569,7 +1577,7 @@ body.dark .text-bg-light {
   color: #f2f2f2 !important;
 }
 
-/* Cards (principal causa do “card branco” é .card-body/.bg-white) */
+/* Cards (principal causa do â€œcard brancoâ€ Ã© .card-body/.bg-white) */
 html.dark .card,
 body.dark .card {
   background-color: #2a2b33 !important;
@@ -1590,7 +1598,7 @@ body.dark .card-body {
   color: #f2f2f2 !important;
 }
 
-/* Seções internas que costumam vir com sombra e fundo claro */
+/* SeÃ§Ãµes internas que costumam vir com sombra e fundo claro */
 html.dark .card-body .mb-4,
 body.dark .card-body .mb-4 {
   background-color: #2a2b33 !important;
@@ -1605,7 +1613,7 @@ body.dark form {
   border-color: #444 !important;
 }
 
-/* ✅ Inputs (cobre TODOS: tags + classes Bootstrap) */
+/* âœ… Inputs (cobre TODOS: tags + classes Bootstrap) */
 html.dark input,
 html.dark select,
 html.dark textarea,
@@ -1661,7 +1669,7 @@ body.dark .form-floating > label {
   color: #bbb !important;
 }
 
-/* Tabelas (células podem “forçar” branco) */
+/* Tabelas (cÃ©lulas podem â€œforÃ§arâ€ branco) */
 html.dark .table,
 html.dark table,
 body.dark .table,
@@ -1757,7 +1765,7 @@ body.dark .select2-container--bootstrap-5 .select2-results__option--highlighted 
 }
 
 /* =========================================================
-   ✅ TEMA AZUL (COMPLETO) — sem fundo branco em cards/inputs
+   âœ… TEMA AZUL (COMPLETO) â€” sem fundo branco em cards/inputs
    (Cole no final do CSS)
 ========================================================= */
 html.azul,
@@ -1769,7 +1777,7 @@ body.azul {
   background-position: center center;
 }
 
-/* Conteúdo/base */
+/* ConteÃºdo/base */
 html.azul main,
 html.azul #main-content,
 html.azul .content,
@@ -1784,7 +1792,7 @@ body.azul .container-fluid {
   color: #e0e0e0 !important;
 }
 
-/* ✅ Bootstraps helpers que vazam branco (ESSENCIAL no azul) */
+/* âœ… Bootstraps helpers que vazam branco (ESSENCIAL no azul) */
 html.azul .bg-white,
 html.azul .bg-light,
 html.azul .text-bg-light,
@@ -1810,21 +1818,21 @@ body.azul .card-header {
   border-bottom-color: #3a5a7a !important;
 }
 
-/* ✅ card-body (principal correção do “card branco” no azul) */
+/* âœ… card-body (principal correÃ§Ã£o do â€œcard brancoâ€ no azul) */
 html.azul .card-body,
 body.azul .card-body {
   background-color: rgba(36, 52, 68, 0.95) !important;
   color: #e0e0e0 !important;
 }
 
-/* Seções internas */
+/* SeÃ§Ãµes internas */
 html.azul .card-body .mb-4,
 body.azul .card-body .mb-4 {
   background-color: rgba(36, 52, 68, 0.95) !important;
   color: #e0e0e0 !important;
 }
 
-/* Formulários */
+/* FormulÃ¡rios */
 html.azul form,
 body.azul form {
   background-color: rgba(36, 52, 68, 0.95) !important;
@@ -1832,7 +1840,7 @@ body.azul form {
   border-color: #3a5a7a !important;
 }
 
-/* ✅ Inputs (cobre tags + classes Bootstrap) */
+/* âœ… Inputs (cobre tags + classes Bootstrap) */
 html.azul input,
 html.azul select,
 html.azul textarea,
@@ -1888,7 +1896,7 @@ body.azul .form-floating > label {
   color: #a0a0a0 !important;
 }
 
-/* Tabelas (células podem “forçar” branco) */
+/* Tabelas (cÃ©lulas podem â€œforÃ§arâ€ branco) */
 html.azul .table,
 html.azul table,
 body.azul .table,
@@ -1933,7 +1941,7 @@ body.azul .accordion-button:not(.collapsed) {
 /* List group */
 html.azul .list-group-item,
 body.azul .list-group-item {
-  background-color: rgba(36, 52, 68, 0.30) !important; /* leve, para não “pesar” */
+  background-color: rgba(36, 52, 68, 0.30) !important; /* leve, para nÃ£o â€œpesarâ€ */
   color: #c0c0c0 !important;
   border-color: rgba(58, 90, 122, 0.65) !important;
 }
@@ -2012,7 +2020,7 @@ html.azul .breadcrumb-item.active {
   color: #e0e0e0; /* Um cinza azulado claro para o tema azul */
 }
 
-/* Opcional: Garante que o separador (/) também se adapte */
+/* Opcional: Garante que o separador (/) tambÃ©m se adapte */
 html.dark .breadcrumb-item::before {
     color: #6c757d;
 }
@@ -2084,7 +2092,7 @@ html, body {
   padding: 1rem;
 }
 
-/* Accordion items - já são estilizados pelo CSS global, mas garantimos consistência */
+/* Accordion items - jÃ¡ sÃ£o estilizados pelo CSS global, mas garantimos consistÃªncia */
 #modalAmbiente .accordion-item {
   margin-bottom: 0.5rem;
   border-radius: 0.5rem !important;
@@ -2148,14 +2156,14 @@ html, body {
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
 }
 
-/* Labels dos parâmetros químicos */
+/* Labels dos parÃ¢metros quÃ­micos */
 #modalAmbiente .form-label {
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
   color: var(--bs-secondary-color, #6c757d);
 }
 
-/* Seção de valores calculados */
+/* SeÃ§Ã£o de valores calculados */
 #modalAmbiente .bg-light {
   background-color: var(--bs-tertiary-bg, #f8f9fa) !important;
   color: var(--bs-body-color, #212529);
@@ -2167,7 +2175,7 @@ html, body {
   line-height: 1.5;
 }
 
-/* Ajustes específicos para tema escuro */
+/* Ajustes especÃ­ficos para tema escuro */
 html.dark #modalAmbiente .bg-light {
   background-color: #2a2b33 !important;
   border-color: #444;
@@ -2195,7 +2203,7 @@ html.dark #modalAmbiente .form-label {
   color: #bfc4ca;
 }
 
-/* Ajustes específicos para tema azul */
+/* Ajustes especÃ­ficos para tema azul */
 html.azul #modalAmbiente .bg-light {
   background-color: rgba(36, 52, 68, 0.95) !important;
   border-color: #3a5a7a;
@@ -2258,7 +2266,7 @@ html.azul #modalAmbiente .form-label {
 }
 
 /* ============================
-   MODAL DE AMBIENTE - TEMA AZUL (reforço)
+   MODAL DE AMBIENTE - TEMA AZUL (reforÃ§o)
 =============================== */
 html.azul #modalAmbiente .accordion-button {
   background-color: rgba(36, 52, 68, 0.95);
@@ -2573,3 +2581,197 @@ body.azul .migration-select2-dropdown .select2-results__option[aria-selected='tr
   background: rgba(76, 115, 152, 0.38) !important;
   color: #ffffff !important;
 }
+
+/* ==========================================
+   TELA NCM
+========================================== */
+.ncm-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.ncm-meta-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(106, 154, 203, 0.25);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0.25rem 0.75rem rgba(15, 23, 42, 0.05);
+}
+
+.ncm-meta-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+}
+
+.ncm-search-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ncm-search-field {
+  flex: 1 1 auto;
+  min-width: 260px;
+}
+
+.ncm-table-scroll {
+  max-height: 68vh;
+  overflow: auto;
+  border: 1px solid rgba(106, 154, 203, 0.22);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ncm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.ncm-level-text {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: inherit;
+}
+
+.ncm-table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 123, 255, 0.8) rgba(0, 123, 255, 0.14);
+}
+
+.ncm-table-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.ncm-table-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 123, 255, 0.14);
+  border-radius: 999px;
+}
+
+.ncm-table-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(0, 123, 255, 0.92), rgba(0, 86, 179, 0.92));
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.ncm-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(27, 141, 255, 0.98), rgba(0, 86, 179, 0.98));
+}
+
+html.dark .ncm-meta-card {
+  background: rgba(44, 47, 54, 0.92);
+  border-color: rgba(106, 154, 203, 0.22);
+}
+
+html.dark .ncm-table-scroll {
+  background: rgba(27, 30, 36, 0.88);
+  border-color: rgba(106, 154, 203, 0.18);
+}
+
+html.azul .ncm-meta-card {
+  background: rgba(36, 52, 68, 0.92);
+  border-color: rgba(106, 154, 203, 0.34);
+  color: #e7eef7;
+}
+
+html.azul .ncm-meta-label {
+  color: #a8c0d8;
+}
+
+html.azul .ncm-table-scroll {
+  background: rgba(22, 35, 49, 0.94);
+  border-color: rgba(106, 154, 203, 0.38);
+  scrollbar-color: rgba(122, 190, 255, 0.95) rgba(70, 110, 150, 0.42);
+}
+
+html.azul .ncm-table-scroll::-webkit-scrollbar-track {
+  background: rgba(70, 110, 150, 0.42);
+}
+
+html.azul .ncm-table-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(122, 190, 255, 0.98), rgba(63, 145, 226, 0.98));
+  border: 2px solid rgba(20, 32, 44, 0.72);
+}
+
+html.azul .ncm-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(170, 218, 255, 1), rgba(84, 166, 246, 1));
+}
+
+html.azul .ncm-table thead.table-light th {
+  background: rgba(27, 43, 59, 0.98);
+  color: #eef6ff;
+  border-color: rgba(106, 154, 203, 0.28);
+}
+
+@media (max-width: 768px) {
+  .ncm-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ncm-search-field {
+    min-width: 100%;
+  }
+
+  .ncm-table-scroll {
+    max-height: 58vh;
+  }
+}
+
+
+
+
+/* Override final da composicao compacta da tela NCM */
+.ncm-meta-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ncm-meta-card {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 48px;
+  padding: 0.65rem 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+}
+
+.ncm-search-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.ncm-search-field {
+  flex: 0 1 420px;
+  width: 420px;
+  max-width: 100%;
+  min-width: 280px;
+}
+
+.ncm-search-btn {
+  min-width: 110px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 992px) {
+  .ncm-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

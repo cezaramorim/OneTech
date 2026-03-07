@@ -1,21 +1,21 @@
-# produto/urls.py
+﻿# produto/urls.py
 
 from django.urls import path, include
-from . import views # Importa as views do próprio app produto
-# Importa as views do app nota_fiscal, mas 'editar_entrada_view' foi removida na refatoração
-# Você pode ter outras views de nota_fiscal que ainda precise importar aqui,
+from . import views # Importa as views do prÃ³prio app produto
+# Importa as views do app nota_fiscal, mas 'editar_entrada_view' foi removida na refatoraÃ§Ã£o
+# VocÃª pode ter outras views de nota_fiscal que ainda precise importar aqui,
 # mas 'editar_entrada_view' especificamente deve ser removida.
-# Se você tiver outras views de nota_fiscal que usa AQUI no produto/urls.py,
-# ajuste a importação para elas. Caso contrário, remova esta linha se não for usar mais nenhuma.
+# Se vocÃª tiver outras views de nota_fiscal que usa AQUI no produto/urls.py,
+# ajuste a importaÃ§Ã£o para elas. Caso contrÃ¡rio, remova esta linha se nÃ£o for usar mais nenhuma.
 # from nota_fiscal.views import editar_entrada_view # <--- LINHA REMOVIDA/COMENTADA!
 
-# 🔹 ViewSet para API REST completa
+# ðŸ”¹ ViewSet para API REST completa
 from rest_framework.routers import DefaultRouter
 from common.api.produto import ProdutoViewSet
 
 app_name = "produto"
 
-# 🔹 Router separado da lista
+# ðŸ”¹ Router separado da lista
 router = DefaultRouter()
 router.register(r'api/v1/produtos', ProdutoViewSet, basename='produto')
 
@@ -42,6 +42,9 @@ urlpatterns = [
     # NCM
     path("ncm/", views.manutencao_ncm_view, name="manutencao_ncm"),
     path("ncm/importar/", views.importar_ncm_manual_view, name="importar_ncm_manual"),
+    path("ncm/atualizar-base/", views.atualizar_ncm_base_oficial_view, name="atualizar_ncm_base_oficial"),
+    path("ncm/importar-local/", views.importar_ncm_local_view, name="importar_ncm_local"),
+    path("ncm/consolidar/", views.consolidar_ncm_view, name="consolidar_ncm"),
     path("buscar-ncm/", views.buscar_ncm_ajax, name="buscar_ncm_ajax"),
     path("ncm-autocomplete-produto/", views.buscar_ncm_ajax, name="ncm_autocomplete"),
     path("api/racoes/", views.api_racoes_list, name="api_racoes_list"),
@@ -49,5 +52,6 @@ urlpatterns = [
     
 ]
 
-# ✅ Inclui as rotas da API REST (ViewSet)
+# âœ… Inclui as rotas da API REST (ViewSet)
 urlpatterns += router.urls
+

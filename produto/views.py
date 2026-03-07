@@ -1,5 +1,8 @@
-import json
-from django.db.models import Q
+﻿import json
+
+import requests
+from django.db.models import Count, Q, Value
+from django.db.models.functions import Replace
 from django.contrib import messages
 from common.messages_utils import get_app_messages
 from django.urls import reverse
@@ -13,7 +16,8 @@ from django.views.decorators.http import require_POST, require_GET
 from .forms import ProdutoForm, CategoriaProdutoForm, UnidadeMedidaForm, DetalhesFiscaisProdutoForm
 from .models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFiscaisProduto
 from common.utils import render_ajax_or_base
-from .ncm_utils import formatar_codigo_ncm, normalizar_codigo_ncm, normalizar_texto_mojibake
+from .ncm_services import consolidate_ncm_duplicates, import_ncm_from_local_json, inspect_ncm_duplicates, load_ncm_json, normalize_external_ncm_payload, save_ncm_json
+from .ncm_utils import carregar_metadados_ncm, formatar_codigo_ncm, normalizar_codigo_ncm, normalizar_texto_mojibake, obter_nivel_ncm
 
 DetalhesFiscaisProdutoFormSet = inlineformset_factory(
     Produto, 
@@ -72,7 +76,7 @@ def editar_produto_view(request, pk):
         formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=produto)
 
         if form.is_valid() and formset.is_valid():
-            print("Formulário de Produto é válido.")
+            print("FormulÃ¡rio de Produto Ã© vÃ¡lido.")
             print("Form.cleaned_data:", form.cleaned_data)
             produto = form.save()
             formset.save()
@@ -103,7 +107,7 @@ def editar_produto_view(request, pk):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return render(request, "partials/produtos/editar_produto.html", context)
 
-    # Se não for AJAX, renderiza com base.html e content_template
+    # Se nÃ£o for AJAX, renderiza com base.html e content_template
     context["content_template"] = "partials/produtos/editar_produto.html"
     context["data_page"] = "editar_produto"
     return render(request, "base.html", context)
@@ -114,7 +118,7 @@ def editar_produto_view(request, pk):
 def excluir_produtos_multiplos_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("Requisição inválida.")
+        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -145,7 +149,7 @@ def lista_categorias_view(request):
         "partials/produtos/lista_categorias.html",
         {
             "categorias": categorias,
-            "data_tela": "lista_categorias",  # ✅ Adicionado aqui
+            "data_tela": "lista_categorias",  # âœ… Adicionado aqui
             "data_page": "lista_categorias",
         }
     )
@@ -189,10 +193,10 @@ def editar_categoria_view(request, pk):
 def excluir_categorias_view(request):
     app_messages = get_app_messages(request)
     """
-    Exclui múltiplas categorias de produto via AJAX.
+    Exclui mÃºltiplas categorias de produto via AJAX.
     """
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("Requisição inválida.")
+        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -216,7 +220,7 @@ def cadastrar_categoria_view(request):
     print("DEBUG: cadastrar_categoria_view acessada")
     if request.method == "POST":
         form = CategoriaProdutoForm(request.POST)
-        print("DEBUG: Formulário de categoria válido:", form.is_valid())
+        print("DEBUG: FormulÃ¡rio de categoria vÃ¡lido:", form.is_valid())
         if form.is_valid():
             form.save()
             message = app_messages.success_created(form.instance)
@@ -254,7 +258,7 @@ def categoria_list_api(request):
     Retorna todas as categorias como JSON: [{id: <int>, nome: <str>}, ...]
     """
     qs = CategoriaProduto.objects.order_by('nome').values('id', 'nome')
-    # safe=False porque estamos retornando uma lista, não um dict
+    # safe=False porque estamos retornando uma lista, nÃ£o um dict
     return JsonResponse(list(qs), safe=False)
 
 
@@ -320,7 +324,7 @@ def editar_unidade_view(request, pk):
 def excluir_unidades_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("Requisição inválida.")
+        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -342,49 +346,88 @@ def excluir_unidades_view(request):
 def is_superuser_or_staff(user):
     return user.is_superuser or user.is_staff
 
+
+def _build_ncm_search_query(termo):
+    termo = (termo or '').strip()
+    if not termo:
+        return Q()
+
+    codigo_busca = normalizar_codigo_ncm(termo)
+    descricao_query = Q(descricao__icontains=termo)
+
+    # Para codigos, a busca deve respeitar a hierarquia do NCM.
+    if codigo_busca and codigo_busca == ''.join(ch for ch in termo if ch.isdigit()):
+        return (
+            Q(codigo_sem_pontuacao__startswith=codigo_busca)
+            | Q(codigo__startswith=termo)
+            | descricao_query
+        )
+
+    return (
+        Q(codigo_sem_pontuacao__icontains=codigo_busca)
+        | Q(codigo__icontains=termo)
+        | descricao_query
+    )
+
 @login_required_json
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manutencao_ncm_view(request):
-    app_messages = get_app_messages(request)
     termo = request.GET.get("term", "").strip()
-    ncm_lista = NCM.objects.all()
+    partial_only = request.GET.get("partial") == "1"
+    ncm_lista = NCM.objects.annotate(
+        produtos_vinculados=Count("detalhesfiscaisproduto", distinct=True),
+        codigo_sem_pontuacao=Replace("codigo", Value("."), Value("")),
+    )
 
     if termo:
         ncm_lista = ncm_lista.filter(
-            Q(codigo__icontains=normalizar_codigo_ncm(termo)) | Q(descricao__icontains=termo)
-        ).order_by("codigo")[:20]
+            _build_ncm_search_query(termo)
+        ).order_by("codigo")[:50]
     else:
-        ncm_lista = ncm_lista.order_by("codigo")
+        ncm_lista = ncm_lista.order_by("codigo")[:500]
+
+    ncm_lista = list(ncm_lista)
+    for item in ncm_lista:
+        item.nivel = obter_nivel_ncm(item.codigo)
 
     context = {
         "ncm_lista": ncm_lista,
+        "ncm_meta": carregar_metadados_ncm(),
     }
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        if termo:
-            # 🔄 Pesquisa → atualiza só a tabela
+        if partial_only:
             return render(request, "partials/produtos/tabela_ncm.html", context)
-        else:
-            # 🔁 Termo vazio → recarrega tela completa (com campo e botão)
-            return render(request, "partials/produtos/manutencao_ncm.html", context)
+        return render(request, "partials/produtos/manutencao_ncm.html", context)
 
-    # 🟦 Primeira carga padrão (não-AJAX)
     return render(request, "base.html", {
         "content_template": "partials/produtos/manutencao_ncm.html",
-        "ncm_lista": ncm_lista,
+        **context,
     })
-
 
 
 @login_required_json
 def buscar_ncm_ajax(request):
-    termo = request.GET.get('term', '') or request.GET.get('search', '')
+    termo = (request.GET.get('term', '') or request.GET.get('search', '')).strip()
     resultados = []
 
     if termo:
-        codigo_busca = normalizar_codigo_ncm(termo)
-        qs = NCM.objects.filter(Q(descricao__icontains=termo) | Q(codigo__icontains=codigo_busca))[:20]
-        resultados = [{"id": ncm.codigo, "text": f"{ncm.codigo_formatado} - {ncm.descricao}"} for ncm in qs]
+        qs = NCM.objects.annotate(
+            codigo_sem_pontuacao=Replace("codigo", Value("."), Value(""))
+        ).filter(
+            _build_ncm_search_query(termo)
+        ).order_by('codigo')[:20]
+        resultados = [
+            {
+                "id": ncm.codigo,
+                "codigo": ncm.codigo,
+                "codigo_formatado": ncm.codigo_formatado,
+                "descricao": ncm.descricao,
+                "nivel": obter_nivel_ncm(ncm.codigo),
+                "text": f"{ncm.codigo_formatado} - {ncm.descricao}",
+            }
+            for ncm in qs
+        ]
 
     return JsonResponse({"results": resultados})
 
@@ -399,31 +442,102 @@ def api_racoes_list(request):
 
 @login_required_json
 @user_passes_test(is_superuser_or_staff)
-def importar_ncm_manual_view(request):
+@require_POST
+def atualizar_ncm_base_oficial_view(request):
     app_messages = get_app_messages(request)
-    import json, requests
     try:
-        url = "https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json"
-        response = requests.get(url)
-        data = response.json()
-        if isinstance(data, str):
-            data = json.loads(data)
-        count = 0
-        for item in data:
-            if '|' in item:
-                codigo, descricao = item.split('|', 1)
-                NCM.objects.update_or_create(codigo=normalizar_codigo_ncm(codigo), defaults={"descricao": normalizar_texto_mojibake(descricao.strip())})
-                count += 1
-        message = app_messages.success_imported(instance=None, custom_message=f"{count} códigos NCM importados com sucesso.")
-        return JsonResponse({"success": True, "message": message})
+        try:
+            existing_metadata = load_ncm_json()
+        except FileNotFoundError:
+            existing_metadata = {}
+
+        url = 'https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json'
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        normalized_data = normalize_external_ncm_payload(response.json(), existing_metadata)
+        save_ncm_json(normalized_data)
+
+        total_itens = len(normalized_data.get('Nomenclaturas', []))
+        message = app_messages.success_process(f'Base oficial NCM atualizada com sucesso. {total_itens} itens salvos no arquivo local.')
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'metadata': {
+                'vigencia': normalized_data.get('Data_Ultima_Atualizacao_NCM', ''),
+                'ato': normalized_data.get('Ato', ''),
+                'total_itens': total_itens,
+            }
+        })
     except Exception as e:
-        message = app_messages.error(f"Erro ao importar NCM: {str(e)}")
-        return JsonResponse({"success": False, "message": message}, status=500)
+        message = app_messages.error(f'Erro ao atualizar a base oficial de NCM: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
+
 
 @login_required_json
-def api_racoes_list(request):
-    """
-    Retorna uma lista de produtos da categoria 'Ração' em formato JSON.
-    """
-    racoes = Produto.objects.filter(categoria__nome__iexact='Ração').values('id', 'nome').order_by('nome')
-    return JsonResponse(list(racoes), safe=False)
+@user_passes_test(is_superuser_or_staff)
+@require_POST
+def importar_ncm_local_view(request):
+    app_messages = get_app_messages(request)
+    try:
+        result = import_ncm_from_local_json()
+        duplicate_summary = inspect_ncm_duplicates()
+        message = app_messages.success_process(
+            f"{result['count']} codigos NCM importados/atualizados a partir da base local."
+        )
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'metadata': result['metadata'],
+            'import_count': result['count'],
+            'duplicate_summary': duplicate_summary,
+        })
+    except FileNotFoundError:
+        message = app_messages.error('Arquivo ncm.json nao encontrado em produto/data/.')
+        return JsonResponse({'success': False, 'message': message}, status=404)
+    except Exception as e:
+        message = app_messages.error(f'Erro ao importar a base local de NCM: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
+
+
+@login_required_json
+@user_passes_test(is_superuser_or_staff)
+@require_POST
+def consolidar_ncm_view(request):
+    app_messages = get_app_messages(request)
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}') if request.body else {}
+        apply_changes = bool(payload.get('apply'))
+        duplicate_summary = consolidate_ncm_duplicates() if apply_changes else inspect_ncm_duplicates()
+
+        if duplicate_summary['group_count'] == 0:
+            message = app_messages.success_process('Nenhuma duplicidade de NCM encontrada.')
+        elif apply_changes:
+            message = app_messages.success_process(
+                f"Consolidacao concluida. {duplicate_summary['group_count']} grupo(s) tratados."
+            )
+        else:
+            message = app_messages.warning(
+                f"{duplicate_summary['group_count']} grupo(s) de NCM com duplicidade encontrado(s)."
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'applied': apply_changes,
+            'duplicate_summary': duplicate_summary,
+        })
+    except json.JSONDecodeError:
+        message = app_messages.error('Payload invalido para consolidacao de NCM.')
+        return JsonResponse({'success': False, 'message': message}, status=400)
+    except Exception as e:
+        message = app_messages.error(f'Erro ao consolidar NCM: {str(e)}')
+        return JsonResponse({'success': False, 'message': message}, status=500)
+
+
+@login_required_json
+@user_passes_test(is_superuser_or_staff)
+@require_POST
+def importar_ncm_manual_view(request):
+    return atualizar_ncm_base_oficial_view(request)
+
+
