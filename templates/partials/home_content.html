@@ -1,52 +1,46 @@
-{% load static %}
+﻿{% load static %}
 
-<!-- 🔆 Tela de fundo de boas-vindas -->
+<!-- ðŸ”† Tela de fundo de boas-vindas -->
 <div id="welcome-screen" class="home-background"></div>
 
-<!-- 💬 Mensagem de boas-vindas -->
+<!-- ðŸ’¬ Mensagem de boas-vindas -->
 <div class="pt-4 pb-3 d-flex justify-content-center">
   <div class="card shadow-lg border-0 p-4 welcome-card text-center" style="max-width: 720px; width: 100%;">
+    <div class="row align-items-center">
+      <!-- ðŸ–¼ï¸ Imagem ilustrativa -->
+      <div class="col-12 col-md-4 mb-3 mb-md-0 text-center">
+        <img src="{% static 'icons/dashboard_welcome.png' %}" alt="Dashboard Illustration" class="img-fluid" style="max-width: 200px;">
+      </div>
 
-
-        <div class="row align-items-center">
-          
-          <!-- 🖼️ Imagem ilustrativa -->
-          <div class="col-12 col-md-4 mb-3 mb-md-0 text-center">
-            <img src="{% static 'icons/dashboard_welcome.png' %}" alt="Dashboard Illustration" class="img-fluid" style="max-width: 200px;">
-          </div>
-          
-          <!-- 👋 Saudação -->
-          <div class="col-12 col-md-8 text-md-start text-center">
-            <h1 class="display-6 mb-2">
-              Olá,
-              <strong>
-                {% if request.user.nome_completo %}
-                  {{ request.user.nome_completo }}
-                {% elif request.user.first_name or request.user.last_name %}
-                  {{ request.user.first_name }} {{ request.user.last_name }}
-                {% else %}
-                  {{ request.user.username }}
-                {% endif %}
-              </strong>!
-            </h1>
-            <p class="lead">
-              {% if empresa_atual %}
-                Bem-vindo(a) ao <strong>{{ empresa_atual.nome }}</strong>, seu painel de gestão inteligente.
-              {% else %}
-                Bem-vindo(a) ao <strong>OneTech</strong>, seu painel de gestão inteligente.
-              {% endif %}
-            </p>
-          </div>
-
-        </div>
-
-        <hr class="my-4">
-
-        <!-- ℹ️ Mensagem adicional -->
-        <p class="text-muted mb-0">
-          Use o menu para começar suas ações. Aqui você poderá gerenciar empresas, usuários e permissões com facilidade.
+      <!-- Olá Saudações-->
+      <div class="col-12 col-md-8 text-md-start text-center">
+        <h1 class="display-6 mb-2">
+          Olá,
+          <strong>
+            {% if request.user.nome_completo %}
+              {{ request.user.nome_completo }}
+            {% elif request.user.first_name or request.user.last_name %}
+              {{ request.user.first_name }} {{ request.user.last_name }}
+            {% else %}
+              {{ request.user.username }}
+            {% endif %}
+          </strong>!
+        </h1>
+        <p class="lead">
+          {% if empresa_atual %}
+            Bem-vindo(a) ao <strong>{{ empresa_atual.nome }}</strong>, seu painel de gestão inteligente.
+          {% else %}
+            Bem-vindo(a) ao <strong>OneTech</strong>, seu painel de gestão inteligente.
+          {% endif %}
         </p>
       </div>
     </div>
+
+    <hr class="my-4">
+
+    <!-- â„¹ï¸ Mensagem adicional -->
+    <p class="text-muted mb-0">
+      Use o menu para começar suas ações. Aqui você poderá gerenciar empresas, usuários e permissões com facilidade.
+    </p>
   </div>
 </div>

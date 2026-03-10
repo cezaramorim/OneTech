@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'fiscal',
     'integracao_nfe',
     'producao',
+    'comercial',
 ]
 
 TENANT_APPS = (
@@ -71,6 +72,7 @@ TENANT_APPS = (
     'fiscal',
     'painel',
     'integracao_nfe',
+    'comercial',
 )
 
 REST_FRAMEWORK = {

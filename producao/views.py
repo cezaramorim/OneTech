@@ -342,6 +342,8 @@ class ListaTanquesView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context['termo_busca'] = self.request.GET.get('termo_tanque', '').strip()
         context['data_page'] = 'lista_tanques'
         context['data_tela'] = 'lista_tanques'
+        if self.request.GET.get('partial') == '1' and self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return render(self.request, 'producao/tanques/_lista_tanques_tabela.html', context)
         return render_ajax_or_base(self.request, self.template_name, context)
 
 

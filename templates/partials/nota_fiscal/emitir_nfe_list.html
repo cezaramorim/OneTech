@@ -1,27 +1,25 @@
-{% load static %}
+﻿{% load static %}
 {% load humanize %}
 
-<div class="container-fluid p-4">
+<div class="container-fluid pt-3 pb-4" data-page="emitir-nfe-list" data-emitir-url="{% url 'integracao_nfe:emitir_nfe' %}" data-csrf-token="{{ csrf_token }}">
     <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <h2 class="h4 mb-0 text-primary">
-                <i class="bi bi-send-check-fill me-2"></i>Emissão de Notas Fiscais
-            </h2>
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary"><i class="bi bi-send-check-fill me-2"></i>Emiss&atilde;o de Notas Fiscais</h2>
         </div>
         <div class="card-body">
-            <p class="card-text text-muted">
-                Abaixo estão as notas fiscais salvas como rascunho, prontas para serem enviadas para autorização da SEFAZ.
+            <p class="card-text text-muted mb-4">
+                Abaixo est&atilde;o as notas fiscais salvas como rascunho, prontas para serem enviadas para autoriza&ccedil;&atilde;o da SEFAZ.
             </p>
-            
+
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Número</th>
-                            <th scope="col">Destinatário</th>
-                            <th scope="col">Data de Emissão</th>
+                            <th scope="col">N&uacute;mero</th>
+                            <th scope="col">Destinat&aacute;rio</th>
+                            <th scope="col">Data de Emiss&atilde;o</th>
                             <th scope="col" class="text-end">Valor Total</th>
-                            <th scope="col" class="text-center">Ações</th>
+                            <th scope="col" class="text-center">A&ccedil;&otilde;es</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -45,7 +43,7 @@
                         {% empty %}
                         <tr>
                             <td colspan="5" class="text-center py-4">
-                                <p class="mb-0 text-muted">Nenhuma nota fiscal pronta para emissão no momento.</p>
+                                <p class="mb-0 text-muted">Nenhuma nota fiscal pronta para emiss&atilde;o no momento.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -56,89 +54,4 @@
     </div>
 </div>
 
-<script>
-// Garante que o script só execute após o DOM estar completamente carregado.
-document.addEventListener('DOMContentLoaded', function() {
-    // Seleciona todos os botões de emissão
-    const emitButtons = document.querySelectorAll('.emit-btn');
 
-    // Adiciona um event listener para cada botão
-    emitButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const notaId = this.dataset.notaId;
-            const notaNumero = this.dataset.notaNumero;
-            const url = "{% url 'integracao_nfe:emitir_nfe' %}";
-
-            // Usa SweetAlert2 para uma confirmação amigável
-            Swal.fire({
-                title: `Emitir a NF-e Nº ${notaNumero}?`,
-                text: "Esta ação enviará a nota para autorização. Você não poderá editá-la após o envio.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#0d6efd', // Azul do Bootstrap
-                cancelButtonColor: '#6c757d',  // Cinza do Bootstrap
-                confirmButtonText: 'Sim, emitir!',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Mostra um indicador de carregamento
-                    showLoading('Enviando nota para a SEFAZ...');
-
-                    // Faz a requisição AJAX para o backend
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ nota_id: notaId })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Enviada!',
-                                text: data.message || 'A nota foi enviada para processamento.',
-                            });
-                            // Remove a linha da tabela para feedback visual imediato
-                            const row = document.getElementById(`nota-row-${notaId}`);
-                            if (row) {
-                                row.style.transition = 'opacity 0.5s ease';
-                                row.style.opacity = '0';
-                                setTimeout(() => row.remove(), 500);
-                            }
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Erro!',
-                                text: data.message || 'Ocorreu um erro ao enviar a nota.',
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro na requisição:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro de Rede!',
-                            text: 'Não foi possível se comunicar com o servidor.',
-                        });
-                    });
-                }
-            });
-        });
-    });
-
-    // Função auxiliar para exibir o pop-up de carregamento
-    function showLoading(title) {
-        Swal.fire({
-            title: title,
-            text: 'Por favor, aguarde...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-    }
-});
-</script>

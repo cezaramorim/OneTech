@@ -112,6 +112,8 @@ class NotaFiscal(models.Model):
     valor_total_cofins = models.DecimalField(max_digits=15, decimal_places=4, default=0, verbose_name="Valor Total COFINS")
     valor_total_desconto = models.DecimalField(max_digits=15, decimal_places=4, default=0, verbose_name="Valor Total Desconto")
     
+    condicao_pagamento = models.CharField(max_length=120, blank=True, null=True, verbose_name="Condicao de Pagamento")
+    quantidade_parcelas = models.PositiveIntegerField(default=1, verbose_name="Quantidade de Parcelas")
     informacoes_adicionais = models.TextField(blank=True, null=True, verbose_name="Informações Adicionais")
 
     class Meta:

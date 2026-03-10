@@ -18,7 +18,6 @@ from .models import Produto, CategoriaProduto, UnidadeMedida, NCM, DetalhesFisca
 from common.utils import render_ajax_or_base
 from .ncm_services import consolidate_ncm_duplicates, import_ncm_from_local_json, inspect_ncm_duplicates, load_ncm_json, normalize_external_ncm_payload, save_ncm_json
 from .ncm_utils import carregar_metadados_ncm, formatar_codigo_ncm, normalizar_codigo_ncm, normalizar_texto_mojibake, obter_nivel_ncm
-
 DetalhesFiscaisProdutoFormSet = inlineformset_factory(
     Produto, 
     DetalhesFiscaisProduto, 
@@ -362,12 +361,11 @@ def _build_ncm_search_query(termo):
             | Q(codigo__startswith=termo)
             | descricao_query
         )
+    query = descricao_query | Q(codigo__icontains=termo)
+    if codigo_busca:
+        query = query | Q(codigo_sem_pontuacao__icontains=codigo_busca)
+    return query
 
-    return (
-        Q(codigo_sem_pontuacao__icontains=codigo_busca)
-        | Q(codigo__icontains=termo)
-        | descricao_query
-    )
 
 @login_required_json
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
@@ -539,5 +537,11 @@ def consolidar_ncm_view(request):
 @require_POST
 def importar_ncm_manual_view(request):
     return atualizar_ncm_base_oficial_view(request)
+
+
+
+
+
+
 
 

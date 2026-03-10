@@ -1,30 +1,33 @@
-<div id="identificador-tela" 
+﻿<div id="identificador-tela"
      data-tela="lista_unidades"
      data-entidade-singular="unidade"
      data-entidade-plural="unidades"
      data-url-editar="{% url 'producao:editar_unidade' pk=0 %}"
      data-url-excluir="{% url 'producao:excluir_unidades_multiplos' %}"
-     data-seletor-checkbox=".selecionar-unidade"></div>
+     data-seletor-checkbox=".selecionar-unidade"
+     data-seletor-pai="#selecionar-todas-unidades"></div>
 
-<div class="container-fluid mt-4">
-    <h2>Lista de Unidades</h2>
-
+<div class="container-fluid pt-3 pb-4">
     <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Unidades Cadastradas</h5>
-            <div>
-                <a href="{% url 'producao:cadastrar_unidade' %}" class="btn btn-primary ajax-link">Nova Unidade</a>
-                <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionada</button>
-                <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionadas</button>
-            </div>
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary">Lista de Unidades</h2>
         </div>
         <div class="card-body">
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div class="page-toolbar-spacer"></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'producao:cadastrar_unidade' %}" class="btn btn-primary ajax-link">Nova Unidade</a>
+                    <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionada</button>
+                    <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionadas</button>
+                </div>
+            </div>
+
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th><input type="checkbox" id="selecionar-todas-unidades"></th>
                         <th>Nome</th>
-                        <th>Ações</th>
+                        <th>A&ccedil;&otilde;es</th>
                     </tr>
                 </thead>
                 <tbody>

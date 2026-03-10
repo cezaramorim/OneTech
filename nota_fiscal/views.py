@@ -28,9 +28,10 @@ from common.utils import render_ajax_or_base
 from common.utils.formatters import converter_valor_br, converter_data_para_date, CustomDecimalEncoder
 from fiscal.calculos import aplicar_impostos_na_nota
 from empresas.models import Empresa
+from control.models import Emitente
 from produto.models import CategoriaProduto, Produto, UnidadeMedida, DetalhesFiscaisProduto, NCM
 from produto.ncm_utils import formatar_codigo_ncm, normalizar_codigo_ncm
-from fiscal.models import CST, CSOSN
+from fiscal.models import CST, CSOSN, NaturezaOperacao
 from .models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFiscal, ItemNotaFiscal
 from produto.models_entradas import EntradaProduto
 from .forms import (
@@ -90,11 +91,23 @@ def emitir_nfe_list_view(request):
     """
     # Filtra notas do emitente que é o tenant atual e que ainda não foram enviadas.
     # O status pode ser '' (vazio) ou um status específico como 'rascunho'.
-    emitente = getattr(request.tenant, "emitente_padrao", None)
+    tenant = getattr(request, 'tenant', None)
+    emitente_ativo_id = getattr(tenant, 'emitente_padrao_id', None)
+    if not emitente_ativo_id:
+        emitente_ativo_id = Emitente.objects.filter(is_default=True).values_list('id', flat=True).first()
+
     notas_para_emitir = NotaFiscal.objects.filter(
-        emitente_proprio=emitente,
-        status_sefaz__in=['', None, 'rascunho']
-    ).select_related('destinatario').order_by('-data_emissao')
+        tipo_operacao='1'
+    ).filter(
+        Q(status_sefaz__isnull=True) | Q(status_sefaz='') | Q(status_sefaz='rascunho')
+    )
+
+    if emitente_ativo_id:
+        notas_para_emitir = notas_para_emitir.filter(emitente_proprio_id=emitente_ativo_id)
+    else:
+        notas_para_emitir = notas_para_emitir.filter(emitente_proprio__isnull=False)
+
+    notas_para_emitir = notas_para_emitir.select_related('destinatario').order_by('-data_emissao')
 
     context = {
         'notas_para_emitir': notas_para_emitir,
@@ -565,7 +578,7 @@ def entradas_nota_view(request):
 
     # Usamos select_related para otimizar a busca, trazendo os dados do emitente e destinatário
     # em uma única consulta ao banco de dados.
-    qs = NotaFiscal.objects.select_related('emitente', 'destinatario').all()
+    qs = NotaFiscal.objects.select_related('emitente', 'destinatario').filter(emitente__isnull=False)
 
     if termo:
         qs = qs.filter(
@@ -637,6 +650,20 @@ def editar_nota_view(request, pk):
     nota = get_object_or_404(NotaFiscal, pk=pk)
 
     if request.method == 'POST':
+        if request.POST.get('action') == 'delete_nota':
+            status = (nota.status_sefaz or '').strip().lower()
+            allowed_delete_status = {'', 'rascunho', 'erro_rejeicao'}
+            if status not in allowed_delete_status:
+                app_messages.error('Somente notas em rascunho/nao emitidas podem ser excluidas.')
+            else:
+                numero_nota = nota.numero
+                tipo_operacao = nota.tipo_operacao
+                nota.delete()
+                app_messages.success_deleted('nota fiscal', f'N? {numero_nota}')
+                if tipo_operacao == '1':
+                    return redirect('nota_fiscal:emitir_nfe_list')
+                return redirect('nota_fiscal:entradas_nota')
+
         form = NotaFiscalForm(request.POST, instance=nota)
         item_formset = ItemNotaFiscalFormSet(request.POST, instance=nota, prefix='items')
         duplicata_formset = DuplicataNotaFiscalFormSet(request.POST, instance=nota, prefix='duplicatas')
@@ -649,6 +676,8 @@ def editar_nota_view(request, pk):
             transporte_formset.save()
             
             app_messages.success_updated(nota)
+            if nota.tipo_operacao == '1':
+                return redirect('nota_fiscal:emitir_nfe_list')
             return redirect('nota_fiscal:entradas_nota')
         else:
             app_messages.error("Foram encontrados erros no formulário. Por favor, corrija-os.")
@@ -720,22 +749,50 @@ def buscar_produtos_para_nota_view(request):
     Busca produtos para adicionar a uma nota fiscal manual, retornando JSON.
     """
     termo = request.GET.get('q', '').strip()
-    produtos = Produto.objects.filter(
-        Q(nome__icontains=termo) | Q(codigo_interno__icontains=termo) | Q(codigo_fornecedor__icontains=termo)
-    ).select_related('unidade_medida_interna')[:50] # Limita a 50 resultados
+    by = (request.GET.get('by') or '').strip().lower()
+
+    if by == 'code':
+        produtos = Produto.objects.filter(
+            Q(codigo_interno__icontains=termo) | Q(codigo_fornecedor__icontains=termo)
+        )
+    elif by == 'name':
+        produtos = Produto.objects.filter(
+            Q(nome__icontains=termo)
+        )
+    else:
+        produtos = Produto.objects.filter(
+            Q(nome__icontains=termo)
+            | Q(codigo_interno__icontains=termo)
+            | Q(codigo_fornecedor__icontains=termo)
+        )
+
+    produtos = produtos.select_related('unidade_medida_interna')[:50] # Limita a 50 resultados
 
     resultados = []
     for p in produtos:
+        try:
+            detalhes_fiscais = p.detalhes_fiscais
+        except Exception:
+            detalhes_fiscais = None
+
+        ncm_codigo = ''
+        cfop_codigo = ''
+        if detalhes_fiscais:
+            if detalhes_fiscais.ncm:
+                ncm_codigo = formatar_codigo_ncm(detalhes_fiscais.ncm.codigo)
+            cfop_codigo = detalhes_fiscais.cfop or ''
+
         resultados.append({
             'id': p.id,
             'text': f"{p.codigo_interno} - {p.nome}",
             'codigo_interno': p.codigo_interno,
             'codigo_fornecedor': p.codigo_fornecedor,
             'nome': p.nome,
+            'descricao_item': p.nome,
             'unidade': p.unidade_medida_interna.sigla if p.unidade_medida_interna else 'UN',
             'preco_venda': p.preco_venda,
-            'ncm': formatar_codigo_ncm(p.detalhes_fiscais.ncm.codigo) if hasattr(p, 'detalhes_fiscais') and p.detalhes_fiscais.ncm else '',
-            'cfop': p.detalhes_fiscais.cfop if hasattr(p, 'detalhes_fiscais') else '',
+            'ncm': ncm_codigo,
+            'cfop': cfop_codigo,
         })
 
     return JsonResponse({'results': resultados})
@@ -756,6 +813,25 @@ def criar_nfe_saida(request):
             # AINDA NAO SALVA OS ITENS, apenas o cabecalho da nota
             nova_nota = form.save(commit=False)
             nova_nota.created_by = request.user
+            nova_nota.tipo_operacao = '1'
+
+            tenant = getattr(request, 'tenant', None)
+            emitente_ativo_id = getattr(tenant, 'emitente_padrao_id', None)
+            if not emitente_ativo_id:
+                emitente_ativo_id = Emitente.objects.filter(is_default=True).values_list('id', flat=True).first()
+            if not emitente_ativo_id:
+                emitente_ativo_id = getattr(nova_nota, 'emitente_proprio_id', None)
+
+            if not emitente_ativo_id:
+                return JsonResponse(
+                    {
+                        'success': False,
+                        'errors': {'emitente_proprio': ['Nenhuma empresa ativa definida para emissao.']}
+                    },
+                    status=400
+                )
+
+            nova_nota.emitente_proprio_id = emitente_ativo_id
             # Gerar número e chave de acesso provisórios
             nova_nota.numero = str(NotaFiscal.objects.count() + 1).zfill(9)
             nova_nota.chave_acesso = f"TEMP-{timezone.now().strftime('%Y%m%d%H%M%S')}-{nova_nota.numero}"
@@ -776,3 +852,31 @@ def criar_nfe_saida(request):
         'data_page': 'criar_nfe_saida',
     }
     return render_ajax_or_base(request, context['content_template'], context)
+
+
+
+@login_required_json
+@require_GET
+def buscar_naturezas_operacao_view(request):
+    """Busca naturezas de operacao para autocomplete da NF-e de saida."""
+    termo = (request.GET.get('term', '') or request.GET.get('search', '')).strip()
+    resultados = []
+
+    if termo:
+        qs = NaturezaOperacao.objects.filter(
+            Q(codigo__icontains=termo) | Q(descricao__icontains=termo) | Q(observacoes__icontains=termo)
+        ).only('codigo', 'descricao').order_by('descricao')[:20]
+
+        for natureza in qs:
+            codigo = (natureza.codigo or '').strip()
+            descricao = (natureza.descricao or '').strip()
+            texto = f"{codigo} - {descricao}" if codigo else descricao
+            resultados.append({
+                'id': codigo or descricao,
+                'codigo': codigo,
+                'descricao': descricao,
+                'text': texto,
+                'valor_gravacao': texto,
+            })
+
+    return JsonResponse({'results': resultados})

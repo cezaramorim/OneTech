@@ -26,9 +26,40 @@ def api_notas_entradas(request):
       - Requer autenticação (token/session).
       - Retorna: numero, fornecedor, data_emissao, data_saida, valor_total_nota, usuario.
     """
-    qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
+    qs = NotaFiscal.objects.select_related('emitente', 'created_by').prefetch_related('itens__produto').all()
+
+    fornecedor = (request.GET.get('fornecedor') or '').strip()
+    emissao_de = (request.GET.get('emissao_de') or '').strip()
+    emissao_ate = (request.GET.get('emissao_ate') or '').strip()
+    entrada_de = (request.GET.get('entrada_de') or '').strip()
+    entrada_ate = (request.GET.get('entrada_ate') or '').strip()
+    produto = (request.GET.get('produto') or '').strip()
+
+    if fornecedor:
+        qs = qs.filter(
+            Q(emitente__razao_social__icontains=fornecedor)
+            | Q(emitente__nome_fantasia__icontains=fornecedor)
+            | Q(emitente__nome__icontains=fornecedor)
+            | Q(numero__icontains=fornecedor)
+        )
+    if emissao_de:
+        qs = qs.filter(data_emissao__gte=emissao_de)
+    if emissao_ate:
+        qs = qs.filter(data_emissao__lte=emissao_ate)
+    if entrada_de:
+        qs = qs.filter(data_saida__gte=entrada_de)
+    if entrada_ate:
+        qs = qs.filter(data_saida__lte=entrada_ate)
+    if produto:
+        qs = qs.filter(
+            Q(itens__descricao__icontains=produto)
+            | Q(itens__codigo__icontains=produto)
+            | Q(itens__produto__nome__icontains=produto)
+        )
+
+    qs = qs.distinct().order_by('-data_emissao', '-numero')
     serializer = NotaFiscalSerializer(qs, many=True, context={'request': request})
-    return Response(serializer.data)
+    return Response({'results': serializer.data, 'count': qs.count()})
 
 
 @login_required
@@ -39,7 +70,7 @@ def notas_entradas_view(request):
       - GET normal: renderiza 'relatorios/notas_entradas.html' (página completa).
       - AJAX (XHR): renderiza apenas 'partials/relatorios/notas_entradas.html'.
     """
-    qs = NotaFiscal.objects.select_related('fornecedor', 'created_by').all()
+    qs = NotaFiscal.objects.select_related('emitente', 'created_by').all()
     context = {'entradas': qs}
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'

@@ -1,42 +1,39 @@
 {% load static %}
 
-<div id="identificador-tela" data-page="login" data-tela="login">
-  <div class="container d-flex justify-content-center align-items-center min-vh-100">
-    <div class="card shadow-lg p-4 rounded-4" style="max-width: 400px; width: 100%;">
-      
-      <!-- 🔷 Logo -->
-      <div class="text-center mb-4">
-        <img src="{% static 'icons/logo_sem_fundo.png' %}" alt="Logo da OneTech" class="img-fluid" style="max-height: 100px;">
+<div id="identificador-tela" data-page="login" data-tela="login"></div>
+
+<img src="{% static 'icons/logo_sem_fundo1.png' %}" alt="OneTech" class="logo-top-left" style="max-width: 120px; max-height: 60px; object-fit: contain;">
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100 py-5">
+  <div class="card login-card shadow-sm p-4" style="max-width: 300px; width: 100%;">
+    <div class="text-center mb-4">
+      <img src="{% static 'icons/logo_sem_fundo1.png' %}" alt="OneTech" class="img-fluid" style="max-width: 200px; max-height: 150px; object-fit: contain;">
+    </div>
+
+    {% if error %}
+      <div class="alert alert-danger text-center" role="alert">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}" data-response-type="json" data-full-redirect-on-success="1" novalidate>
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label for="username" class="form-label">Usuário:</label>
+        <input type="text" name="username" id="username" class="form-control" placeholder="Digite seu usuário" required autofocus>
       </div>
 
-      <!-- 🔐 Título -->
-      <h2 class="text-center mb-3">Acesso ao Painel</h2>
+      <div class="mb-4">
+        <label for="password" class="form-label">Senha:</label>
+        <input type="password" name="password" id="password" class="form-control" placeholder="Digite sua senha" required>
+      </div>
 
-      <!-- ❌ Erro -->
-      {% if error %}
-        <div class="alert alert-danger text-center py-2 small" role="alert">
-          {{ error }}
-        </div>
-      {% endif %}
+      <button type="submit" class="btn btn-primary w-100">Entrar</button>
 
-      <!-- 🧾 Formulário -->
-      <form method="POST" class="ajax-form" data-url="{% url 'accounts:login' %}" data-response-type="json">
-        {% csrf_token %}
-
-        <div class="mb-3">
-          <label for="username" class="form-label">Usuário</label>
-          <input type="text" name="username" id="username" class="form-control" required autofocus>
-        </div>
-
-        <div class="mb-3">
-          <label for="password" class="form-label">Senha</label>
-          <input type="password" name="password" id="password" class="form-control" required>
-        </div>
-
-        <div class="d-grid mt-4">
-          <button type="submit" class="btn btn-primary">Entrar</button>
-        </div>
-      </form>
-    </div>
+      <div class="text-center mt-3">
+        <a href="{% url 'accounts:password_reset' %}" class="text-decoration-none ajax-link fs-6">Esqueceu a senha?</a>
+      </div>
+    </form>
   </div>
 </div>

@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <nav class="navbar navbar-expand-lg navbar-superior">
     <div class="container-fluid">
         <a href="{% url 'painel:home' %}" class="navbar-brand ajax-link">
@@ -12,7 +12,7 @@
               {% for item in dynamic_menu_items %}
                 {% if item.children %}
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle ajax-link" href="#" id="navbarDropdown-{{ forloop.counter }}" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown-{{ forloop.counter }}" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                       {{ item.icon|safe }} {{ item.name }}
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown-{{ forloop.counter }}">
@@ -88,3 +88,4 @@
         </div>
     </div>
 </nav>
+

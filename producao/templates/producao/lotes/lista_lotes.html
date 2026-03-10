@@ -1,22 +1,27 @@
-<div class="container-fluid mt-3" id="identificador-tela"
+﻿<div class="container-fluid pt-3 pb-4" id="identificador-tela"
     data-tela="lista_lotes"
     data-entidade-singular="lote"
     data-entidade-plural="lotes"
     data-url-editar="{% url 'producao:editar_lote' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_lotes_multiplos' %}"
     data-seletor-checkbox=".check-lote"
-     data-seletor-pai="#select-all-lotes"></div>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Lista de Lotes</h2>
-        <div>
-            <a href="{% url 'producao:cadastrar_lote' %}" class="btn btn-primary ajax-link">Novo Lote</a>
-            <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
-            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
-        </div>
-    </div>
+    data-seletor-pai="#select-all-lotes">
 
     <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-box me-2"></i>Lista de Lotes</h2>
+        </div>
         <div class="card-body">
+
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'producao:cadastrar_lote' %}" class="btn btn-primary ajax-link">Novo Lote</a>
+                    <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
+                    <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
+                </div>
+            </div>
+
             <div class="table-responsive">
                 <table class="table table-hover table-striped">
                     <thead>
@@ -25,7 +30,7 @@
                             <th>Nome</th>
                             <th>Tanque Atual</th>
                             <th>Data Povoamento</th>
-                            <th>Peso Médio Atual (g)</th>
+                            <th>Peso M?dio Atual (g)</th>
                             <th>Biomassa Atual (kg)</th>
                             <th>Quantidade Atual (peixes)</th>
                             <th>Ativo</th>
@@ -41,7 +46,7 @@
                             <td>{{ lote.peso_atual_annotated|floatformat:2 }}</td>
                             <td>{{ lote.biomassa_atual_kg_annotated|floatformat:2 }}</td>
                             <td>{{ lote.qtd_atual_annotated|floatformat:0 }}</td>
-                            <td>{% if lote.ativo %}Sim{% else %}Não{% endif %}</td>
+                            <td>{% if lote.ativo %}Sim{% else %}N?o{% endif %}</td>
                         </tr>
                         {% empty %}
                         <tr>

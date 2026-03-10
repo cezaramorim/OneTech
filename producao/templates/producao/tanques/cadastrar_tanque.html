@@ -1,8 +1,9 @@
-<div id="identificador-tela" data-tela="cadastrar_tanque">
-    <div class="container-fluid">
-        <h2 class="my-4">{% if object %}Editar{% else %}Cadastrar{% endif %} Tanque</h2>
-
+﻿<div id="identificador-tela" data-tela="cadastrar_tanque">
+    <div class="container-fluid pt-3 pb-4">
         <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h2 class="h4 mb-0 text-primary">{% if object %}<i class="bi bi-pencil-square me-2"></i>Editar{% else %}<i class="bi bi-plus-circle me-2"></i>Cadastrar{% endif %} Tanque</h2>
+            </div>
             <div class="card-body">
                 <form method="post" action="" class="ajax-form" data-response-type="json">
                     {% csrf_token %}

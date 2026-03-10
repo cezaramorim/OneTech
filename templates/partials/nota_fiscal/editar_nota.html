@@ -1,202 +1,1363 @@
 {% load widget_tweaks nota_fiscal_filters %}
 
-<div class="container-fluid py-4">
+{% url 'nota_fiscal:buscar_produtos_para_nota' as buscar_produtos_nota_url %}
+
+
+
+<div class="container-fluid pt-3 pb-4">
+
     <form method="post" novalidate>
+
         {% csrf_token %}
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">Editar Nota Fiscal: {{ nota.numero }}</h4>
-                <div>
-                    <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-secondary">Descartar</a>
-                    <button type="submit" class="btn btn-primary">Salvar Altera&ccedil;&otilde;es</button>
-                </div>
+
+
+
+        <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+
+            <div>
+
+                <h4 class="fw-semibold mb-2"><i class="bi bi-pencil-square me-2"></i>Editar Nota Fiscal: {{ nota.numero }}</h4>
+
+                <hr class="mt-0">
+
             </div>
+
+        </header>
+
+
+
+        <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+
+            <div class="page-toolbar-spacer"></div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+
+                {% if nota.tipo_operacao == '1' %}<a href="{% url 'nota_fiscal:emitir_nfe_list' %}" class="btn btn-secondary">Descartar</a>{% else %}<a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-secondary">Descartar</a>{% endif %}
+
+                <button type="submit" name="action" value="delete_nota" class="btn btn-danger" onclick="return confirm('Confirma excluir esta nota fiscal?');">Excluir Nota</button>
+
+                <button type="submit" class="btn btn-primary">Salvar Alteracoes</button>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="card shadow-sm">
 
             <div class="card-body">
-                {# Exibição de erros gerais do formulário principal #}
+
                 {% if form.non_field_errors %}
+
                     <div class="alert alert-danger" role="alert">
+
                         {% for error in form.non_field_errors %}
+
                             {{ error }}
+
                         {% endfor %}
+
                     </div>
+
                 {% endif %}
 
+
+
                 <ul class="nav nav-tabs" id="notaTab" role="tablist">
+
                     <li class="nav-item" role="presentation"><button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados da Nota</button></li>
+
                     <li class="nav-item" role="presentation"><button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">Produtos</button></li>
+
                     <li class="nav-item" role="presentation"><button class="nav-link" id="duplicatas-tab" data-bs-toggle="tab" data-bs-target="#duplicatas" type="button" role="tab">Duplicatas</button></li>
+
                     <li class="nav-item" role="presentation"><button class="nav-link" id="transporte-tab" data-bs-toggle="tab" data-bs-target="#transporte" type="button" role="tab">Transporte</button></li>
+
                 </ul>
 
+
+
                 <div class="tab-content pt-3" id="notaTabContent">
+
                     <div class="tab-pane fade show active" id="dados" role="tabpanel">
+
                         <div class="row g-3">
+
                             {% for field in form %}
+
                                 <div class="col-md-4">
+
                                     <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+
                                     {{ field|add_class:"form-control" }}
+
                                     {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
+
                                 </div>
+
                             {% endfor %}
+
                         </div>
+
                     </div>
+
+
 
                     <div class="tab-pane fade" id="produtos" role="tabpanel">
-                        {# Exibição de erros gerais do formset de itens #}
+
                         {% if item_formset.non_form_errors %}
+
                             <div class="alert alert-danger" role="alert">
+
                                 {% for error in item_formset.non_form_errors %}
+
                                     {{ error }}
+
                                 {% endfor %}
+
                             </div>
+
                         {% endif %}
+
                         {{ item_formset.management_form }}
+
                         <div class="row g-2 mb-2 fw-bold">
-                            <div class="col-md-2">Produto</div>
-                            <div class="col-md-2">Código</div>
-                            <div class="col-md-2">Descrição</div>
+
+                            <div class="col-md-2">Codigo</div>
+
+                            <div class="col-md-3">Descricao</div>
+
+                            <div class="col-md-1">Unidade</div>
+
+                            <div class="col-md-1">NCM</div>
+
+                            <div class="col-md-1">CFOP</div>
+
                             <div class="col-md-1">Qtd.</div>
+
                             <div class="col-md-1">Vlr. Unit.</div>
+
                             <div class="col-md-1">Vlr. Total</div>
+
                             <div class="col-md-1">Desc.</div>
+
                             <div class="col-md-1"></div>
+
                         </div>
+
                         <div id="item-form-list">
+
                             {% for form in item_formset %}
+
                                 <div class="row g-2 mb-2 item-form align-items-center">
+
                                     {{ form.id }}
-                                    <div class="col-md-2">{{ form.produto|add_class:"form-select form-select-sm" }}</div>
-                                    <div class="col-md-2">{{ form.codigo|add_class:"form-control form-control-sm" }}</div>
-                                    <div class="col-md-2">{{ form.descricao|add_class:"form-control form-control-sm" }}</div>
+
+                                    <div class="col-md-2">{{ form.codigo|add_class:"form-control form-control-sm produto-codigo" }}</div>
+
+                                    <div class="col-md-3">{{ form.descricao|add_class:"form-control form-control-sm produto-descricao" }}</div>
+
+                                    <div class="col-md-1">{{ form.unidade|add_class:"form-control form-control-sm" }}</div>
+
+                                    <div class="col-md-1">{{ form.ncm|add_class:"form-control form-control-sm" }}</div>
+
+                                    <div class="col-md-1">{{ form.cfop|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-1">{{ form.quantidade|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-1">{{ form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-1">{{ form.valor_total|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-1">{{ form.desconto|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
+
                                     {% if form.errors %}
+
                                         <div class="col-12 text-danger small">
+
                                             {% for field_name, errors in form.errors.items %}
+
                                                 {{ field_name }}: {{ errors|join:", " }}
+
                                             {% endfor %}
+
                                         </div>
+
                                     {% endif %}
+
                                 </div>
+
                             {% endfor %}
+
                         </div>
+
                         <button type="button" id="add-item-form" class="btn btn-outline-success btn-sm mt-2">Adicionar Produto</button>
+
                         <div id="empty-item-form" style="display:none;">
+
                             <div class="row g-2 mb-2 item-form align-items-center">
-                                <div class="col-md-2">{{ item_formset.empty_form.produto|add_class:"form-select form-select-sm" }}</div>
-                                <div class="col-md-2">{{ item_formset.empty_form.codigo|add_class:"form-control form-control-sm" }}</div>
-                                <div class="col-md-2">{{ item_formset.empty_form.descricao|add_class:"form-control form-control-sm" }}</div>
+
+                                <div class="col-md-2">{{ item_formset.empty_form.codigo|add_class:"form-control form-control-sm produto-codigo" }}</div>
+
+                                <div class="col-md-3">{{ item_formset.empty_form.descricao|add_class:"form-control form-control-sm produto-descricao" }}</div>
+
+                                <div class="col-md-1">{{ item_formset.empty_form.unidade|add_class:"form-control form-control-sm" }}</div>
+
+                                <div class="col-md-1">{{ item_formset.empty_form.ncm|add_class:"form-control form-control-sm" }}</div>
+
+                                <div class="col-md-1">{{ item_formset.empty_form.cfop|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-1">{{ item_formset.empty_form.quantidade|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-1">{{ item_formset.empty_form.valor_unitario|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-1">{{ item_formset.empty_form.valor_total|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-1">{{ item_formset.empty_form.desconto|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-1"><label class="form-check-label">{{ item_formset.empty_form.DELETE }} Excluir</label></div>
+
                             </div>
+
                         </div>
+
                     </div>
+
+
 
                     <div class="tab-pane fade" id="duplicatas" role="tabpanel">
-                        {# Exibição de erros gerais do formset de duplicatas #}
+
                         {% if duplicata_formset.non_form_errors %}
+
                             <div class="alert alert-danger" role="alert">
+
                                 {% for error in duplicata_formset.non_form_errors %}
+
                                     {{ error }}
+
                                 {% endfor %}
+
                             </div>
+
                         {% endif %}
+
                         {{ duplicata_formset.management_form }}
+
                         <div class="row g-2 mb-2 fw-bold">
-                            <div class="col-md-4">Número</div>
+
+                            <div class="col-md-4">Numero</div>
+
                             <div class="col-md-4">Vencimento</div>
+
                             <div class="col-md-3">Valor</div>
+
                             <div class="col-md-1"></div>
+
                         </div>
+
                         <div id="duplicata-form-list">
+
                              {% for form in duplicata_formset %}
+
                                 <div class="row g-2 mb-2 duplicata-form align-items-center">
+
                                     {{ form.id }}
+
                                     <div class="col-md-4">{{ form.numero|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-4">{{ form.vencimento|add_class:"form-control form-control-sm" }}</div>
+
                                     <div class="col-md-3">
+
                                         {{ form.valor|add_class:"form-control form-control-sm" }}
+
                                     </div>
+
                                     <div class="col-md-1">{% if form.instance.pk %}<label class="form-check-label">{{ form.DELETE }} Excluir</label>{% endif %}</div>
+
                                     {% if form.errors %}
+
                                         <div class="col-12 text-danger small">{{ form.errors }}</div>
+
                                     {% endif %}
+
                                 </div>
+
                             {% endfor %}
+
                         </div>
+
                         <button type="button" id="add-duplicata-form" class="btn btn-outline-success btn-sm mt-2">Adicionar Duplicata</button>
+
                         <div id="empty-duplicata-form" style="display:none;">
+
                              <div class="row g-2 mb-2 duplicata-form align-items-center">
+
                                 <div class="col-md-4">{{ duplicata_formset.empty_form.numero|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-4">{{ duplicata_formset.empty_form.vencimento|add_class:"form-control form-control-sm" }}</div>
+
                                 <div class="col-md-3">
+
                                     {{ duplicata_formset.empty_form.valor|add_class:"form-control form-control-sm" }}
+
                                 </div>
+
                                 <div class="col-md-1"><label class="form-check-label">{{ duplicata_formset.empty_form.DELETE }} Excluir</label></div>
+
                             </div>
+
                         </div>
+
                     </div>
+
+
 
                     <div class="tab-pane fade" id="transporte" role="tabpanel">
-                        {# Exibição de erros gerais do formset de transporte #}
+
                         {% if transporte_formset.non_form_errors %}
+
                             <div class="alert alert-danger" role="alert">
+
                                 {% for error in transporte_formset.non_form_errors %}
+
                                     {{ error }}
+
                                 {% endfor %}
+
                             </div>
+
                         {% endif %}
+
                         {{ transporte_formset.management_form }}
+
                         {% for form in transporte_formset %}
+
                             <div class="row g-3">
+
                                 {{ form.id }}
+
                                 {% for field in form %}
+
                                     {% if field.name != 'id' %}
+
                                     <div class="col-md-4">
+
                                         <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+
                                         {{ field|add_class:"form-control" }}
+
                                     </div>
+
                                     {% endif %}
+
                                 {% endfor %}
+
                                 {% if form.errors %}
+
                                     <div class="col-12 text-danger small">{{ form.errors }}</div>
+
                                 {% endif %}
+
                             </div>
+
                         {% endfor %}
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </form>
+
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function setupFormset(prefix) {
-        const addButton = document.getElementById(`add-${prefix}-form`);
-        const formList = document.getElementById(`${prefix}-form-list`);
-        const emptyFormTemplate = document.getElementById(`empty-${prefix}-form`);
-        if (!addButton || !formList || !emptyFormTemplate) return;
-        
-        const emptyForm = emptyFormTemplate.innerHTML;
-        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
 
-        addButton.addEventListener('click', function() {
-            let formNum = parseInt(totalFormsInput.value);
-            let newForm = emptyForm.replace(/__prefix__/g, formNum);
-            formList.insertAdjacentHTML('beforeend', newForm);
-            totalFormsInput.value = formNum + 1;
-        });
+
+<script>
+
+(function() {
+
+    const prefix = "{{ item_formset.prefix }}";
+
+    const produtoApiUrl = "{{ buscar_produtos_nota_url }}";
+
+    const autoReadonlyFields = ['unidade', 'ncm', 'cfop', 'valor_unitario', 'valor_total'];
+
+    const addButton = document.getElementById('add-item-form');
+
+    const totalForms = document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+
+    const list = document.getElementById('item-form-list');
+
+    const emptyFormTemplate = document.getElementById('empty-item-form').innerHTML;
+
+    const lookupPanels = new Set();
+
+
+
+    function getRowIndex(row) {
+
+        const codigoInput = row.querySelector(`input[name^="${prefix}-"][name$="-codigo"]`);
+
+        if (!codigoInput || !codigoInput.name) return null;
+
+        const match = codigoInput.name.match(new RegExp(`^${prefix}-(\\d+)-codigo$`));
+
+        return match ? Number(match[1]) : null;
+
     }
 
-    setupFormset('item');
-    setupFormset('duplicata');
-});
+
+
+    function getField(index, fieldName) {
+
+        return document.querySelector(`[name="${prefix}-${index}-${fieldName}"]`);
+
+    }
+
+
+
+    function parseNumber(value) {
+        if (value == null) return 0;
+
+        let normalized = String(value).trim();
+        if (!normalized) return 0;
+
+        normalized = normalized.replace(/\s+/g, '').replace(/^R\$\s?/, '');
+
+        const hasComma = normalized.includes(',');
+        const hasDot = normalized.includes('.');
+
+        if (hasComma && hasDot) {
+            // pt-BR: 1.234,56
+            if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+                normalized = normalized.replace(/\./g, '').replace(',', '.');
+            } else {
+                // en-US: 1,234.56
+                normalized = normalized.replace(/,/g, '');
+            }
+        } else if (hasComma) {
+            normalized = normalized.replace(/\./g, '').replace(',', '.');
+        } else if (hasDot && /^\d{1,3}(\.\d{3})+$/.test(normalized)) {
+            // milhares sem casa decimal: 1.234
+            normalized = normalized.replace(/\./g, '');
+        }
+
+        normalized = normalized.replace(/[^0-9.-]/g, '');
+        const n = Number(normalized);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+
+
+    function formatNumber(value) {
+        const n = Number(value || 0);
+        return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+    }
+
+    function formatNumberForField(field, value) {
+        const v = formatNumber(value);
+        return field && field.type === 'number' ? v : v.replace('.', ',');
+    }
+
+
+
+    function recalcRowTotal(index) {
+
+        const qtdField = getField(index, 'quantidade');
+
+        const unitField = getField(index, 'valor_unitario');
+
+        const descField = getField(index, 'desconto');
+
+        const totalField = getField(index, 'valor_total');
+
+        if (!qtdField || !unitField || !totalField) return;
+
+
+
+        const qtd = parseNumber(qtdField.value);
+
+        const unit = parseNumber(unitField.value);
+
+        const desc = descField ? parseNumber(descField.value) : 0;
+
+        const total = Math.max((qtd * unit) - desc, 0);
+
+        totalField.value = formatNumber(total);
+
+    }
+
+
+
+    function setAutoFieldsReadonly(index, isReadonly) {
+
+        autoReadonlyFields.forEach((fieldName) => {
+
+            const field = getField(index, fieldName);
+
+            if (!field) return;
+
+            field.readOnly = !!isReadonly;
+
+        });
+
+    }
+
+
+
+    function applyProductDataToRow(row, product) {
+
+        const index = getRowIndex(row);
+
+        if (index == null || !product) return;
+
+
+
+        const codigoField = getField(index, 'codigo');
+
+        const descricaoField = getField(index, 'descricao');
+
+        const unidadeField = getField(index, 'unidade');
+
+        const ncmField = getField(index, 'ncm');
+
+        const cfopField = getField(index, 'cfop');
+
+        const unitField = getField(index, 'valor_unitario');
+
+
+
+        if (codigoField) {
+
+            codigoField.value = product.codigo_interno || product.codigo_fornecedor || '';
+
+        }
+
+        if (descricaoField) {
+
+            descricaoField.value = product.descricao_item || product.descricao || product.nome || '';
+
+        }
+
+        if (unidadeField) {
+
+            unidadeField.value = product.unidade || '';
+
+        }
+
+        if (ncmField) {
+
+            ncmField.value = product.ncm || '';
+
+        }
+
+        if (cfopField) {
+
+            cfopField.value = product.cfop || '';
+
+        }
+
+        if (unitField && (parseNumber(unitField.value) === 0 || !unitField.value)) {
+
+            unitField.value = formatNumber(product.preco_venda || 0);
+
+        }
+
+
+
+        recalcRowTotal(index);
+
+        setAutoFieldsReadonly(index, true);
+
+    }
+
+
+
+    function fetchProducts(term, by) {
+
+        const cleanTerm = (term || '').trim();
+
+        if (!cleanTerm) return Promise.resolve([]);
+
+
+
+        const url = new URL(produtoApiUrl, window.location.origin);
+
+        url.searchParams.set('q', cleanTerm);
+
+        if (by) url.searchParams.set('by', by);
+
+
+
+        return fetch(url.toString(), {
+
+            method: 'GET',
+
+            credentials: 'same-origin',
+
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+
+        })
+
+            .then((response) => (response.ok ? response.json() : null))
+
+            .then((data) => (data && Array.isArray(data.results) ? data.results : []))
+
+            .catch(() => []);
+
+    }
+
+
+
+    function ensureLookupPanel(field, index, suffix) {
+
+        if (!field) return null;
+
+        field.removeAttribute('list');
+
+
+
+        const panelId = `${prefix}-${index}-${suffix}-lookup`;
+
+        let panel = document.getElementById(panelId);
+
+        if (!panel) {
+
+            panel = document.createElement('div');
+
+            panel.id = panelId;
+
+            panel.className = 'autocomplete-ncm-list produto-lookup-list d-none';
+
+            panel.setAttribute('role', 'listbox');
+
+            panel.setAttribute('aria-hidden', 'true');
+
+            const wrapper = field.parentElement;
+
+            if (wrapper) {
+
+                wrapper.style.position = 'relative';
+
+                wrapper.appendChild(panel);
+
+                lookupPanels.add(panel);
+
+            }
+
+        }
+
+        return panel;
+
+    }
+
+
+
+    function hideLookupPanel(panel) {
+
+        if (!panel) return;
+
+        panel.classList.add('d-none');
+
+        panel.setAttribute('aria-hidden', 'true');
+
+    }
+
+
+
+    function showLookupPanel(panel) {
+
+        if (!panel || !panel.childElementCount) return;
+
+        panel.classList.remove('d-none');
+
+        panel.setAttribute('aria-hidden', 'false');
+
+    }
+
+
+
+    function initProductLookup(row) {
+
+        const index = getRowIndex(row);
+
+        if (index == null) return;
+
+
+
+        const codigoField = getField(index, 'codigo');
+
+        const descricaoField = getField(index, 'descricao');
+
+        if (!codigoField || !descricaoField) return;
+
+
+
+        const codigoPanel = ensureLookupPanel(codigoField, index, 'codigo');
+
+        const descricaoPanel = ensureLookupPanel(descricaoField, index, 'descricao');
+
+        const codeCache = new Map();
+
+        const nameCache = new Map();
+
+
+
+        const hidePanels = () => {
+
+            hideLookupPanel(codigoPanel);
+
+            hideLookupPanel(descricaoPanel);
+
+        };
+
+
+
+        const renderPanelResults = (panel, results, onPick) => {
+
+            if (!panel) return;
+
+            panel.innerHTML = '';
+
+
+
+            const limited = Array.isArray(results) ? results.slice(0, 15) : [];
+
+            if (!limited.length) {
+
+                hideLookupPanel(panel);
+
+                return;
+
+            }
+
+
+
+            limited.forEach((item) => {
+
+                const code = (item.codigo_interno || item.codigo_fornecedor || '').trim();
+
+                const name = (item.nome || item.descricao_item || '').trim();
+
+                const option = document.createElement('button');
+
+                option.type = 'button';
+
+                option.className = 'autocomplete-ncm-item produto-lookup-item';
+
+                option.innerHTML = `
+
+                    <span class="produto-lookup-code">${code || '&nbsp;'}</span>
+
+                    <span class="produto-lookup-name">${name || '&nbsp;'}</span>
+
+                `;
+
+                option.addEventListener('mousedown', (event) => {
+
+                    event.preventDefault();
+
+                    onPick(item);
+
+                    hidePanels();
+
+                });
+
+                panel.appendChild(option);
+
+            });
+
+
+
+            showLookupPanel(panel);
+
+        };
+
+
+
+        const renderCodeResults = (results) => {
+
+            codeCache.clear();
+
+            results.forEach((item) => {
+
+                const code = (item.codigo_interno || item.codigo_fornecedor || '').trim();
+
+                if (!code) return;
+
+                codeCache.set(code.toLowerCase(), item);
+
+            });
+
+            renderPanelResults(codigoPanel, results, (item) => applyProductDataToRow(row, item));
+
+        };
+
+
+
+        const renderNameResults = (results) => {
+
+            nameCache.clear();
+
+            results.forEach((item) => {
+
+                const name = (item.nome || '').trim();
+
+                if (!name) return;
+
+                nameCache.set(name.toLowerCase(), item);
+
+            });
+
+            renderPanelResults(descricaoPanel, results, (item) => applyProductDataToRow(row, item));
+
+        };
+
+
+
+        const debounceLocal = (fn, delay = 300) => {
+
+            let t;
+
+            return (...args) => {
+
+                clearTimeout(t);
+
+                t = setTimeout(() => fn(...args), delay);
+
+            };
+
+        };
+
+
+
+        const searchByCode = debounceLocal(async () => {
+
+            const term = codigoField.value;
+
+            if (!term || term.length < 1) {
+
+                hideLookupPanel(codigoPanel);
+
+                return;
+
+            }
+
+            const results = await fetchProducts(term, 'code');
+
+            renderCodeResults(results);
+
+        }, 200);
+
+
+
+        const searchByName = debounceLocal(async () => {
+
+            const term = descricaoField.value;
+
+            if (!term || term.length < 1) {
+
+                hideLookupPanel(descricaoPanel);
+
+                return;
+
+            }
+
+            const results = await fetchProducts(term, 'name');
+
+            renderNameResults(results);
+
+        }, 200);
+
+
+
+        const resolveFromCode = async () => {
+
+            const value = (codigoField.value || '').trim();
+
+            if (!value) {
+
+                hideLookupPanel(codigoPanel);
+
+                return;
+
+            }
+
+            let product = codeCache.get(value.toLowerCase());
+
+            if (!product) {
+
+                const results = await fetchProducts(value, 'code');
+
+                product = results.find((item) => {
+
+                    const code = (item.codigo_interno || item.codigo_fornecedor || '').trim().toLowerCase();
+
+                    return code === value.toLowerCase();
+
+                }) || results[0];
+
+            }
+
+            if (product) applyProductDataToRow(row, product);
+
+            hideLookupPanel(codigoPanel);
+
+        };
+
+
+
+        const resolveFromName = async () => {
+
+            const value = (descricaoField.value || '').trim();
+
+            if (!value) {
+
+                hideLookupPanel(descricaoPanel);
+
+                return;
+
+            }
+
+            let product = nameCache.get(value.toLowerCase());
+
+            if (!product) {
+
+                const results = await fetchProducts(value, 'name');
+
+                product = results.find((item) => (item.nome || '').trim().toLowerCase() === value.toLowerCase()) || results[0];
+
+            }
+
+            if (product) applyProductDataToRow(row, product);
+
+            hideLookupPanel(descricaoPanel);
+
+        };
+
+
+
+        if (codigoField.dataset.lookupBound !== '1') {
+
+            codigoField.dataset.lookupBound = '1';
+
+            codigoField.addEventListener('input', searchByCode);
+
+            codigoField.addEventListener('change', resolveFromCode);
+
+            codigoField.addEventListener('focus', searchByCode);
+
+            codigoField.addEventListener('blur', () => setTimeout(resolveFromCode, 120));
+
+            codigoField.addEventListener('keydown', (e) => {
+
+                if (e.key === 'Enter') {
+
+                    e.preventDefault();
+
+                    resolveFromCode();
+
+                } else if (e.key === 'Escape') {
+
+                    hideLookupPanel(codigoPanel);
+
+                }
+
+            });
+
+        }
+
+
+
+        if (descricaoField.dataset.lookupBound !== '1') {
+
+            descricaoField.dataset.lookupBound = '1';
+
+            descricaoField.addEventListener('input', searchByName);
+
+            descricaoField.addEventListener('change', resolveFromName);
+
+            descricaoField.addEventListener('focus', searchByName);
+
+            descricaoField.addEventListener('blur', () => setTimeout(resolveFromName, 120));
+
+            descricaoField.addEventListener('keydown', (e) => {
+
+                if (e.key === 'Enter') {
+
+                    e.preventDefault();
+
+                    resolveFromName();
+
+                } else if (e.key === 'Escape') {
+
+                    hideLookupPanel(descricaoPanel);
+
+                }
+
+            });
+
+        }
+
+
+
+    }
+
+
+
+    document.addEventListener('click', (event) => {
+
+        lookupPanels.forEach((panel) => {
+
+            if (!panel.contains(event.target)) {
+
+                hideLookupPanel(panel);
+
+            }
+
+        });
+
+    });
+
+
+
+    function bindNumericRecalc(row) {
+
+        const index = getRowIndex(row);
+
+        if (index == null) return;
+
+        ['quantidade', 'valor_unitario', 'desconto'].forEach((fieldName) => {
+
+            const field = getField(index, fieldName);
+
+            if (!field || field.dataset.recalcBound === '1') return;
+
+            field.dataset.recalcBound = '1';
+
+            field.addEventListener('input', () => recalcRowTotal(index));
+
+            field.addEventListener('change', () => recalcRowTotal(index));
+
+        });
+
+    }
+
+
+
+    function bindRow(row) {
+
+        if (!row || row.dataset.itemBound === '1') return;
+
+        row.dataset.itemBound = '1';
+
+        bindNumericRecalc(row);
+
+        initProductLookup(row);
+
+
+
+        const index = getRowIndex(row);
+
+        if (index != null) {
+
+            recalcRowTotal(index);
+
+            const totalField = getField(index, 'valor_total');
+
+            if (totalField) totalField.readOnly = true;
+
+
+
+            const hasCode = !!(getField(index, 'codigo') && getField(index, 'codigo').value);
+
+            const hasDescricao = !!(getField(index, 'descricao') && getField(index, 'descricao').value);
+
+            setAutoFieldsReadonly(index, hasCode || hasDescricao);
+
+        }
+
+    }
+
+
+
+    if (list) {
+
+        list.querySelectorAll('.item-form').forEach(bindRow);
+
+    }
+
+
+
+    if (addButton && totalForms && list) {
+
+        addButton.addEventListener('click', function() {
+
+            const formNum = parseInt(totalForms.value, 10);
+
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formNum);
+
+            list.insertAdjacentHTML('beforeend', newFormHtml);
+
+            totalForms.value = String(formNum + 1);
+
+
+
+            const newRow = list.querySelector('.item-form:last-child');
+
+            bindRow(newRow);
+
+        });
+
+    }
+
+
+
+
+
+    const duplicataPrefix = "{{ duplicata_formset.prefix }}";
+
+    const duplicataList = document.getElementById('duplicata-form-list');
+
+    const addDuplicataButton = document.getElementById('add-duplicata-form');
+
+    const duplicataTotalForms = document.querySelector(`input[name="${duplicataPrefix}-TOTAL_FORMS"]`);
+
+    const emptyDuplicataTemplate = document.getElementById('empty-duplicata-form')
+
+        ? document.getElementById('empty-duplicata-form').innerHTML
+
+        : '';
+
+
+
+    const valorTotalNotaField = document.querySelector('[name="valor_total_nota"]');
+
+    const valorTotalDescontoField = document.querySelector('[name="valor_total_desconto"]');
+
+    const quantidadeParcelasField = document.querySelector('[name="quantidade_parcelas"]');
+
+    const dataEmissaoField = document.querySelector('[name="data_emissao"]');
+
+
+
+    function addDays(date, days) {
+
+        const d = new Date(date.getTime());
+
+        d.setDate(d.getDate() + days);
+
+        return d;
+
+    }
+
+
+
+    function formatDateISO(date) {
+
+        const yyyy = date.getFullYear();
+
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+
+        const dd = String(date.getDate()).padStart(2, '0');
+
+        return `${yyyy}-${mm}-${dd}`;
+
+    }
+
+
+
+    function getDuplicataRows() {
+
+        if (!duplicataList) return [];
+
+        return Array.from(duplicataList.querySelectorAll('.duplicata-form'));
+
+    }
+
+
+
+    function getDuplicataField(index, fieldName) {
+
+        return document.querySelector(`[name="${duplicataPrefix}-${index}-${fieldName}"]`);
+
+    }
+
+
+
+    function appendDuplicataRow() {
+
+        if (!duplicataList || !duplicataTotalForms || !emptyDuplicataTemplate) return null;
+
+        const formNum = parseInt(duplicataTotalForms.value || '0', 10);
+
+        const html = emptyDuplicataTemplate.replace(/__prefix__/g, formNum);
+
+        duplicataList.insertAdjacentHTML('beforeend', html);
+
+        duplicataTotalForms.value = String(formNum + 1);
+
+        return duplicataList.querySelector('.duplicata-form:last-child');
+
+    }
+
+
+
+    function ensureDuplicataRows(count) {
+
+        const safeCount = Math.max(parseInt(count || 0, 10) || 0, 1);
+
+        let rows = getDuplicataRows();
+
+        while (rows.length < safeCount) {
+
+            appendDuplicataRow();
+
+            rows = getDuplicataRows();
+
+        }
+
+        return rows.slice(0, safeCount);
+
+    }
+
+
+
+    function distribuirDuplicatas() {
+
+        if (!quantidadeParcelasField || !valorTotalNotaField) return;
+
+
+
+        const parcelas = Math.max(parseInt(quantidadeParcelasField.value || '1', 10) || 1, 1);
+
+        const totalNota = parseNumber(valorTotalNotaField.value);
+
+        const totalDesconto = valorTotalDescontoField ? parseNumber(valorTotalDescontoField.value) : 0;
+
+        const liquido = Math.max(totalNota - totalDesconto, 0);
+
+
+
+        const rows = ensureDuplicataRows(parcelas);
+
+        if (!rows.length) return;
+
+
+
+        const totalCentavos = Math.round(liquido * 100);
+
+        const baseCentavos = Math.floor(totalCentavos / parcelas);
+
+        let restoCentavos = totalCentavos - (baseCentavos * parcelas);
+
+
+
+        const baseDate = dataEmissaoField && dataEmissaoField.value
+
+            ? new Date(`${dataEmissaoField.value}T00:00:00`)
+
+            : new Date();
+
+
+
+        rows.forEach((row, idx) => {
+
+            const rowIndexMatch = row.querySelector(`input[name^="${duplicataPrefix}-"][name$="-numero"]`)
+
+                ?.name.match(new RegExp(`^${duplicataPrefix}-(\\d+)-numero$`));
+
+            if (!rowIndexMatch) return;
+
+            const rowIndex = Number(rowIndexMatch[1]);
+
+
+
+            const numeroField = getDuplicataField(rowIndex, 'numero');
+
+            const vencimentoField = getDuplicataField(rowIndex, 'vencimento');
+
+            const valorField = getDuplicataField(rowIndex, 'valor');
+
+            const deleteField = getDuplicataField(rowIndex, 'DELETE');
+
+            if (deleteField) deleteField.checked = false;
+
+
+
+            const parcelaCentavos = baseCentavos + (restoCentavos > 0 ? 1 : 0);
+
+            if (restoCentavos > 0) restoCentavos -= 1;
+
+            const parcelaValor = parcelaCentavos / 100;
+
+
+
+            if (numeroField && (!numeroField.value || /^\d+$/.test(numeroField.value))) {
+
+                numeroField.value = String(idx + 1).padStart(3, '0');
+
+            }
+
+            if (vencimentoField && !vencimentoField.value) {
+
+                vencimentoField.value = formatDateISO(addDays(baseDate, idx * 30));
+
+            }
+
+            if (valorField) {
+
+                valorField.value = formatNumberForField(valorField, parcelaValor);
+
+            }
+
+        });
+
+    }
+
+
+
+    if (addDuplicataButton) {
+
+        addDuplicataButton.addEventListener('click', function() {
+
+            appendDuplicataRow();
+
+        });
+
+    }
+
+
+
+    [quantidadeParcelasField, valorTotalNotaField, valorTotalDescontoField, dataEmissaoField].forEach((field) => {
+
+        if (!field) return;
+
+        field.addEventListener('change', distribuirDuplicatas);
+
+        field.addEventListener('input', () => {
+
+            if (field === quantidadeParcelasField) distribuirDuplicatas();
+
+        });
+
+    });
+
+
+
+    distribuirDuplicatas();
+
+})();
+
 </script>
+
+
+

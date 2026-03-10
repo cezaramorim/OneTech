@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from nota_fiscal.models import NotaFiscal
+from control.models import Emitente
 from .services import emitir_nfe_api
 
 @csrf_exempt
@@ -51,18 +52,30 @@ def emitir_nota_fiscal_view(request):
     try:
         data = json.loads(request.body)
         nota_id = data.get('nota_id')
-        nota = NotaFiscal.objects.select_related('emitente', 'destinatario').get(pk=nota_id)
+        nota = NotaFiscal.objects.select_related('emitente_proprio', 'destinatario').get(pk=nota_id)
 
         # 1. Obter dados do emitente a partir do tenant atual (injetado pelo middleware)
-        tenant_atual = request.tenant
+        tenant_atual = getattr(request, 'tenant', None)
+
+        emitente_ativo_id = getattr(tenant_atual, 'emitente_padrao_id', None)
+        if not emitente_ativo_id:
+            emitente_ativo_id = Emitente.objects.filter(is_default=True).values_list('id', flat=True).first()
+        if not emitente_ativo_id:
+            emitente_ativo_id = nota.emitente_proprio_id
+        if not emitente_ativo_id:
+            return JsonResponse({'success': False, 'message': 'Nenhuma empresa ativa definida para emissao.'}, status=400)
+
+        if nota.tipo_operacao != '1':
+            return JsonResponse({'success': False, 'message': 'Apenas notas de saida podem ser emitidas nesta tela.'}, status=400)
+
+        # Valida se o emitente da nota e o mesmo emitente ativo do tenant atual
+        if nota.emitente_proprio_id != emitente_ativo_id:
+            return JsonResponse({'success': False, 'message': 'A nota fiscal nao pertence a empresa ativa do tenant.'}, status=403)
+
+        # Carrega o certificado e a senha quando houver tenant ativo no contexto
         if not tenant_atual:
-            return JsonResponse({'success': False, 'message': 'Nenhum cliente (tenant) ativo na sessão.'}, status=400)
+            return JsonResponse({'success': False, 'message': 'Emissao no dominio default exige tenant/empresa ativa com certificado configurado.'}, status=400)
 
-        # Valida se o emitente da nota é o mesmo do tenant atual
-        if nota.emitente != tenant_atual:
-             return JsonResponse({'success': False, 'message': 'A nota fiscal não pertence ao cliente (tenant) ativo.'}, status=403)
-
-        # Carrega o certificado e a senha do tenant
         try:
             certificado_pfx = tenant_atual.certificado_a1.read()
             senha_certificado = tenant_atual.senha_certificado

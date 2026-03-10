@@ -1,34 +1,38 @@
-<div class="container-fluid p-4" data-page="arracoamento-diario">
-  <!-- Div de identificação unificada e corrigida -->
+<div class="container-fluid pt-3 pb-4" data-page="arracoamento-diario">
   <div
     id="identificador-tela"
     data-tela="arracoamento-diario"
     data-seletor-checkbox=".sugestao-checkbox"
     data-url-editar="{% url 'producao:api_get_arracoamento_realizado' pk=0 %}"
     data-url-excluir="{% url 'producao:api_bulk_delete_arracoamento_realizado' %}"
-    data-entidade-singular="lançamento"
-    data-entidade-plural="lançamentos"
+    data-entidade-singular="lan&ccedil;amento"
+    data-entidade-plural="lan&ccedil;amentos"
   ></div>
 
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">
-        <i class="fas fa-utensils me-2"></i>Arraçoamento Diário
-      </h5>
-      <div class="d-flex gap-2">
-        <button
-          id="btn-ambiente"
-          type="button"
-          class="btn btn-outline-primary btn-sm"
-          data-bs-toggle="modal"
-          data-bs-target="#modalAmbiente"
-        >
-          <i class="fas fa-water me-2"></i>Ambiente
-        </button>
-      </div>
+  <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+    <div>
+      <h4 class="fw-semibold mb-2"><i class="fas fa-utensils me-2"></i>Arra&ccedil;oamento Di&aacute;rio</h4>
+      <hr class="mt-0">
     </div>
+  </header>
+
+  <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div class="page-toolbar-spacer"></div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <button
+        id="btn-ambiente"
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#modalAmbiente"
+      >
+        <i class="fas fa-water me-2"></i>Ambiente
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-body">
-      <!-- Filtros -->
       <div class="row g-2 mb-4 align-items-end">
         <div class="col-12 col-sm-6 col-md-2">
           <label for="data-inicial" class="form-label">Data Inicial</label>
@@ -47,12 +51,9 @@
           </select>
         </div>
         <div class="col-12 col-sm-6 col-md-2">
-          <label for="filtro-linha-producao" class="form-label">
-            Linha de Produção</label
-          >
+          <label for="filtro-linha-producao" class="form-label">Linha de Produ&ccedil;&atilde;o</label>
           <select id="filtro-linha-producao" class="form-select">
             <option value="">Todas</option>
-            <!-- Opções serão carregadas via JS -->
           </select>
         </div>
         <div class="col-12 col-sm-6 col-md-2 d-grid">
@@ -62,7 +63,6 @@
         </div>
       </div>
 
-      <!-- Tabela de Sugestões -->
       <div id="loading-spinner" class="text-center my-4" style="display: none">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Carregando...</span>
@@ -73,19 +73,16 @@
         <table class="table table-hover">
           <thead>
             <tr>
-              <th style="width: 3%">
-                <input type="checkbox" id="selecionar-todos-sugestoes" />
-              </th>
+              <th style="width: 3%"><input type="checkbox" id="selecionar-todos-sugestoes" /></th>
               <th>Data</th>
               <th>Lote</th>
               <th style="min-width: 120px">Tanque</th>
               <th>Qtd. Lote</th>
-              <th>Peso Médio</th>
+              <th>Peso M&eacute;dio</th>
               <th style="min-width: 120px">Linha Prod.</th>
               <th>Seq.</th>
-              <th>Ração Sugerida</th>
-              <th>Ração Utilizada</th>
-              <!-- Nova coluna -->
+              <th>Ra&ccedil;&atilde;o Sugerida</th>
+              <th>Ra&ccedil;&atilde;o Utilizada</th>
               <th>Qtd. Sugerida (kg)</th>
               <th>Sug. Ajustada (kg)</th>
               <th>Qtd. Real (kg)</th>
@@ -96,7 +93,6 @@
           <tfoot>
             <tr class="table-light fw-bold">
               <td colspan="11" class="text-end">Totais (kg):</td>
-              <!-- Ajustado para 11 colunas antes dos totais -->
               <td id="total-sugerido" class="text-center">0.000</td>
               <td id="total-real" class="text-center">0.000</td>
               <td></td>
@@ -105,12 +101,10 @@
         </table>
       </div>
 
-      <!-- Ações -->
       <div class="mt-3">
         <button id="btn-aprovar-selecionados" class="btn btn-success" disabled>
           <i class="fas fa-check me-2"></i>Aprovar Selecionados
         </button>
-        <!-- Botões de ação genéricos -->
         <button
           id="btn-editar"
           class="btn btn-info ms-2"
@@ -134,7 +128,6 @@
   </div>
 </div>
 
-<!-- Modal de Edição (estrutura básica) -->
 <div
   class="modal fade"
   id="modalEdicao"
@@ -145,7 +138,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalEdicaoLabel">Editar Lançamento</h5>
+        <h5 class="modal-title" id="modalEdicaoLabel">Editar Lan&ccedil;amento</h5>
         <button
           type="button"
           class="btn-close"
@@ -173,9 +166,7 @@
             />
           </div>
           <div class="mb-3">
-            <label for="edit-produto-racao-nome" class="form-label"
-              >Ração</label
-            >
+            <label for="edit-produto-racao-nome" class="form-label">Ra&ccedil;&atilde;o</label>
             <input
               type="text"
               class="form-control"
@@ -184,9 +175,7 @@
             />
           </div>
           <div class="mb-3">
-            <label for="edit-quantidade-kg" class="form-label"
-              >Quantidade (kg)</label
-            >
+            <label for="edit-quantidade-kg" class="form-label">Quantidade (kg)</label>
             <input
               type="number"
               class="form-control"
@@ -196,7 +185,7 @@
             />
           </div>
           <div class="mb-3">
-            <label for="edit-observacoes" class="form-label">Observações</label>
+            <label for="edit-observacoes" class="form-label">Observa&ccedil;&otilde;es</label>
             <textarea
               class="form-control"
               id="edit-observacoes"
@@ -205,7 +194,7 @@
             ></textarea>
           </div>
           <button type="submit" class="btn btn-primary">
-            Salvar Alterações
+            Salvar Altera&ccedil;&otilde;es
           </button>
         </form>
       </div>
@@ -213,7 +202,6 @@
   </div>
 </div>
 
-<!-- Modal Ambiente (OD/Temperatura por Fase) -->
 <div
   class="modal fade"
   id="modalAmbiente"
@@ -225,7 +213,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="modalAmbienteLabel">
-          <i class="fas fa-water me-2"></i>Parâmetros Ambientais do Dia
+          <i class="fas fa-water me-2"></i>Par&acirc;metros Ambientais do Dia
         </h5>
         <button
           type="button"
@@ -237,8 +225,7 @@
 
       <div class="modal-body">
         <div class="alert alert-info py-2">
-          Informe os dados no início de cada trato (até 5). Se usar menos
-          tratos, preencha somente os utilizados.
+          Informe os dados no in&iacute;cio de cada trato (at&eacute; 5). Se usar menos tratos, preencha somente os utilizados.
         </div>
 
         <div class="mb-3">
@@ -246,11 +233,8 @@
           <input type="date" id="ambiente-data" class="form-control" disabled />
         </div>
 
-        <!-- Conteúdo dinâmico por fases -->
         <div id="ambiente-container">
-          <div class="text-muted">
-            Selecione uma data para carregar as fases.
-          </div>
+          <div class="text-muted">Selecione uma data para carregar as fases.</div>
         </div>
       </div>
 
@@ -260,7 +244,7 @@
           class="btn btn-outline-secondary"
           data-bs-dismiss="modal"
         >
-          Agora não
+          Agora n&atilde;o
         </button>
         <button type="button" class="btn btn-primary" id="btn-salvar-ambiente">
           <i class="fas fa-save me-2"></i>Salvar Ambiente
@@ -269,4 +253,3 @@
     </div>
   </div>
 </div>
-

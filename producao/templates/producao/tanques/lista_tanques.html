@@ -1,16 +1,27 @@
 {% load static %}
-<div class="container-fluid mt-3" id="identificador-tela"
+<div class="container-fluid pt-3 pb-4"
+    id="identificador-tela"
     data-tela="lista_tanques"
     data-entidade-singular="tanque"
     data-entidade-plural="tanques"
     data-url-editar="{% url 'producao:editar_tanque' pk=0 %}"
     data-url-excluir="{% url 'producao:excluir_tanques_multiplos' %}"
     data-seletor-checkbox=".check-tanque"
-     data-seletor-pai="#select-all-tanques"></div>
+    data-seletor-pai="#select-all-tanques">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Lista de Tanques</h2>
-        <div>
+    <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+      <div>
+        <h4 class="fw-semibold mb-2"><i class="bi bi-water me-2"></i>Lista de Tanques</h4>
+        <hr class="mt-0">
+      </div>
+    </header>
+
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+            <input type="text" id="search-tanques-lista" class="form-control page-toolbar-search" placeholder="Buscar por nome, tag, unidade, linha, tipo ou situa??o..." value="{{ termo_busca }}">
+            <button type="button" id="btn-limpar-tanques-lista" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
             <a href="{% url 'producao:importar_tanques' %}" class="btn btn-info ajax-link">Importar de Excel</a>
             <a href="{% url 'producao:cadastrar_tanque' %}" class="btn btn-primary ajax-link">Novo Tanque</a>
             <button id="btn-editar" class="btn btn-secondary" disabled>Editar</button>
@@ -18,50 +29,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="select-all-tanques"></th>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>Tag</th>
-                            <th>Unidade</th>
-                            <th>Linha</th>
-                            <th>Fase</th>
-                            <th>Situação</th>
-                            <th>m²</th>
-                            <th>m³</th>
-                            <th>Ha</th>
-                            <th>Ativo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tanque in tanques %}
-                        <tr data-id="{{ tanque.pk }}">
-                            <td><input type="checkbox" class="check-tanque" value="{{ tanque.pk }}"></td>
-                            <td>{{ tanque.id }}</td>
-                            <td><a href="{% url 'producao:editar_tanque' tanque.pk %}" class="ajax-link">{{ tanque.nome }}</a></td>
-                            <td>{{ tanque.tag_tanque|default:"-" }}</td>
-                            <td>{{ tanque.unidade.nome|default:"-" }}</td>
-                            <td>{{ tanque.linha_producao.nome|default:"-" }}</td>
-                            <td>{{ tanque.fase.nome|default:"-" }}</td>
-                            <td>{{ tanque.status_tanque.nome|default:"-" }}</td>
-                            <td>{{ tanque.metro_quadrado|floatformat:2 }}</td>
-                            <td>{{ tanque.metro_cubico|floatformat:2 }}</td>
-                            <td>{{ tanque.ha|floatformat:4 }}</td>
-                            <td>{% if tanque.ativo %}Sim{% else %}Não{% endif %}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="12" class="text-center">Nenhum tanque encontrado.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div id="tanques-table-wrapper">
+        {% include "producao/tanques/_lista_tanques_tabela.html" %}
     </div>
 </div>

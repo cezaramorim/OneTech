@@ -1,9 +1,7 @@
-{% load widget_tweaks nota_fiscal_filters %}
+﻿{% load widget_tweaks nota_fiscal_filters %}
 {% load static %}
-{% load mask_filters %} {# Carrega os novos filtros de máscara #}
-<link rel="stylesheet" href="{% static 'css/nota_fiscal.css' %}">
-
-<main id="main-content" class="container-fluid py-4">
+{% load mask_filters %}
+<div class="container-fluid pt-3 pb-4">
   <div id="identificador-tela"
        data-tela="entradas_nota"
        data-entidade-singular="nota"
@@ -13,37 +11,40 @@
        data-seletor-checkbox=".checkbox-nota"
        data-seletor-pai="#select-all-nota">
   </div>
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <a id="btn-editar" class="btn btn-info me-2" role="button">Editar</a>
-      <button id="btn-excluir" class="btn btn-danger">Excluir</button>
-    </div>
-    <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-success">+ Importar Nova Nota</a>
-  </div>
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h2 class="mb-4 text-center">Entradas de Nota Fiscal</h2>
 
-      <form id="filtro-notas-form" class="row g-3 mb-4 justify-content-center" method="get">
-        <div class="col-md-8">
-          <input type="text" name="termo" class="form-control" placeholder="Buscar por Número ou Fornecedor..." value="{{ termo }}">
+  <div class="card shadow-sm">
+      <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-receipt me-2"></i>Entradas de Nota Fiscal</h2>
+      </div>
+    <div class="card-body">
+      <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <form id="filtro-notas-form" class="page-toolbar-form d-flex align-items-center gap-2 mb-0" method="get">
+          <input type="text"
+                 name="termo"
+                 class="form-control page-toolbar-search"
+                 placeholder="Buscar por N&uacute;mero ou Fornecedor..."
+                 value="{{ termo }}">
+          <button type="submit" class="btn btn-primary page-toolbar-btn">Buscar</button>
+          <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary page-toolbar-btn">Limpar</a>
+        </form>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <a id="btn-editar" class="btn btn-info" role="button">Editar</a>
+          <button id="btn-excluir" class="btn btn-danger">Excluir</button>
+          <a href="{% url 'nota_fiscal:importar_xml' %}" class="btn btn-success">+ Importar Nova Nota</a>
         </div>
-        <div class="col-auto">
-          <button type="submit" class="btn btn-primary">Buscar</button>
-          <a href="{% url 'nota_fiscal:entradas_nota' %}" class="btn btn-outline-secondary">Limpar</a>
-        </div>
-      </form>
+      </div>
 
       <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle" id="tabela-notas-redimensionavel">
           <thead class="table-light">
             <tr>
               <th style="width: 40px;"><input type="checkbox" id="select-all-nota"></th>
-              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'numero' %}-numero{% else %}numero{% endif %}">Número</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'numero' %}-numero{% else %}numero{% endif %}">N&uacute;mero</a></th>
               <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'emitente__razao_social' %}-emitente__razao_social{% else %}emitente__razao_social{% endif %}">Fornecedor</a></th>
               <th>CNPJ Fornecedor</th>
-              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'data_emissao' %}-data_emissao{% else %}data_emissao{% endif %}">Emissão</a></th>
-              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'created_at' %}-created_at{% else %}created_at{% endif %}">Lançamento</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'data_emissao' %}-data_emissao{% else %}data_emissao{% endif %}">Emiss&atilde;o</a></th>
+              <th><a href="?termo={{ termo }}&ordenacao={% if ordenacao_atual == 'created_at' %}-created_at{% else %}created_at{% endif %}">Lan&ccedil;amento</a></th>
               <th>Valor Total</th>
             </tr>
           </thead>
@@ -53,7 +54,7 @@
                 <td><input type="checkbox" class="checkbox-nota" value="{{ nota.id }}"></td>
                 <td>{{ nota.numero }}</td>
                 <td class="truncate-text">{{ nota.emitente.razao_social|default:nota.emitente.nome }}</td>
-                <td>{{ nota.emitente.cnpj|mask_cnpj }}</td> {# Aplica a máscara de CNPJ #}
+                <td>{{ nota.emitente.cnpj|mask_cnpj }}</td>
                 <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
                 <td>{{ nota.created_at|date:"d/m/Y" }}</td>
                 <td>{{ nota.valor_total_nota|br_currency }}</td>
@@ -69,4 +70,4 @@
 
     </div>
   </div>
-</main>
+</div>

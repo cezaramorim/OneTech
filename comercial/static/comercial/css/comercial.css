@@ -1,0 +1,25 @@
+.comercial-page .table td,
+.comercial-page .table th {
+  vertical-align: middle;
+}
+
+.comercial-page .table tbody tr:hover {
+  background: rgba(13, 110, 253, 0.06);
+}
+
+.comercial-page .table td:nth-child(5) {
+  max-width: 520px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.dark .comercial-page .table tbody tr:hover,
+body.dark .comercial-page .table tbody tr:hover {
+  background: rgba(121, 187, 255, 0.12);
+}
+
+html.azul .comercial-page .table tbody tr:hover,
+body.azul .comercial-page .table tbody tr:hover {
+  background: rgba(141, 203, 255, 0.16);
+}

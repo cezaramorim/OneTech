@@ -1,0 +1,72 @@
+{% load static %}
+
+<div class="container-fluid px-4 pb-4 pt-0 comercial-page" data-page="condicao_pagamento_list">
+    <div class="card shadow-sm mb-4 title-card">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary">
+                <i class="bi bi-cash-coin me-2"></i>Condi&ccedil;&otilde;es de Pagamento
+            </h2>
+        </div>
+    </div>
+
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+            <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por c&oacute;digo, descri&ccedil;&atilde;o ou observa&ccedil;&otilde;es..." value="{{ termo_busca }}">
+            <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {% if perms.comercial.add_condicaopagamento %}<a href="{% url 'comercial:condicao_pagamento_create' %}" class="btn btn-success ajax-link">Nova Condi&ccedil;&atilde;o</a>{% endif %}
+            {% if perms.comercial.change_condicaopagamento %}<button type="button" id="btn-editar-selecionado" class="btn btn-primary" disabled data-edit-url-base="{% url 'comercial:condicao_pagamento_update' 0 %}">Editar selecionado</button>{% endif %}
+            {% if perms.comercial.delete_condicaopagamento %}<button type="button" id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'comercial:delete_condicoes_pagamento' %}">Excluir selecionados</button>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm content-card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
+                            <th>
+                                <a href="?ordenacao={% if ordenacao_atual == 'codigo' %}-{% endif %}codigo" class="sortable-header" style="white-space: nowrap;">
+                                    C&oacute;digo {% if ordenacao_atual == 'codigo' %}&#9650;{% elif ordenacao_atual == '-codigo' %}&#9660;{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?ordenacao={% if ordenacao_atual == 'descricao' %}-{% endif %}descricao" class="sortable-header" style="white-space: nowrap;">
+                                    Descri&ccedil;&atilde;o {% if ordenacao_atual == 'descricao' %}&#9650;{% elif ordenacao_atual == '-descricao' %}&#9660;{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?ordenacao={% if ordenacao_atual == 'quantidade_parcelas' %}-{% endif %}quantidade_parcelas" class="sortable-header" style="white-space: nowrap;">
+                                    Parcelas {% if ordenacao_atual == 'quantidade_parcelas' %}&#9650;{% elif ordenacao_atual == '-quantidade_parcelas' %}&#9660;{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?ordenacao={% if ordenacao_atual == 'observacoes' %}-{% endif %}observacoes" class="sortable-header" style="white-space: nowrap;">
+                                    Observa&ccedil;&otilde;es {% if ordenacao_atual == 'observacoes' %}&#9650;{% elif ordenacao_atual == '-observacoes' %}&#9660;{% endif %}
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for condicao in condicoes %}
+                        <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ condicao.pk }}"></td>
+                            <td><strong>{{ condicao.codigo }}</strong></td>
+                            <td>{{ condicao.descricao }}</td>
+                            <td>{{ condicao.quantidade_parcelas }}</td>
+                            <td>{{ condicao.observacoes|default:'-' }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhuma condi&ccedil;&atilde;o de pagamento cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

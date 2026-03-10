@@ -1,9 +1,11 @@
-{% load static %}
+﻿{% load static %}
 
-<div class="container-fluid py-4">
+<div class="container-fluid pt-3 pb-4">
     <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+        <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-pencil-square me-2"></i>{{ title }}</h2>
+        </div>
         <div class="card-body">
-            <h2 class="mb-4 text-center">{{ title }}</h2>
             <form method="post">
                 {% csrf_token %}
                 {% for field in form %}

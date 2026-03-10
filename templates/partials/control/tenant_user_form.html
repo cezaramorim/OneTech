@@ -1,17 +1,21 @@
-{% load static %}
+﻿{% load static %}
 {% load widget_tweaks %}
 
-<div class="container-fluid p-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-light">
-            <h2 class="h4 mb-0 text-primary">
+<div class="container-fluid pt-3 pb-4">
+    <header class="page-header mb-4">
+        <div>
+            <h4 class="fw-semibold mb-2">
                 {% if user_to_edit %}
-                    <i class="bi bi-pencil-square me-2"></i>Editar Usuário em {{ tenant.nome }}
+                    <i class="bi bi-pencil-square me-2"></i>Editar Usuario do Cliente
                 {% else %}
-                    <i class="bi bi-plus-circle me-2"></i>Novo Usuário para {{ tenant.nome }}
+                    <i class="bi bi-plus-circle me-2"></i>Novo Usuario do Cliente
                 {% endif %}
-            </h2>
+            </h4>
+            <hr class="mt-0">
         </div>
+    </header>
+
+    <div class="card shadow-sm">
         <div class="card-body p-4">
             <form method="post" class="needs-validation" novalidate>
                 {% csrf_token %}
@@ -70,7 +74,7 @@
                     <a href="{% url 'control:tenant_user_list' %}?tenant_id={{ tenant.id }}" class="btn btn-secondary me-2 ajax-link">Cancelar</a>
                     <button type="submit" class="btn btn-primary px-4">
                         <i class="bi bi-check-circle me-2"></i>
-                        Salvar Usuário
+                        Salvar Usuario
                     </button>
                 </div>
             </form>

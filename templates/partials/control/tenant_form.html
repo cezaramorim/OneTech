@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 {% load widget_tweaks %}
 
 <div class="container-fluid p-4">
@@ -24,7 +24,6 @@
                     </div>
                 {% endif %}
 
-                <!-- Seção 1: Informações Principais -->
                 <fieldset class="mb-4">
                     <legend class="h5 mb-3 border-bottom pb-2">Informações de Acesso</legend>
                     <div class="row">
@@ -48,7 +47,6 @@
                     </div>
                 </fieldset>
 
-                <!-- Seção 2: Dados da Empresa -->
                 <fieldset class="mb-4">
                     <legend class="h5 mb-3 border-bottom pb-2">Dados da Empresa</legend>
                     <div class="row">
@@ -75,7 +73,6 @@
                     </div>
                 </fieldset>
 
-                <!-- Seção 3: Admin do Tenant (apenas na criação) -->
                 {% if form.admin_user %}
                 <fieldset class="mb-4">
                     <legend class="h5 mb-3 border-bottom pb-2">Administrador Inicial do Cliente</legend>
@@ -102,7 +99,6 @@
                 </fieldset>
                 {% endif %}
 
-                <!-- Seção 4: Branding e Configurações Fiscais -->
                 <fieldset class="mb-4">
                     <legend class="h5 mb-3 border-bottom pb-2">Branding e Configurações Fiscais</legend>
                     <div class="row">

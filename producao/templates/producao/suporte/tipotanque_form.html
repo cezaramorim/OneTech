@@ -1,6 +1,11 @@
 <div id="identificador-tela" data-tela="form_tipotanque">
-    <div class="container-fluid mt-4">
-        <h2>{% if object %}Editar Tipo de Tanque{% else %}Novo Tipo de Tanque{% endif %}</h2>
+    <div class="container-fluid pt-3 pb-4">
+        <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+          <div>
+            <h4 class="fw-semibold mb-2">{% if object %}Editar Tipo de Tanque{% else %}Novo Tipo de Tanque{% endif %}</h4>
+            <hr class="mt-0">
+          </div>
+        </header>
         <form method="post" class="ajax-form" data-redirect-url="{% url 'producao:lista_tipostanque' %}" data-response-type="json">
             {% csrf_token %}
             {{ form.as_p }}

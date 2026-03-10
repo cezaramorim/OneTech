@@ -1,15 +1,22 @@
 {% load static %}
 <div id="identificador-tela" data-tela="detalhe_curva" data-api-racoes-url="{% url 'produto:api_racoes_list' %}" data-api-atualizar-url="{% url 'producao:api_atualizar_detalhe_curva' %}">
   {% csrf_token %}
-  <div class="container-fluid">
-      <h1 class="h3 mb-4 text-gray-800">Detalhes da Curva de Crescimento</h1>
+  <div class="container-fluid pt-3 pb-4">
+      <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+          <div>
+              <h4 class="fw-semibold mb-2">
+                  <i class="bi bi-graph-up-arrow me-2"></i>Detalhes da Curva de Crescimento
+              </h4>
+              <hr class="mt-0">
+          </div>
+      </header>
 
       <div class="card shadow mb-4">
           <div class="card-header py-3">
               <h6 class="m-0 font-weight-bold text-primary">{{ curva.nome }}</h6>
           </div>
           <div class="card-body">
-              <p><strong>Espécie:</strong> {{ curva.especie }}</p>
+              <p><strong>Especie:</strong> {{ curva.especie }}</p>
               <p><strong>Rendimento Percentual:</strong> {{ curva.rendimento_perc }}%</p>
           </div>
       </div>
@@ -23,16 +30,16 @@
                   <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                       <thead>
                           <tr>
-                              <th>Período</th>
+                              <th>Periodo</th>
                               <th>Dias</th>
                               <th>Peso Inicial (g)</th>
                               <th>Peso Final (g)</th>
                               <th>Ganho de Peso (g)</th>
-                              <th>Nº Tratos</th>
-                              <th>Hora Início</th>
-                              <th>% Arraç. Biomassa</th>
+                              <th>No Tratos</th>
+                              <th>Hora Inicio</th>
+                              <th>% Arrac. Biomassa</th>
                               <th>% Mortalidade Presumida</th>
-                              <th>Ração</th>
+                              <th>Racao</th>
                               <th>GPD (g)</th>
                               <th>TCA</th>
                           </tr>

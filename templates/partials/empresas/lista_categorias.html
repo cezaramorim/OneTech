@@ -1,30 +1,33 @@
-﻿
-
-<div id="identificador-tela" 
+﻿<div class="container-fluid pt-3 pb-4">
+<div id="identificador-tela"
      data-tela="lista_categorias"
-     data-entidade-singular="categoria" 
-     data-entidade-plural="categorias" 
+     data-entidade-singular="categoria"
+     data-entidade-plural="categorias"
      data-url-editar="{% url 'empresas:editar_categoria' 0 %}"
-     data-url-excluir="{% url 'empresas:excluir_categorias_multiplos' %}" 
+     data-url-excluir="{% url 'empresas:excluir_categorias_multiplos' %}"
      data-seletor-checkbox=".check-categoria"
      data-seletor-pai="#select-all-categorias">
 </div>
 
-<div class="card shadow-sm mx-auto" style="max-width: 800px;">
+<div class="card shadow-sm">
+  <div class="card-header bg-light">
+    <h2 class="h4 mb-0 text-primary"><i class="bi bi-tags me-2"></i>Categorias de Empresas</h2>
+  </div>
   <div class="card-body">
 
-    <h2 class="mb-4">Categorias de Empresas</h2>
-
-    <div class="d-flex justify-content-end gap-2 mb-3">
-      <a href="{% url 'empresas:cadastrar_categoria' %}" class="btn btn-success ajax-link">
-        <i class="bi bi-plus-circle"></i> Nova
-      </a>
-      <button id="btn-editar" class="btn btn-primary" disabled>
-        <i class="bi bi-pencil"></i> Editar
-      </button>
-      <button id="btn-excluir" class="btn btn-danger" disabled>
-        <i class="bi bi-trash"></i> Excluir
-      </button>
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div class="page-toolbar-spacer"></div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'empresas:cadastrar_categoria' %}" class="btn btn-success ajax-link">
+          <i class="bi bi-plus-circle"></i> Nova
+        </a>
+        <button id="btn-editar" class="btn btn-primary" disabled>
+          <i class="bi bi-pencil"></i> Editar
+        </button>
+        <button id="btn-excluir" class="btn btn-danger" disabled>
+          <i class="bi bi-trash"></i> Excluir
+        </button>
+      </div>
     </div>
 
     <div id="categorias-tabela-wrapper">
@@ -51,4 +54,5 @@
     </div>
 
   </div>
+</div>
 </div>

@@ -1,24 +1,29 @@
-{% load static %}
+﻿{% load static %}
 
-{% block content %}
-<div class="container-fluid py-4">
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Emitentes (Matriz e Filiais)</h5>
-            <a href="{% url 'control:criar_emitente' %}" class="btn btn-primary ajax-link">
-                <i class="fas fa-plus me-1"></i> Novo Emitente
-            </a>
+<div class="container-fluid pt-3 pb-4" data-page="lista-emitentes">
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary"><i class="bi bi-buildings me-2"></i>Emitentes (Matriz e Filiais)</h2>
         </div>
         <div class="card-body">
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div class="page-toolbar-spacer"></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'control:criar_emitente' %}" class="btn btn-primary ajax-link">
+                        <i class="fas fa-plus me-1"></i> Novo Emitente
+                    </a>
+                </div>
+            </div>
+
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
                             <th>Nome Fantasia</th>
-                            <th>Razão Social</th>
+                            <th>Raz&atilde;o Social</th>
                             <th>CNPJ</th>
-                            <th>Padrão</th>
-                            <th class="text-end">Ações</th>
+                            <th>Padr&atilde;o</th>
+                            <th class="text-end">A&ccedil;&otilde;es</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -31,15 +36,15 @@
                                 {% if emitente.is_default %}
                                     <span class="badge bg-success">Sim</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">Não</span>
+                                    <span class="badge bg-secondary">N&atilde;o</span>
                                 {% endif %}
                             </td>
                             <td class="text-end">
                                 <a href="{% url 'control:editar_emitente' pk=emitente.pk %}" class="btn btn-sm btn-outline-primary ajax-link" title="Editar">
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <button class="btn btn-sm btn-outline-danger" 
-                                        data-bs-toggle="modal" 
+                                <button class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal"
                                         data-bs-target="#confirmDeleteModal"
                                         data-delete-url="{% url 'control:excluir_emitente' pk=emitente.pk %}">
                                     <i class="fas fa-trash"></i>
@@ -63,59 +68,22 @@
     </div>
 </div>
 
-<!-- Modal de Confirmação de Exclusão -->
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Exclusão</h5>
+        <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Exclus&atilde;o</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        Tem certeza de que deseja excluir este emitente? Esta ação não pode ser desfeita.
+        Tem certeza de que deseja excluir este emitente? Esta a&ccedil;&atilde;o n&atilde;o pode ser desfeita.
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <a href="#" id="delete-confirm-btn" class="btn btn-danger">Excluir</a>
+        <a href="#" id="delete-confirm-btn" class="btn btn-danger" data-error-message="Erro ao excluir.">Excluir</a>
       </div>
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var confirmDeleteModal = document.getElementById('confirmDeleteModal');
-    confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var deleteUrl = button.getAttribute('data-delete-url');
-        var deleteConfirmBtn = document.getElementById('delete-confirm-btn');
-        deleteConfirmBtn.setAttribute('href', deleteUrl);
 
-        // Adiciona o comportamento de requisição POST via JS
-        deleteConfirmBtn.onclick = function(e) {
-            e.preventDefault();
-            fetch(deleteUrl, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Você pode usar a função de toast global aqui se tiver uma
-                    // Ex: window.showToast(data.message, 'success');
-                    window.location.href = data.redirect_url; // Recarrega a página ou redireciona
-                } else {
-                    // Ex: window.showToast(data.message, 'error');
-                    alert('Erro ao excluir.');
-                }
-            });
-        };
-    });
-});
-</script>
-{% endblock %}

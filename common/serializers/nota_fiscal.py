@@ -9,11 +9,7 @@ class ItemNotaFiscalSerializer(serializers.ModelSerializer):
 
 
 class NotaFiscalSerializer(serializers.ModelSerializer):
-    fornecedor = serializers.CharField(
-        source='fornecedor.razao_social',
-        default='',
-        read_only=True
-    )
+    fornecedor = serializers.SerializerMethodField()
     usuario = serializers.SerializerMethodField()
     valor_total = serializers.DecimalField(
         source='valor_total_nota',
@@ -41,6 +37,12 @@ class NotaFiscalSerializer(serializers.ModelSerializer):
             'valor_total_desconto',
             'itens',
         ]
+
+    def get_fornecedor(self, obj):
+        empresa = obj.emitente
+        if not empresa:
+            return ''
+        return empresa.razao_social or empresa.nome_fantasia or empresa.nome or ''
 
     def get_usuario(self, obj):
         if obj.created_by:

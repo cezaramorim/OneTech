@@ -80,6 +80,13 @@ MENU_ITEMS = [
             ]
     },
     {
+        'name': 'Comercial',
+        'icon': '<i class="bi bi-briefcase"></i>',
+        'children': [
+            {'name': 'Condicao de Pagamento', 'icon': '<i class="bi bi-cash-coin"></i>', 'url_name': 'comercial:condicao_pagamento_list', 'required_perms': ['comercial.view_condicaopagamento']},
+        ]
+    },
+    {
         'name': 'Nota Fiscal',
         'icon': '📄',
         'children': [
@@ -96,6 +103,7 @@ MENU_ITEMS = [
         'children': [
             {'name': 'CFOPs', 'url_name': 'fiscal:cfop_list', 'required_perms': ['fiscal.view_cfop']},
             {'name': 'Naturezas de Operação', 'url_name': 'fiscal:natureza_operacao_list', 'required_perms': ['fiscal.view_naturezaoperacao']},
+            {'name': 'Classificacao Fiscal', 'url_name': 'produto:manutencao_ncm', 'required_perms': ['produto.view_ncm']},
             {'name': 'Importar Dados Fiscais', 'url_name': 'fiscal:import_fiscal_data', 'required_perms': ['fiscal.add_cfop']},
             {
                 'name': 'Configurações Fiscais',
@@ -111,7 +119,7 @@ MENU_ITEMS = [
         'name': 'Relat\u00f3rios',
         'icon': '📊',
         'children': [
-            {'name': 'Nota Fiscal', 'url_name': 'relatorios:api_nota_detalhada', 'required_perms': ['relatorios.view_notafiscalrelatorio']},
+            {'name': 'Notas de Entrada', 'url_name': 'relatorios:notas_entradas', 'required_perms': ['relatorios.view_notafiscalrelatorio']},
             {'name': 'Impress\u00e3o de Relat\u00f3rios', 'url_name': 'relatorios:impressao_relatorios'},
         ]
     },

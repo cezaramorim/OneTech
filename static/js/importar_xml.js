@@ -1,13 +1,9 @@
-// static/js/importar_xml.js
-
-// DEBUG: Adicionado para rastrear execuções múltiplas
-window.importarXmlExecutionCount = (window.importarXmlExecutionCount || 0) + 1;
-console.log('DEBUG: importar_xml.js executado. Contagem: ' + window.importarXmlExecutionCount);
+﻿// static/js/importar_xml.js
 
 var dadosNotaFiscal = null;
 var todasCategorias = [];
 
-// --- Funções Utilitárias ---
+// --- FunÃ§Ãµes UtilitÃ¡rias ---
 
 function getCSRFToken() {
     const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
@@ -51,14 +47,13 @@ function formatarData(datetimeStr) {
 }
 
 function getModalidadeFrete(modFrete) {
-    const modalidades = { '0': 'Por conta do Emitente', '1': 'Por conta do Destinatário', '2': 'Por conta de Terceiros', '9': 'Sem Transporte' };
-    return modalidades[modFrete] || 'Não especificado';
+    const modalidades = { '0': 'Por conta do Emitente', '1': 'Por conta do DestinatÃ¡rio', '2': 'Por conta de Terceiros', '9': 'Sem Transporte' };
+    return modalidades[modFrete] || 'NÃ£o especificado';
 }
 
-// --- Funções de Lógica Principal ---
+// --- FunÃ§Ãµes de LÃ³gica Principal ---
 
 function resetarInterface() {
-    console.trace("resetarInterface() foi chamada por:");
     const previewDiv = document.getElementById('preview-nota');
     const form = document.getElementById('form-importar-xml');
     if (previewDiv) previewDiv.innerHTML = '';
@@ -83,12 +78,12 @@ function renderizarPreviewNota(dados) {
     const duplicataAlertaHtml = `
         <div class="alert alert-warning shadow-sm p-3" role="alert">
             <h4 class="alert-heading">Nota Fiscal Duplicada!</h4>
-            <p>Esta nota fiscal já existe no sistema. Você pode revisar os dados abaixo.</p>
+            <p>Esta nota fiscal jÃ¡ existe no sistema. VocÃª pode revisar os dados abaixo.</p>
             <hr>
-            <p class="mb-0">Deseja importá-la novamente e substituir os dados existentes?</p>
+            <p class="mb-0">Deseja importÃ¡-la novamente e substituir os dados existentes?</p>
             <div class="mt-3">
                 <button id="btn-confirmar-duplicata" class="btn btn-warning me-2">Sim, importar novamente</button>
-                <button id="btn-cancelar-duplicata" class="btn btn-danger">Não, cancelar</button>
+                <button id="btn-cancelar-duplicata" class="btn btn-danger">NÃ£o, cancelar</button>
             </div>
         </div>
     `;
@@ -96,13 +91,13 @@ function renderizarPreviewNota(dados) {
     const acoesFinaisHtml = `
         <div class="d-flex justify-content-end mt-4">
             ${itens_para_revisar.length > 0 ? `<button id="btn-revisar-categorias" class="btn btn-info me-2">Revisar Categorias</button>` : ''}
-            <button id="btn-finalizar-importacao" class="btn btn-primary">Finalizar Importação</button>
+            <button id="btn-finalizar-importacao" class="btn btn-primary">Finalizar ImportaÃ§Ã£o</button>
         </div>
     `;
 
     previewDiv.innerHTML = `
         ${is_duplicate ? duplicataAlertaHtml : ''}
-        ${!is_duplicate && itens_para_revisar.length > 0 ? `<div class="alert alert-info"><strong>Revisão Necessária:</strong> Existem ${itens_para_revisar.length} novo(s) produto(s) que precisam de categoria.</div>` : ''}
+        ${!is_duplicate && itens_para_revisar.length > 0 ? `<div class="alert alert-info"><strong>RevisÃ£o NecessÃ¡ria:</strong> Existem ${itens_para_revisar.length} novo(s) produto(s) que precisam de categoria.</div>` : ''}
         
         <div class="card mb-3 shadow-sm">
             <div class="card-header"><h5 class="mb-0">Dados Principais</h5></div>
@@ -116,25 +111,25 @@ function renderizarPreviewNota(dados) {
                     <div class="col-md-8"><p><strong>Chave de Acesso:</strong> <small>${dados.chave_acesso || 'N/A'}</small></p></div>
                 </div>
                 <div class="row">
-                    <div class="col-md-4"><p><strong>Data Emissão:</strong> ${formatarData(infNFe.ide?.dhEmi)}</p></div>
-                    <div class="col-md-4"><p><strong>Data Saída/Entrada:</strong> ${formatarData(infNFe.ide?.dhSaiEnt)}</p></div>
+                    <div class="col-md-4"><p><strong>Data EmissÃ£o:</strong> ${formatarData(infNFe.ide?.dhEmi)}</p></div>
+                    <div class="col-md-4"><p><strong>Data SaÃ­da/Entrada:</strong> ${formatarData(infNFe.ide?.dhSaiEnt)}</p></div>
                     <div class="col-md-4"><p><strong>Valor Total:</strong> ${formatarMoeda(total.vNF)}</p></div>
                 </div>
                 <hr>
                 <div class="row">
-                    <div class="col-md-6"><p><strong>Destinatário:</strong> ${dest.xNome || 'N/A'}</p></div>
+                    <div class="col-md-6"><p><strong>DestinatÃ¡rio:</strong> ${dest.xNome || 'N/A'}</p></div>
                     <div class="col-md-6"><p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p></div>
                 </div>
             </div>
         </div>
 
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h5 class="mb-0">Itens</h5></div><div class="table-responsive"><table class="table table-sm table-striped table-hover mb-0"><thead><tr><th>#</th><th class="text-start">Cód. Fornecedor</th><th>Descrição</th><th class="text-end">Qtd.</th><th class="text-end">Vlr. Unit.</th><th class="text-end">Vlr. Total</th><th>Status</th></tr></thead><tbody>
+        <div class="card mb-3 shadow-sm"><div class="card-header"><h5 class="mb-0">Itens</h5></div><div class="table-responsive"><table class="table table-sm table-striped table-hover mb-0"><thead><tr><th>#</th><th class="text-start">CÃ³d. Fornecedor</th><th>DescriÃ§Ã£o</th><th class="text-end">Qtd.</th><th class="text-end">Vlr. Unit.</th><th class="text-end">Vlr. Total</th><th>Status</th></tr></thead><tbody>
                         ${det.map(item => `<tr><td>${item.nItem}</td><td>${item.prod.cProd}</td><td>${item.prod.xProd}</td><td class="text-end">${parseFloat(item.prod.qCom).toFixed(2)}</td><td class="text-end">${formatarMoeda(item.prod.vUnCom)}</td><td class="text-end">${formatarMoeda(item.prod.vProd)}</td><td>${itens_para_revisar.some(p => p.codigo_produto === item.prod.cProd) ? '<span class="badge bg-warning">Revisar</span>' : '<span class="badge bg-success">OK</span>'}</td></tr>`).join('')}
                     </tbody></table></div></div>
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Faturamento (Duplicatas)</h6></div><div class="table-responsive"><table class="table table-sm table-striped mb-0"><thead><tr><th>Número</th><th>Vencimento</th><th class="text-end">Valor</th></tr></thead><tbody>
+        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Faturamento (Duplicatas)</h6></div><div class="table-responsive"><table class="table table-sm table-striped mb-0"><thead><tr><th>NÃºmero</th><th>Vencimento</th><th class="text-end">Valor</th></tr></thead><tbody>
                         ${dup.length > 0 ? dup.map(d => `<tr><td>${d.nDup || 'N/A'}</td><td>${formatarData(d.dVenc)}</td><td class="text-end">${formatarMoeda(d.vDup)}</td></tr>`).join('') : '<tr><td colspan="3" class="text-center">Nenhuma duplicata encontrada.</td></tr>'}
                     </tbody></table></div></div>
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Transporte</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>Transportadora:</strong> ${transp.transporta?.xNome || 'N/A'}</p></div><div class="col-md-6"><p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div><div class="col-md-6"><p><strong>Valor do Frete:</strong> ${formatarMoeda(transp.retTransp?.vServ)}</p></div><div class="col-md-3"><p><strong>Placa:</strong> ${transp.veicTransp?.placa || 'N/A'}</p></div><div class="col-md-3"><p><strong>UF:</strong> ${transp.veicTransp?.UF || 'N/A'}</p></div><div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${transp.vol?.qVol || 'N/A'}</p></div><div class="col-md-4"><p><strong>Peso Líquido:</strong> ${transp.vol?.pesoL || 'N/A'} kg</p></div><div class="col-md-4"><p><strong>Peso Bruto:</strong> ${transp.vol?.pesoB || 'N/A'} kg</p></div></div></div></div>
+        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Transporte</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>Transportadora:</strong> ${transp.transporta?.xNome || 'N/A'}</p></div><div class="col-md-6"><p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div><div class="col-md-6"><p><strong>Valor do Frete:</strong> ${formatarMoeda(transp.retTransp?.vServ)}</p></div><div class="col-md-3"><p><strong>Placa:</strong> ${transp.veicTransp?.placa || 'N/A'}</p></div><div class="col-md-3"><p><strong>UF:</strong> ${transp.veicTransp?.UF || 'N/A'}</p></div><div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${transp.vol?.qVol || 'N/A'}</p></div><div class="col-md-4"><p><strong>Peso LÃ­quido:</strong> ${transp.vol?.pesoL || 'N/A'} kg</p></div><div class="col-md-4"><p><strong>Peso Bruto:</strong> ${transp.vol?.pesoB || 'N/A'} kg</p></div></div></div></div>
         
         ${!is_duplicate ? acoesFinaisHtml : ''}
     `;
@@ -145,7 +140,7 @@ function renderizarItensParaRevisao() {
     const corpoModal = document.getElementById('corpoModalRevisao');
     if (!corpoModal) return;
     corpoModal.innerHTML = dadosNotaFiscal.itens_para_revisar.map(item => `
-        <div class="row mb-3 border-bottom pb-3"><div class="col-md-5"><strong>Cód. Fornecedor:</strong> ${item.codigo_produto}<br><strong>Descrição:</strong> ${item.descricao_produto}</div><div class="col-md-3"><strong>NCM:</strong> ${item.ncm}</div><div class="col-md-4"><label for="categoria-${item.codigo_produto}" class="form-label">Categoria:</label><select id="categoria-${item.codigo_produto}" class="form-select form-select-sm categoria-select" data-item-codigo="${item.codigo_produto}" required><option value="" selected disabled>Selecione...</option>${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('')}</select></div></div>
+        <div class="row mb-3 border-bottom pb-3"><div class="col-md-5"><strong>CÃ³d. Fornecedor:</strong> ${item.codigo_produto}<br><strong>DescriÃ§Ã£o:</strong> ${item.descricao_produto}</div><div class="col-md-3"><strong>NCM:</strong> ${item.ncm}</div><div class="col-md-4"><label for="categoria-${item.codigo_produto}" class="form-label">Categoria:</label><select id="categoria-${item.codigo_produto}" class="form-select form-select-sm categoria-select" data-item-codigo="${item.codigo_produto}" required><option value="" selected disabled>Selecione...</option>${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('')}</select></div></div>
     `).join('');
 }
 
@@ -162,7 +157,7 @@ function adicionarEventListenersBotoes() {
 function salvarCategoriasRevisadas() {
     const selects = document.querySelectorAll('.categoria-select');
     const categoriasSelecionadas = {};
-    if (Array.from(selects).some(s => !s.value)) { mostrarMensagem('warning', 'Atenção', 'Selecione uma categoria para todos os itens.'); return; }
+    if (Array.from(selects).some(s => !s.value)) { mostrarMensagem('warning', 'AtenÃ§Ã£o', 'Selecione uma categoria para todos os itens.'); return; }
     selects.forEach(s => { categoriasSelecionadas[s.dataset.itemCodigo] = { categoria_id: s.value }; });
     dadosNotaFiscal.itens_para_revisar.forEach(item => { item.categoria_id = categoriasSelecionadas[item.codigo_produto].categoria_id; });
     bootstrap.Modal.getInstance(document.getElementById('revisaoCategoriasModal'))?.hide();
@@ -171,7 +166,7 @@ function salvarCategoriasRevisadas() {
 
 function finalizarImportacao(force = false) {
     const apiUrl = document.getElementById('preview-nota')?.dataset.processarUrl;
-    if (!apiUrl) { mostrarMensagem('error', 'Erro', 'URL de processamento não encontrada.'); return; }
+    if (!apiUrl) { mostrarMensagem('error', 'Erro', 'URL de processamento nÃ£o encontrada.'); return; }
 
     mostrarLoading("Processando e salvando a nota fiscal...");
     const payload = { ...dadosNotaFiscal, force_update: force };
@@ -209,7 +204,7 @@ function handleFormSubmit(e) {
         } else { 
             throw new Error(data.message); 
         } 
-        ocultarLoading(); // Oculta o loading APÓS a renderização ou erro de dados
+        ocultarLoading(); // Oculta o loading APÃ“S a renderizaÃ§Ã£o ou erro de dados
     })
     .catch(err => { 
         ocultarLoading(); 
@@ -220,18 +215,15 @@ function handleFormSubmit(e) {
 function initImportarXml() {
     const form = document.getElementById('form-importar-xml');
     if (!form) {
-        return; // Sai se o formulário não existe.
+        return; // Sai se o formulÃ¡rio nÃ£o existe.
     }
 
-    // Verifica se o listener já foi adicionado usando um atributo de dados.
+    // Verifica se o listener jÃ¡ foi adicionado usando um atributo de dados.
     if (form.dataset.initialized === 'true') {
-        console.log("DEBUG: initImportarXml - Listener de submit já foi adicionado. Ignorando nova tentativa.");
         return;
     }
-
-    console.log("DEBUG: initImportarXml - Adicionando listener de submit pela primeira vez.");
-    form.dataset.initialized = 'true'; // Marca o formulário como inicializado.
-    form.dataset.skipGlobal = '1'; // Evita o handler genérico global
+    form.dataset.initialized = 'true'; // Marca o formulÃ¡rio como inicializado.
+    form.dataset.skipGlobal = '1'; // Evita o handler genÃ©rico global
     form.addEventListener('submit', handleFormSubmit);
 
     const categoriasDataEl = document.getElementById('categorias-data');
@@ -247,11 +239,14 @@ function initImportarXml() {
     }
 }
 
-// Garante que o script rode após o carregamento do conteúdo, mesmo em navegação AJAX
+// Garante que o script rode apÃ³s o carregamento do conteÃºdo, mesmo em navegaÃ§Ã£o AJAX
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initImportarXml);
 } else {
     initImportarXml();
 }
 document.addEventListener('ajaxContentLoaded', initImportarXml);
+
+
+
 

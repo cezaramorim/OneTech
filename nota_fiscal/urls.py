@@ -27,4 +27,6 @@ urlpatterns = [
     path("api/processar-importacao-xml/", views.processar_importacao_xml_view, name="api_processar_importacao_xml"),
     path("api/excluir-multiplo/", views.excluir_notas_multiplo_view, name="excluir_nota_multiplo"),
     path("api/buscar-produtos/", views.buscar_produtos_para_nota_view, name="buscar_produtos_para_nota"),
+    path("api/buscar-naturezas-operacao/", views.buscar_naturezas_operacao_view, name="buscar_naturezas_operacao"),
 ]
+

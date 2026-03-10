@@ -1,61 +1,114 @@
 import io
 import json
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import login_required, permission_required
-from django.contrib import messages
-from common.messages_utils import get_app_messages
-from django.http import HttpResponse, JsonResponse
-from django.db import transaction
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
 
-from .models import Cfop, NaturezaOperacao
-from .forms import CfopForm, NaturezaOperacaoForm, UploadExcelForm
-
-# Certifique-se de ter o openpyxl instalado: pip install openpyxl
 import openpyxl
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from common.messages_utils import get_app_messages
+from common.utils.rendering import render_ajax_or_base
+from .fiscal_services import (
+    consolidate_duplicates,
+    import_local_data_to_db,
+    inspect_duplicates,
+    summarize_local_data,
+    update_local_data_from_excel,
+)
+from .forms import CfopForm, NaturezaOperacaoForm, UploadExcelForm
+from .models import Cfop, NaturezaOperacao
+
+
+FISCAL_LABELS = {
+    'cfop': 'CFOP',
+    'natureza_operacao': 'Natureza de Opera\u00e7\u00e3o',
+}
+
+
+# --- Helpers ---
+
+def _ensure_any_fiscal_import_permission(user):
+    if user.has_perm('fiscal.add_cfop') or user.has_perm('fiscal.add_naturezaoperacao'):
+        return
+    raise PermissionDenied
+
+
+def _ensure_import_permission_for_type(user, import_type):
+    if import_type == 'cfop' and user.has_perm('fiscal.add_cfop'):
+        return
+    if import_type == 'natureza_operacao' and user.has_perm('fiscal.add_naturezaoperacao'):
+        return
+    raise PermissionDenied
+
+
+def _ensure_delete_permission_for_type(user, item_type):
+    if item_type == 'cfop' and user.has_perm('fiscal.delete_cfop'):
+        return
+    if item_type == 'natureza_operacao' and user.has_perm('fiscal.delete_naturezaoperacao'):
+        return
+    raise PermissionDenied
+
+
+def _get_fiscal_import_back_url(user):
+    if user.has_perm('fiscal.view_cfop'):
+        return reverse('fiscal:cfop_list')
+    if user.has_perm('fiscal.view_naturezaoperacao'):
+        return reverse('fiscal:natureza_operacao_list')
+    return '/'
+
+
+def _build_import_context(user, form=None):
+    return {
+        'form': form or UploadExcelForm(),
+        'content_template': 'partials/fiscal/import_fiscal_data.html',
+        'data_page': 'import_fiscal_data',
+        'title': 'Importar Dados Fiscais (Excel)',
+        'back_url': _get_fiscal_import_back_url(user),
+        'cfop_local_summary': summarize_local_data('cfop'),
+        'natureza_local_summary': summarize_local_data('natureza_operacao'),
+        'cfop_source_path': r'OneTech\fiscal\cfops.xlsx',
+        'natureza_source_path': 'OneTech\\fiscal\\natureza_opera\u00e7\u00e3o.xlsx',
+    }
+
 
 # --- Views para CFOP ---
 
 @login_required
+@permission_required('fiscal.view_cfop', raise_exception=True)
 def cfop_list(request):
-    ordenacao = request.GET.get('ordenacao', 'codigo') # Padrão: ordenar por código
+    ordenacao = request.GET.get('ordenacao', 'codigo')
     termo_busca = request.GET.get('busca', '').strip()
 
-    # Valida o campo de ordenação para prevenir injeção de SQL ou erros inesperados.
-    # Se o campo não for válido, a ordenação padrão é usada.
     valid_sort_fields = ['codigo', 'descricao', 'categoria']
-    if ordenacao.startswith('-'):
-        field = ordenacao[1:]
-    else:
-        field = ordenacao
-
+    field = ordenacao[1:] if ordenacao.startswith('-') else ordenacao
     if field not in valid_sort_fields:
-        ordenacao = 'codigo' # Volta para o padrão se o campo for inválido
+        ordenacao = 'codigo'
 
     cfops = Cfop.objects.all()
-
     if termo_busca:
-        # Aplica filtro de busca usando Q objects para buscar em múltiplos campos.
         cfops = cfops.filter(
-            Q(codigo__icontains=termo_busca) |
-            Q(descricao__icontains=termo_busca) |
-            Q(categoria__icontains=termo_busca)
+            Q(codigo__icontains=termo_busca)
+            | Q(descricao__icontains=termo_busca)
+            | Q(categoria__icontains=termo_busca)
         )
 
-    cfops = cfops.order_by(ordenacao)
     context = {
-        'cfops': cfops,
+        'cfops': cfops.order_by(ordenacao),
         'ordenacao_atual': ordenacao,
         'termo_busca': termo_busca,
         'content_template': 'partials/fiscal/cfop_list.html',
         'data_page': 'cfop_list',
     }
-    return render(request, 'base.html', context)
+    return render_ajax_or_base(request, context['content_template'], context)
+
 
 @login_required
+@permission_required('fiscal.add_cfop', raise_exception=True)
 def cfop_create(request):
     app_messages = get_app_messages(request)
     if request.method == 'POST':
@@ -66,16 +119,17 @@ def cfop_create(request):
             return redirect('fiscal:cfop_list')
     else:
         form = CfopForm()
-    
-    context = {
+
+    return render(request, 'base.html', {
         'form': form,
         'content_template': 'partials/fiscal/cfop_form.html',
         'data_page': 'cfop_create',
         'title': 'Cadastrar CFOP',
-    }
-    return render(request, 'base.html', context)
+    })
+
 
 @login_required
+@permission_required('fiscal.change_cfop', raise_exception=True)
 def cfop_update(request, pk):
     app_messages = get_app_messages(request)
     cfop = get_object_or_404(Cfop, pk=pk)
@@ -87,54 +141,48 @@ def cfop_update(request, pk):
             return redirect('fiscal:cfop_list')
     else:
         form = CfopForm(instance=cfop)
-    
-    context = {
+
+    return render(request, 'base.html', {
         'form': form,
         'content_template': 'partials/fiscal/cfop_form.html',
         'data_page': 'cfop_update',
         'title': 'Editar CFOP',
-    }
-    return render(request, 'base.html', context)
+    })
 
-# --- Views para Natureza de Operação ---
+
+# --- Views para Natureza de Operacao ---
 
 @login_required
+@permission_required('fiscal.view_naturezaoperacao', raise_exception=True)
 def natureza_operacao_list(request):
-    ordenacao = request.GET.get('ordenacao', 'descricao') # Padrão: ordenar por descrição
+    ordenacao = request.GET.get('ordenacao', 'descricao')
     termo_busca = request.GET.get('busca', '').strip()
 
-    # Valida o campo de ordenação para prevenir injeção de SQL ou erros inesperados.
-    # Se o campo não for válido, a ordenação padrão é usada.
     valid_sort_fields = ['codigo', 'descricao', 'observacoes']
-    if ordenacao.startswith('-'):
-        field = ordenacao[1:]
-    else:
-        field = ordenacao
-
+    field = ordenacao[1:] if ordenacao.startswith('-') else ordenacao
     if field not in valid_sort_fields:
-        ordenacao = 'descricao' # Volta para o padrão se o campo for inválido
+        ordenacao = 'descricao'
 
     naturezas = NaturezaOperacao.objects.all()
-
     if termo_busca:
-        # Aplica filtro de busca usando Q objects para buscar em múltiplos campos.
         naturezas = naturezas.filter(
-            Q(codigo__icontains=termo_busca) |
-            Q(descricao__icontains=termo_busca) |
-            Q(observacoes__icontains=termo_busca)
+            Q(codigo__icontains=termo_busca)
+            | Q(descricao__icontains=termo_busca)
+            | Q(observacoes__icontains=termo_busca)
         )
 
-    naturezas = naturezas.order_by(ordenacao)
     context = {
-        'naturezas': naturezas,
+        'naturezas': naturezas.order_by(ordenacao),
         'ordenacao_atual': ordenacao,
         'termo_busca': termo_busca,
         'content_template': 'partials/fiscal/natureza_operacao_list.html',
         'data_page': 'natureza_operacao_list',
     }
-    return render(request, 'base.html', context)
+    return render_ajax_or_base(request, context['content_template'], context)
+
 
 @login_required
+@permission_required('fiscal.add_naturezaoperacao', raise_exception=True)
 def natureza_operacao_create(request):
     app_messages = get_app_messages(request)
     if request.method == 'POST':
@@ -145,16 +193,17 @@ def natureza_operacao_create(request):
             return redirect('fiscal:natureza_operacao_list')
     else:
         form = NaturezaOperacaoForm()
-    
-    context = {
+
+    return render(request, 'base.html', {
         'form': form,
         'content_template': 'partials/fiscal/natureza_operacao_form.html',
         'data_page': 'natureza_operacao_create',
-        'title': 'Cadastrar Natureza de Operação',
-    }
-    return render(request, 'base.html', context)
+        'title': 'Cadastrar Natureza de Opera\u00e7\u00e3o',
+    })
+
 
 @login_required
+@permission_required('fiscal.change_naturezaoperacao', raise_exception=True)
 def natureza_operacao_update(request, pk):
     app_messages = get_app_messages(request)
     natureza = get_object_or_404(NaturezaOperacao, pk=pk)
@@ -166,100 +215,124 @@ def natureza_operacao_update(request, pk):
             return redirect('fiscal:natureza_operacao_list')
     else:
         form = NaturezaOperacaoForm(instance=natureza)
-    
-    context = {
+
+    return render(request, 'base.html', {
         'form': form,
         'content_template': 'partials/fiscal/natureza_operacao_form.html',
         'data_page': 'natureza_operacao_update',
-        'title': 'Editar Natureza de Operação',
-    }
-    return render(request, 'base.html', context)
+        'title': 'Editar Natureza de Opera\u00e7\u00e3o',
+    })
 
-# --- Views para Importação de Excel ---
 
-from .utils import import_cfop_from_excel, import_natureza_operacao_from_excel
+# --- Central de Importacao Fiscal ---
 
 @login_required
-@permission_required('fiscal.add_cfop', raise_exception=True)
 def import_fiscal_data_view(request):
     app_messages = get_app_messages(request)
-    """
-    View para importar dados fiscais (CFOPs ou Naturezas de Operação) a partir de um arquivo Excel.
+    _ensure_any_fiscal_import_permission(request.user)
 
-    Requer que o usuário esteja autenticado e tenha a permissão 'fiscal.add_cfop'.
-
-    GET: Exibe o formulário de upload.
-    POST: Processa o arquivo Excel enviado, importa os dados e redireciona para a lista correspondente.
-    """
+    form = UploadExcelForm(request.POST or None, request.FILES or None)
     if request.method == 'POST':
-        form = UploadExcelForm(request.POST, request.FILES)
         if form.is_valid():
             excel_file = form.cleaned_data['excel_file']
             import_type = form.cleaned_data['import_type']
+            _ensure_import_permission_for_type(request.user, import_type)
+            payload = update_local_data_from_excel(excel_file, import_type)
+            count = payload['metadata']['item_count']
+            app_messages.success_process(
+                f'Base local de {FISCAL_LABELS[import_type]} atualizada com sucesso. {count} registro(s) salvos em disco.'
+            )
+            return redirect('fiscal:import_fiscal_data')
 
-            if import_type == 'cfop':
-                result = import_cfop_from_excel(excel_file)
-                redirect_url = 'fiscal:cfop_list'
-            elif import_type == 'natureza_operacao':
-                result = import_natureza_operacao_from_excel(excel_file)
-                redirect_url = 'fiscal:natureza_operacao_list'
-            
-            if result["success"]:
-                app_messages.success_imported(instance=None, custom_message=result["message"])
-            else:
-                app_messages.error(result["message"])
-            
-            return redirect(redirect_url)
-        else:
-            # Se o formulário não for válido, renderiza a página com os erros
-            error_messages = []
-            for field, errors in form.errors.items():
-                for error in errors:
-                    error_messages.append(f"Campo '{field}': {error}")
-            app_messages.error("Erro no formulário de importação: " + "; ".join(error_messages))
-            
-            context = {
-                'form': form,
-                'content_template': 'partials/fiscal/import_fiscal_data.html',
-                'data_page': 'import_fiscal_data',
-                'title': 'Importar Dados Fiscais (Excel)',
-            }
-            return render(request, 'base.html', context)
+        errors = []
+        for field, field_errors in form.errors.items():
+            for error in field_errors:
+                errors.append(f"Campo '{field}': {error}")
+        app_messages.error('Erro no formul\u00e1rio de importa\u00e7\u00e3o: ' + '; '.join(errors))
 
+    context = _build_import_context(request.user, form=form)
+    return render_ajax_or_base(request, context['content_template'], context)
+
+
+@login_required
+@require_POST
+def import_fiscal_local_view(request):
+    app_messages = get_app_messages(request)
+    import_type = request.POST.get('import_type', '').strip()
+    _ensure_import_permission_for_type(request.user, import_type)
+
+    try:
+        result = import_local_data_to_db(import_type)
+        app_messages.success_process(
+            f"{result['count']} registro(s) de {FISCAL_LABELS[import_type]} importados/atualizados a partir da base local."
+        )
+    except FileNotFoundError:
+        app_messages.error(f'Arquivo local de {FISCAL_LABELS.get(import_type, import_type)} n?o encontrado.')
+    except ValueError as exc:
+        app_messages.error(str(exc))
+    except Exception as exc:
+        app_messages.error(f'Erro ao importar base local: {exc}')
+
+    return redirect('fiscal:import_fiscal_data')
+
+
+@login_required
+@require_POST
+def consolidar_fiscal_view(request):
+    app_messages = get_app_messages(request)
+    import_type = request.POST.get('import_type', '').strip()
+    apply_changes = request.POST.get('apply') == '1'
+
+    if import_type == 'cfop':
+        required_perm = 'fiscal.delete_cfop'
     else:
-        form = UploadExcelForm()
+        required_perm = 'fiscal.delete_naturezaoperacao'
+    if not request.user.has_perm(required_perm):
+        raise PermissionDenied
 
-    context = {
-        'form': form,
-        'content_template': 'partials/fiscal/import_fiscal_data.html',
-        'data_page': 'import_fiscal_data',
-        'title': 'Importar Dados Fiscais (Excel)',
-    }
-    return render(request, 'base.html', context)
+    try:
+        summary = consolidate_duplicates(import_type) if apply_changes else inspect_duplicates(import_type)
+        if summary['group_count'] == 0:
+            app_messages.success_process(f'Nenhuma duplicidade de {FISCAL_LABELS[import_type]} encontrada.')
+        elif apply_changes:
+            app_messages.success_process(
+                f"Consolida\u00e7\u00e3o conclu\u00edda para {FISCAL_LABELS[import_type]}. {summary['group_count']} grupo(s) tratados."
+            )
+        else:
+            app_messages.warning(
+                f"{summary['group_count']} grupo(s) com duplicidade detectado(s) em {FISCAL_LABELS[import_type]}."
+            )
+    except ValueError as exc:
+        app_messages.error(str(exc))
+    except Exception as exc:
+        app_messages.error(f'Erro ao consolidar dados fiscais: {exc}')
+
+    return redirect('fiscal:import_fiscal_data')
+
 
 @login_required
 def download_fiscal_template_view(request):
     app_messages = get_app_messages(request)
     import_type = request.GET.get('type')
-    
+    _ensure_any_fiscal_import_permission(request.user)
+
     if import_type == 'cfop':
+        _ensure_import_permission_for_type(request.user, import_type)
         headers = ['codigo', 'descricao', 'categoria']
         filename = 'template_cfop.xlsx'
     elif import_type == 'natureza_operacao':
+        _ensure_import_permission_for_type(request.user, import_type)
         headers = ['codigo', 'descricao', 'observacoes']
         filename = 'template_natureza_operacao.xlsx'
     else:
-        app_messages.error('Tipo de template inválido.')
+        app_messages.error('Tipo de template inv?lido.')
         return redirect('fiscal:import_fiscal_data')
 
     output = io.BytesIO()
     workbook = openpyxl.Workbook()
     sheet = workbook.active
-    sheet.title = "Dados Fiscais"
-
-    # Escreve o cabeçalho
+    sheet.title = 'Dados Fiscais'
     sheet.append(headers)
-
     workbook.save(output)
     output.seek(0)
 
@@ -270,43 +343,43 @@ def download_fiscal_template_view(request):
     response['Content-Disposition'] = f'attachment; filename={filename}'
     return response
 
+
 @login_required
 @require_POST
-@csrf_exempt # Temporário para testes, remover em produção e usar CSRF token
 def delete_fiscal_items(request):
     app_messages = get_app_messages(request)
-    """
-    View para exclusão de itens fiscais (CFOPs ou Naturezas de Operação) via requisição AJAX.
-    Espera um JSON com 'ids' (lista de IDs a serem excluídos) e 'item_type' ('cfop' ou 'natureza_operacao').
-    """
     try:
         data = json.loads(request.body)
         ids = data.get('ids', [])
         item_type = data.get('item_type')
+        _ensure_delete_permission_for_type(request.user, item_type)
 
         if not ids:
-            message = app_messages.error('Nenhum ID fornecido para exclusão.')
+            message = app_messages.error('Nenhum ID fornecido para exclus?o.')
             return JsonResponse({'success': False, 'message': message}, status=400)
 
         with transaction.atomic():
             if item_type == 'cfop':
                 model = Cfop
-                model_name = "CFOP"
+                model_name = 'CFOP'
             elif item_type == 'natureza_operacao':
                 model = NaturezaOperacao
-                model_name = "Natureza de Operação"
+                model_name = 'Natureza de Opera\u00e7\u00e3o'
             else:
-                message = app_messages.error('Tipo de item inválido.')
+                message = app_messages.error('Tipo de item inv?lido.')
                 return JsonResponse({'success': False, 'message': message}, status=400)
-            
+
             deleted_count, _ = model.objects.filter(pk__in=ids).delete()
 
         message = app_messages.success_deleted(model_name, f'{deleted_count} selecionado(s)')
         return JsonResponse({'success': True, 'message': message})
 
     except json.JSONDecodeError:
-        message = app_messages.error('Requisição inválida. JSON malformado.')
+        message = app_messages.error('Requisi\u00e7\u00e3o inv\u00e1lida. JSON malformado.')
         return JsonResponse({'success': False, 'message': message}, status=400)
-    except Exception as e:
-        message = app_messages.error(f'Erro ao excluir itens fiscais: {str(e)}')
+    except PermissionDenied:
+        message = app_messages.error('Voc? n?o tem permiss?o para excluir estes itens.')
+        return JsonResponse({'success': False, 'message': message}, status=403)
+    except Exception as exc:
+        message = app_messages.error(f'Erro ao excluir itens fiscais: {exc}')
         return JsonResponse({'success': False, 'message': message}, status=500)

@@ -1,20 +1,25 @@
-{% load static %}
+﻿{% load static %}
 {% load widget_tweaks %}
+{% url 'produto:buscar_ncm_ajax' as buscar_ncm_url %}
 {% load custom_filters %}
 
 {% comment %}
-    Lista de códigos CST/CSOSN que indicam isenção ou não tributação.
-    Usado para exibir "Isento" em vez de "0" para alíquotas.
+    Lista de codigos CST/CSOSN que indicam isencao ou nao tributacao.
+    Usado para exibir "Isento" em vez de "0" para aliquotas.
 {% endcomment %}
 
-
-<!-- ✅ Editar Produto - Compatível com AJAX, Bootstrap, tema escuro/claro -->
-<main id="main-content" data-tela="editar_produto" class="container-fluid">
+<!-- Editar Produto - Compativel com AJAX, Bootstrap, tema escuro/claro -->
+<div data-tela="editar_produto" class="container-fluid pt-3 pb-4">
   <div id="identificador-tela" data-tela="editar_produto"></div>
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">✏️ Editar Produto</h2>
+    <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+      <div>
+        <h4 class="fw-semibold mb-2">Editar Produto</h4>
+        <hr class="mt-0">
+      </div>
+    </header>
     <a href="{% url 'produto:lista_produtos' %}" class="btn btn-secondary ajax-link">
-      ← Voltar para Lista
+      <- Voltar para Lista
     </a>
   </div>
 
@@ -23,15 +28,15 @@
 
       <div class="card shadow-sm rounded-4">
         <div class="card-body">
-          <!-- ✅ Formulário AJAX -->
+          <!-- Formulario AJAX -->
           <form id="form-editar-produto" method="post" class="ajax-form" data-response-type="json">
             {% csrf_token %}
 
             <div class="row g-3">
-              <!-- Identificação -->
+              <!-- Identificacao -->
               <div class="col-md-6">
-                <label for="id_codigo_interno" class="form-label">Cód. Interno</label>
-                <input type="text" id="id_codigo_interno" class="form-control" value="{{ produto.codigo_interno|default:"N/A" }}" readonly title="Este código é gerado pelo sistema e não pode ser editado.">
+                <label for="id_codigo_interno" class="form-label">Cod. Interno</label>
+                <input type="text" id="id_codigo_interno" class="form-control" value="{{ produto.codigo_interno|default:"N/A" }}" readonly title="Este codigo e gerado pelo sistema e nao pode ser editado.">
               </div>
               <div class="col-md-6">
                 <label for="{{ form.codigo_fornecedor.id_for_label }}" class="form-label">{{ form.codigo_fornecedor.label }}</label>
@@ -41,7 +46,6 @@
                 <label for="{{ form.nome.id_for_label }}" class="form-label">{{ form.nome.label }}</label>
                 {{ form.nome|add_class:"form-control" }}
               </div>
-              
 
               <!-- Categoria e Unidade -->
               <div class="col-md-6">{{ form.categoria.label_tag }} {{ form.categoria|add_class:"form-select" }}</div>
@@ -49,7 +53,7 @@
               <div class="col-md-6">{{ form.fator_conversao.label_tag }} {{ form.fator_conversao|add_class:"form-control" }}</div>
               <div class="col-md-6">{{ form.unidade_fornecedor_padrao.label_tag }} {{ form.unidade_fornecedor_padrao|add_class:"form-select" }}</div>
 
-              <!-- Preços -->
+              <!-- Precos -->
               <div class="col-md-4">{{ form.preco_custo.label_tag }} {{ form.preco_custo|add_class:"form-control" }}</div>
               <div class="col-md-4">{{ form.preco_venda.label_tag }} {{ form.preco_venda|add_class:"form-control" }}</div>
               <div class="col-md-4">{{ form.preco_medio.label_tag }} {{ form.preco_medio|add_class:"form-control" }}</div>
@@ -72,71 +76,82 @@
               {{ formset.management_form }}
               {% for form_fiscal in formset %}
                 <div class="row g-3">
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.cst_icms.id_for_label }}" class="form-label">CST ICMS</label>
-                    {{ form_fiscal.cst_icms|add_class:"form-control" }}
-                  </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.origem_mercadoria.id_for_label }}" class="form-label">Origem Mercadoria</label>
-                    {{ form_fiscal.origem_mercadoria|add_class:"form-control" }}
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.cfop_busca.id_for_label }}" class="form-label">CFOP</label>
+                    {% render_field form_fiscal.cfop_busca class+="form-control" data-autocomplete-url="/api/v1/fiscal/cfops/" data-autocomplete-display-field="text" data-autocomplete-selected-display-field="codigo" data-autocomplete-value-field="codigo" data-autocomplete-hidden-value-field="codigo" data-autocomplete-min-length="1" data-autocomplete-limit="50" data-autocomplete-query-param="search" %}
+                    {{ form_fiscal.cfop }}
                   </div>
                   <div class="col-md-4">
-                    <label for="{{ form_fiscal.aliquota_icms_interna.id_for_label }}" class="form-label">Alíquota ICMS Interna (%)</label>
+                    <label for="{{ form_fiscal.ncm_busca.id_for_label }}" class="form-label">NCM</label>
+                    {% render_field form_fiscal.ncm_busca class+="form-control" data-autocomplete-url=buscar_ncm_url data-autocomplete-display-field="text" data-autocomplete-selected-display-field="codigo_formatado" data-autocomplete-value-field="codigo" data-autocomplete-hidden-value-field="codigo" %}
+                    {{ form_fiscal.ncm }}
+                  </div>
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.origem_mercadoria.id_for_label }}" class="form-label">Origem Mercadoria</label>
+                    {{ form_fiscal.origem_mercadoria|add_class:"form-select select2-origem-mercadoria" }}
+                  </div>
+
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.aliquota_icms_interna.id_for_label }}" class="form-label">Al&iacute;quota ICMS Interna (%)</label>
                     {{ form_fiscal.aliquota_icms_interna|add_class:"form-control" }}
                   </div>
                   <div class="col-md-4">
-                    <label for="{{ form_fiscal.aliquota_icms_interestadual.id_for_label }}" class="form-label">Alíquota ICMS Interestadual (%)</label>
+                    <label for="{{ form_fiscal.aliquota_icms_interestadual.id_for_label }}" class="form-label">Al&iacute;quota ICMS Interestadual (%)</label>
                     {{ form_fiscal.aliquota_icms_interestadual|add_class:"form-control" }}
                   </div>
                   <div class="col-md-4">
-                    <label for="{{ form_fiscal.reducao_base_icms.id_for_label }}" class="form-label">Redução Base ICMS (%)</label>
+                    <label for="{{ form_fiscal.cst_icms.id_for_label }}" class="form-label">CST ICMS</label>
+                    {{ form_fiscal.cst_icms|add_class:"form-control" }}
+                  </div>
+
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.reducao_base_icms.id_for_label }}" class="form-label">Redu&ccedil;&atilde;o Base ICMS (%)</label>
                     {{ form_fiscal.reducao_base_icms|add_class:"form-control" }}
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label for="{{ form_fiscal.cst_ipi.id_for_label }}" class="form-label">CST IPI</label>
                     {{ form_fiscal.cst_ipi|add_class:"form-control" }}
                   </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.aliquota_ipi.id_for_label }}" class="form-label">Alíquota IPI (%)</label>
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.aliquota_ipi.id_for_label }}" class="form-label">Al&iacute;quota IPI (%)</label>
                     {{ form_fiscal.aliquota_ipi|add_class:"form-control" }}
                   </div>
-                  <div class="col-md-6">
+
+                  <div class="col-md-4">
                     <label for="{{ form_fiscal.cst_pis.id_for_label }}" class="form-label">CST PIS</label>
                     {{ form_fiscal.cst_pis|add_class:"form-control" }}
                   </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.aliquota_pis.id_for_label }}" class="form-label">Alíquota PIS (%)</label>
-                    {{ form_fiscal.aliquota_pis|add_class:"form-control" }}
-                  </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.cst_cofins.id_for_label }}" class="form-label">CST COFINS</label>
-                    {{ form_fiscal.cst_cofins|add_class:"form-control" }}
-                  </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.aliquota_cofins.id_for_label }}" class="form-label">Alíquota COFINS (%)</label>
-                    {{ form_fiscal.aliquota_cofins|add_class:"form-control" }}
-                  </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label for="{{ form_fiscal.cest.id_for_label }}" class="form-label">CEST</label>
                     {{ form_fiscal.cest|add_class:"form-control" }}
                   </div>
-                  <div class="col-md-6">
-                    <label for="{{ form_fiscal.ncm.id_for_label }}" class="form-label">NCM</label>
-                    {{ form_fiscal.ncm|add_class:"form-control" }}
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.aliquota_pis.id_for_label }}" class="form-label">Al&iacute;quota PIS (%)</label>
+                    {{ form_fiscal.aliquota_pis|add_class:"form-control" }}
                   </div>
-                  {{ form_fiscal.id }}
-                  {{ form_fiscal.DELETE }}
+
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.cst_cofins.id_for_label }}" class="form-label">CST COFINS</label>
+                    {{ form_fiscal.cst_cofins|add_class:"form-control" }}
+                  </div>
+                  <div class="col-md-4"></div>
+                  <div class="col-md-4">
+                    <label for="{{ form_fiscal.aliquota_cofins.id_for_label }}" class="form-label">Al&iacute;quota COFINS (%)</label>
+                    {{ form_fiscal.aliquota_cofins|add_class:"form-control" }}
+                  </div>
                 </div>
+                {{ form_fiscal.id }}
+                {{ form_fiscal.DELETE }}
               {% endfor %}
             </fieldset>
 
-            <!-- ✅ Ações -->
+            <!-- Acoes -->
             <div class="d-flex justify-content-between mt-4">
               <a href="{% url 'produto:lista_produtos' %}" class="btn btn-outline-secondary ajax-link">
-                ← Cancelar
+                <- Cancelar
               </a>
               <button type="submit" class="btn btn-success">
-                💾 Salvar Alterações
+                Salvar Alteracoes
               </button>
             </div>
           </form>
@@ -146,7 +161,4 @@
 
     </div>
   </div>
-</main>
-
-
-
+</div>

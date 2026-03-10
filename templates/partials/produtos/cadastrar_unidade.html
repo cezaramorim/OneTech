@@ -1,9 +1,13 @@
 {% load static widget_tweaks %}
 
 <!-- ✅ Cadastro de Unidade de Medida - AJAX | Responsivo, claro/escuro, boas práticas -->
-<div class="container-fluid" data-page="cadastrar-unidade">
-  <h2 class="mb-4">Cadastrar Unidade de Medida</h2>
-
+<div class="container-fluid pt-3 pb-4" data-page="cadastrar-unidade">
+  <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+    <div>
+      <h4 class="fw-semibold mb-2"><i class="bi bi-plus-circle me-2"></i>Cadastrar Unidade de Medida</h4>
+      <hr class="mt-0">
+    </div>
+  </header>
   <form method="post" class="ajax-form" data-url="{% url 'produto:cadastrar_unidade' %}" data-response-type="json" autocomplete="off">
     {% csrf_token %}
 

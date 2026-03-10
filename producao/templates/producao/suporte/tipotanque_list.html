@@ -1,4 +1,4 @@
-<div id="identificador-tela" 
+<div id="identificador-tela"
      data-tela="lista_tipostanque"
      data-entidade-singular="tipo de tanque"
      data-entidade-plural="tipos de tanque"
@@ -7,22 +7,20 @@
      data-seletor-checkbox=".check-tipotanque"
      data-seletor-pai="#select-all-tipotanque"></div>
 
-<div class="container-fluid mt-4">
-    <h2>Tipos de Tanque</h2>
-    <a href="{% url 'producao:criar_tipotanque' %}" class="btn btn-primary mb-3 ajax-link">Novo Tipo de Tanque</a>
-    
-    <!-- 🛠️ Ações principais (padrão scripts.js) -->
-    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-        <div class="d-flex flex-wrap gap-2">
-            <!-- ✏️ Editar -->
-            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
-                ✏️ Editar
-            </a>
+<div class="container-fluid pt-3 pb-4">
+    <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+      <div>
+        <h4 class="fw-semibold mb-2">Tipos de Tanque</h4>
+        <hr class="mt-0">
+      </div>
+    </header>
 
-            <!-- ❌ Excluir -->
-            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
-                🗑️ Excluir
-            </button>
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-spacer"></div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'producao:criar_tipotanque' %}" class="btn btn-primary ajax-link">Novo Tipo de Tanque</a>
+            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">Editar</a>
+            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>Excluir</button>
         </div>
     </div>
 
@@ -30,19 +28,15 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th>
-                        <input type="checkbox" id="select-all-tipotanque">
-                    </th>
+                    <th><input type="checkbox" id="select-all-tipotanque"></th>
                     <th>Nome</th>
-                    <th>Ações</th>
+                    <th>A&ccedil;&otilde;es</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in object_list %}
                 <tr>
-                    <td>
-                        <input type="checkbox" class="check-tipotanque" value="{{ item.pk }}">
-                    </td>
+                    <td><input type="checkbox" class="check-tipotanque" value="{{ item.pk }}"></td>
                     <td>{{ item.nome }}</td>
                     <td>
                         <a href="{% url 'producao:editar_tipotanque' item.pk %}" class="btn btn-sm btn-info ajax-link">Editar</a>

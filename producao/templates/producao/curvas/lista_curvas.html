@@ -1,60 +1,62 @@
-<div id="identificador-tela" 
+﻿<div class="container-fluid pt-3 pb-4" id="identificador-tela"
      data-tela="lista_curvas"
      data-entidade-singular="curva de crescimento"
      data-entidade-plural="curvas de crescimento"
      data-url-editar="{% url 'producao:editar_curva' pk=0 %}"
      data-url-excluir="{% url 'producao:excluir_curvas_multiplas' %}"
      data-seletor-checkbox=".check-curva"
-     data-seletor-pai="#select-all-curvas"></div>
+     data-seletor-pai="#select-all-curvas">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0">Curvas de Crescimento</h2>
-      <div>
-        <a href="{% url 'producao:importar_curva' %}" class="btn btn-primary ajax-link">Importar Nova Curva</a>
-        <a href="{% url 'producao:cadastrar_curva' %}" class="btn btn-secondary ajax-link">Nova Curva</a>
-        <button id="btn-editar" class="btn btn-info" disabled>Editar</button>
-        <button id="btn-excluir" class="btn btn-danger" disabled>Excluir</button>
-      </div>
-    </div>
-
-    {% if curvas %}
     <div class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover table-striped">
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="select-all-curvas"></th>
-                <th>Nome da Curva</th>
-                <th>Espécie</th>
-                <th>% Rendimento</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for curva in curvas %}
-              <tr data-id="{{ curva.pk }}">
-                <td><input type="checkbox" class="check-curva" value="{{ curva.pk }}"></td>
-                <td><a href="{% url 'producao:detalhe_curva' pk=curva.pk %}" class="ajax-link">{{ curva.nome }}</a></td>
-                <td>{{ curva.especie }}</td>
-                <td>{{ curva.rendimento_perc }}%</td>
-                <td>
-                  <a href="{% url 'producao:detalhe_curva' pk=curva.pk %}" class="btn btn-sm btn-info ajax-link" title="Ver Detalhes">
-                    <i class="fas fa-eye"></i>
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-graph-up me-2"></i>Curvas de Crescimento</h2>
         </div>
-      </div>
+        <div class="card-body">
+
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'producao:importar_curva' %}" class="btn btn-primary ajax-link">Importar Nova Curva</a>
+                    <a href="{% url 'producao:cadastrar_curva' %}" class="btn btn-secondary ajax-link">Nova Curva</a>
+                    <button id="btn-editar" class="btn btn-info" disabled>Editar</button>
+                    <button id="btn-excluir" class="btn btn-danger" disabled>Excluir</button>
+                </div>
+            </div>
+
+            {% if curvas %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-curvas"></th>
+                            <th>Nome da Curva</th>
+                            <th>Esp?cie</th>
+                            <th>% Rendimento</th>
+                            <th>A??es</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for curva in curvas %}
+                        <tr data-id="{{ curva.pk }}">
+                            <td><input type="checkbox" class="check-curva" value="{{ curva.pk }}"></td>
+                            <td><a href="{% url 'producao:detalhe_curva' pk=curva.pk %}" class="ajax-link">{{ curva.nome }}</a></td>
+                            <td>{{ curva.especie }}</td>
+                            <td>{{ curva.rendimento_perc }}%</td>
+                            <td>
+                                <a href="{% url 'producao:detalhe_curva' pk=curva.pk %}" class="btn btn-sm btn-info ajax-link" title="Ver Detalhes">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center mb-0" role="alert">
+                Nenhuma curva de crescimento encontrada. <a href="{% url 'producao:importar_curva' %}" class="alert-link ajax-link">Importe uma agora!</a>
+            </div>
+            {% endif %}
+        </div>
     </div>
-    {% else %}
-    <div class="alert alert-info text-center" role="alert">
-      Nenhuma curva de crescimento encontrada. <a href="{% url 'producao:importar_curva' %}" class="alert-link ajax-link">Importe uma agora!</a>
-    </div>
-    {% endif %}
 </div>
-
-

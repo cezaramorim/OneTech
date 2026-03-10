@@ -1,8 +1,16 @@
-{% load static %}
+﻿{% load static %}
 
-<div class="container-fluid p-4">
+<div class="container-fluid pt-3 pb-4">
+    <header class="page-header mb-4">
+        <div>
+            <h4 class="fw-semibold mb-2">
+                <i class="bi bi-people me-2"></i>Usuarios por Cliente
+            </h4>
+            <hr class="mt-0">
+        </div>
+    </header>
+
     <div class="row">
-        <!-- Coluna da Lista de Clientes -->
         <div class="col-md-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -10,8 +18,8 @@
                 </div>
                 <div class="list-group list-group-flush" id="tenant-list-container">
                     {% for tenant in tenants %}
-                        <a href="{% url 'control:tenant_user_list' %}?tenant_id={{ tenant.id }}" 
-                           class="list-group-item list-group-item-action tenant-select-link {% if selected_tenant.id == tenant.id %}active{% endif %}" 
+                        <a href="{% url 'control:tenant_user_list' %}?tenant_id={{ tenant.id }}"
+                           class="list-group-item list-group-item-action tenant-select-link {% if selected_tenant.id == tenant.id %}active{% endif %}"
                            data-tenant-id="{{ tenant.id }}">
                             {{ tenant.nome }}
                         </a>
@@ -20,7 +28,6 @@
             </div>
         </div>
 
-        <!-- Coluna da Tabela de Usuários -->
         <div class="col-md-8">
             <div id="user-list-container">
                 {% if selected_tenant %}
@@ -30,7 +37,7 @@
                         <div class="card-body text-center py-5 d-flex flex-column justify-content-center align-items-center" style="min-height: 300px;">
                             <i class="bi bi-arrow-left-circle-fill fs-1 text-primary"></i>
                             <h5 class="mt-3 text-muted">Selecione um cliente ao lado</h5>
-                            <p>Escolha um cliente na lista para visualizar e gerenciar seus usuários.</p>
+                            <p>Escolha um cliente na lista para visualizar e gerenciar seus usuarios.</p>
                         </div>
                     </div>
                 {% endif %}
@@ -44,7 +51,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const tenantListContainer = document.getElementById('tenant-list-container');
     const userListContainer = document.getElementById('user-list-container');
 
-    // --- Handler para selecionar um tenant ---
     tenantListContainer.addEventListener('click', function(event) {
         const link = event.target.closest('.tenant-select-link');
         if (link) {
@@ -55,20 +61,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const url = link.href;
             window.history.pushState({path: url}, '', url);
-            
-            userListContainer.innerHTML = `<div class="card shadow-sm"><div class="card-body text-center py-5"><div class="spinner-border text-primary" role="status"></div><h5 class="mt-3 text-muted">Carregando usuários...</h5></div></div>`;
+
+            userListContainer.innerHTML = `<div class="card shadow-sm"><div class="card-body text-center py-5"><div class="spinner-border text-primary" role="status"></div><h5 class="mt-3 text-muted">Carregando usuarios...</h5></div></div>`;
 
             fetch(url, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
                 .then(response => response.text())
                 .then(html => { userListContainer.innerHTML = html; })
                 .catch(error => {
-                    console.error("Erro ao carregar usuários:", error);
-                    userListContainer.innerHTML = `<div class="card shadow-sm"><div class="card-body text-center py-5 text-danger"><i class="bi bi-exclamation-triangle-fill fs-1"></i><h5 class="mt-3">Erro ao carregar</h5><p>Não foi possível carregar a lista de usuários.</p></div></div>`;
+                    console.error("Erro ao carregar usuarios:", error);
+                    userListContainer.innerHTML = `<div class="card shadow-sm"><div class="card-body text-center py-5 text-danger"><i class="bi bi-exclamation-triangle-fill fs-1"></i><h5 class="mt-3">Erro ao carregar</h5><p>Nao foi possivel carregar a lista de usuarios.</p></div></div>`;
                 });
         }
     });
 
-    // --- Handler para ativar/inativar usuário (usando delegação de evento) ---
     userListContainer.addEventListener('click', function(event) {
         const toggleButton = event.target.closest('.toggle-active-btn');
         if (toggleButton) {
@@ -77,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const url = `{% url 'control:tenant_user_toggle_active' tenant_id=0 user_id=0 %}`.replace('/0/users/toggle-active/0/', `/${tenantId}/users/toggle-active/${userId}/`);
 
             Swal.fire({
-                title: 'Alterar status do usuário?',
+                title: 'Alterar status do usuario?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#0d6efd',
@@ -99,9 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     badge.classList.replace('bg-success', 'bg-secondary');
                                     badge.textContent = 'Inativo';
                                 }
-                                showToast('success', 'Status do usuário alterado com sucesso!');
+                                showToast('success', 'Status do usuario alterado com sucesso!');
                             } else {
-                                Swal.fire('Erro!', data.message || 'Não foi possível alterar o status.', 'error');
+                                Swal.fire('Erro!', data.message || 'Nao foi possivel alterar o status.', 'error');
                             }
                         });
                 }

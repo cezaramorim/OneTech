@@ -1,39 +1,96 @@
-{% load static %}
+﻿{% load static %}
 
-<div class="container-fluid py-4">
-    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+<div class="container-fluid pt-3 pb-4">
+    <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
+        <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-journal-text me-2"></i>Central Fiscal</h2>
+        </div>
         <div class="card-body">
-            <h2 class="mb-4 text-center">Importar Dados Fiscais (Excel)</h2>
-            <p class="text-muted text-center">Selecione o tipo de dado e faça o upload do arquivo Excel.</p>
+            <p class="text-muted text-center">Use os arquivos-base de refer&ecirc;ncia abaixo para futuras importa&ccedil;&otilde;es, atualize-os se necess&aacute;rio e depois execute novamente a importa&ccedil;&atilde;o pela central.</p>
 
-            <form method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label for="import_type" class="form-label">Tipo de Dados para Importar:</label>
-                    <select class="form-select" id="import_type" name="import_type" required>
-                        <option value="">Selecione...</option>
-                        <option value="cfop">CFOPs</option>
-                        <option value="natureza_operacao">Naturezas de Operação</option>
-                    </select>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">BASE LOCAL CFOP</div>
+                        <div><strong>{{ cfop_local_summary.item_count }}</strong> registro(s)</div>
+                        <div class="small text-muted">Fonte: {{ cfop_local_summary.source|default:'-' }}</div>
+                        <div class="small text-muted">Atualizado em: {{ cfop_local_summary.updated_at|default:'-' }}</div>
+                        <div class="small text-muted mt-2">Arquivo-base de refer&ecirc;ncia: {{ cfop_source_path }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">BASE LOCAL NATUREZA DE OPERA&Ccedil;&atilde;O</div>
+                        <div><strong>{{ natureza_local_summary.item_count }}</strong> registro(s)</div>
+                        <div class="small text-muted">Fonte: {{ natureza_local_summary.source|default:'-' }}</div>
+                        <div class="small text-muted">Atualizado em: {{ natureza_local_summary.updated_at|default:'-' }}</div>
+                        <div class="small text-muted mt-2">Arquivo-base de refer&ecirc;ncia: {{ natureza_source_path }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h4 class="mb-3">1. Atualizar Base Local</h4>
+                        <p class="text-muted small">Se precisar atualizar a base de refer&ecirc;ncia, use os arquivos indicados acima e depois envie a planilha correspondente nesta etapa.</p>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="import_type" class="form-label">Tipo de dados</label>
+                                <select class="form-select" id="import_type" name="import_type" required>
+                                    <option value="">Selecione...</option>
+                                    {% if perms.fiscal.add_cfop %}<option value="cfop">CFOPs</option>{% endif %}
+                                    {% if perms.fiscal.add_naturezaoperacao %}<option value="natureza_operacao">Naturezas de Opera&ccedil;&atilde;o</option>{% endif %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="excel_file" class="form-label">Arquivo Excel (.xlsx ou .xls)</label>
+                                <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx, .xls" required>
+                            </div>
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="submit" class="btn btn-success">Atualizar base local</button>
+                                <a href="{{ back_url }}" class="btn btn-secondary">Voltar</a>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="excel_file" class="form-label">Arquivo Excel (.xlsx ou .xls):</label>
-                    <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx, .xls" required>
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h4 class="mb-3">2. Opera&ccedil;&otilde;es Sobre a Base Local</h4>
+                        <p class="text-muted small">Depois de atualizar a base local, importe para o banco e use a consolida&ccedil;&atilde;o apenas quando houver necessidade de saneamento.</p>
+
+                        <div class="d-grid gap-3">
+                            {% if perms.fiscal.add_cfop %}
+                            <form method="post" action="{% url 'fiscal:import_fiscal_local' %}" class="d-flex gap-2 align-items-center flex-wrap">
+                                {% csrf_token %}
+                                <input type="hidden" name="import_type" value="cfop">
+                                <button type="submit" class="btn btn-primary">Importar base local CFOP</button>
+                                {% if perms.fiscal.delete_cfop %}<button type="submit" formaction="{% url 'fiscal:consolidar_fiscal' %}" name="apply" value="1" class="btn btn-outline-danger">Consolidar CFOP</button>{% endif %}
+                                {% if perms.fiscal.delete_cfop %}<button type="submit" formaction="{% url 'fiscal:consolidar_fiscal' %}" name="apply" value="0" class="btn btn-outline-secondary">Inspecionar duplicidades</button>{% endif %}
+                            </form>
+                            {% endif %}
+
+                            {% if perms.fiscal.add_naturezaoperacao %}
+                            <form method="post" action="{% url 'fiscal:import_fiscal_local' %}" class="d-flex gap-2 align-items-center flex-wrap">
+                                {% csrf_token %}
+                                <input type="hidden" name="import_type" value="natureza_operacao">
+                                <button type="submit" class="btn btn-primary">Importar base local Natureza</button>
+                                {% if perms.fiscal.delete_naturezaoperacao %}<button type="submit" formaction="{% url 'fiscal:consolidar_fiscal' %}" name="apply" value="1" class="btn btn-outline-danger">Consolidar Natureza</button>{% endif %}
+                                {% if perms.fiscal.delete_naturezaoperacao %}<button type="submit" formaction="{% url 'fiscal:consolidar_fiscal' %}" name="apply" value="0" class="btn btn-outline-secondary">Inspecionar duplicidades</button>{% endif %}
+                            </form>
+                            {% endif %}
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="mb-3">Modelos de planilha</h5>
+                        <div class="d-grid gap-2">
+                            {% if perms.fiscal.add_cfop %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=cfop" class="btn btn-outline-primary">Baixar modelo CFOP</a>{% endif %}
+                            {% if perms.fiscal.add_naturezaoperacao %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=natureza_operacao" class="btn btn-outline-primary">Baixar modelo Natureza de Opera&ccedil;&atilde;o</a>{% endif %}
+                        </div>
+                    </div>
                 </div>
-
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <button type="submit" class="btn btn-success">Importar</button>
-                    <a href="{% url 'fiscal:cfop_list' %}" class="btn btn-secondary">Voltar</a>
-                </div>
-            </form>
-
-            <hr class="my-4">
-
-            <h3 class="mb-3 text-center">Baixar Modelo de Planilha</h3>
-            <div class="d-grid gap-2">
-                <a href="{% url 'fiscal:download_fiscal_template' %}?type=cfop" class="btn btn-outline-primary">Baixar Modelo CFOP</a>
-                <a href="{% url 'fiscal:download_fiscal_template' %}?type=natureza_operacao" class="btn btn-outline-primary">Baixar Modelo Natureza de Operação</a>
             </div>
         </div>
     </div>

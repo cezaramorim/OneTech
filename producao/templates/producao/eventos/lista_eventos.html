@@ -1,4 +1,4 @@
-<div class="container-fluid mt-3" id="identificador-tela"
+﻿<div class="container-fluid pt-3 pb-4" id="identificador-tela"
     data-tela="lista_eventos"
     data-entidade-singular="evento de manejo"
     data-entidade-plural="eventos de manejo"
@@ -6,109 +6,86 @@
     data-url-excluir="{% url 'producao:excluir_eventos_multiplos' %}"
     data-seletor-checkbox=".check-evento"
     data-seletor-pai="#select-all-eventos">
-</div>
 
-<header class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="fw-semibold">
-        <i class="fas fa-stream me-2"></i> Lista de Eventos de Manejo
-    </h4>
-    <div>
-        <a href="{% url 'producao:registrar_evento' %}" class="btn btn-primary ajax-link">Registrar Evento</a>
-        <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
-        <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
-    </div>
-</header>
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h2 class="h4 mb-0 text-primary"><i class="bi bi-list-check me-2"></i>Lista de Eventos de Manejo</h2>
+        </div>
+        <div class="card-body">
 
-<!-- Card de Filtros -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <form method="get" id="filtro-eventos-form" action="{% url 'producao:lista_eventos' %}" class="ajax-form" data-target-container="#main-content">
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label for="id_tipo_evento" class="form-label">Tipo de Evento</label>
-                    <select name="tipo_evento" id="id_tipo_evento" class="form-select form-select-sm">
-                        <option value="">Todos</option>
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <form method="get" id="filtro-eventos-form" action="{% url 'producao:lista_eventos' %}" class="page-toolbar-form d-flex align-items-center gap-2 mb-0 ajax-form" data-target-container="#main-content">
+                    <select name="tipo_evento" id="id_tipo_evento" class="form-select form-select-sm" style="width: 170px;">
+                        <option value="">Todos os tipos</option>
                         {% for tipo in tipos_evento %}
                             <option value="{{ tipo.id }}" {% if filtros.tipo_evento == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nome }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="id_tanque_origem" class="form-label">Tanque Origem</label>
-                    <select name="tanque_origem" id="id_tanque_origem" class="form-select form-select-sm">
-                        <option value="">Todos</option>
+                    <select name="tanque_origem" id="id_tanque_origem" class="form-select form-select-sm" style="width: 170px;">
+                        <option value="">Tanque origem</option>
                         {% for tanque in tanques %}
                             <option value="{{ tanque.pk }}" {% if filtros.tanque_origem == tanque.pk|stringformat:"s" %}selected{% endif %}>{{ tanque.nome }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="id_tanque_destino" class="form-label">Tanque Destino</label>
-                    <select name="tanque_destino" id="id_tanque_destino" class="form-select form-select-sm">
-                        <option value="">Todos</option>
+                    <select name="tanque_destino" id="id_tanque_destino" class="form-select form-select-sm" style="width: 170px;">
+                        <option value="">Tanque destino</option>
                         {% for tanque in tanques %}
                             <option value="{{ tanque.pk }}" {% if filtros.tanque_destino == tanque.pk|stringformat:"s" %}selected{% endif %}>{{ tanque.nome }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="id_lote" class="form-label">Lote</label>
-                    <select name="lote" id="id_lote" class="form-select form-select-sm">
-                        <option value="">Todos</option>
+                    <select name="lote" id="id_lote" class="form-select form-select-sm" style="width: 170px;">
+                        <option value="">Lote</option>
                         {% for lote in lotes %}
                             <option value="{{ lote.pk }}" {% if filtros.lote == lote.pk|stringformat:"s" %}selected{% endif %}>{{ lote.nome }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="id_data_evento" class="form-label">Data do Evento</label>
-                    <input type="date" name="data_evento" id="id_data_evento" class="form-control form-control-sm" value="{{ filtros.data_evento }}">
+                    <input type="date" name="data_evento" id="id_data_evento" class="form-control form-control-sm" value="{{ filtros.data_evento }}" style="width: 170px;">
+                </form>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'producao:registrar_evento' %}" class="btn btn-primary ajax-link">Registrar Evento</a>
+                    <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
+                    <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
                 </div>
             </div>
-        </form>
-    </div>
-</div>
 
-<!-- Card da Tabela -->
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="select-all-eventos"></th>
-                        <th>Tipo de Evento</th>
-                        <th>Lote</th>
-                        <th>Tanque Origem</th>
-                        <th>Tanque Destino</th>
-                        <th>Data Evento</th>
-                        <th>Quantidade</th>
-                        <th>Peso Médio</th>
-                        <th>Biomassa</th>
-                        <th>Observações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for evento in eventos %}
-                    <tr data-id="{{ evento.pk }}">
-                        <td><input type="checkbox" class="check-evento" value="{{ evento.pk }}"></td>
-                        <td>{{ evento.tipo_evento.nome|default:"N/A" }}</td>
-                        <td>{{ evento.lote.nome|default:"N/A" }}</td>
-                        <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
-                        <td>{{ evento.tanque_destino.nome|default:"N/A" }}</td>
-                        <td>{{ evento.data_evento|date:"d/m/Y" }}</td>
-                        <td>{{ evento.quantidade|floatformat:2 }}</td>
-                        <td>{{ evento.peso_medio|floatformat:2 }}</td>
-                        <td>{{ evento.biomassa_kg|floatformat:2 }}</td>
-                        <td>{{ evento.observacoes|default:"" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="10" class="text-center">Nenhum evento de manejo encontrado para os filtros aplicados.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-eventos"></th>
+                            <th>Tipo de Evento</th>
+                            <th>Lote</th>
+                            <th>Tanque Origem</th>
+                            <th>Tanque Destino</th>
+                            <th>Data Evento</th>
+                            <th>Quantidade</th>
+                            <th>Peso M?dio</th>
+                            <th>Biomassa</th>
+                            <th>Observa??es</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evento in eventos %}
+                        <tr data-id="{{ evento.pk }}">
+                            <td><input type="checkbox" class="check-evento" value="{{ evento.pk }}"></td>
+                            <td>{{ evento.tipo_evento.nome|default:"N/A" }}</td>
+                            <td>{{ evento.lote.nome|default:"N/A" }}</td>
+                            <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
+                            <td>{{ evento.tanque_destino.nome|default:"N/A" }}</td>
+                            <td>{{ evento.data_evento|date:"d/m/Y" }}</td>
+                            <td>{{ evento.quantidade|floatformat:2 }}</td>
+                            <td>{{ evento.peso_medio|floatformat:2 }}</td>
+                            <td>{{ evento.biomassa_kg|floatformat:2 }}</td>
+                            <td>{{ evento.observacoes|default:"" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center">Nenhum evento de manejo encontrado para os filtros aplicados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

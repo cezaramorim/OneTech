@@ -1,0 +1,30 @@
+{% load static %}
+
+<div class="container-fluid pt-3 pb-4 comercial-page comercial-form-page">
+    <div class="card shadow-sm mx-auto" style="max-width: 900px;">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary"><i class="bi bi-pencil-square me-2"></i>{{ title }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                    <a href="{% url 'comercial:condicao_pagamento_list' %}" class="btn btn-secondary ajax-link">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

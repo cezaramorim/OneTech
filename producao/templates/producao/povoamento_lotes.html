@@ -1,7 +1,7 @@
 {% load static producao_tags %}
 
 {% block content %}
-<div class="container-fluid container-wide mt-3" data-page="povoamento-lotes">
+<div class="container-fluid container-wide pt-3" data-page="povoamento-lotes">
   {{ tanques_data|json_script:"povoamento-tanques-json" }}
   {{ fases_list|json_script:"povoamento-fases-json" }}
   {{ linhas_list|json_script:"povoamento-linhas-json" }}

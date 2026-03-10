@@ -1,12 +1,16 @@
 ﻿{% load static %}
-<div class="container-fluid" data-page="manutencao-ncm" data-refresh-url="{% url 'produto:manutencao_ncm' %}">
+<div class="container-fluid pt-3 pb-4" data-page="manutencao-ncm" data-refresh-url="{% url 'produto:manutencao_ncm' %}">
   <div id="identificador-tela" data-tela="manutencao_ncm"></div>
 
-  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+  <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
     <div>
-      <h2 class="mb-1">Tabela NCM</h2>
-      <p class="text-muted mb-0">Base normalizada no banco e exibicao formatada para leitura.</p>
+      <h4 class="fw-semibold mb-2"><i class="bi bi-upc-scan me-2"></i>Tabela NCM</h4>
+      <hr class="mt-0">
     </div>
+  </header>
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <p class="text-muted mb-0">Base normalizada no banco e exibicao formatada para leitura.</p>
     <div class="d-flex flex-wrap gap-2">
       <button class="btn btn-outline-primary" id="btn-atualizar-base-ncm" data-url="{% url 'produto:atualizar_ncm_base_oficial' %}">
         <i class="bi bi-cloud-download"></i> Atualizar Base Oficial

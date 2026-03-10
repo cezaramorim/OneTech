@@ -1,14 +1,19 @@
 {% load static %}
 {% load widget_tweaks %}
 
-<main id="main-content" class="container-fluid py-4" data-page="edit_profile">
+<div class="container-fluid pt-3 pb-4" data-page="edit_profile">
   <!-- 🔔 Mensagens instantâneas -->
   
 
   <div class="row justify-content-center">
     <div class="col-md-6">
       <div class="text-center mb-4">
-        <h2 class="text-dark dark:text-white">Editar Perfil</h2>
+        <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+          <div>
+            <h4 class="fw-semibold mb-2"><i class="bi bi-person-circle me-2"></i>Editar Perfil</h4>
+            <hr class="mt-0">
+          </div>
+        </header>
         <p class="text-muted dark:text-light">Atualize seus dados pessoais ou altere sua senha.</p>
       </div>
 
@@ -60,4 +65,4 @@
       </div>
     </div>
   </div>
-</main>
+</div>

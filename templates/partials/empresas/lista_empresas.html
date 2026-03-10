@@ -1,70 +1,65 @@
-{% load static %}
+﻿{% load static %}
 
-<div id="identificador-tela"
-     data-tela="lista_empresas"
-     data-entidade-singular="empresa"
-     data-entidade-plural="empresas"
-     data-url-editar="{% url 'empresas:editar_empresa' 0 %}"
-     data-url-excluir="{% url 'empresas:excluir_empresas_multiplos' %}"
-     data-seletor-checkbox=".check-empresa"
-     data-seletor-pai="#select-all-empresas">
-</div>
+<div class="container-fluid pt-3 pb-4">
+  <div id="identificador-tela"
+       data-tela="lista_empresas"
+       data-entidade-singular="empresa"
+       data-entidade-plural="empresas"
+       data-url-editar="{% url 'empresas:editar_empresa' 0 %}"
+       data-url-excluir="{% url 'empresas:excluir_empresas_multiplos' %}"
+       data-seletor-checkbox=".check-empresa"
+       data-seletor-pai="#select-all-empresas">
+  </div>
 
-<div class="card shadow-sm mx-auto" style="max-width: 1100px;">
-  <div class="card-body">
-    <h2 class="mb-4">Empresas</h2>
-
-    <form id="filtro-empresas"
-          class="row g-2 mb-4 ajax-form"
-          method="get"
-          action="{% url 'empresas:lista_empresas' %}"
-          data-target-container="#empresas-tabela-wrapper"
-          data-response-type="html">
-      <div class="col-md-4">
-        <input type="text"
-               id="busca-empresa"
-               name="termo_empresa"
-               class="form-control"
-               placeholder="Buscar por razão social, nome ou documento"
-               value="{{ request.GET.termo_empresa|default_if_none:'' }}"
-               autocomplete="off">
-      </div>
-
-      <div class="col-md-3">
-        <select name="tipo" class="form-select">
-          <option value="">Tipo de Empresa</option>
-          <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jurídica</option>
-          <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa Física</option>
-        </select>
-      </div>
-
-      <div class="col-md-3">
-        <select name="status" class="form-select">
-          <option value="">Status</option>
-          <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
-          <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
-        </select>
-      </div>
-
-      <div class="col-md-2 text-end">
-        <a href="{% url 'empresas:lista_empresas' %}" class="btn btn-outline-secondary w-100 ajax-link">Limpar</a>
-      </div>
-    </form>
-
-    <div class="d-flex justify-content-end gap-2 mb-3">
-      <a href="{% url 'empresas:cadastrar_empresa' %}" class="btn btn-success ajax-link">
-        <i class="bi bi-plus-circle"></i> Novo
-      </a>
-      <a id="btn-editar" class="btn btn-primary disabled" role="button">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-      <button id="btn-excluir" class="btn btn-danger" disabled>
-        <i class="bi bi-trash"></i> Excluir
-      </button>
+  <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
+    <div class="card-header bg-light">
+      <h2 class="h4 mb-0 text-primary"><i class="bi bi-buildings me-2"></i>Empresas</h2>
     </div>
+    <div class="card-body">
 
-    <div id="empresas-tabela-wrapper">
-      {% include 'partials/empresas/_lista_empresas_table.html' %}
+      <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <form id="filtro-empresas"
+              class="page-toolbar-form d-flex align-items-center gap-2 mb-0 ajax-form"
+              method="get"
+              action="{% url 'empresas:lista_empresas' %}"
+              data-target-container="#empresas-tabela-wrapper"
+              data-response-type="html">
+          <input type="text"
+                 id="busca-empresa"
+                 name="termo_empresa"
+                 class="form-control page-toolbar-search"
+                 placeholder="Buscar por raz?o social, nome ou documento"
+                 value="{{ request.GET.termo_empresa|default_if_none:'' }}"
+                 autocomplete="off">
+          <select name="tipo" class="form-select" style="width: 180px;">
+            <option value="">Tipo de Empresa</option>
+            <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jur?dica</option>
+            <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa F?sica</option>
+          </select>
+          <select name="status" class="form-select" style="width: 150px;">
+            <option value="">Status</option>
+            <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
+            <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
+          </select>
+          <a href="{% url 'empresas:lista_empresas' %}" class="btn btn-outline-secondary page-toolbar-btn ajax-link">Limpar</a>
+        </form>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <a href="{% url 'empresas:cadastrar_empresa' %}" class="btn btn-success ajax-link">
+            <i class="bi bi-plus-circle"></i> Novo
+          </a>
+          <a id="btn-editar" class="btn btn-primary disabled" role="button">
+            <i class="bi bi-pencil"></i> Editar
+          </a>
+          <button id="btn-excluir" class="btn btn-danger" disabled>
+            <i class="bi bi-trash"></i> Excluir
+          </button>
+        </div>
+      </div>
+
+      <div id="empresas-tabela-wrapper">
+        {% include 'partials/empresas/_lista_empresas_table.html' %}
+      </div>
     </div>
   </div>
 </div>

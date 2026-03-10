@@ -1,28 +1,26 @@
-<div id="identificador-tela" 
+<div id="identificador-tela"
      data-tela="lista_fasesproducao"
-     data-entidade-singular="fase de produção"
-     data-entidade-plural="fases de produção"
+     data-entidade-singular="fase de produ&ccedil;&atilde;o"
+     data-entidade-plural="fases de produ&ccedil;&atilde;o"
      data-url-editar="{% url 'producao:editar_faseproducao' 0 %}"
      data-url-excluir="{% url 'producao:excluir_faseproducao_multiplo' %}"
      data-seletor-checkbox=".check-faseproducao"
      data-seletor-pai="#select-all-faseproducao"></div>
 
-<div class="container-fluid mt-4">
-    <h2>Fases de Produção</h2>
-    <a href="{% url 'producao:criar_faseproducao' %}" class="btn btn-primary mb-3 ajax-link">Nova Fase de Produção</a>
-    
-    <!-- 🛠️ Ações principais (padrão scripts.js) -->
-    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-        <div class="d-flex flex-wrap gap-2">
-            <!-- ✏️ Editar -->
-            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">
-                ✏️ Editar
-            </a>
+<div class="container-fluid pt-3 pb-4">
+    <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+      <div>
+        <h4 class="fw-semibold mb-2">Fases de Produ&ccedil;&atilde;o</h4>
+        <hr class="mt-0">
+      </div>
+    </header>
 
-            <!-- ❌ Excluir -->
-            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>
-                🗑️ Excluir
-            </button>
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-spacer"></div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'producao:criar_faseproducao' %}" class="btn btn-primary ajax-link">Nova Fase de Produ&ccedil;&atilde;o</a>
+            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">Editar</a>
+            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>Excluir</button>
         </div>
     </div>
 
@@ -30,19 +28,15 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th>
-                        <input type="checkbox" id="select-all-faseproducao">
-                    </th>
+                    <th><input type="checkbox" id="select-all-faseproducao"></th>
                     <th>Nome</th>
-                    <th>Ações</th>
+                    <th>A&ccedil;&otilde;es</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in object_list %}
                 <tr>
-                    <td>
-                        <input type="checkbox" class="check-faseproducao" value="{{ item.pk }}">
-                    </td>
+                    <td><input type="checkbox" class="check-faseproducao" value="{{ item.pk }}"></td>
                     <td>{{ item.nome }}</td>
                     <td>
                         <a href="{% url 'producao:editar_faseproducao' item.pk %}" class="btn btn-sm btn-info ajax-link">Editar</a>
@@ -50,7 +44,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3">Nenhuma fase de produção encontrada.</td>
+                    <td colspan="3">Nenhuma fase de produ&ccedil;&atilde;o encontrada.</td>
                 </tr>
                 {% endfor %}
             </tbody>

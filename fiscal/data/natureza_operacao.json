@@ -1,0 +1,339 @@
+{
+  "metadata": {
+    "source": "excel_upload",
+    "updated_at": "2026-03-07T17:27:03.173223-03:00",
+    "item_count": 66
+  },
+  "items": [
+    {
+      "codigo": "1",
+      "descricao": "Venda de produção do estabelecimento",
+      "observacoes": "Dentro do Estado - 5101"
+    },
+    {
+      "codigo": "2",
+      "descricao": "Venda de produção do estabelecimento",
+      "observacoes": "Fora do Estado - 6101"
+    },
+    {
+      "codigo": "3",
+      "descricao": "Venda de mercadoria de terceiros",
+      "observacoes": "Dentro do Estado - 5102"
+    },
+    {
+      "codigo": "4",
+      "descricao": "Venda de mercadoria de terceiros",
+      "observacoes": "Fora do Estado - 6102"
+    },
+    {
+      "codigo": "5",
+      "descricao": "Venda de ativo imobilizado",
+      "observacoes": "Dentro do Estado - 5551"
+    },
+    {
+      "codigo": "6",
+      "descricao": "Venda de ativo imobilizado",
+      "observacoes": "Fora do Estado - 6551"
+    },
+    {
+      "codigo": "7",
+      "descricao": "Venda para entrega futura (Faturamento)",
+      "observacoes": "Dentro do Estado - 5922"
+    },
+    {
+      "codigo": "8",
+      "descricao": "Venda para entrega futura (Faturamento)",
+      "observacoes": "Fora do Estado - 6922"
+    },
+    {
+      "codigo": "9",
+      "descricao": "Remessa por conta e ordem de terceiros",
+      "observacoes": "Dentro do Estado - 5120"
+    },
+    {
+      "codigo": "10",
+      "descricao": "Remessa por conta e ordem de terceiros",
+      "observacoes": "Fora do Estado - 6120"
+    },
+    {
+      "codigo": "11",
+      "descricao": "Simples Remessa (Entrega de venda futura)",
+      "observacoes": "Dentro do Estado - 5116"
+    },
+    {
+      "codigo": "12",
+      "descricao": "Simples Remessa (Entrega de venda futura)",
+      "observacoes": "Fora do Estado - 6116"
+    },
+    {
+      "codigo": "13",
+      "descricao": "Compra para industrialização",
+      "observacoes": "Dentro do Estado - 1101"
+    },
+    {
+      "codigo": "14",
+      "descricao": "Compra para industrialização",
+      "observacoes": "Fora do Estado - 2101"
+    },
+    {
+      "codigo": "15",
+      "descricao": "Compra para comercialização",
+      "observacoes": "Dentro do Estado - 1102"
+    },
+    {
+      "codigo": "16",
+      "descricao": "Compra para comercialização",
+      "observacoes": "Fora do Estado - 2102"
+    },
+    {
+      "codigo": "17",
+      "descricao": "Compra para ativo imobilizado",
+      "observacoes": "Dentro do Estado - 1551"
+    },
+    {
+      "codigo": "18",
+      "descricao": "Compra para ativo imobilizado",
+      "observacoes": "Fora do Estado - 2551"
+    },
+    {
+      "codigo": "19",
+      "descricao": "Compra para uso ou consumo",
+      "observacoes": "Dentro do Estado - 1556"
+    },
+    {
+      "codigo": "20",
+      "descricao": "Compra para uso ou consumo",
+      "observacoes": "Fora do Estado - 2556"
+    },
+    {
+      "codigo": "21",
+      "descricao": "Devolução de Venda de Produção",
+      "observacoes": "Dentro do Estado - 1201"
+    },
+    {
+      "codigo": "22",
+      "descricao": "Devolução de Venda de Produção",
+      "observacoes": "Fora do Estado - 2201"
+    },
+    {
+      "codigo": "23",
+      "descricao": "Devolução de Venda de Mercadoria",
+      "observacoes": "Dentro do Estado - 1202"
+    },
+    {
+      "codigo": "24",
+      "descricao": "Devolução de Venda de Mercadoria",
+      "observacoes": "Fora do Estado - 2202"
+    },
+    {
+      "codigo": "25",
+      "descricao": "Devolução de Compra para Industrialização",
+      "observacoes": "Dentro do Estado - 5201"
+    },
+    {
+      "codigo": "26",
+      "descricao": "Devolução de Compra para Industrialização",
+      "observacoes": "Fora do Estado - 6201"
+    },
+    {
+      "codigo": "27",
+      "descricao": "Devolução de Compra para Comercialização",
+      "observacoes": "Dentro do Estado - 5202"
+    },
+    {
+      "codigo": "28",
+      "descricao": "Devolução de Compra para Comercialização",
+      "observacoes": "Fora do Estado - 6202"
+    },
+    {
+      "codigo": "29",
+      "descricao": "Transferência de produção do estabelecimento",
+      "observacoes": "Dentro do Estado - 5151"
+    },
+    {
+      "codigo": "30",
+      "descricao": "Transferência de produção do estabelecimento",
+      "observacoes": "Fora do Estado - 6151"
+    },
+    {
+      "codigo": "31",
+      "descricao": "Transferência de mercadoria de terceiros",
+      "observacoes": "Dentro do Estado - 5152"
+    },
+    {
+      "codigo": "32",
+      "descricao": "Transferência de mercadoria de terceiros",
+      "observacoes": "Fora do Estado - 6152"
+    },
+    {
+      "codigo": "33",
+      "descricao": "Transferência de ativo imobilizado",
+      "observacoes": "Dentro do Estado - 5552"
+    },
+    {
+      "codigo": "34",
+      "descricao": "Transferência de ativo imobilizado",
+      "observacoes": "Fora do Estado - 6552"
+    },
+    {
+      "codigo": "35",
+      "descricao": "Transferência para uso ou consumo",
+      "observacoes": "Dentro do Estado - 5557"
+    },
+    {
+      "codigo": "36",
+      "descricao": "Transferência para uso ou consumo",
+      "observacoes": "Fora do Estado - 6557"
+    },
+    {
+      "codigo": "37",
+      "descricao": "Remessa para industrialização por encomenda",
+      "observacoes": "Dentro do Estado - 5901"
+    },
+    {
+      "codigo": "38",
+      "descricao": "Remessa para industrialização por encomenda",
+      "observacoes": "Fora do Estado - 6901"
+    },
+    {
+      "codigo": "39",
+      "descricao": "Retorno de industrialização por encomenda",
+      "observacoes": "Dentro do Estado - 1902"
+    },
+    {
+      "codigo": "40",
+      "descricao": "Retorno de industrialização por encomenda",
+      "observacoes": "Fora do Estado - 2902"
+    },
+    {
+      "codigo": "41",
+      "descricao": "Remessa para depósito fechado ou armazém",
+      "observacoes": "Dentro do Estado - 5905"
+    },
+    {
+      "codigo": "42",
+      "descricao": "Remessa para depósito fechado ou armazém",
+      "observacoes": "Fora do Estado - 6905"
+    },
+    {
+      "codigo": "43",
+      "descricao": "Retorno de depósito fechado ou armazém",
+      "observacoes": "Dentro do Estado - 1906"
+    },
+    {
+      "codigo": "44",
+      "descricao": "Retorno de depósito fechado ou armazém",
+      "observacoes": "Fora do Estado - 2906"
+    },
+    {
+      "codigo": "45",
+      "descricao": "Remessa em bonificação, doação ou brinde",
+      "observacoes": "Dentro do Estado - 5910"
+    },
+    {
+      "codigo": "46",
+      "descricao": "Remessa em bonificação, doação ou brinde",
+      "observacoes": "Fora do Estado - 6910"
+    },
+    {
+      "codigo": "47",
+      "descricao": "Remessa de amostra grátis",
+      "observacoes": "Dentro do Estado - 5911"
+    },
+    {
+      "codigo": "48",
+      "descricao": "Remessa de amostra grátis",
+      "observacoes": "Fora do Estado - 6911"
+    },
+    {
+      "codigo": "49",
+      "descricao": "Remessa para demonstração",
+      "observacoes": "Dentro do Estado - 5912"
+    },
+    {
+      "codigo": "50",
+      "descricao": "Remessa para demonstração",
+      "observacoes": "Fora do Estado - 6912"
+    },
+    {
+      "codigo": "51",
+      "descricao": "Retorno de demonstração",
+      "observacoes": "Dentro do Estado - 1913"
+    },
+    {
+      "codigo": "52",
+      "descricao": "Retorno de demonstração",
+      "observacoes": "Fora do Estado - 2913"
+    },
+    {
+      "codigo": "53",
+      "descricao": "Remessa para conserto",
+      "observacoes": "Dentro do Estado - 5915"
+    },
+    {
+      "codigo": "54",
+      "descricao": "Remessa para conserto",
+      "observacoes": "Fora do Estado - 6915"
+    },
+    {
+      "codigo": "55",
+      "descricao": "Retorno de conserto",
+      "observacoes": "Dentro do Estado - 1916"
+    },
+    {
+      "codigo": "56",
+      "descricao": "Retorno de conserto",
+      "observacoes": "Fora do Estado - 2916"
+    },
+    {
+      "codigo": "57",
+      "descricao": "Remessa para exposição ou feira",
+      "observacoes": "Dentro do Estado - 5914"
+    },
+    {
+      "codigo": "58",
+      "descricao": "Remessa para exposição ou feira",
+      "observacoes": "Fora do Estado - 6914"
+    },
+    {
+      "codigo": "59",
+      "descricao": "Retorno de exposição ou feira",
+      "observacoes": "Dentro do Estado - 1914"
+    },
+    {
+      "codigo": "60",
+      "descricao": "Retorno de exposição ou feira",
+      "observacoes": "Fora do Estado - 2914"
+    },
+    {
+      "codigo": "61",
+      "descricao": "Lançamento de crédito de ICMS (Ativo)",
+      "observacoes": "Dentro do Estado - 1604"
+    },
+    {
+      "codigo": "62",
+      "descricao": "Lançamento de crédito de ICMS (Ativo)**",
+      "observacoes": "Fora do Estado - 2604"
+    },
+    {
+      "codigo": "63",
+      "descricao": "Outras saídas não especificadas",
+      "observacoes": "Dentro do Estado - 5949"
+    },
+    {
+      "codigo": "64",
+      "descricao": "Outras saídas não especificadas",
+      "observacoes": "Fora do Estado - 6949"
+    },
+    {
+      "codigo": "65",
+      "descricao": "Outras entradas não especificadas",
+      "observacoes": "Dentro do Estado - 1949"
+    },
+    {
+      "codigo": "66",
+      "descricao": "Outras entradas não especificadas",
+      "observacoes": "Fora do Estado - 2949"
+    }
+  ]
+}

@@ -9,7 +9,7 @@
     z-index: 1030; /* Ensure it's above other content */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: subtle shadow */
     transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
-    min-height: 30px; /* Altura mínima para alinhar com o logo */
+    min-height: var(--navbar-offset); /* Altura estavel do shell */
 }
 
 .navbar-superior .navbar-brand img {
@@ -38,9 +38,9 @@ html.azul .navbar-superior .profile-menu-icon {
 }
 
 html.dark .navbar-superior {
-    background-color: #2b2f3a;
-    border-color: #444;
-    box-shadow: 0 2px 4px rgba(255,255,255,0.05);
+    background-color: rgb(14, 18, 24);
+    border-color: rgb(46, 60, 78);
+    box-shadow: none;
 }
 
 html.dark .navbar-superior .nav-link,
@@ -62,8 +62,8 @@ html.dark .navbar-superior .navbar-brand:hover {
 }
 
 html.dark .navbar-superior .dropdown-menu {
-    background-color: #2b2f3a; /* Fundo escuro para o dropdown principal */
-    border-color: #444;
+    background-color: rgb(20, 25, 33); /* Fundo escuro para o dropdown principal */
+    border-color: rgb(46, 60, 78);
 }
 
 /* Added for dropdown item sizing */
@@ -73,12 +73,12 @@ html.dark .navbar-superior .dropdown-menu {
 
 html.dark .navbar-superior .dropdown-menu .dropdown-item {
     color: #f0f0f0; /* Cor de texto padrão para itens do dropdown no tema escuro */
-    background-color: #2b2f3a; /* Fundo padrão para itens do dropdown no tema escuro */
+    background-color: rgb(20, 25, 33); /* Fundo padrão para itens do dropdown no tema escuro */
 }
 
 html.dark .navbar-superior .dropdown-menu .dropdown-item:hover,
 html.dark .navbar-superior .dropdown-menu .dropdown-item:focus {
-    background-color: #3a3f4a; /* Fundo no hover/focus para itens do dropdown */
+    background-color: rgb(32, 42, 56); /* Fundo no hover/focus para itens do dropdown */
     color: #ffffff; /* Cor de texto no hover/focus para itens do dropdown */
 }
 
@@ -108,36 +108,54 @@ html.dark .navbar-superior .dropdown-menu .dropdown-item:focus {
     font-size: 0.94rem;
 }
 
+/* resquicio nested-submenu-toggle expanded legado
 .navbar-superior .dropdown-menu .nested-submenu-toggle[aria-expanded="true"] {
     background-color: rgba(0, 0, 0, 0.06);
 }
+*/
 
 /* Estilos para submenus aninhados (collapse) no tema escuro */
+/* Fundo para o container do submenu aninhado */
+/* resquicio submenu collapse dark container legado
 html.dark .navbar-superior .dropdown-menu .collapse {
-    background-color: #2b2f3a; /* Fundo para o container do submenu aninhado */
+    background-color: #2b2f3a; 
 }
+*/
 
+/* Fundo para a lista de sub-itens no tema escuro */
+/* resquicio submenu collapse dark lista legado
 html.dark .navbar-superior .dropdown-menu .collapse > ul {
-    background-color: #2b2f3a; /* Fundo para a lista de sub-itens no tema escuro */
+    background-color: #2b2f3a; 
     border-left-color: rgba(255,255,255,0.15);
 }
+*/
 
+/* Fundo padrão para links dentro de submenus aninhados */
+/* Cor de texto padrão para links dentro de submenus aninhados */
+/* resquicio submenu collapse dark item legado
 html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item {
-    color: #f0f0f0; /* Cor de texto padrão para links dentro de submenus aninhados */
-    background-color: #2b2f3a; /* Fundo padrão para links dentro de submenus aninhados */
+    color: #f0f0f0; 
+    background-color: #2b2f3a; 
 }
+*/
 
+/* Fundo no hover/focus para links dentro de submenus aninhados */
+/* Cor de texto no hover/focus para links dentro de submenus aninhados */
+/* resquicio submenu collapse dark hover legado
 html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:hover,
 html.dark .navbar-superior .dropdown-menu .collapse .dropdown-item:focus {
-    background-color: #3a3f4a; /* Fundo no hover/focus para links dentro de submenus aninhados */
-    color: #ffffff; /* Cor de texto no hover/focus para links dentro de submenus aninhados */
+    background-color: #3a3f4a; 
+    color: #ffffff; 
 }
+*/
 
 /* Estilo específico para o dropdown-item que expande o submenu aninhado */
+/* resquicio submenu collapse expanded dark legado
 html.dark .navbar-superior .dropdown-menu .dropdown-item[data-bs-toggle="collapse"][aria-expanded="true"] {
-    background-color: #3a3f4a; /* Fundo quando expandido */
-    color: #ffffff; /* Cor de texto quando expandido */
+    background-color: #3a3f4a;
+    color: #ffffff;
 }
+*/
 
 html.azul .navbar-superior .dropdown-menu .nested-submenu-collapse {
     background-color: rgba(36, 52, 68, 0.98);
@@ -165,13 +183,25 @@ html.azul .navbar-superior .dropdown-menu .nested-submenu-toggle[aria-expanded="
 }
 
 :root{
-  /* ajuste aqui o tamanho do respiro */
-  --navbar-gap: 60px;  /* 12–24px costuma ficar bom */
+  --navbar-offset: 58px;
 }
 
-/* espaço entre a navbar (injetada) e o conteúdo */
-#navbar-container{
-  margin-bottom: var(--navbar-gap);
+#navbar-container {
+  min-height: 0;
+  height: 0;
+  margin-bottom: 0;
+  overflow: visible;
+  font-size: 0;
+  line-height: 0;
+}
+
+#navbar-container > .navbar-superior {
+  font-size: 1rem;
+  line-height: normal;
+}
+
+body.logged-in {
+  padding-top: var(--navbar-offset);
 }
 
 /* ===============================
@@ -247,3 +277,10 @@ html.azul .menu-ativo {
 .navbar-superior .navbar-nav.ms-auto {
   padding-right: 12px;
 }
+
+
+
+
+
+
+

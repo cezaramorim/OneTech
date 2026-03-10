@@ -2,7 +2,7 @@
 {% load custom_tags %}
 {% if perms.accounts.change_user %}
 
-<main id="main-content" class="container-fluid py-4" data-page="editar_usuario">
+<div class="container-fluid pt-3 pb-4" data-page="editar_usuario">
   <div id="identificador-tela" data-tela="editar_usuario"></div>
   <!-- 🔔 Mensagens instantâneas -->
   
@@ -11,7 +11,12 @@
     <div class="col-md-6">
 
       <!-- ✏️ Título -->
-      <h2 class="text-center mb-1">Editar Usuário</h2>
+      <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
+        <div>
+          <h4 class="fw-semibold mb-2">Editar Usuário</h4>
+          <hr class="mt-0">
+        </div>
+      </header>
       <p class="text-center text-muted mb-4">Atualize os dados do usuário ou redefina sua senha.</p>
 
       <div class="card shadow-sm p-4">

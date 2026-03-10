@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 from django.db.models import Q
 from django.urls import reverse_lazy
 from decimal import Decimal
@@ -30,7 +30,7 @@ class ProdutoForm(forms.ModelForm):
             'unidade_fornecedor_padrao',
         ]
         labels = {
-            'codigo_fornecedor': 'Cód. Fornecedor',
+            'codigo_fornecedor': 'CÃ³d. Fornecedor',
         }
         widgets = {
             'codigo_fornecedor': forms.TextInput(attrs={'class': 'form-control'}),
@@ -55,7 +55,7 @@ class ProdutoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # ✅ Exibe a data formatada dd/mm/yyyy
+        # âœ… Exibe a data formatada dd/mm/yyyy
         if self.instance.pk and self.instance.data_cadastro:
             self.fields['data_cadastro'].initial = self.instance.data_cadastro.strftime('%d/%m/%Y')
 
@@ -94,7 +94,77 @@ class UnidadeMedidaForm(forms.ModelForm):
         }
 
 class DetalhesFiscaisProdutoForm(forms.ModelForm):
+    ncm_busca = forms.CharField(
+        required=False,
+        label='NCM',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    cfop_busca = forms.CharField(
+        required=False,
+        label='CFOP',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+
     class Meta:
         model = DetalhesFiscaisProduto
         fields = '__all__'
-        exclude = ['produto'] # O produto será associado na view
+        exclude = ['produto'] # O produto serÃ¡ associado na view
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        current_codigo = getattr(getattr(self.instance, 'ncm', None), 'codigo', '') or ''
+        submitted_codigo = (self.data.get(self.add_prefix('ncm')) or '').strip() if self.is_bound else ''
+        allowed_codigos = [codigo for codigo in [current_codigo, submitted_codigo] if codigo]
+
+        if allowed_codigos:
+            self.fields['ncm'].queryset = NCM.objects.filter(codigo__in=allowed_codigos).order_by('codigo')
+        else:
+            self.fields['ncm'].queryset = NCM.objects.none()
+
+        self.fields['ncm'].to_field_name = 'codigo'
+        self.fields['ncm'].widget.attrs.update({
+            'class': 'd-none',
+            'tabindex': '-1',
+            'aria-hidden': 'true',
+        })
+
+        self.fields['ncm_busca'].initial = (
+            self.instance.ncm.codigo_formatado
+            if getattr(self.instance, 'ncm_id', None)
+            else ''
+        )
+        self.fields['ncm_busca'].widget.attrs.update({
+            'placeholder': 'Buscar NCM por codigo ou descricao',
+            'autocomplete': 'off',
+        })
+
+
+        self.fields['cfop'].widget.attrs.update({
+            'class': 'd-none',
+            'tabindex': '-1',
+            'aria-hidden': 'true',
+        })
+
+        self.fields['cfop_busca'].initial = (
+            (self.instance.cfop or '').strip()
+            if getattr(self.instance, 'pk', None)
+            else ''
+        )
+        self.fields['cfop_busca'].widget.attrs.update({
+            'placeholder': 'Buscar CFOP por codigo ou descricao',
+            'autocomplete': 'off',
+        })
+
+        self.fields['origem_mercadoria'].widget.attrs.update({
+            'class': 'form-select select2-origem-mercadoria',
+            'data-placeholder': 'Selecione a origem da mercadoria',
+        })
+
+    def clean_cfop(self):
+        value = (self.cleaned_data.get('cfop') or '').strip()
+        if not value:
+            value = (self.data.get(self.add_prefix('cfop_busca')) or '').strip()
+        digits = ''.join(ch for ch in value if ch.isdigit())[:4]
+        return digits or None
+

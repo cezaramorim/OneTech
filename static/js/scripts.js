@@ -4,31 +4,31 @@
 
 // Aplica o tema salvo no localStorage (antes do paint)
 const temaSalvo = localStorage.getItem("tema");
-if (temaSalvo && temaSalvo !== "light") { // 'light' Ã© o tema padrÃ£o sem classe
+if (temaSalvo && temaSalvo !== "light") { // 'light' ÃƒÂ© o tema padrÃƒÂ£o sem classe
   document.documentElement.classList.add(temaSalvo);
 }
 document.documentElement.classList.add("theme-ready");
 
-// Temas disponÃ­veis
+// Temas disponÃƒÂ­veis
 const availableThemes = ['light', 'dark', 'azul'];
 
-// FunÃ§Ã£o para obter o prÃ³ximo tema
+// FunÃƒÂ§ÃƒÂ£o para obter o prÃƒÂ³ximo tema
 function getNextTheme(currentTheme) {
   const currentIndex = availableThemes.indexOf(currentTheme);
   const nextIndex = (currentIndex + 1) % availableThemes.length;
   return availableThemes[nextIndex];
 }
 
-// FunÃ§Ã£o para aplicar o tema
+// FunÃƒÂ§ÃƒÂ£o para aplicar o tema
 function applyTheme(theme) {
   document.documentElement.classList.remove('light', 'dark', 'azul'); // Remove todos os temas
-  if (theme !== 'light') { // 'light' Ã© o tema padrÃ£o sem classe
+  if (theme !== 'light') { // 'light' ÃƒÂ© o tema padrÃƒÂ£o sem classe
     document.documentElement.classList.add(theme);
   }
   localStorage.setItem('tema', theme);
 }
 
-// --- FunÃ§Ãµes de Utilidade Global ---
+// --- FunÃƒÂ§ÃƒÂµes de Utilidade Global ---
 
 function getCSRFToken() {
   const c = document.cookie.split(';').find(x => x.trim().startsWith('csrftoken='));
@@ -66,7 +66,7 @@ async function fetchWithCreds(url, options = {}, acceptHeader) {
 
   // Adiciona tratamento para 401 Unauthorized
   if (res.status === 401) {
-    notify('error', 'SessÃ£o expirada. FaÃ§a login novamente.');
+    notify('error', 'SessÃƒÂ£o expirada. FaÃƒÂ§a login novamente.');
     window.location.href = `${LOGIN_URL}?next=${encodeURIComponent(window.location.pathname)}`;
     return null; // Retorna null para interromper o fluxo
   }
@@ -80,13 +80,42 @@ function isLikelyLoginHTML(html) {
   return s.includes('id="login-form"') || s.includes('data-page="login"');
 }
 
+function syncMainContentMetadata(container) {
+  const mainContent = document.getElementById('main-content');
+  if (!mainContent || !container || container !== mainContent) return;
+
+  const activeRoot = mainContent.querySelector('[data-page], [data-tela]');
+  if (!activeRoot) {
+    delete mainContent.dataset.page;
+    delete mainContent.dataset.tela;
+    return;
+  }
+
+  const page = activeRoot.dataset.page || '';
+  const tela = activeRoot.dataset.tela || '';
+
+  if (page) {
+    mainContent.dataset.page = page;
+  } else {
+    delete mainContent.dataset.page;
+  }
+
+  if (tela) {
+    mainContent.dataset.tela = tela;
+  } else {
+    delete mainContent.dataset.tela;
+  }
+}
+
 function mostrarMensagem(type, message) {
-    // Mapeia a tag 'error' do Django para a classe 'danger' do Bootstrap para estilizaÃ§Ã£o correta.
     if (type === 'error') {
         type = 'danger';
     }
-    if (!window.Swal) { console.error("SweetAlert2 nÃ£o encontrada."); return; }
-    let container = document.getElementById("toast-container");
+    if (!window.Swal) {
+        console.error('SweetAlert2 nao encontrada.');
+        return;
+    }
+    let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
         container.className = 'toast-container position-fixed top-0 end-0 p-3';
@@ -112,41 +141,36 @@ function mostrarMensagem(type, message) {
 
 function showFlashMessage() {
     const flashMessageData = sessionStorage.getItem('flashMessage');
-    if (flashMessageData) {
-        try {
-            const { type, message } = JSON.parse(flashMessageData);
-            mostrarMensagem(type, message);
-        } catch (e) {
-            console.error('Could not parse flash message:', e);
-        }
-        sessionStorage.removeItem('flashMessage');
+    if (!flashMessageData) return;
+
+    try {
+        const { type, message } = JSON.parse(flashMessageData);
+        mostrarMensagem(type, message);
+    } catch (error) {
+        console.error('Could not parse flash message:', error);
     }
+
+    sessionStorage.removeItem('flashMessage');
 }
 
-function loadNavbar() {
-    fetchWithCreds('/accounts/get-navbar/', { headers: { "X-Requested-With": "XMLHttpRequest" } })
-        .then(response => {
-            if (!response.ok) {
-                console.error(`âŒ Falha ao buscar navbar. Status: ${response.status} ${response.statusText}`);
-                throw new Error('Falha ao buscar navbar');
-            }
-            return response.text();
-        })
-        .then(html => {
-            const navbarContainer = document.getElementById('navbar-container');
-            if (navbarContainer) {
-                navbarContainer.innerHTML = html;
-                initNestedNavbarSubmenus(navbarContainer);
-            } else {
-                // Silencioso em pÃ¡ginas que nÃ£o tÃªm o container, como a de login.
-            }
-        })
-        .catch(error => {
-            console.error('Erro catastrÃ³fico ao carregar o navbar:', error);
-            notify('danger', 'NÃ£o foi possÃ­vel carregar o menu de navegaÃ§Ã£o.');
-        });
-}
+function syncNavbarOffset() {}
 
+function logLayoutDiagnostics() {}
+
+
+function ensureNavbarReady() {
+    const navbarContainer = document.getElementById('navbar-container');
+    if (!navbarContainer) return;
+
+    const navbar = navbarContainer.querySelector('.navbar-superior');
+    if (navbar) {
+        initNestedNavbarSubmenus(navbarContainer);
+        syncNavbarOffset(navbarContainer);
+        return;
+    }
+
+    return;
+}
 function updateButtonStates(mainContent) {
     if (!mainContent) return;
     const identificadorTela = mainContent.querySelector("#identificador-tela");
@@ -231,7 +255,7 @@ async function submitAjaxForm(form) {
   const res = await fetchWithCreds(url, options, accept);
 
   if (res.redirected && /\/accounts\/login\//.test(res.url)) {
-    notify('error', 'SessÃ£o expirada. FaÃ§a login novamente.');
+    notify('error', 'SessÃƒÂ£o expirada. FaÃƒÂ§a login novamente.');
     window.location.href = res.url;
     return null;
   }
@@ -248,20 +272,32 @@ async function submitAjaxForm(form) {
 }
 
 function handleJsonFormResponse(form, data) {
+  if (data.message) notify(data.success ? 'success' : 'error', data.message);
+
   if (data.redirect_url) {
-    window.location.assign(data.redirect_url);
+    const redirectDelayMs = data.message ? 1400 : 0;
+    const forceFullRedirect = form && form.dataset && form.dataset.fullRedirectOnSuccess === '1';
+    setTimeout(() => {
+      if (forceFullRedirect) {
+        window.location.assign(data.redirect_url);
+      } else if (typeof loadAjaxContent === 'function') {
+        loadAjaxContent(data.redirect_url);
+      } else {
+        window.location.assign(data.redirect_url);
+      }
+    }, redirectDelayMs);
     return;
   }
   if (data.html && form.dataset.targetContainer) {
     const container = document.querySelector(form.dataset.targetContainer);
     if (container) {
       container.innerHTML = data.html;
+      syncMainContentMetadata(container);
       document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
         detail: { screen: container.dataset.tela || container.dataset.page || '' }
       }));
     }
   }
-  if (data.message) notify(data.success ? 'success' : 'error', data.message);
   if (data.reload) window.location.reload();
 
   // Dispara um evento global para que mÃ³dulos especÃ­ficos possam reagir Ã  resposta.
@@ -270,11 +306,35 @@ function handleJsonFormResponse(form, data) {
   }));
 }
 
+function extractAjaxFragment(html, targetSelector = '#main-content') {
+  if (!html || typeof html !== 'string') return html;
+
+  const trimmed = html.trimStart();
+  if (!/^<(?:!doctype|html|head|body|meta|title|link|script)\b/i.test(trimmed)) {
+    return html;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  if (targetSelector && targetSelector !== '#main-content') {
+    const target = doc.querySelector(targetSelector);
+    if (target) return target.innerHTML;
+  }
+
+  const main = doc.getElementById('main-content');
+  if (main) return main.innerHTML;
+
+  return doc.body ? doc.body.innerHTML : html;
+}
+
 function handleHtmlFormResponse(form, html) {
   const targetSel = form.dataset.targetContainer || '#main-content';
   const container = document.querySelector(targetSel);
   if (container) {
-    container.innerHTML = html;
+    container.innerHTML = extractAjaxFragment(html, targetSel);
+    executeScriptsInContainer(container);
+    syncMainContentMetadata(container);
     document.dispatchEvent(new CustomEvent('ajaxContentLoaded', {
       detail: { screen: container.dataset.tela || container.dataset.page || '' }
     }));
@@ -285,6 +345,62 @@ function handleHtmlFormResponse(form, html) {
   }
 }
 
+function executeScriptsInContainer(container) {
+  if (!container) return;
+  const scripts = Array.from(container.querySelectorAll('script'));
+  scripts.forEach((oldScript) => {
+    const newScript = document.createElement('script');
+    Array.from(oldScript.attributes).forEach((attr) => {
+      newScript.setAttribute(attr.name, attr.value);
+    });
+    if (oldScript.textContent) {
+      newScript.textContent = oldScript.textContent;
+    }
+    oldScript.replaceWith(newScript);
+  });
+}
+
+
+function closeOpenNavbarDropdowns() {
+  document.querySelectorAll('.navbar-superior .nav-item.dropdown.show .dropdown-toggle').forEach(toggle => {
+    try {
+      const instance = bootstrap.Dropdown.getInstance(toggle) || new bootstrap.Dropdown(toggle);
+      instance.hide();
+    } catch (_) {}
+    toggle.setAttribute('aria-expanded', 'false');
+  });
+
+  document.querySelectorAll('.navbar-superior .dropdown.show').forEach(dropdown => {
+    dropdown.classList.remove('show');
+  });
+
+  document.querySelectorAll('.navbar-superior .dropdown-menu.show').forEach(menu => {
+    menu.classList.remove('show');
+  });
+
+  document.querySelectorAll('.navbar-superior .nested-submenu-collapse.show').forEach(submenu => {
+    try {
+      const instance = bootstrap.Collapse.getInstance(submenu) || new bootstrap.Collapse(submenu, { toggle: false });
+      instance.hide();
+    } catch (_) {}
+    submenu.classList.remove('show');
+  });
+}
+
+
+let currentAjaxNavigationUrl = null;
+
+function resetPageScroll() {
+  try {
+    window.scrollTo(0, 0);
+  } catch (_) {}
+
+  const mainContent = document.getElementById('main-content');
+  if (mainContent) {
+    mainContent.scrollTop = 0;
+  }
+}
+
 function loadAjaxContent(url) {
   const mainContent = document.getElementById("main-content");
   if (!mainContent) {
@@ -292,13 +408,19 @@ function loadAjaxContent(url) {
     return;
   }
 
+  if (currentAjaxNavigationUrl === url) {
+    return;
+  }
+  currentAjaxNavigationUrl = url;
+  closeOpenNavbarDropdowns();
+
   fetchWithCreds(url, {}, 'text/html')
     .then(async (response) => {
       if (response === null) { // Check if fetchWithCreds already handled a redirect (e.g., 401)
         return null;
       }
       if (response.redirected && /\/accounts\/login\//.test(response.url)) {
-        notify('error', 'SessÃ£o expirada. FaÃ§a login novamente.');
+        notify('error', 'SessÃƒÂ£o expirada. FaÃƒÂ§a login novamente.');
         window.location.href = response.url;
         return null;
       }
@@ -311,13 +433,17 @@ function loadAjaxContent(url) {
     })
     .then((html) => {
       if (html == null) return;
-      mainContent.innerHTML = html;
+      mainContent.innerHTML = extractAjaxFragment(html, '#main-content');
+      executeScriptsInContainer(mainContent);
+      syncMainContentMetadata(mainContent);
+      resetPageScroll();
+      closeOpenNavbarDropdowns();
       history.pushState({ ajaxUrl: url }, "", url);
       document.dispatchEvent(new CustomEvent("ajaxContentLoaded", { detail: { url } }));
     })
     .catch(error => {
-      console.error("âŒ Falha ao carregar conteÃºdo via AJAX:", error);
-      notify("danger", "Erro ao carregar a pÃ¡gina.");
+      console.error("Ã¢ÂÅ’ Falha ao carregar conteÃƒÂºdo via AJAX:", error);
+      notify("danger", "Erro ao carregar a pÃƒÂ¡gina.");
     });
 }
 
@@ -327,28 +453,21 @@ document.body.addEventListener('submit', async (e) => {
   const form = e.target.closest('form.ajax-form');
   if (!form || form.dataset.skipGlobal === '1') return;
   
-  console.log('[DEBUG] Interceptado envio de form.ajax-form:', form);
   e.preventDefault();
 
   try {
-    console.log('[DEBUG] Chamando submitAjaxForm...');
     const result = await submitAjaxForm(form);
-    console.log('[DEBUG] Resultado de submitAjaxForm:', result);
 
     if (result == null) {
-      console.log('[DEBUG] Resultado Ã© nulo, encerrando.');
+      console.log('[DEBUG] Resultado ÃƒÂ© nulo, encerrando.');
       return;
     }
 
     const declaredType = (form.dataset.responseType || '').toLowerCase();
     const isJson = declaredType === 'json' || (typeof result === 'object' && result !== null && !result.nodeType);
-    console.log(`[DEBUG] Resposta Ã© JSON? ${isJson}`);
-
     if (isJson) {
-      console.log('[DEBUG] Chamando handleJsonFormResponse...');
       handleJsonFormResponse(form, result);
     } else {
-      console.log('[DEBUG] Chamando handleHtmlFormResponse...');
       handleHtmlFormResponse(form, result);
     }
 
@@ -360,13 +479,13 @@ document.body.addEventListener('submit', async (e) => {
       history.pushState({}, '', `${parsedUrl.pathname}${parsedUrl.search}`);
     }
   } catch (err) {
-    console.error('âŒ [DEBUG] Erro CAPTURADO na submissÃ£o do formulÃ¡rio AJAX:', err);
-    notify('error', 'Falha ao processar a requisiÃ§Ã£o. Verifique o console.');
+    console.error('Ã¢ÂÅ’ [DEBUG] Erro CAPTURADO na submissÃƒÂ£o do formulÃƒÂ¡rio AJAX:', err);
+    notify('error', 'Falha ao processar a requisiÃƒÂ§ÃƒÂ£o. Verifique o console.');
   }
 });
 
 document.body.addEventListener('click', async (e) => {
-  // Handler para paginaÃ§Ã£o/ordenaÃ§Ã£o
+  // Handler para paginaÃƒÂ§ÃƒÂ£o/ordenaÃƒÂ§ÃƒÂ£o
   const ajaxTargetLink = e.target.closest('a[data-ajax-target]');
   if (ajaxTargetLink) {
     e.preventDefault();
@@ -375,30 +494,35 @@ document.body.addEventListener('click', async (e) => {
     if (!container) return;
 
     try {
+      closeOpenNavbarDropdowns();
       const res = await fetchWithCreds(ajaxTargetLink.href, { method: 'GET' }, 'text/html');
       if (res.redirected && /\/accounts\/login\//.test(res.url)) {
         window.location = res.url; return;
       }
       const html = await res.text();
-      container.innerHTML = html;
+      container.innerHTML = extractAjaxFragment(html, targetSel);
+      executeScriptsInContainer(container);
+      resetPageScroll();
+      closeOpenNavbarDropdowns();
       document.dispatchEvent(new CustomEvent('ajaxContentLoaded', { detail: { screen: container.dataset.tela || '' }}));
       history.pushState({}, '', ajaxTargetLink.href);
     } catch (err) {
-      console.error('âŒ AJAX link error:', err);
-      notify('error', 'Falha ao carregar a pÃ¡gina.');
+      console.error('Ã¢ÂÅ’ AJAX link error:', err);
+      notify('error', 'Falha ao carregar a pÃƒÂ¡gina.');
     }
     return;
   }
 
-  // Handler para links AJAX genÃ©ricos
+  // Handler para links AJAX genÃƒÂ©ricos
   const ajaxLink = e.target.closest(".ajax-link");
   if (ajaxLink && !ajaxLink.hasAttribute('data-bs-toggle')) {
       e.preventDefault();
+      closeOpenNavbarDropdowns();
       loadAjaxContent(ajaxLink.href);
       return;
   }
   
-  // Handler para o botÃ£o Editar genÃ©rico
+  // Handler para o botÃƒÂ£o Editar genÃƒÂ©rico
   const btnEditar = e.target.closest('#btn-editar');
   if (btnEditar && !btnEditar.disabled && !btnEditar.hasAttribute('data-bs-toggle')) {
       e.preventDefault();
@@ -409,7 +533,7 @@ document.body.addEventListener('click', async (e) => {
       return;
   }
 
-  // Handler para o botÃ£o Excluir genÃ©rico
+  // Handler para o botÃƒÂ£o Excluir genÃƒÂ©rico
   const btnExcluir = e.target.closest('#btn-excluir');
   if (btnExcluir && !btnExcluir.disabled) {
       e.preventDefault();
@@ -425,13 +549,13 @@ document.body.addEventListener('click', async (e) => {
       const selectedIds = Array.from(mainContent.querySelectorAll(`${seletorCheckbox}:checked`)).map(cb => cb.value);
 
       if (selectedIds.length === 0) {
-          mostrarMensagem('warning', 'Nenhum item selecionado para exclusÃ£o.');
+          mostrarMensagem('warning', 'Nenhum item selecionado para exclusÃƒÂ£o.');
           return;
       }
 
       Swal.fire({
-          title: 'VocÃª tem certeza?',
-          text: `VocÃª estÃ¡ prestes a excluir ${selectedIds.length} ${entidadePlural}. Esta aÃ§Ã£o nÃ£o pode ser desfeita.`,
+          title: 'VocÃƒÂª tem certeza?',
+          text: `VocÃƒÂª estÃƒÂ¡ prestes a excluir ${selectedIds.length} ${entidadePlural}. Esta aÃƒÂ§ÃƒÂ£o nÃƒÂ£o pode ser desfeita.`,
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#d33',
@@ -477,7 +601,7 @@ document.body.addEventListener('click', async (e) => {
                   }
               } catch (error) {
                   console.error('Erro ao excluir:', error);
-                  mostrarMensagem('danger', 'Erro de comunicaÃ§Ã£o com o servidor.');
+                  mostrarMensagem('danger', 'Erro de comunicaÃƒÂ§ÃƒÂ£o com o servidor.');
               }
           }
       });
@@ -511,7 +635,7 @@ document.body.addEventListener('change', function(e) {
     const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
     const filhosCheckboxes = mainContent.querySelectorAll(seletorFilho);
 
-    // LÃ³gica PAI -> FILHO: Se o checkbox mestre for alterado, atualiza todos os filhos.
+    // LÃƒÂ³gica PAI -> FILHO: Se o checkbox mestre for alterado, atualiza todos os filhos.
     if (paiCheckbox && e.target === paiCheckbox) {
         filhosCheckboxes.forEach(filho => {
             filho.checked = paiCheckbox.checked;
@@ -547,7 +671,7 @@ window.addEventListener('popstate', async () => {
 });
 
 
-// --- MÃ³dulos de PÃ¡gina EspecÃ­ficos ---
+// --- MÃƒÂ³dulos de PÃƒÂ¡gina EspecÃƒÂ­ficos ---
 
 function initListaEmpresas() {
   const form = document.getElementById('filtro-empresas');
@@ -571,8 +695,15 @@ function setupAutocomplete(inputId, apiUrl, displayField = 'text', valueField = 
 
   const minLength = Number(options.minLength || 2);
   const queryParam = options.queryParam || 'search';
+  const limit = Number(options.limit || 0);
   const onSelect = typeof options.onSelect === 'function' ? options.onSelect : null;
+  const selectedDisplayField = options.selectedDisplayField || displayField;
+  const hiddenTargetSelector = options.hiddenTargetSelector || null;
+  const hiddenValueField = options.hiddenValueField || valueField;
   let currentDropdown = null;
+  let currentNextUrl = null;
+  let activeSearchToken = 0;
+  let suppressFetchUntil = 0;
 
   const removeDropdown = () => {
     if (currentDropdown) {
@@ -581,10 +712,8 @@ function setupAutocomplete(inputId, apiUrl, displayField = 'text', valueField = 
     }
   };
 
-  const displaySuggestions = (suggestions) => {
-    removeDropdown();
-    if (!Array.isArray(suggestions) || suggestions.length === 0) return;
-
+  const ensureDropdown = () => {
+    if (currentDropdown) return currentDropdown;
     currentDropdown = document.createElement('div');
     currentDropdown.className = 'autocomplete-ncm-list';
     currentDropdown.style.position = 'absolute';
@@ -592,46 +721,155 @@ function setupAutocomplete(inputId, apiUrl, displayField = 'text', valueField = 
     currentDropdown.style.top = 'calc(100% + 4px)';
     currentDropdown.style.left = '0';
     currentDropdown.style.width = '100%';
+    inputElement.parentNode.style.position = 'relative';
+    inputElement.parentNode.appendChild(currentDropdown);
+    return currentDropdown;
+  };
+
+  const renderAutocompleteLabel = (rawValue) => {
+    const value = String(rawValue || '');
+    const escaped = value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    // Permite somente a tag <i> para exibir nomenclatura cientifica de NCM.
+    return escaped
+      .replace(/&lt;i&gt;/gi, '<i>')
+      .replace(/&lt;\/i&gt;/gi, '</i>');
+  };
+
+  const selectSuggestion = (item) => {
+    // Invalida buscas pendentes para evitar reabertura do dropdown apos selecionar.
+    activeSearchToken += 1;
+    suppressFetchUntil = Date.now() + 250;
+    currentNextUrl = null;
+    const chosenValue = item[valueField] || item[displayField] || '';
+    const displayValue = item[selectedDisplayField] || item[displayField] || chosenValue;
+    inputElement.value = displayValue;
+    inputElement.dataset.selectedValue = item.id || chosenValue;
+
+    let hiddenField = null;
+    if (hiddenTargetSelector && !hiddenTargetSelector.includes('{{')) {
+      try {
+        hiddenField = document.querySelector(hiddenTargetSelector);
+      } catch (_) {
+        hiddenField = null;
+      }
+    }
+    if (!hiddenField) {
+      hiddenField = inputElement.parentElement.querySelector('select.d-none, input[type="hidden"]');
+    }
+    const hiddenValue = item[hiddenValueField] || chosenValue;
+    if (hiddenField) {
+      if (hiddenField.tagName === 'SELECT') {
+        let matchingOption = Array.from(hiddenField.options).find(option => option.value === String(hiddenValue));
+        if (!matchingOption) {
+          matchingOption = new Option(displayValue, hiddenValue, true, true);
+          hiddenField.add(matchingOption);
+        }
+        hiddenField.value = hiddenValue;
+      } else {
+        hiddenField.value = hiddenValue;
+      }
+      hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    removeDropdown();
+    inputElement.blur();
+    inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+    if (onSelect) onSelect(item, inputElement);
+  };
+
+  const renderSuggestions = (suggestions, append = false) => {
+    if (!Array.isArray(suggestions)) suggestions = [];
+
+    if (!append) {
+      removeDropdown();
+      if (suggestions.length === 0 && !currentNextUrl) return;
+    } else if (!currentDropdown && suggestions.length === 0) {
+      return;
+    }
+
+    const dropdown = ensureDropdown();
+    if (!append) dropdown.innerHTML = '';
 
     suggestions.forEach(item => {
       const suggestionItem = document.createElement('button');
       suggestionItem.type = 'button';
       suggestionItem.className = 'autocomplete-ncm-item';
-      suggestionItem.textContent = item[displayField] || item.text || item[valueField] || '';
+      suggestionItem.innerHTML = renderAutocompleteLabel(
+        item[displayField] || item.text || item[valueField] || ''
+      );
       suggestionItem.addEventListener('mousedown', (event) => {
         event.preventDefault();
-        const chosenValue = item[valueField] || item[displayField] || '';
-        inputElement.value = chosenValue;
-        inputElement.dataset.selectedValue = item.id || chosenValue;
-        removeDropdown();
-        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-        if (onSelect) onSelect(item, inputElement);
+        selectSuggestion(item);
       });
-      currentDropdown.appendChild(suggestionItem);
+      suggestionItem.addEventListener('click', (event) => {
+        event.preventDefault();
+        selectSuggestion(item);
+      });
+      dropdown.appendChild(suggestionItem);
     });
 
-    inputElement.parentNode.style.position = 'relative';
-    inputElement.parentNode.appendChild(currentDropdown);
+    const existingLoadMore = dropdown.querySelector('.autocomplete-load-more');
+    if (existingLoadMore) existingLoadMore.remove();
+
+    if (currentNextUrl) {
+      const loadMoreButton = document.createElement('button');
+      loadMoreButton.type = 'button';
+      loadMoreButton.className = 'autocomplete-ncm-item autocomplete-load-more';
+      loadMoreButton.textContent = 'Carregar mais';
+      loadMoreButton.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+      });
+      loadMoreButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        await fetchData(inputElement.value, true, currentNextUrl);
+      });
+      dropdown.appendChild(loadMoreButton);
+    } else if (dropdown.children.length === 0) {
+      removeDropdown();
+    }
   };
 
-  const fetchData = async (searchTerm) => {
+  const fetchData = async (searchTerm, append = false, nextUrl = null) => {
     const term = (searchTerm || '').trim();
-    if (term.length < minLength) {
+    if (!append && Date.now() < suppressFetchUntil) {
+      return;
+    }
+    if (!append && term.length < minLength) {
       removeDropdown();
+      currentNextUrl = null;
       return;
     }
 
+    const searchToken = ++activeSearchToken;
+
     try {
-      const url = new URL(apiUrl, window.location.origin);
-      url.searchParams.set(queryParam, term);
+      const url = nextUrl ? new URL(nextUrl, window.location.origin) : new URL(apiUrl, window.location.origin);
+      if (!nextUrl) {
+        url.searchParams.set(queryParam, term);
+        if (limit > 0) {
+          url.searchParams.set('limit', String(limit));
+        }
+      }
+
       const response = await fetchWithCreds(url.toString(), { method: 'GET' }, 'application/json, text/plain, */*');
       if (!response || !response.ok) throw new Error('Erro ao buscar dados da API');
       const data = await response.json();
-      const results = Array.isArray(data) ? data : (Array.isArray(data.results) ? data.results : []);
-      displaySuggestions(results);
+      if (searchToken !== activeSearchToken) return;
+
+      const paginatedResults = Array.isArray(data.results) ? data.results : null;
+      const results = Array.isArray(data) ? data : (paginatedResults || []);
+      currentNextUrl = paginatedResults ? (data.next || null) : null;
+      renderSuggestions(results, append);
     } catch (error) {
       console.error('Erro no autocompletar:', error);
       removeDropdown();
+      currentNextUrl = null;
     }
   };
 
@@ -639,6 +877,7 @@ function setupAutocomplete(inputId, apiUrl, displayField = 'text', valueField = 
 
   inputElement.addEventListener('input', (event) => {
     inputElement.dataset.selectedValue = '';
+    currentNextUrl = null;
     debouncedFetchData(event.target.value);
   });
 
@@ -664,7 +903,11 @@ function initGenericAutocomplete(root = document) {
       input.dataset.autocompleteValueField || 'id',
       {
         minLength: input.dataset.autocompleteMinLength || 2,
+        limit: input.dataset.autocompleteLimit || 0,
         queryParam: input.dataset.autocompleteQueryParam || 'search',
+        selectedDisplayField: input.dataset.autocompleteSelectedDisplayField || input.dataset.autocompleteDisplayField || 'text',
+        hiddenTargetSelector: input.dataset.autocompleteHiddenTarget || null,
+        hiddenValueField: input.dataset.autocompleteHiddenValueField || input.dataset.autocompleteValueField || 'id',
         onSelect: (item, inputElement) => {
           const formSelector = input.dataset.autocompleteSubmitTargetForm;
           const shouldSubmit = input.dataset.autocompleteSubmitOnSelect === 'true';
@@ -677,6 +920,253 @@ function initGenericAutocomplete(root = document) {
       }
     );
   });
+}
+
+function initListaTanques(root = document) {
+  const pageRoot = root.querySelector('#identificador-tela[data-tela="lista_tanques"]');
+  if (!pageRoot) return;
+
+  const searchInput = pageRoot.querySelector('#search-tanques-lista');
+  const clearButton = pageRoot.querySelector('#btn-limpar-tanques-lista');
+  const tableWrapper = pageRoot.querySelector('#tanques-table-wrapper');
+  if (!searchInput || !tableWrapper) return;
+
+  const bindSelectionControls = () => {
+    const selectAllCheckbox = pageRoot.querySelector('#select-all-tanques');
+    const rowCheckboxes = () => Array.from(pageRoot.querySelectorAll('.check-tanque'));
+    const btnEditar = pageRoot.querySelector('#btn-editar');
+    const btnExcluir = pageRoot.querySelector('#btn-excluir');
+
+    const updateStates = () => {
+      const selected = rowCheckboxes().filter(cb => cb.checked);
+      if (btnEditar) btnEditar.disabled = selected.length !== 1;
+      if (btnExcluir) btnExcluir.disabled = selected.length === 0;
+      if (selectAllCheckbox) {
+        const total = rowCheckboxes().length;
+        selectAllCheckbox.checked = total > 0 && selected.length === total;
+        selectAllCheckbox.indeterminate = selected.length > 0 && selected.length < total;
+      }
+    };
+
+    if (selectAllCheckbox && selectAllCheckbox.dataset.bound !== '1') {
+      selectAllCheckbox.dataset.bound = '1';
+      selectAllCheckbox.addEventListener('change', function() {
+        rowCheckboxes().forEach(cb => {
+          cb.checked = this.checked;
+        });
+        updateStates();
+      });
+    }
+
+    rowCheckboxes().forEach(cb => {
+      if (cb.dataset.bound === '1') return;
+      cb.dataset.bound = '1';
+      cb.addEventListener('change', updateStates);
+    });
+
+    updateStates();
+  };
+
+  bindSelectionControls();
+
+  if (pageRoot.dataset.searchInitialized === '1') return;
+  pageRoot.dataset.searchInitialized = '1';
+
+  const restoreFocus = (cursorPosition = null) => {
+    requestAnimationFrame(() => {
+      searchInput.focus({ preventScroll: true });
+      const cursor = Number.isInteger(cursorPosition) ? cursorPosition : searchInput.value.length;
+      searchInput.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const updateTable = debounce(async (value, options = {}) => {
+    const currentUrl = new URL(window.location.href);
+    const normalized = (value || '').trim();
+    const previousCursor = Number.isInteger(options.cursor) ? options.cursor : searchInput.selectionStart;
+    if (normalized) currentUrl.searchParams.set('termo_tanque', normalized);
+    else currentUrl.searchParams.delete('termo_tanque');
+    currentUrl.searchParams.set('partial', '1');
+
+    const response = await fetchWithCreds(`${currentUrl.pathname}${currentUrl.search}`, { method: 'GET' }, 'text/html');
+    if (!response || !response.ok) return;
+
+    const html = await response.text();
+    tableWrapper.innerHTML = html;
+
+    const urlForHistory = new URL(window.location.href);
+    if (normalized) urlForHistory.searchParams.set('termo_tanque', normalized);
+    else urlForHistory.searchParams.delete('termo_tanque');
+    history.replaceState({}, '', `${urlForHistory.pathname}${urlForHistory.search}`);
+
+    bindSelectionControls();
+
+    if (options.keepFocus !== false) {
+      restoreFocus(previousCursor);
+    }
+  }, 350);
+
+  searchInput.addEventListener('input', function() {
+    updateTable(this.value, { keepFocus: true, cursor: this.selectionStart });
+  });
+
+  searchInput.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      updateTable(this.value, { keepFocus: true, cursor: this.selectionStart });
+    }
+    if (event.key === 'Escape') {
+      this.value = '';
+      updateTable('', { keepFocus: true, cursor: 0 });
+    }
+  });
+
+  if (clearButton) {
+    clearButton.addEventListener('click', function() {
+      searchInput.value = '';
+      updateTable('', { keepFocus: true, cursor: 0 });
+    });
+  }
+}
+
+function initFiscalList(root = document) {
+  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"]';
+  const pageRoot = root.querySelector(selector) || document.querySelector(selector);
+  if (!pageRoot || pageRoot.dataset.fiscalListInitialized === '1') return;
+  pageRoot.dataset.fiscalListInitialized = '1';
+
+  const selectAllCheckbox = pageRoot.querySelector('#select-all-checkbox');
+  const btnEditarSelecionado = pageRoot.querySelector('#btn-editar-selecionado');
+  const btnExcluirSelecionados = pageRoot.querySelector('#btn-excluir-selecionados');
+  const searchInput = pageRoot.querySelector('#search-input');
+  const clearButton = pageRoot.querySelector('#btn-limpar-busca');
+  const rowCheckboxes = () => Array.from(pageRoot.querySelectorAll('.row-checkbox'));
+
+  function updateButtonStates() {
+    const checkedCheckboxes = rowCheckboxes().filter(cb => cb.checked);
+    const selectedCount = checkedCheckboxes.length;
+
+    if (btnEditarSelecionado) btnEditarSelecionado.disabled = selectedCount !== 1;
+    if (btnExcluirSelecionados) btnExcluirSelecionados.disabled = selectedCount === 0;
+
+    if (selectAllCheckbox) {
+      const total = rowCheckboxes().length;
+      selectAllCheckbox.checked = total > 0 && selectedCount === total;
+      selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
+    }
+  }
+
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function() {
+      rowCheckboxes().forEach((checkbox) => {
+        checkbox.checked = this.checked;
+      });
+      updateButtonStates();
+    });
+  }
+
+  rowCheckboxes().forEach((checkbox) => {
+    checkbox.addEventListener('change', updateButtonStates);
+  });
+
+  if (btnEditarSelecionado) {
+    btnEditarSelecionado.addEventListener('click', function() {
+      const checkedCheckboxes = rowCheckboxes().filter(cb => cb.checked);
+      if (checkedCheckboxes.length !== 1) return;
+      const id = checkedCheckboxes[0].value;
+      const editUrlBase = btnEditarSelecionado.dataset.editUrlBase || '';
+      if (editUrlBase) {
+        window.location.href = editUrlBase.replace(/0\/$/, `${id}/`);
+      }
+    });
+  }
+
+  if (btnExcluirSelecionados) {
+    btnExcluirSelecionados.addEventListener('click', function() {
+      const ids = rowCheckboxes().filter(cb => cb.checked).map(cb => cb.value);
+      if (ids.length === 0) return;
+
+      Swal.fire({
+        title: 'Tem certeza?',
+        text: `Voce realmente deseja excluir ${ids.length} item(ns)? Esta acao e irreversivel.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const itemType = btnExcluirSelecionados.dataset.itemType || '';
+        const deleteUrl = btnExcluirSelecionados.dataset.deleteUrl || '';
+
+        fetch(deleteUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: JSON.stringify({ ids, item_type: itemType })
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              Swal.fire('Excluido', data.message, 'success').then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire('Erro', data.message || 'Ocorreu um erro ao excluir os itens.', 'error');
+            }
+          })
+          .catch((error) => {
+            console.error('Erro na requisicao de exclusao:', error);
+            Swal.fire('Erro', 'Ocorreu um erro na comunicacao com o servidor.', 'error');
+          });
+      });
+    });
+  }
+
+  if (searchInput) {
+    const runSearch = debounce((value) => {
+      const currentUrl = new URL(window.location.href);
+      const normalized = (value || '').trim();
+      if (normalized) currentUrl.searchParams.set('busca', normalized);
+      else currentUrl.searchParams.delete('busca');
+      currentUrl.searchParams.delete('ordenacao');
+      loadAjaxContent(`${currentUrl.pathname}${currentUrl.search}`);
+    }, 350);
+
+    searchInput.addEventListener('input', function() {
+      runSearch(this.value);
+    });
+
+    searchInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        runSearch(this.value);
+      }
+      if (event.key === 'Escape') {
+        this.value = '';
+        runSearch('');
+      }
+    });
+  }
+
+  if (clearButton) {
+    clearButton.addEventListener('click', function() {
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+      }
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete('busca');
+      currentUrl.searchParams.delete('ordenacao');
+      loadAjaxContent(`${currentUrl.pathname}${currentUrl.search}`);
+    });
+  }
+
+  updateButtonStates();
 }
 
 function initNcmMaintenance() {
@@ -909,7 +1399,7 @@ function initTooltips(root = document) {
 }
 
 function initNestedNavbarSubmenus(root = document) {
-    root.querySelectorAll('.nested-submenu-toggle, .nested-submenu-collapse').forEach(el => {
+    root.querySelectorAll('.nested-submenu-toggle').forEach(el => {
         if (el.dataset.navbarNestedBound === '1') return;
         el.dataset.navbarNestedBound = '1';
         el.addEventListener('click', (event) => {
@@ -935,7 +1425,7 @@ function initListaEventos() {
   form.dataset.debounced = 'true';
 
   const handler = debounce(() => {
-    // O formulÃ¡rio tem a classe 'ajax-form', entÃ£o o manipulador de envio global irÃ¡ capturÃ¡-lo
+    // O formulÃƒÂ¡rio tem a classe 'ajax-form', entÃƒÂ£o o manipulador de envio global irÃƒÂ¡ capturÃƒÂ¡-lo
     form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   }, 400);
 
@@ -946,14 +1436,281 @@ function initListaEventos() {
   });
 }
 
-// --- InicializaÃ§Ã£o ---
+function initListaEmitentes(root = document) {
+  const pageRoot = root.querySelector('[data-page="lista-emitentes"]');
+  if (!pageRoot || pageRoot.dataset.bound === '1') return;
+  pageRoot.dataset.bound = '1';
+
+  const confirmDeleteModal = pageRoot.querySelector('#confirmDeleteModal');
+  const deleteConfirmBtn = pageRoot.querySelector('#delete-confirm-btn');
+  if (!confirmDeleteModal || !deleteConfirmBtn) return;
+
+  confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const deleteUrl = button?.getAttribute('data-delete-url') || '';
+    deleteConfirmBtn.setAttribute('href', deleteUrl);
+  });
+
+  deleteConfirmBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    const deleteUrl = deleteConfirmBtn.getAttribute('href');
+    if (!deleteUrl) return;
+
+    fetch(deleteUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (window.bootstrap && bootstrap.Modal) {
+            const instance = bootstrap.Modal.getInstance(confirmDeleteModal);
+            if (instance) instance.hide();
+          }
+          if (data.redirect_url) {
+            loadAjaxContent(data.redirect_url);
+          }
+        } else {
+          alert(deleteConfirmBtn.dataset.errorMessage || 'Erro ao excluir.');
+        }
+      })
+      .catch(() => {
+        alert(deleteConfirmBtn.dataset.errorMessage || 'Erro ao excluir.');
+      });
+  });
+}
+
+
+function initCriarNfeSaida(root = document) {
+  const pageRoot = root.querySelector('[data-page="criar-nfe-saida"]');
+  if (!pageRoot || pageRoot.dataset.bound === '1') return;
+  pageRoot.dataset.bound = '1';
+
+  if (!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2)) return;
+
+  const selects = pageRoot.querySelectorAll(
+    '#emitente_proprio, #destinatario, #finalidade_emissao, #tipo_operacao, #condicao_pagamento_cadastro, #id_emitente_proprio, #id_destinatario, #id_finalidade_emissao, #id_tipo_operacao, #id_condicao_pagamento_cadastro'
+  );
+  if (!selects.length) return;
+
+  const $allSelects = window.jQuery(selects);
+  const $destinatario = $allSelects.filter('#destinatario, #id_destinatario');
+
+  $allSelects.not($destinatario).select2({
+    theme: 'bootstrap-5'
+  });
+
+  $destinatario.select2({
+    theme: 'bootstrap-5',
+    matcher: function (params, data) {
+      const term = (params.term || '').trim().toLowerCase();
+      if (!term) return data;
+
+      const optionText = (data.text || '').toLowerCase();
+      const searchTokens = (data.element && data.element.dataset && data.element.dataset.search)
+        ? data.element.dataset.search.toLowerCase()
+        : '';
+
+      if (optionText.includes(term) || searchTokens.includes(term)) {
+        return data;
+      }
+
+      return null;
+    }
+  });
+
+  const condicaoSelect = pageRoot.querySelector('#condicao_pagamento_cadastro, #id_condicao_pagamento_cadastro');
+  const parcelasInput = pageRoot.querySelector('#quantidade_parcelas, #id_quantidade_parcelas');
+  const condicaoHiddenInput = pageRoot.querySelector('#condicao_pagamento, #id_condicao_pagamento');
+
+  const syncParcelasFromCondicao = () => {
+    if (!condicaoSelect || !parcelasInput) return;
+    const selectedOption = condicaoSelect.options[condicaoSelect.selectedIndex];
+    if (!selectedOption) return;
+
+    const condicaoSelecionada = String(condicaoSelect.value || '').trim() !== '';
+    const parcelas = parseInt(selectedOption.dataset.parcelas || '0', 10);
+    const descricao = (selectedOption.dataset.descricao || '').trim();
+
+    if (condicaoSelecionada && parcelas > 0) {
+      parcelasInput.value = String(parcelas);
+    }
+
+    if (condicaoHiddenInput && condicaoSelecionada && descricao) {
+      condicaoHiddenInput.value = descricao;
+    } else if (condicaoHiddenInput && !condicaoSelecionada) {
+      condicaoHiddenInput.value = '';
+    }
+
+    parcelasInput.readOnly = condicaoSelecionada;
+    parcelasInput.classList.toggle('bg-light', condicaoSelecionada);
+  };
+
+  if (condicaoSelect) {
+    condicaoSelect.addEventListener('change', syncParcelasFromCondicao);
+    window.jQuery(condicaoSelect).on('select2:select', syncParcelasFromCondicao);
+    syncParcelasFromCondicao();
+  }
+
+  setupAutocomplete(
+    'id_natureza_operacao',
+    '/nota-fiscal/api/buscar-naturezas-operacao/',
+    'text',
+    'valor_gravacao',
+    {
+      minLength: 2,
+      queryParam: 'search',
+      selectedDisplayField: 'text'
+    }
+  );
+}
+
+function initProdutoOrigemMercadoriaSelect(root = document) {
+  if (!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2)) return;
+
+  const pageRoot = root.querySelector('[data-page="cadastrar-produto"], [data-tela="editar_produto"]');
+  if (!pageRoot) return;
+
+  pageRoot.querySelectorAll('select.select2-origem-mercadoria').forEach((select) => {
+    const $select = window.jQuery(select);
+    if ($select.data('select2')) {
+      $select.select2('destroy');
+    }
+    $select.select2({
+      theme: 'bootstrap-5',
+      width: '100%',
+      placeholder: select.dataset.placeholder || 'Selecione',
+      allowClear: true,
+    });
+  });
+}
+function initEmitirNfeList(root = document) {
+  const pageRoot = root.querySelector('[data-page="emitir-nfe-list"]');
+  if (!pageRoot || pageRoot.dataset.bound === '1') return;
+  pageRoot.dataset.bound = '1';
+
+  const url = pageRoot.dataset.emitirUrl || '';
+  const csrfToken = pageRoot.dataset.csrfToken || getCSRFToken();
+  if (!url) return;
+
+  const showLoading = (title) => {
+    Swal.fire({
+      title,
+      text: 'Por favor, aguarde...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+  };
+
+  pageRoot.querySelectorAll('.emit-btn').forEach((button) => {
+    button.addEventListener('click', function () {
+      const notaId = this.dataset.notaId;
+      const notaNumero = this.dataset.notaNumero;
+
+      Swal.fire({
+        title: `Emitir a NF-e No ${notaNumero}?`,
+        text: 'Esta acao enviara a nota para autorizacao. Voce nao podera edita-la apos o envio.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, emitir!',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        showLoading('Enviando nota para a SEFAZ...');
+
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ nota_id: notaId })
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'Enviada!',
+                text: data.message || 'A nota foi enviada para processamento.'
+              });
+              const row = pageRoot.querySelector(`#nota-row-${notaId}`);
+              if (row) {
+                row.style.transition = 'opacity 0.5s ease';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 500);
+              }
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: data.message || 'Ocorreu um erro ao enviar a nota.'
+              });
+            }
+          })
+          .catch((error) => {
+            console.error('Erro na requisicao:', error);
+            Swal.fire({
+              icon: 'error',
+              title: 'Erro de Rede!',
+              text: 'Nao foi possivel se comunicar com o servidor.'
+            });
+          });
+      });
+    });
+  });
+}
+
+// --- InicializaÃƒÂ§ÃƒÂ£o ---
+
+function initSearchAutocompletePolicy(root = document) {
+    const selectors = [
+        'input[type="search"]',
+        'input[id*="search"]',
+        'input[name*="search"]',
+        'input[id*="busca"]',
+        'input[name*="busca"]',
+        'input[placeholder*="Buscar"]',
+        'input[placeholder*="buscar"]',
+        'input[placeholder*="Search"]',
+        'input[placeholder*="search"]',
+        'input[name="termo"]'
+    ];
+
+    root.querySelectorAll(selectors.join(',')).forEach((input) => {
+        if (input.dataset.autocompletePolicyApplied === '1') return;
+        input.dataset.autocompletePolicyApplied = '1';
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('spellcheck', 'false');
+
+        if (input.form && input.form.dataset.autocompletePolicyApplied !== '1') {
+            input.form.dataset.autocompletePolicyApplied = '1';
+            input.form.setAttribute('autocomplete', 'off');
+        }
+    });
+}
+
+function releaseBootingState() {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.documentElement.classList.remove('booting');
+        });
+    });
+}
 
 function runInitializers() {
     showFlashMessage();
-    // LÃ³gica global que roda em todas as cargas de pÃ¡gina/ajax
-    if (document.getElementById('navbar-container')) {
-        loadNavbar();
-    }
+    // LÃƒÂ³gica global que roda em todas as cargas de pÃƒÂ¡gina/ajax
     const mainContent = document.getElementById("main-content");
     if (mainContent && typeof updateButtonStates === 'function') {
         updateButtonStates(mainContent);
@@ -961,10 +1718,13 @@ function runInitializers() {
     initTooltips(document);
     initMigrationTenantSelect(document);
     initNestedNavbarSubmenus(document);
+    initSearchAutocompletePolicy(document);
     initGenericAutocomplete(document);
     initNcmMaintenance();
+    initFiscalList(document);
+    initProdutoOrigemMercadoriaSelect(document);
 
-    // MÃ³dulos especÃ­ficos de pÃ¡gina
+    // MÃƒÂ³dulos especÃƒÂ­ficos de pÃƒÂ¡gina
     const initializers = [
         initListaEmpresas,
         initListaEventos,
@@ -1010,8 +1770,8 @@ function runInitializers() {
             }
         },
         () => {
-            // A inicializaÃ§Ã£o de PovoamentoLotes foi movida para o prÃ³prio arquivo (povoamento_lotes.js)
-            // para garantir a execuÃ§Ã£o correta e eliminar condiÃ§Ãµes de corrida.
+            // A inicializaÃƒÂ§ÃƒÂ£o de PovoamentoLotes foi movida para o prÃƒÂ³prio arquivo (povoamento_lotes.js)
+            // para garantir a execuÃƒÂ§ÃƒÂ£o correta e eliminar condiÃƒÂ§ÃƒÂµes de corrida.
         },
         () => {
             const empresaModule = window.OneTech && window.OneTech.EmpresaForm;
@@ -1041,10 +1801,28 @@ function runInitializers() {
             }
         },
         () => {
+            if (window.OneTech && window.OneTech.ComercialCondicaoPagamento) {
+                const root = document.querySelector(OneTech.ComercialCondicaoPagamento.SELECTOR_ROOT);
+                if (root) OneTech.ComercialCondicaoPagamento.init(root);
+            }
+        },
+        () => {
             if (window.OneTech && window.OneTech.ReprocessarLotes) {
                 const root = document.querySelector(window.OneTech.ReprocessarLotes.SELECTOR_ROOT);
                 if (root) window.OneTech.ReprocessarLotes.init(root);
             }
+        },
+        () => {
+            initListaTanques(document);
+        },
+        () => {
+            initListaEmitentes(document);
+        },
+        () => {
+            initEmitirNfeList(document);
+        },
+        () => {
+            initCriarNfeSaida(document);
         }
     ];
     initializers.forEach(init => {
@@ -1055,14 +1833,45 @@ function runInitializers() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("âœ… DOM completamente carregado. Iniciando scripts.");
+    releaseBootingState();
     runInitializers();
 });
 
-document.addEventListener("ajaxContentLoaded", (event) => {
-    console.log("âœ… ConteÃºdo AJAX carregado. Re-inicializando scripts.");
+document.addEventListener("ajaxContentLoaded", () => {
     runInitializers();
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

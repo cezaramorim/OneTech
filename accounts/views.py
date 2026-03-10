@@ -70,31 +70,36 @@ def login_view(request):
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': error})
 
-    # ?? Exibição do formulário
+    # ?? Exibicao do formulario
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    template = 'partials/accounts/login.html' if is_ajax else 'accounts/login_full.html'
-    return render(request, template, {'error': error})
+    if is_ajax:
+        return render(request, 'partials/accounts/login.html', {
+            'error': error,
+            'data_page': 'login',
+            'data_tela': 'login',
+        })
+
+    return render(request, 'base.html', {
+        'error': error,
+        'content_template': 'partials/accounts/login.html',
+        'data_page': 'login',
+        'data_tela': 'login',
+    })
 
 
 
 @login_required_json
 def logout_view(request):
-    # A verificação do método é importante para segurança
-    if request.method == 'POST':
-        logout(request)
-        
-        # Se for uma requisição AJAX, retorna uma resposta JSON
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'redirect_url': reverse('accounts:login')
-            })
-            
-        # Para requisições normais, redireciona como antes
-        return redirect('accounts:login')
+    logout(request)
 
-    # Se não for POST, apenas redireciona para a página de login
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'redirect_url': reverse('accounts:login')
+        })
+
     return redirect('accounts:login')
+
 
 @login_required_json
 def edit_profile_view(request):
