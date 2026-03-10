@@ -105,6 +105,7 @@ MENU_ITEMS = [
             {'name': 'Naturezas de Operação', 'url_name': 'fiscal:natureza_operacao_list', 'required_perms': ['fiscal.view_naturezaoperacao']},
             {'name': 'Classificacao Fiscal', 'url_name': 'produto:manutencao_ncm', 'required_perms': ['produto.view_ncm']},
             {'name': 'Importar Dados Fiscais', 'url_name': 'fiscal:import_fiscal_data', 'required_perms': ['fiscal.add_cfop']},
+            {'name': 'Regras ICMS (NCM)', 'url_name': 'fiscal_regras:regra_icms_list', 'required_perms': ['fiscal_regras.view_regraaliquotaicms']},
             {
                 'name': 'Configurações Fiscais',
                 'icon': '⚙️',
@@ -124,3 +125,4 @@ MENU_ITEMS = [
         ]
     },
 ]
+

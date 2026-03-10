@@ -1,0 +1,8 @@
+.fiscal-regras-card .table td,
+.fiscal-regras-card .table th {
+  vertical-align: middle;
+}
+
+.fiscal-regras-card .badge {
+  font-size: 0.75rem;
+}

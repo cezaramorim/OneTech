@@ -1,0 +1,40 @@
+[
+  {
+    "descricao": "TEMPLATE - NCM 23099010 - interna",
+    "ncm_prefixo": "23099010",
+    "tipo_operacao": "1",
+    "modalidade": "interna",
+    "uf_origem": null,
+    "uf_destino": null,
+    "origem_mercadoria": null,
+    "cst_icms_id": null,
+    "csosn_icms_id": null,
+    "aliquota_icms": 0.0,
+    "fcp": 0.0,
+    "reducao_base_icms": 0.0,
+    "prioridade": 10,
+    "vigencia_inicio": "2026-03-10",
+    "vigencia_fim": null,
+    "observacoes": "Template gerado automaticamente. Preencher aliquotas e UFs antes de uso em producao.",
+    "ativo": true
+  },
+  {
+    "descricao": "TEMPLATE - NCM 23099010 - interestadual",
+    "ncm_prefixo": "23099010",
+    "tipo_operacao": "1",
+    "modalidade": "interestadual",
+    "uf_origem": null,
+    "uf_destino": null,
+    "origem_mercadoria": null,
+    "cst_icms_id": null,
+    "csosn_icms_id": null,
+    "aliquota_icms": 0.0,
+    "fcp": 0.0,
+    "reducao_base_icms": 0.0,
+    "prioridade": 10,
+    "vigencia_inicio": "2026-03-10",
+    "vigencia_fim": null,
+    "observacoes": "Template gerado automaticamente. Preencher aliquotas e UFs antes de uso em producao.",
+    "ativo": true
+  }
+]

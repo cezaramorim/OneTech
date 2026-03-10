@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'integracao_nfe',
     'producao',
     'comercial',
+    'fiscal_regras',
 ]
 
 TENANT_APPS = (
@@ -73,6 +74,7 @@ TENANT_APPS = (
     'painel',
     'integracao_nfe',
     'comercial',
+    'fiscal_regras',
 )
 
 REST_FRAMEWORK = {
@@ -229,3 +231,4 @@ LOGGING = {
 # Roteador Multi-Tenant
 # =======================
 DATABASE_ROUTERS = ['control.db_router.TenantRouter']
+

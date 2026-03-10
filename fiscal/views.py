@@ -5,7 +5,7 @@ import openpyxl
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -97,8 +97,22 @@ def cfop_list(request):
             | Q(categoria__icontains=termo_busca)
         )
 
+        # Prioriza resultados mais relevantes para o termo informado.
+        # Ordem: codigo exato, codigo iniciando pelo termo, descricao iniciando,
+        # categoria iniciando e, por fim, qualquer ocorrencia no meio do texto.
+        cfops = cfops.annotate(
+            busca_rank=Case(
+                When(codigo__iexact=termo_busca, then=Value(0)),
+                When(codigo__istartswith=termo_busca, then=Value(1)),
+                When(descricao__istartswith=termo_busca, then=Value(2)),
+                When(categoria__istartswith=termo_busca, then=Value(3)),
+                default=Value(9),
+                output_field=IntegerField(),
+            )
+        )
+
     context = {
-        'cfops': cfops.order_by(ordenacao),
+        'cfops': cfops.order_by('busca_rank', ordenacao, 'codigo') if termo_busca else cfops.order_by(ordenacao),
         'ordenacao_atual': ordenacao,
         'termo_busca': termo_busca,
         'content_template': 'partials/fiscal/cfop_list.html',
@@ -383,3 +397,151 @@ def delete_fiscal_items(request):
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir itens fiscais: {exc}')
         return JsonResponse({'success': False, 'message': message}, status=500)
+
+# --- Overrides para fluxo ICMS Origem x Destino na Central Fiscal ---
+
+FISCAL_LABELS['icms_origem_destino'] = 'ICMS Origem x Destino'
+
+
+def _ensure_any_fiscal_import_permission(user):
+    if (
+        user.has_perm('fiscal.add_cfop')
+        or user.has_perm('fiscal.add_naturezaoperacao')
+        or user.has_perm('fiscal_regras.add_regraaliquotaicms')
+    ):
+        return
+    raise PermissionDenied
+
+
+def _ensure_import_permission_for_type(user, import_type):
+    if import_type == 'cfop' and user.has_perm('fiscal.add_cfop'):
+        return
+    if import_type == 'natureza_operacao' and user.has_perm('fiscal.add_naturezaoperacao'):
+        return
+    if import_type == 'icms_origem_destino' and user.has_perm('fiscal_regras.add_regraaliquotaicms'):
+        return
+    raise PermissionDenied
+
+
+def _build_import_context(user, form=None):
+    return {
+        'form': form or UploadExcelForm(),
+        'content_template': 'partials/fiscal/import_fiscal_data.html',
+        'data_page': 'import_fiscal_data',
+        'title': 'Importar Dados Fiscais (Excel)',
+        'back_url': _get_fiscal_import_back_url(user),
+        'cfop_local_summary': summarize_local_data('cfop'),
+        'natureza_local_summary': summarize_local_data('natureza_operacao'),
+        'icms_matriz_local_summary': summarize_local_data('icms_origem_destino'),
+        'cfop_source_path': r'OneTech\fiscal\cfops.xlsx',
+        'natureza_source_path': 'OneTech\\fiscal\\natureza_operacao.xlsx',
+        'icms_matriz_source_path': 'OneTech\\fiscal\\icms_origem_destino.xlsx',
+    }
+
+
+@login_required
+@require_POST
+def import_fiscal_local_view(request):
+    app_messages = get_app_messages(request)
+    import_type = request.POST.get('import_type', '').strip()
+    _ensure_import_permission_for_type(request.user, import_type)
+
+    try:
+        result = import_local_data_to_db(import_type)
+        if import_type == 'icms_origem_destino':
+            app_messages.success_process(
+                f"{result['count']} regra(s) de ICMS geradas/atualizadas em fiscal_regras a partir da matriz local "
+                f"({result.get('linhas_matriz', 0)} linha(s) x {result.get('ncm_count', 0)} NCM(s))."
+            )
+        else:
+            app_messages.success_process(
+                f"{result['count']} registro(s) de {FISCAL_LABELS[import_type]} importados/atualizados a partir da base local."
+            )
+    except FileNotFoundError:
+        app_messages.error(f"Arquivo local de {FISCAL_LABELS.get(import_type, import_type)} nao encontrado.")
+    except ValueError as exc:
+        app_messages.error(str(exc))
+    except Exception as exc:
+        app_messages.error(f'Erro ao importar base local: {exc}')
+
+    return redirect('fiscal:import_fiscal_data')
+
+
+@login_required
+@require_POST
+def consolidar_fiscal_view(request):
+    app_messages = get_app_messages(request)
+    import_type = request.POST.get('import_type', '').strip()
+    apply_changes = request.POST.get('apply') == '1'
+
+    if import_type == 'cfop':
+        required_perm = 'fiscal.delete_cfop'
+    elif import_type == 'natureza_operacao':
+        required_perm = 'fiscal.delete_naturezaoperacao'
+    else:
+        app_messages.warning('Consolidacao nao se aplica para ICMS Origem x Destino.')
+        return redirect('fiscal:import_fiscal_data')
+
+    if not request.user.has_perm(required_perm):
+        raise PermissionDenied
+
+    try:
+        summary = consolidate_duplicates(import_type) if apply_changes else inspect_duplicates(import_type)
+        if summary['group_count'] == 0:
+            app_messages.success_process(f"Nenhuma duplicidade de {FISCAL_LABELS[import_type]} encontrada.")
+        elif apply_changes:
+            app_messages.success_process(
+                f"Consolidacao concluida para {FISCAL_LABELS[import_type]}. {summary['group_count']} grupo(s) tratados."
+            )
+        else:
+            app_messages.warning(
+                f"{summary['group_count']} grupo(s) com duplicidade detectado(s) em {FISCAL_LABELS[import_type]}."
+            )
+    except ValueError as exc:
+        app_messages.error(str(exc))
+    except Exception as exc:
+        app_messages.error(f'Erro ao consolidar dados fiscais: {exc}')
+
+    return redirect('fiscal:import_fiscal_data')
+
+
+@login_required
+def download_fiscal_template_view(request):
+    app_messages = get_app_messages(request)
+    import_type = request.GET.get('type')
+    _ensure_any_fiscal_import_permission(request.user)
+
+    if import_type == 'cfop':
+        _ensure_import_permission_for_type(request.user, import_type)
+        headers = ['codigo', 'descricao', 'categoria']
+        filename = 'template_cfop.xlsx'
+    elif import_type == 'natureza_operacao':
+        _ensure_import_permission_for_type(request.user, import_type)
+        headers = ['codigo', 'descricao', 'observacoes']
+        filename = 'template_natureza_operacao.xlsx'
+    elif import_type == 'icms_origem_destino':
+        _ensure_import_permission_for_type(request.user, import_type)
+        headers = [
+            'uf_origem', 'uf_destino', 'aliquota_icms', 'fcp', 'reducao_base_icms',
+            'modalidade', 'tipo_operacao', 'origem_mercadoria', 'vigencia_inicio',
+            'vigencia_fim', 'prioridade', 'ativo', 'descricao'
+        ]
+        filename = 'template_icms_origem_destino.xlsx'
+    else:
+        app_messages.error('Tipo de template invalido.')
+        return redirect('fiscal:import_fiscal_data')
+
+    output = io.BytesIO()
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = 'Dados Fiscais'
+    sheet.append(headers)
+    workbook.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    return response

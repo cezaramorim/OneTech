@@ -389,6 +389,7 @@ function closeOpenNavbarDropdowns() {
 
 
 let currentAjaxNavigationUrl = null;
+let ajaxNavigationSeq = 0;
 
 function resetPageScroll() {
   try {
@@ -403,6 +404,7 @@ function resetPageScroll() {
 
 function loadAjaxContent(url) {
   const mainContent = document.getElementById("main-content");
+  const requestSeq = ++ajaxNavigationSeq;
   if (!mainContent) {
     window.location.href = url;
     return;
@@ -433,6 +435,7 @@ function loadAjaxContent(url) {
     })
     .then((html) => {
       if (html == null) return;
+      if (requestSeq !== ajaxNavigationSeq) return;
       mainContent.innerHTML = extractAjaxFragment(html, '#main-content');
       executeScriptsInContainer(mainContent);
       syncMainContentMetadata(mainContent);
@@ -678,13 +681,29 @@ function initListaEmpresas() {
   if (!form || form.dataset.debounced === 'true') return;
   form.dataset.debounced = 'true';
 
-  const handler = debounce(() => {
+  const clearButton = form.querySelector('#btn-limpar-empresas');
+
+  const submitFilter = () => {
     form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-  }, 400);
+  };
+
+  const handler = debounce(submitFilter, 400);
 
   form.addEventListener('input', (e) => {
     if (e.target.matches('input, select, textarea')) handler();
   });
+
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      form.querySelectorAll('input[type="text"], input[type="search"], input:not([type])').forEach((input) => {
+        input.value = '';
+      });
+      form.querySelectorAll('select').forEach((select) => {
+        select.selectedIndex = 0;
+      });
+      submitFilter();
+    });
+  }
 }
 
 
@@ -1030,146 +1049,153 @@ function initListaTanques(root = document) {
 }
 
 function initFiscalList(root = document) {
-  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"]';
+  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"], [data-page="regra_icms_list"]';
   const pageRoot = root.querySelector(selector) || document.querySelector(selector);
-  if (!pageRoot || pageRoot.dataset.fiscalListInitialized === '1') return;
-  pageRoot.dataset.fiscalListInitialized = '1';
+  if (!pageRoot) return;
 
+  const rowCheckboxes = Array.from(pageRoot.querySelectorAll('.row-checkbox'));
   const selectAllCheckbox = pageRoot.querySelector('#select-all-checkbox');
   const btnEditarSelecionado = pageRoot.querySelector('#btn-editar-selecionado');
   const btnExcluirSelecionados = pageRoot.querySelector('#btn-excluir-selecionados');
-  const searchInput = pageRoot.querySelector('#search-input');
-  const clearButton = pageRoot.querySelector('#btn-limpar-busca');
-  const rowCheckboxes = () => Array.from(pageRoot.querySelectorAll('.row-checkbox'));
 
-  function updateButtonStates() {
-    const checkedCheckboxes = rowCheckboxes().filter(cb => cb.checked);
-    const selectedCount = checkedCheckboxes.length;
-
-    if (btnEditarSelecionado) btnEditarSelecionado.disabled = selectedCount !== 1;
-    if (btnExcluirSelecionados) btnExcluirSelecionados.disabled = selectedCount === 0;
-
-    if (selectAllCheckbox) {
-      const total = rowCheckboxes().length;
-      selectAllCheckbox.checked = total > 0 && selectedCount === total;
-      selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
-    }
-  }
-
+  const selectedCount = rowCheckboxes.filter(cb => cb.checked).length;
+  if (btnEditarSelecionado) btnEditarSelecionado.disabled = selectedCount !== 1;
+  if (btnExcluirSelecionados) btnExcluirSelecionados.disabled = selectedCount === 0;
   if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', function() {
-      rowCheckboxes().forEach((checkbox) => {
-        checkbox.checked = this.checked;
-      });
-      updateButtonStates();
-    });
+    const total = rowCheckboxes.length;
+    selectAllCheckbox.checked = total > 0 && selectedCount === total;
+    selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
   }
+}
 
-  rowCheckboxes().forEach((checkbox) => {
-    checkbox.addEventListener('change', updateButtonStates);
+let fiscalListDelegationBound = false;
+function initFiscalListDelegation() {
+  if (fiscalListDelegationBound) return;
+  fiscalListDelegationBound = true;
+
+  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"], [data-page="regra_icms_list"]';
+  const debounceTimers = new WeakMap();
+
+  const getPageRoot = (el) => (el && el.closest) ? el.closest(selector) : null;
+
+  const buildListUrl = (pageRoot, value) => {
+    const base = pageRoot.dataset.listUrl || window.location.pathname;
+    const url = new URL(base, window.location.origin);
+    const normalized = String(value || '').trim();
+    if (normalized) url.searchParams.set('busca', normalized);
+    else url.searchParams.delete('busca');
+    url.searchParams.delete('ordenacao');
+    return `${url.pathname}${url.search}`;
+  };
+
+  const updateState = (pageRoot) => {
+    if (!pageRoot) return;
+    const rows = Array.from(pageRoot.querySelectorAll('.row-checkbox'));
+    const selected = rows.filter(cb => cb.checked).length;
+    const btnEdit = pageRoot.querySelector('#btn-editar-selecionado');
+    const btnDelete = pageRoot.querySelector('#btn-excluir-selecionados');
+    const selectAll = pageRoot.querySelector('#select-all-checkbox');
+
+    if (btnEdit) btnEdit.disabled = selected !== 1;
+    if (btnDelete) btnDelete.disabled = selected === 0;
+    if (selectAll) {
+      const total = rows.length;
+      selectAll.checked = total > 0 && selected === total;
+      selectAll.indeterminate = selected > 0 && selected < total;
+    }
+  };
+
+  const runSearch = (pageRoot, value, immediate = false) => {
+    const existing = debounceTimers.get(pageRoot);
+    if (existing) {
+      clearTimeout(existing);
+      debounceTimers.delete(pageRoot);
+    }
+
+    const exec = () => {
+      const url = buildListUrl(pageRoot, value);
+      loadAjaxContent(url);
+    };
+
+    if (immediate) {
+      exec();
+      return;
+    }
+
+    const t = setTimeout(exec, 350);
+    debounceTimers.set(pageRoot, t);
+  };
+
+  document.body.addEventListener('input', (event) => {
+    if (!event.target.matches || !event.target.matches('#search-input')) return;
+    const pageRoot = getPageRoot(event.target);
+    if (!pageRoot) return;
+    runSearch(pageRoot, event.target.value, false);
   });
 
-  if (btnEditarSelecionado) {
-    btnEditarSelecionado.addEventListener('click', function() {
-      const checkedCheckboxes = rowCheckboxes().filter(cb => cb.checked);
-      if (checkedCheckboxes.length !== 1) return;
-      const id = checkedCheckboxes[0].value;
-      const editUrlBase = btnEditarSelecionado.dataset.editUrlBase || '';
-      if (editUrlBase) {
-        window.location.href = editUrlBase.replace(/0\/$/, `${id}/`);
+  document.body.addEventListener('keydown', (event) => {
+    if (!event.target.matches || !event.target.matches('#search-input')) return;
+    const pageRoot = getPageRoot(event.target);
+    if (!pageRoot) return;
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runSearch(pageRoot, event.target.value, true);
+    } else if (event.key === 'Escape') {
+      event.target.value = '';
+      runSearch(pageRoot, '', true);
+    }
+  });
+
+  document.body.addEventListener('click', (event) => {
+    const clearBtn = event.target.closest ? event.target.closest('#btn-limpar-busca') : null;
+    if (clearBtn) {
+      const pageRoot = getPageRoot(clearBtn);
+      if (!pageRoot) return;
+      const search = pageRoot.querySelector('#search-input');
+      if (search) {
+        search.value = '';
+        search.focus();
       }
-    });
-  }
+      runSearch(pageRoot, '', true);
+      return;
+    }
 
-  if (btnExcluirSelecionados) {
-    btnExcluirSelecionados.addEventListener('click', function() {
-      const ids = rowCheckboxes().filter(cb => cb.checked).map(cb => cb.value);
-      if (ids.length === 0) return;
+    const editBtn = event.target.closest ? event.target.closest('#btn-editar-selecionado') : null;
+    if (editBtn) {
+      const pageRoot = getPageRoot(editBtn);
+      if (!pageRoot || editBtn.disabled) return;
+      const checked = Array.from(pageRoot.querySelectorAll('.row-checkbox')).filter(cb => cb.checked);
+      if (checked.length !== 1) return;
+      const editUrlBase = editBtn.dataset.editUrlBase || '';
+      if (!editUrlBase) return;
+      const editUrl = editUrlBase.replace(/0\/?$/, `${checked[0].value}/`);
+      loadAjaxContent(editUrl);
+      return;
+    }
+  });
 
-      Swal.fire({
-        title: 'Tem certeza?',
-        text: `Voce realmente deseja excluir ${ids.length} item(ns)? Esta acao e irreversivel.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sim, excluir',
-        cancelButtonText: 'Cancelar'
-      }).then((result) => {
-        if (!result.isConfirmed) return;
+  document.body.addEventListener('change', (event) => {
+    const pageRoot = getPageRoot(event.target);
+    if (!pageRoot) return;
 
-        const itemType = btnExcluirSelecionados.dataset.itemType || '';
-        const deleteUrl = btnExcluirSelecionados.dataset.deleteUrl || '';
-
-        fetch(deleteUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-          },
-          body: JSON.stringify({ ids, item_type: itemType })
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              Swal.fire('Excluido', data.message, 'success').then(() => {
-                location.reload();
-              });
-            } else {
-              Swal.fire('Erro', data.message || 'Ocorreu um erro ao excluir os itens.', 'error');
-            }
-          })
-          .catch((error) => {
-            console.error('Erro na requisicao de exclusao:', error);
-            Swal.fire('Erro', 'Ocorreu um erro na comunicacao com o servidor.', 'error');
-          });
+    if (event.target.matches && event.target.matches('#select-all-checkbox')) {
+      const rows = Array.from(pageRoot.querySelectorAll('.row-checkbox'));
+      rows.forEach((cb) => {
+        cb.checked = event.target.checked;
       });
-    });
-  }
+      updateState(pageRoot);
+      return;
+    }
 
-  if (searchInput) {
-    const runSearch = debounce((value) => {
-      const currentUrl = new URL(window.location.href);
-      const normalized = (value || '').trim();
-      if (normalized) currentUrl.searchParams.set('busca', normalized);
-      else currentUrl.searchParams.delete('busca');
-      currentUrl.searchParams.delete('ordenacao');
-      loadAjaxContent(`${currentUrl.pathname}${currentUrl.search}`);
-    }, 350);
-
-    searchInput.addEventListener('input', function() {
-      runSearch(this.value);
-    });
-
-    searchInput.addEventListener('keydown', function(event) {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        runSearch(this.value);
-      }
-      if (event.key === 'Escape') {
-        this.value = '';
-        runSearch('');
-      }
-    });
-  }
-
-  if (clearButton) {
-    clearButton.addEventListener('click', function() {
-      if (searchInput) {
-        searchInput.value = '';
-        searchInput.focus();
-      }
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.delete('busca');
-      currentUrl.searchParams.delete('ordenacao');
-      loadAjaxContent(`${currentUrl.pathname}${currentUrl.search}`);
-    });
-  }
-
-  updateButtonStates();
+    if (event.target.matches && event.target.matches('.row-checkbox')) {
+      updateState(pageRoot);
+    }
+  });
 }
 
 function initNcmMaintenance() {
+
   const form = document.getElementById('ncm-search-form');
   if (!form || form.dataset.debounced === 'true') return;
   form.dataset.debounced = 'true';
@@ -1721,6 +1747,7 @@ function runInitializers() {
     initSearchAutocompletePolicy(document);
     initGenericAutocomplete(document);
     initNcmMaintenance();
+    initFiscalListDelegation();
     initFiscalList(document);
     initProdutoOrigemMercadoriaSelect(document);
 

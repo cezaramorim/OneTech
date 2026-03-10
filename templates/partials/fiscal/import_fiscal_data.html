@@ -6,25 +6,34 @@
           <h2 class="h4 mb-0 text-primary"><i class="bi bi-journal-text me-2"></i>Central Fiscal</h2>
         </div>
         <div class="card-body">
-            <p class="text-muted text-center">Use os arquivos-base de refer&ecirc;ncia abaixo para futuras importa&ccedil;&otilde;es, atualize-os se necess&aacute;rio e depois execute novamente a importa&ccedil;&atilde;o pela central.</p>
+            <p class="text-muted text-center">Use os arquivos-base de referencia abaixo para futuras importacoes, atualize-os se necessario e depois execute novamente a importacao pela central.</p>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="border rounded p-3 h-100">
                         <div class="small text-muted">BASE LOCAL CFOP</div>
                         <div><strong>{{ cfop_local_summary.item_count }}</strong> registro(s)</div>
                         <div class="small text-muted">Fonte: {{ cfop_local_summary.source|default:'-' }}</div>
                         <div class="small text-muted">Atualizado em: {{ cfop_local_summary.updated_at|default:'-' }}</div>
-                        <div class="small text-muted mt-2">Arquivo-base de refer&ecirc;ncia: {{ cfop_source_path }}</div>
+                        <div class="small text-muted mt-2">Arquivo-base de referencia: {{ cfop_source_path }}</div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="border rounded p-3 h-100">
-                        <div class="small text-muted">BASE LOCAL NATUREZA DE OPERA&Ccedil;&atilde;O</div>
+                        <div class="small text-muted">BASE LOCAL NATUREZA DE OPERACAO</div>
                         <div><strong>{{ natureza_local_summary.item_count }}</strong> registro(s)</div>
                         <div class="small text-muted">Fonte: {{ natureza_local_summary.source|default:'-' }}</div>
                         <div class="small text-muted">Atualizado em: {{ natureza_local_summary.updated_at|default:'-' }}</div>
-                        <div class="small text-muted mt-2">Arquivo-base de refer&ecirc;ncia: {{ natureza_source_path }}</div>
+                        <div class="small text-muted mt-2">Arquivo-base de referencia: {{ natureza_source_path }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">BASE LOCAL ICMS ORIGEM X DESTINO</div>
+                        <div><strong>{{ icms_matriz_local_summary.item_count }}</strong> registro(s)</div>
+                        <div class="small text-muted">Fonte: {{ icms_matriz_local_summary.source|default:'-' }}</div>
+                        <div class="small text-muted">Atualizado em: {{ icms_matriz_local_summary.updated_at|default:'-' }}</div>
+                        <div class="small text-muted mt-2">Arquivo-base de referencia: {{ icms_matriz_source_path }}</div>
                     </div>
                 </div>
             </div>
@@ -33,7 +42,7 @@
                 <div class="col-lg-6">
                     <div class="border rounded p-3 h-100">
                         <h4 class="mb-3">1. Atualizar Base Local</h4>
-                        <p class="text-muted small">Se precisar atualizar a base de refer&ecirc;ncia, use os arquivos indicados acima e depois envie a planilha correspondente nesta etapa.</p>
+                        <p class="text-muted small">Use esta etapa para enviar a planilha de CFOP, Natureza de Operacao ou matriz de ICMS Origem x Destino.</p>
                         <form method="post" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="mb-3">
@@ -41,7 +50,8 @@
                                 <select class="form-select" id="import_type" name="import_type" required>
                                     <option value="">Selecione...</option>
                                     {% if perms.fiscal.add_cfop %}<option value="cfop">CFOPs</option>{% endif %}
-                                    {% if perms.fiscal.add_naturezaoperacao %}<option value="natureza_operacao">Naturezas de Opera&ccedil;&atilde;o</option>{% endif %}
+                                    {% if perms.fiscal.add_naturezaoperacao %}<option value="natureza_operacao">Naturezas de Operacao</option>{% endif %}
+                                    {% if perms.fiscal_regras.add_regraaliquotaicms %}<option value="icms_origem_destino">ICMS Origem x Destino</option>{% endif %}
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -58,8 +68,8 @@
 
                 <div class="col-lg-6">
                     <div class="border rounded p-3 h-100">
-                        <h4 class="mb-3">2. Opera&ccedil;&otilde;es Sobre a Base Local</h4>
-                        <p class="text-muted small">Depois de atualizar a base local, importe para o banco e use a consolida&ccedil;&atilde;o apenas quando houver necessidade de saneamento.</p>
+                        <h4 class="mb-3">2. Operacoes Sobre a Base Local</h4>
+                        <p class="text-muted small">Depois de atualizar a base local, importe para o banco e use consolidacao apenas quando houver necessidade de saneamento.</p>
 
                         <div class="d-grid gap-3">
                             {% if perms.fiscal.add_cfop %}
@@ -81,13 +91,26 @@
                                 {% if perms.fiscal.delete_naturezaoperacao %}<button type="submit" formaction="{% url 'fiscal:consolidar_fiscal' %}" name="apply" value="0" class="btn btn-outline-secondary">Inspecionar duplicidades</button>{% endif %}
                             </form>
                             {% endif %}
+
+                            {% if perms.fiscal_regras.add_regraaliquotaicms %}
+                            <form method="post" action="{% url 'fiscal:import_fiscal_local' %}" class="d-flex gap-2 align-items-center flex-wrap" id="form-gerar-regras-icms">
+                                {% csrf_token %}
+                                <input type="hidden" name="import_type" value="icms_origem_destino">
+                                <button type="submit" class="btn btn-primary" id="btn-gerar-regras-icms">
+                                    <span class="spinner-border spinner-border-sm me-2 d-none" id="spinner-gerar-regras-icms" role="status" aria-hidden="true"></span>
+                                    <span id="label-gerar-regras-icms">Gerar regras ICMS por NCM</span>
+                                </button>
+                                <small class="text-muted d-none" id="msg-gerar-regras-icms">Processando a base local, aguarde...</small>
+                            </form>
+                            {% endif %}
                         </div>
 
                         <hr class="my-4">
                         <h5 class="mb-3">Modelos de planilha</h5>
                         <div class="d-grid gap-2">
                             {% if perms.fiscal.add_cfop %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=cfop" class="btn btn-outline-primary">Baixar modelo CFOP</a>{% endif %}
-                            {% if perms.fiscal.add_naturezaoperacao %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=natureza_operacao" class="btn btn-outline-primary">Baixar modelo Natureza de Opera&ccedil;&atilde;o</a>{% endif %}
+                            {% if perms.fiscal.add_naturezaoperacao %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=natureza_operacao" class="btn btn-outline-primary">Baixar modelo Natureza de Operacao</a>{% endif %}
+                            {% if perms.fiscal_regras.add_regraaliquotaicms %}<a href="{% url 'fiscal:download_fiscal_template' %}?type=icms_origem_destino" class="btn btn-outline-primary">Baixar modelo ICMS Origem x Destino</a>{% endif %}
                         </div>
                     </div>
                 </div>
@@ -95,3 +118,25 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    const form = document.getElementById('form-gerar-regras-icms');
+    if (!form || form.dataset.loadingBound === '1') return;
+    form.dataset.loadingBound = '1';
+
+    form.addEventListener('submit', function () {
+        const button = document.getElementById('btn-gerar-regras-icms');
+        const spinner = document.getElementById('spinner-gerar-regras-icms');
+        const label = document.getElementById('label-gerar-regras-icms');
+        const msg = document.getElementById('msg-gerar-regras-icms');
+
+        if (button) {
+            button.disabled = true;
+            button.classList.add('disabled');
+        }
+        if (spinner) spinner.classList.remove('d-none');
+        if (label) label.textContent = 'Gerando regras...';
+        if (msg) msg.classList.remove('d-none');
+    });
+})();
+</script>

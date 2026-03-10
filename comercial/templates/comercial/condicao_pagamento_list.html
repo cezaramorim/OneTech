@@ -11,7 +11,7 @@
 
     <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
-            <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por c&oacute;digo, descri&ccedil;&atilde;o ou observa&ccedil;&otilde;es..." value="{{ termo_busca }}">
+            <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por c&oacute;digo, descri&ccedil;&atilde;o ou dias de vencimento..." value="{{ termo_busca }}">
             <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2">
@@ -45,7 +45,7 @@
                             </th>
                             <th>
                                 <a href="?ordenacao={% if ordenacao_atual == 'observacoes' %}-{% endif %}observacoes" class="sortable-header" style="white-space: nowrap;">
-                                    Observa&ccedil;&otilde;es {% if ordenacao_atual == 'observacoes' %}&#9650;{% elif ordenacao_atual == '-observacoes' %}&#9660;{% endif %}
+                                    Dias de vencimento {% if ordenacao_atual == 'observacoes' %}&#9650;{% elif ordenacao_atual == '-observacoes' %}&#9660;{% endif %}
                                 </a>
                             </th>
                         </tr>

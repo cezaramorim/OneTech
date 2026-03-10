@@ -1,4 +1,4 @@
-﻿# Plano Tecnico - Motor de Aliquotas por NCM (Multitenant)
+﻿# Plano Tecnico - Motor de Aliquotas por NCM (Multitenant) 10/03/2026
 
 ## 1) Objetivo
 Implementar preenchimento automatico de aliquotas fiscais (principalmente ICMS interno e interestadual) com base no NCM do item, contexto da operacao e UF origem/destino, com suporte multitenant, auditoria, performance e possibilidade de acoplar/desacoplar sem impacto no restante do projeto.

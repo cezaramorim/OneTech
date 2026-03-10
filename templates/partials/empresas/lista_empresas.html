@@ -41,7 +41,7 @@
             <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
             <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
           </select>
-          <a href="{% url 'empresas:lista_empresas' %}" class="btn btn-outline-secondary page-toolbar-btn ajax-link">Limpar</a>
+          <button type="button" id="btn-limpar-empresas" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
         </form>
 
         <div class="d-flex flex-wrap align-items-center gap-2">

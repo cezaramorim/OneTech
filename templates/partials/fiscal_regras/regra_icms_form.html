@@ -1,0 +1,97 @@
+{% load widget_tweaks %}
+<div class="container-fluid px-4 pb-4 pt-0" data-page="{{ data_page }}">
+    <div class="card shadow-sm mb-4 title-card">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary"><i class="bi bi-pencil-square me-2"></i>{{ title }}</h2>
+        </div>
+    </div>
+
+    <div class="card shadow-sm content-card fiscal-regras-card">
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                        <div class="form-check form-switch mt-2">{% render_field form.ativo class="form-check-input" %}</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                        {% render_field form.descricao class="form-control" %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="{{ form.ncm_prefixo.id_for_label }}">{{ form.ncm_prefixo.label }}</label>
+                        {% render_field form.ncm_prefixo class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.tipo_operacao.id_for_label }}">{{ form.tipo_operacao.label }}</label>
+                        {% render_field form.tipo_operacao class="form-select" %}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.modalidade.id_for_label }}">{{ form.modalidade.label }}</label>
+                        {% render_field form.modalidade class="form-select" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.uf_origem.id_for_label }}">{{ form.uf_origem.label }}</label>
+                        {% render_field form.uf_origem class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.uf_destino.id_for_label }}">{{ form.uf_destino.label }}</label>
+                        {% render_field form.uf_destino class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.origem_mercadoria.id_for_label }}">{{ form.origem_mercadoria.label }}</label>
+                        {% render_field form.origem_mercadoria class="form-control" %}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.cst_icms.id_for_label }}">{{ form.cst_icms.label }}</label>
+                        {% render_field form.cst_icms class="form-select" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.csosn_icms.id_for_label }}">{{ form.csosn_icms.label }}</label>
+                        {% render_field form.csosn_icms class="form-select" %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="{{ form.aliquota_icms.id_for_label }}">{{ form.aliquota_icms.label }}</label>
+                        {% render_field form.aliquota_icms class="form-control" %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="{{ form.fcp.id_for_label }}">{{ form.fcp.label }}</label>
+                        {% render_field form.fcp class="form-control" %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="{{ form.reducao_base_icms.id_for_label }}">{{ form.reducao_base_icms.label }}</label>
+                        {% render_field form.reducao_base_icms class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.prioridade.id_for_label }}">{{ form.prioridade.label }}</label>
+                        {% render_field form.prioridade class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.vigencia_inicio.id_for_label }}">{{ form.vigencia_inicio.label }}</label>
+                        {% render_field form.vigencia_inicio class="form-control" %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ form.vigencia_fim.id_for_label }}">{{ form.vigencia_fim.label }}</label>
+                        {% render_field form.vigencia_fim class="form-control" %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                        {% render_field form.observacoes class="form-control" %}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'fiscal_regras:regra_icms_list' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

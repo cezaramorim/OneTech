@@ -1,4 +1,4 @@
-﻿# Refatoracao Lote x Tanque (Historico de Execucao)
+﻿# Refatoracao Lote x Tanque (Historico de Execucao) 09/03/2026
 
 ## Objetivo
 Padronizar o projeto para separar corretamente:
@@ -80,7 +80,8 @@ Padronizar o projeto para separar corretamente:
 ### 2026-03-05 - Passo 6 concluido (Integridade de snapshot LoteDiario.tanque)
 - Criado helper: obter_tanque_lote_em_data(lote, data_referencia) em producao/utils.py.
 - Regra do helper: prioriza tanques do proprio evento (	anque_origem/	anque_destino) e usa lote.tanque_atual apenas como fallback legado.
-- Reprojecao (eprojetar_ciclo_de_vida) agora grava/atualiza LoteDiario.tanque com base historica da data.
+- Reprojecao (
+eprojetar_ciclo_de_vida) agora grava/atualiza LoteDiario.tanque com base historica da data.
 - API de sugestoes do arracoamento (pi_sugestoes_arracoamento) agora sincroniza LoteDiario.tanque ao iterar cada dia.
 - Validacao tecnica: env\\Scripts\\python.exe -m py_compile producao\\utils.py producao\\views_arracoamento.py sem erro.
 
@@ -112,7 +113,8 @@ Padronizar o projeto para separar corretamente:
 
 ### 2026-03-05 - Passo 11 concluido (Otimização de desempenho do tanque historico)
 - Criado resolvedor em memoria por lote: construir_resolvedor_tanque_lote em producao/utils.py.
-- Reprojecao (eprojetar_ciclo_de_vida) agora reutiliza resolvedor por lote (evita consulta de evento por dia).
+- Reprojecao (
+eprojetar_ciclo_de_vida) agora reutiliza resolvedor por lote (evita consulta de evento por dia).
 - API de sugestoes (pi_sugestoes_arracoamento) agora reutiliza resolvedor por lote durante loop diario.
 - Backfill (ackfill_lotediario_tanque) agora reutiliza resolvedor por lote ao iterar registros nulos.
 - Validacoes:
@@ -121,7 +123,8 @@ Padronizar o projeto para separar corretamente:
   - Comparacao amostral: resolvedor em memoria = funcao direta (OK True).
 
 ### 2026-03-05 - Passo 12 concluido (Cache por lote no historico_povoamento)
-- historico_povoamento_view passou a usar cache de resolvedor historico por lote (esolvedores_tanque).
+- historico_povoamento_view passou a usar cache de resolvedor historico por lote (
+esolvedores_tanque).
 - Evita repetir resolucao por evento quando ha varios registros do mesmo lote no periodo.
 - Contrato de resposta mantido.
 - Validacao tecnica: env\\Scripts\\python.exe -m py_compile producao\\views.py e teste endpoint /producao/api/historico-povoamento/ com 200.

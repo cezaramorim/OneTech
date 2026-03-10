@@ -1,0 +1,64 @@
+<div class="container-fluid px-4 pb-4 pt-0" data-page="regra_icms_list" data-list-url="{% url 'fiscal_regras:regra_icms_list' %}">
+    <div class="card shadow-sm mb-4 title-card">
+        <div class="card-header bg-light">
+            <h2 class="h4 mb-0 text-primary"><i class="bi bi-diagram-3 me-2"></i>Regras ICMS por NCM</h2>
+        </div>
+    </div>
+
+    <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+            <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por NCM, descricao ou UF..." value="{{ termo_busca }}">
+            <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {% if perms.fiscal_regras.add_regraaliquotaicms %}<a href="{% url 'fiscal_regras:regra_icms_create' %}" class="btn btn-success">Nova Regra</a>{% endif %}
+            {% if perms.fiscal_regras.change_regraaliquotaicms %}<button id="btn-editar-selecionado" class="btn btn-primary" disabled data-edit-url-base="{% url 'fiscal_regras:regra_icms_update' 0 %}">Editar selecionado</button>{% endif %}
+            {% if perms.fiscal_regras.delete_regraaliquotaicms %}<button id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'fiscal_regras:delete_regras_icms' %}" data-item-type="regra_icms">Excluir selecionados</button>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm content-card fiscal-regras-card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
+                            <th>NCM Prefixo</th>
+                            <th>Descricao</th>
+                            <th>Tipo</th>
+                            <th>Modalidade</th>
+                            <th>UF Origem</th>
+                            <th>UF Destino</th>
+                            <th>Aliquota ICMS (%)</th>
+                            <th>Prioridade</th>
+                            <th>Vigencia</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for regra in regras %}
+                        <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ regra.pk }}"></td>
+                            <td>{{ regra.ncm_prefixo }}</td>
+                            <td>{{ regra.descricao }}</td>
+                            <td>{{ regra.get_tipo_operacao_display|default:'-' }}</td>
+                            <td>{{ regra.get_modalidade_display|default:'-' }}</td>
+                            <td>{{ regra.uf_origem|default:'-' }}</td>
+                            <td>{{ regra.uf_destino|default:'-' }}</td>
+                            <td>{{ regra.aliquota_icms }}</td>
+                            <td>{{ regra.prioridade }}</td>
+                            <td>{{ regra.vigencia_inicio }}{% if regra.vigencia_fim %} ate {{ regra.vigencia_fim }}{% endif %}</td>
+                            <td>{% if regra.ativo %}<span class="badge bg-success">Ativa</span>{% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center">Nenhuma regra cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

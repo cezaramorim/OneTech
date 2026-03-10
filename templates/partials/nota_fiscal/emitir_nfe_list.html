@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 {% load humanize %}
 
 <div class="container-fluid pt-3 pb-4" data-page="emitir-nfe-list" data-emitir-url="{% url 'integracao_nfe:emitir_nfe' %}" data-csrf-token="{{ csrf_token }}">
@@ -26,7 +26,7 @@
                         {% for nota in notas_para_emitir %}
                         <tr id="nota-row-{{ nota.id }}">
                             <td class="fw-bold">#{{ nota.numero }}</td>
-                            <td>{{ nota.destinatario.nome_fantasia|default:nota.destinatario.razao_social|truncatechars:30 }}</td>
+                            <td>{{ nota.destinatario.nome_fantasia|default:nota.destinatario.razao_social|default:nota.destinatario.nome|default:"Nao informado"|truncatechars:30 }}</td>
                             <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
                             <td class="text-end">R$ {{ nota.valor_total_nota|intcomma }}</td>
                             <td class="text-center">
@@ -53,5 +53,3 @@
         </div>
     </div>
 </div>
-
-
