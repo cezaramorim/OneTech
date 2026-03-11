@@ -1,8 +1,10 @@
 # control/views.py
 from io import StringIO
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.management import call_command
 from django.db import connections, DEFAULT_DB_ALIAS
+from django.db.models import Q
 from django.db.migrations.loader import MigrationLoader
 from django.contrib import messages
 from django.urls import reverse
@@ -258,13 +260,59 @@ def central_migracoes_view(request):
 @principal_context_required
 def tenant_list_view(request):
     """Lista todos os tenants (clientes) cadastrados."""
-    tenants = Tenant.objects.using('default').all().order_by('nome')
+    termo_busca = (request.GET.get('busca') or '').strip()
+    tenants = Tenant.objects.using('default').all()
+
+    if termo_busca:
+        tenants = tenants.filter(
+            Q(nome__icontains=termo_busca)
+            | Q(dominio__icontains=termo_busca)
+            | Q(cnpj__icontains=termo_busca)
+            | Q(razao_social__icontains=termo_busca)
+        )
+
+    tenants = tenants.order_by('nome')
     context = {
         'tenants': tenants,
+        'termo_busca': termo_busca,
         'data_page': 'tenant_list',
     }
     return render_ajax_or_base(request, 'partials/control/tenant_list.html', context)
 
+
+
+@superuser_required
+@principal_context_required
+@require_POST
+def tenant_delete_multiplo_view(request):
+    """Desativa multiplos tenants selecionados via payload JSON."""
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+        ids = payload.get('ids', [])
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Payload invalido.'}, status=400)
+
+    if not ids:
+        return JsonResponse({'success': False, 'message': 'Nenhum cliente selecionado para desativacao.'}, status=400)
+
+    qs = Tenant.objects.using('default').filter(id__in=ids)
+    total = qs.count()
+    if total == 0:
+        return JsonResponse({'success': False, 'message': 'Nenhum cliente encontrado para desativacao.'}, status=404)
+
+    desativados = qs.filter(ativo=True).update(ativo=False)
+    ja_inativos = total - desativados
+
+    if ja_inativos > 0:
+        mensagem = f'{desativados} cliente(s) desativado(s) e {ja_inativos} ja estava(m) inativo(s).'
+    else:
+        mensagem = f'{desativados} cliente(s) desativado(s) com sucesso.'
+
+    return JsonResponse({
+        'success': True,
+        'message': mensagem,
+        'redirect_url': reverse('control:tenant_list')
+    })
 @superuser_required
 @principal_context_required
 def tenant_create_view(request):
@@ -437,8 +485,21 @@ def lista_emitentes(request):
     """
     Lista todos os emitentes cadastrados no banco de dados atual.
     """
-    emitentes = Emitente.objects.all().order_by('-is_default', 'nome_fantasia')
-    context = {'emitentes': emitentes}
+    termo_busca = (request.GET.get('busca') or '').strip()
+    emitentes = Emitente.objects.all()
+
+    if termo_busca:
+        emitentes = emitentes.filter(
+            Q(nome_fantasia__icontains=termo_busca)
+            | Q(razao_social__icontains=termo_busca)
+            | Q(cnpj__icontains=termo_busca)
+        )
+
+    emitentes = emitentes.order_by('-is_default', 'nome_fantasia')
+    context = {
+        'emitentes': emitentes,
+        'termo_busca': termo_busca,
+    }
     return render_ajax_or_base(request, 'partials/control/lista_emitentes.html', context)
 
 @login_required
@@ -451,8 +512,13 @@ def criar_emitente(request):
         form = EmitenteForm(request.POST, request.FILES)
         if form.is_valid():
             emitente = form.save()
-            messages.success(request, f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" criado com sucesso!')
-            return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
+            success_message = f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" criado com sucesso!'
+            messages.success(request, success_message)
+            return JsonResponse({
+                'success': True,
+                'message': success_message,
+                'redirect_url': reverse('control:lista_emitentes')
+            })
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
@@ -472,8 +538,13 @@ def editar_emitente(request, pk):
         form = EmitenteForm(request.POST, request.FILES, instance=emitente)
         if form.is_valid():
             form.save()
-            messages.success(request, f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" atualizado com sucesso!')
-            return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
+            success_message = f'Emitente "{emitente.nome_fantasia or emitente.razao_social}" atualizado com sucesso!'
+            messages.success(request, success_message)
+            return JsonResponse({
+                'success': True,
+                'message': success_message,
+                'redirect_url': reverse('control:lista_emitentes')
+            })
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
@@ -495,3 +566,30 @@ def excluir_emitente(request, pk):
     messages.success(request, f'Emitente "{nome_emitente}" excluído com sucesso.')
     # A resposta JSON é para o caso de o frontend tratar a exclusão via fetch/AJAX
     return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
+
+
+@login_required
+@require_POST
+@permission_required('control.delete_emitente', raise_exception=True)
+def excluir_emitentes_multiplo(request):
+    """
+    Exclui multiplos emitentes via payload JSON { ids: [] }.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+        ids = payload.get('ids', [])
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Payload invalido.'}, status=400)
+
+    if not ids:
+        return JsonResponse({'success': False, 'message': 'Nenhum emitente selecionado para exclusao.'}, status=400)
+
+    emitentes = Emitente.objects.filter(pk__in=ids)
+    total = emitentes.count()
+    emitentes.delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'{total} emitente(s) excluido(s) com sucesso.',
+        'redirect_url': reverse('control:lista_emitentes'),
+    })

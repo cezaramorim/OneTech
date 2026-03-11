@@ -9,6 +9,7 @@ urlpatterns = [
     path('tenants/', views.tenant_list_view, name='tenant_list'),
     path('tenants/new/', views.tenant_create_view, name='tenant_create'),
     path('tenants/edit/<int:pk>/', views.tenant_edit_view, name='tenant_edit'),
+    path('tenants/excluir-multiplos/', views.tenant_delete_multiplo_view, name='tenant_delete_multiplo'),
     
     # URLs para gerenciamento de usuários de um tenant específico
     path('tenants/<int:tenant_id>/users/', views.tenant_user_list_view, name='tenant_user_list'),
@@ -21,5 +22,6 @@ urlpatterns = [
     path('emitentes/novo/', views.criar_emitente, name='criar_emitente'),
     path('emitentes/<int:pk>/editar/', views.editar_emitente, name='editar_emitente'),
     path('emitentes/<int:pk>/excluir/', views.excluir_emitente, name='excluir_emitente'),
+    path('emitentes/excluir-multiplos/', views.excluir_emitentes_multiplo, name='excluir_emitentes_multiplo'),
     path('migracoes/', views.central_migracoes_view, name='central_migracoes'),
 ]

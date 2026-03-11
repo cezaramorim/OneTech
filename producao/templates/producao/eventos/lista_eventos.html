@@ -1,11 +1,7 @@
-﻿<div class="container-fluid pt-3 pb-4" id="identificador-tela"
-    data-tela="lista_eventos"
-    data-entidade-singular="evento de manejo"
-    data-entidade-plural="eventos de manejo"
-    data-url-editar="{% url 'producao:editar_evento' pk=0 %}"
-    data-url-excluir="{% url 'producao:excluir_eventos_multiplos' %}"
-    data-seletor-checkbox=".check-evento"
-    data-seletor-pai="#select-all-eventos">
+﻿<div class="container-fluid pt-3 pb-4"
+    data-page="lista_eventos"
+    data-list-controller="unified-list"
+    data-list-url="{% url 'producao:lista_eventos' %}">
 
     <div class="card shadow-sm">
         <div class="card-header bg-light">
@@ -40,11 +36,12 @@
                         {% endfor %}
                     </select>
                     <input type="date" name="data_evento" id="id_data_evento" class="form-control form-control-sm" value="{{ filtros.data_evento }}" style="width: 170px;">
+                    <button type="button" id="btn-limpar-filtros-eventos" class="btn btn-outline-secondary btn-sm">Limpar filtros</button>
                 </form>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <a href="{% url 'producao:registrar_evento' %}" class="btn btn-primary ajax-link">Registrar Evento</a>
-                    <button id="btn-editar" class="btn btn-secondary" disabled>Editar Selecionado</button>
-                    <button id="btn-excluir" class="btn btn-danger" disabled>Excluir Selecionados</button>
+                    <button id="btn-editar-selecionado" class="btn btn-secondary" disabled data-edit-url-base="{% url 'producao:editar_evento' pk=0 %}">Editar selecionado</button>
+                    <button id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'producao:excluir_eventos_multiplos' %}" data-entity-label-singular="evento de manejo" data-entity-label-plural="eventos de manejo">Excluir selecionados</button>
                 </div>
             </div>
 
@@ -52,22 +49,22 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="select-all-eventos"></th>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
                             <th>Tipo de Evento</th>
                             <th>Lote</th>
                             <th>Tanque Origem</th>
                             <th>Tanque Destino</th>
                             <th>Data Evento</th>
                             <th>Quantidade</th>
-                            <th>Peso M?dio</th>
+                            <th>Peso Medio</th>
                             <th>Biomassa</th>
-                            <th>Observa??es</th>
+                            <th>Observacoes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for evento in eventos %}
                         <tr data-id="{{ evento.pk }}">
-                            <td><input type="checkbox" class="check-evento" value="{{ evento.pk }}"></td>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ evento.pk }}"></td>
                             <td>{{ evento.tipo_evento.nome|default:"N/A" }}</td>
                             <td>{{ evento.lote.nome|default:"N/A" }}</td>
                             <td>{{ evento.tanque_origem.nome|default:"N/A" }}</td>
@@ -89,3 +86,6 @@
         </div>
     </div>
 </div>
+
+
+

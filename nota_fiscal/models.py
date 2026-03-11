@@ -70,7 +70,7 @@ class NotaFiscal(models.Model):
     # Novos campos para detalhes da NF-e
     tipo_operacao = models.CharField(
         max_length=1,
-        choices=[('0', 'Entrada'), ('1', 'SaÃ­da')],
+        choices=[('0', 'Entrada'), ('1', 'Saida')],
         blank=True, null=True,
         verbose_name="Tipo de OperaÃ§Ã£o"
     )

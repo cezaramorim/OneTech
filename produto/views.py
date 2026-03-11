@@ -1,4 +1,4 @@
-﻿import json
+import json
 
 import requests
 from django.db.models import Count, Q, Value
@@ -33,8 +33,25 @@ DetalhesFiscaisProdutoFormSet = inlineformset_factory(
 # =====================
 @login_required_json
 def lista_produtos_view(request):
-    produtos = Produto.objects.all()
-    return render_ajax_or_base(request, "partials/produtos/lista_produtos.html", {"produtos": produtos})
+    termo_busca = request.GET.get('busca', '').strip()
+    produtos = Produto.objects.select_related('categoria', 'unidade_medida_interna').all()
+
+    if termo_busca:
+        produtos = produtos.filter(
+            Q(nome__icontains=termo_busca)
+            | Q(codigo_interno__icontains=termo_busca)
+            | Q(codigo_fornecedor__icontains=termo_busca)
+        )
+
+    return render_ajax_or_base(
+        request,
+        "partials/produtos/lista_produtos.html",
+        {
+            "produtos": produtos,
+            "termo_busca": termo_busca,
+            "has_produtos": Produto.objects.exists(),
+        },
+    )
 
 
 @login_required_json
@@ -75,7 +92,7 @@ def editar_produto_view(request, pk):
         formset = DetalhesFiscaisProdutoFormSet(request.POST, instance=produto)
 
         if form.is_valid() and formset.is_valid():
-            print("FormulÃ¡rio de Produto Ã© vÃ¡lido.")
+            print("FormulÃƒÆ’Ã‚Â¡rio de Produto ÃƒÆ’Ã‚Â© vÃƒÆ’Ã‚Â¡lido.")
             print("Form.cleaned_data:", form.cleaned_data)
             produto = form.save()
             formset.save()
@@ -106,7 +123,7 @@ def editar_produto_view(request, pk):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return render(request, "partials/produtos/editar_produto.html", context)
 
-    # Se nÃ£o for AJAX, renderiza com base.html e content_template
+    # Se nÃƒÆ’Ã‚Â£o for AJAX, renderiza com base.html e content_template
     context["content_template"] = "partials/produtos/editar_produto.html"
     context["data_page"] = "editar_produto"
     return render(request, "base.html", context)
@@ -117,7 +134,7 @@ def editar_produto_view(request, pk):
 def excluir_produtos_multiplos_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
+        message = app_messages.error("RequisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -142,17 +159,25 @@ def excluir_produtos_multiplos_view(request):
 # ======================
 @login_required_json
 def lista_categorias_view(request):
-    categorias = CategoriaProduto.objects.all()
+    termo_busca = request.GET.get('busca', '').strip()
+    categorias = CategoriaProduto.objects.all().order_by('nome')
+
+    if termo_busca:
+        categorias = categorias.filter(
+            Q(nome__icontains=termo_busca) | Q(descricao__icontains=termo_busca)
+        )
+
     return render_ajax_or_base(
         request,
         "partials/produtos/lista_categorias.html",
         {
             "categorias": categorias,
-            "data_tela": "lista_categorias",  # âœ… Adicionado aqui
-            "data_page": "lista_categorias",
-        }
+            "termo_busca": termo_busca,
+            "has_categorias": CategoriaProduto.objects.exists(),
+            "data_tela": "lista_categorias_produtos",
+            "data_page": "lista_categorias_produtos",
+        },
     )
-    
 @login_required_json
 def editar_categoria_view(request, pk):
     app_messages = get_app_messages(request)
@@ -192,10 +217,10 @@ def editar_categoria_view(request, pk):
 def excluir_categorias_view(request):
     app_messages = get_app_messages(request)
     """
-    Exclui mÃºltiplas categorias de produto via AJAX.
+    Exclui mÃƒÆ’Ã‚Âºltiplas categorias de produto via AJAX.
     """
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
+        message = app_messages.error("RequisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -219,7 +244,7 @@ def cadastrar_categoria_view(request):
     print("DEBUG: cadastrar_categoria_view acessada")
     if request.method == "POST":
         form = CategoriaProdutoForm(request.POST)
-        print("DEBUG: FormulÃ¡rio de categoria vÃ¡lido:", form.is_valid())
+        print("DEBUG: FormulÃƒÆ’Ã‚Â¡rio de categoria vÃƒÆ’Ã‚Â¡lido:", form.is_valid())
         if form.is_valid():
             form.save()
             message = app_messages.success_created(form.instance)
@@ -257,7 +282,7 @@ def categoria_list_api(request):
     Retorna todas as categorias como JSON: [{id: <int>, nome: <str>}, ...]
     """
     qs = CategoriaProduto.objects.order_by('nome').values('id', 'nome')
-    # safe=False porque estamos retornando uma lista, nÃ£o um dict
+    # safe=False porque estamos retornando uma lista, nÃƒÆ’Ã‚Â£o um dict
     return JsonResponse(list(qs), safe=False)
 
 
@@ -267,9 +292,23 @@ def categoria_list_api(request):
 # =====================
 @login_required_json
 def lista_unidades_view(request):
-    unidades = UnidadeMedida.objects.all()
-    return render_ajax_or_base(request, "partials/produtos/lista_unidades.html", {"unidades": unidades})
+    termo_busca = request.GET.get('busca', '').strip()
+    unidades = UnidadeMedida.objects.all().order_by('sigla')
 
+    if termo_busca:
+        unidades = unidades.filter(
+            Q(sigla__icontains=termo_busca) | Q(descricao__icontains=termo_busca)
+        )
+
+    return render_ajax_or_base(
+        request,
+        "partials/produtos/lista_unidades.html",
+        {
+            "unidades": unidades,
+            "termo_busca": termo_busca,
+            "has_unidades": UnidadeMedida.objects.exists(),
+        },
+    )
 @login_required_json
 def cadastrar_unidade_view(request):
     app_messages = get_app_messages(request)
@@ -323,7 +362,7 @@ def editar_unidade_view(request, pk):
 def excluir_unidades_view(request):
     app_messages = get_app_messages(request)
     if not request.headers.get("x-requested-with") == "XMLHttpRequest":
-        message = app_messages.error("RequisiÃ§Ã£o invÃ¡lida.")
+        message = app_messages.error("RequisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida.")
         return JsonResponse({"success": False, "message": message}, status=400)
 
     try:
@@ -432,9 +471,9 @@ def buscar_ncm_ajax(request):
 @login_required_json
 def api_racoes_list(request):
     """
-    Retorna uma lista de produtos da categoria 'Ração' em formato JSON.
+    Retorna uma lista de produtos da categoria 'RaÃƒÂ§ÃƒÂ£o' em formato JSON.
     """
-    racoes = Produto.objects.filter(categoria__nome__iexact='Ração').values('id', 'nome').order_by('nome')
+    racoes = Produto.objects.filter(categoria__nome__iexact='RaÃƒÂ§ÃƒÂ£o').values('id', 'nome').order_by('nome')
     return JsonResponse(list(racoes), safe=False)
 
 

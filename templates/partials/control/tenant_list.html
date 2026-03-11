@@ -1,30 +1,43 @@
 ﻿{% load static %}
 
-<div class="container-fluid p-4">
+<div class="container-fluid pt-3 pb-4" data-page="tenant_list" data-list-controller="unified-list" data-list-url="{% url 'control:tenant_list' %}" data-search-param="busca">
     <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div class="card-header bg-light">
             <h2 class="h4 mb-0 text-primary">
-                <i class="bi bi-people-fill me-2"></i>Gestão de Clientes (Tenants)
+                <i class="bi bi-people-fill me-2"></i>Gestao de Clientes (Tenants)
             </h2>
-            <a href="{% url 'control:tenant_create' %}" class="btn btn-primary ajax-link">
-                <i class="bi bi-plus-circle me-1"></i> Novo Cliente
-            </a>
         </div>
         <div class="card-body">
+            <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+                    <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por nome, dominio, CNPJ ou razao social..." value="{{ termo_busca|default_if_none:'' }}" autocomplete="off">
+                    <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'control:tenant_create' %}" class="btn btn-primary ajax-link">
+                        <i class="bi bi-plus-circle me-1"></i> Novo Cliente
+                    </a>
+                    <button type="button" id="btn-editar-selecionado" class="btn btn-outline-primary" disabled data-edit-url-base="{% url 'control:tenant_edit' 0 %}">Editar selecionado</button>
+                    <button type="button" id="btn-excluir-selecionados" class="btn btn-outline-warning" disabled data-delete-url="{% url 'control:tenant_delete_multiplo' %}" data-entity-label-singular="cliente" data-entity-label-plural="clientes" data-action-verb="desativar" data-action-warning="Voce podera reativar no cadastro do cliente.">Desativar selecionados</button>
+                </div>
+            </div>
+
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
+                            <th style="width:40px;"><input type="checkbox" id="select-all-checkbox"></th>
                             <th scope="col">Nome do Cliente</th>
-                            <th scope="col">Domínio</th>
+                            <th scope="col">Dominio</th>
                             <th scope="col">CNPJ</th>
                             <th scope="col" class="text-center">Status</th>
-                            <th scope="col" class="text-center">Ações</th>
+                            <th scope="col" class="text-center">Acoes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for tenant in tenants %}
                         <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ tenant.pk }}"></td>
                             <td class="fw-bold">
                                 {% if tenant.logo %}
                                     <img src="{{ tenant.logo.url }}" alt="Logo" class="rounded-circle me-2" width="32" height="32">
@@ -50,9 +63,13 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-5">
-                                <h5 class="text-muted">Nenhum cliente cadastrado.</h5>
-                                <p>Clique em "Novo Cliente" para começar.</p>
+                            <td colspan="6" class="text-center py-5">
+                                {% if termo_busca %}
+                                    <p class="text-muted mb-0">Nenhum cliente encontrado para o termo informado.</p>
+                                {% else %}
+                                    <h5 class="text-muted">Nenhum cliente cadastrado.</h5>
+                                    <p>Clique em "Novo Cliente" para comecar.</p>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

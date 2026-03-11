@@ -1,17 +1,17 @@
-<div class="card shadow-sm">
+﻿<div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-hover table-striped">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" id="select-all-tanques"></th>
+                        <th><input type="checkbox" id="select-all-checkbox"></th>
                         <th>ID</th>
                         <th>Nome</th>
                         <th>Tag</th>
                         <th>Unidade</th>
                         <th>Linha</th>
                         <th>Fase</th>
-                        <th>Situa&ccedil;&atilde;o</th>
+                        <th>Situacao</th>
                         <th>m&sup2;</th>
                         <th>m&sup3;</th>
                         <th>Ha</th>
@@ -21,7 +21,7 @@
                 <tbody>
                     {% for tanque in tanques %}
                     <tr data-id="{{ tanque.pk }}">
-                        <td><input type="checkbox" class="check-tanque" value="{{ tanque.pk }}"></td>
+                        <td><input type="checkbox" class="row-checkbox" value="{{ tanque.pk }}"></td>
                         <td>{{ tanque.id }}</td>
                         <td><a href="{% url 'producao:editar_tanque' tanque.pk %}" class="ajax-link">{{ tanque.nome }}</a></td>
                         <td>{{ tanque.tag_tanque|default:"-" }}</td>
@@ -32,7 +32,7 @@
                         <td>{{ tanque.metro_quadrado|floatformat:2 }}</td>
                         <td>{{ tanque.metro_cubico|floatformat:2 }}</td>
                         <td>{{ tanque.ha|floatformat:4 }}</td>
-                        <td>{% if tanque.ativo %}Sim{% else %}N&atilde;o{% endif %}</td>
+                        <td>{% if tanque.ativo %}Sim{% else %}Nao{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr>

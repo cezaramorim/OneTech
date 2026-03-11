@@ -549,13 +549,18 @@
 
 
     function getNotaContext() {
-        const emitenteField = document.querySelector('[name="emitente_proprio"]');
+        const emitenteProprioField = document.querySelector('[name="emitente_proprio"]');
+        const emitenteFornecedorField = document.querySelector('[name="emitente"]');
         const destinatarioField = document.querySelector('[name="destinatario"]');
         const tipoOperacaoField = document.querySelector('[name="tipo_operacao"]');
         const dataEmissaoField = document.querySelector('[name="data_emissao"]');
 
+        const emitenteId = emitenteProprioField
+            ? (emitenteProprioField.value || '').trim()
+            : (emitenteFornecedorField ? (emitenteFornecedorField.value || '').trim() : '');
+
         return {
-            emitente_id: emitenteField ? (emitenteField.value || '').trim() : '',
+            emitente_id: emitenteId,
             destinatario_id: destinatarioField ? (destinatarioField.value || '').trim() : '',
             tipo_operacao: tipoOperacaoField ? (tipoOperacaoField.value || '1').trim() : '1',
             data_emissao: dataEmissaoField ? (dataEmissaoField.value || '').trim() : '',
@@ -1280,7 +1285,7 @@
 
 
 
-    ['emitente_proprio', 'destinatario', 'tipo_operacao', 'data_emissao'].forEach((fieldName) => {
+    ['emitente_proprio', 'emitente', 'destinatario', 'tipo_operacao', 'data_emissao'].forEach((fieldName) => {
         const field = document.querySelector(`[name="${fieldName}"]`);
         if (!field || field.dataset.fiscalRecalcBound === '1') return;
         field.dataset.fiscalRecalcBound = '1';

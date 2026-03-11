@@ -1,17 +1,28 @@
 ﻿{% load static %}
 
-<div class="container-fluid pt-3 pb-4" data-page="lista-emitentes">
+<div class="container-fluid pt-3 pb-4" data-page="lista-emitentes" data-list-controller="unified-list" data-list-url="{% url 'control:lista_emitentes' %}" data-search-param="busca">
     <div class="card shadow-sm">
         <div class="card-header bg-light">
             <h2 class="h4 mb-0 text-primary"><i class="bi bi-buildings me-2"></i>Emitentes (Matriz e Filiais)</h2>
         </div>
         <div class="card-body">
             <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-                <div class="page-toolbar-spacer"></div>
+                <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+                    <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por nome fantasia, razao social ou CNPJ..." value="{{ termo_busca|default_if_none:'' }}" autocomplete="off">
+                    <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+                </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% if perms.control.add_emitente %}
                     <a href="{% url 'control:criar_emitente' %}" class="btn btn-primary ajax-link">
                         <i class="fas fa-plus me-1"></i> Novo Emitente
                     </a>
+                    {% endif %}
+                    {% if perms.control.change_emitente %}
+                    <button type="button" id="btn-editar-selecionado" class="btn btn-outline-primary" disabled data-edit-url-base="{% url 'control:editar_emitente' 0 %}">Editar selecionado</button>
+                    {% endif %}
+                    {% if perms.control.delete_emitente %}
+                    <button type="button" id="btn-excluir-selecionados" class="btn btn-outline-danger" disabled data-delete-url="{% url 'control:excluir_emitentes_multiplo' %}" data-entity-label-singular="emitente" data-entity-label-plural="emitentes">Excluir selecionados</button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -19,16 +30,18 @@
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="select-all-checkbox"></th>
                             <th>Nome Fantasia</th>
-                            <th>Raz&atilde;o Social</th>
+                            <th>Razao Social</th>
                             <th>CNPJ</th>
-                            <th>Padr&atilde;o</th>
-                            <th class="text-end">A&ccedil;&otilde;es</th>
+                            <th>Padrao</th>
+                            <th class="text-end">Acoes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for emitente in emitentes %}
                         <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ emitente.pk }}"></td>
                             <td>{{ emitente.nome_fantasia|default:"-" }}</td>
                             <td>{{ emitente.razao_social }}</td>
                             <td>{{ emitente.cnpj }}</td>
@@ -36,28 +49,28 @@
                                 {% if emitente.is_default %}
                                     <span class="badge bg-success">Sim</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">N&atilde;o</span>
+                                    <span class="badge bg-secondary">Nao</span>
                                 {% endif %}
                             </td>
                             <td class="text-end">
                                 <a href="{% url 'control:editar_emitente' pk=emitente.pk %}" class="btn btn-sm btn-outline-primary ajax-link" title="Editar">
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#confirmDeleteModal"
-                                        data-delete-url="{% url 'control:excluir_emitente' pk=emitente.pk %}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-5">
-                                <p class="text-muted">Nenhum emitente cadastrado.</p>
-                                <a href="{% url 'control:criar_emitente' %}" class="btn btn-primary ajax-link">
-                                    <i class="fas fa-plus me-1"></i> Cadastrar Primeiro Emitente
-                                </a>
+                            <td colspan="6" class="text-center py-5">
+                                {% if termo_busca %}
+                                    <p class="text-muted mb-0">Nenhum emitente encontrado para o termo informado.</p>
+                                {% else %}
+                                    <p class="text-muted">Nenhum emitente cadastrado.</p>
+                                    {% if perms.control.add_emitente %}
+                                    <a href="{% url 'control:criar_emitente' %}" class="btn btn-primary ajax-link">
+                                        <i class="fas fa-plus me-1"></i> Cadastrar Primeiro Emitente
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -67,23 +80,3 @@
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Exclus&atilde;o</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Tem certeza de que deseja excluir este emitente? Esta a&ccedil;&atilde;o n&atilde;o pode ser desfeita.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <a href="#" id="delete-confirm-btn" class="btn btn-danger" data-error-message="Erro ao excluir.">Excluir</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-

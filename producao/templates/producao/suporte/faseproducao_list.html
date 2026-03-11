@@ -1,16 +1,11 @@
-<div id="identificador-tela"
-     data-tela="lista_fasesproducao"
-     data-entidade-singular="fase de produ&ccedil;&atilde;o"
-     data-entidade-plural="fases de produ&ccedil;&atilde;o"
-     data-url-editar="{% url 'producao:editar_faseproducao' 0 %}"
-     data-url-excluir="{% url 'producao:excluir_faseproducao_multiplo' %}"
-     data-seletor-checkbox=".check-faseproducao"
-     data-seletor-pai="#select-all-faseproducao"></div>
+﻿<div class="container-fluid pt-3 pb-4"
+     data-page="lista_fasesproducao"
+     data-list-controller="unified-list"
+     data-list-url="{% url 'producao:lista_fasesproducao' %}">
 
-<div class="container-fluid pt-3 pb-4">
     <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
       <div>
-        <h4 class="fw-semibold mb-2">Fases de Produ&ccedil;&atilde;o</h4>
+        <h4 class="fw-semibold mb-2">Fases de Producao</h4>
         <hr class="mt-0">
       </div>
     </header>
@@ -18,9 +13,9 @@
     <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="page-toolbar-spacer"></div>
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <a href="{% url 'producao:criar_faseproducao' %}" class="btn btn-primary ajax-link">Nova Fase de Produ&ccedil;&atilde;o</a>
-            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">Editar</a>
-            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>Excluir</button>
+            <a href="{% url 'producao:criar_faseproducao' %}" class="btn btn-primary ajax-link">Nova Fase de Producao</a>
+            <button id="btn-editar-selecionado" class="btn btn-outline-primary btn-sm" disabled data-edit-url-base="{% url 'producao:editar_faseproducao' 0 %}">Editar selecionado</button>
+            <button type="button" id="btn-excluir-selecionados" class="btn btn-outline-danger btn-sm" disabled data-delete-url="{% url 'producao:excluir_faseproducao_multiplo' %}" data-entity-label-singular="fase de producao" data-entity-label-plural="fases de producao">Excluir selecionados</button>
         </div>
     </div>
 
@@ -28,15 +23,15 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th><input type="checkbox" id="select-all-faseproducao"></th>
+                    <th><input type="checkbox" id="select-all-checkbox"></th>
                     <th>Nome</th>
-                    <th>A&ccedil;&otilde;es</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in object_list %}
                 <tr>
-                    <td><input type="checkbox" class="check-faseproducao" value="{{ item.pk }}"></td>
+                    <td><input type="checkbox" class="row-checkbox" value="{{ item.pk }}"></td>
                     <td>{{ item.nome }}</td>
                     <td>
                         <a href="{% url 'producao:editar_faseproducao' item.pk %}" class="btn btn-sm btn-info ajax-link">Editar</a>
@@ -44,7 +39,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3">Nenhuma fase de produ&ccedil;&atilde;o encontrada.</td>
+                    <td colspan="3">Nenhuma fase de producao encontrada.</td>
                 </tr>
                 {% endfor %}
             </tbody>

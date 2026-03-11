@@ -1,6 +1,6 @@
 {% load static %}
 
-<div class="container-fluid px-4 pb-4 pt-0 comercial-page" data-page="condicao_pagamento_list">
+<div class="container-fluid px-4 pb-4 pt-0 comercial-page" data-page="condicao_pagamento_list" data-list-controller="unified-list" data-list-url="{% url 'comercial:condicao_pagamento_list' %}" data-search-param="busca">
     <div class="card shadow-sm mb-4 title-card">
         <div class="card-header bg-light">
             <h2 class="h4 mb-0 text-primary">
@@ -17,7 +17,7 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
             {% if perms.comercial.add_condicaopagamento %}<a href="{% url 'comercial:condicao_pagamento_create' %}" class="btn btn-success ajax-link">Nova Condi&ccedil;&atilde;o</a>{% endif %}
             {% if perms.comercial.change_condicaopagamento %}<button type="button" id="btn-editar-selecionado" class="btn btn-primary" disabled data-edit-url-base="{% url 'comercial:condicao_pagamento_update' 0 %}">Editar selecionado</button>{% endif %}
-            {% if perms.comercial.delete_condicaopagamento %}<button type="button" id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'comercial:delete_condicoes_pagamento' %}">Excluir selecionados</button>{% endif %}
+            {% if perms.comercial.delete_condicaopagamento %}<button type="button" id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'comercial:delete_condicoes_pagamento' %}" data-entity-label-singular="condicao de pagamento" data-entity-label-plural="condicoes de pagamento">Excluir selecionados</button>{% endif %}
         </div>
     </div>
 
@@ -61,7 +61,13 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center">Nenhuma condi&ccedil;&atilde;o de pagamento cadastrada.</td>
+                            <td colspan="5" class="text-center">
+                                {% if termo_busca %}
+                                    Nenhuma condi&ccedil;&atilde;o de pagamento encontrada para o termo informado.
+                                {% else %}
+                                    Nenhuma condi&ccedil;&atilde;o de pagamento cadastrada.
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

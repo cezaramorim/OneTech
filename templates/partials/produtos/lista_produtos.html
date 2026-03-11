@@ -1,79 +1,78 @@
-﻿{% load static %}
+{% load static %}
 {% load widget_tweaks %}
 
-<div class="container-fluid pt-3 pb-4">
-  <div id="identificador-tela"
-       data-tela="lista_produtos"
-       data-entidade-singular="produto"
-       data-entidade-plural="produtos"
-       data-url-editar="{% url 'produto:editar_produto' 0 %}"
-       data-url-excluir="{% url 'produto:excluir_produto_multiplo' %}"
-       data-seletor-checkbox=".check-produto"
-       data-seletor-pai="#select-all-produtos"></div>
-
+<div class="container-fluid pt-3 pb-4" data-page="lista_produtos" data-list-controller="unified-list" data-list-url="{% url 'produto:lista_produtos' %}" data-search-param="busca">
   <div class="card shadow-sm">
     <div class="card-header bg-light">
       <h2 class="h4 mb-0 text-primary"><i class="bi bi-box-seam me-2"></i>Produtos</h2>
     </div>
     <div class="card-body">
-
-      {% if produtos %}
-        <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-          <div></div>
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <a href="{% url 'produto:cadastrar_produto' %}" class="btn btn-primary ajax-link">
-              <i class="bi bi-plus-lg"></i> Novo Produto
-            </a>
-            <a id="btn-editar" class="btn btn-outline-primary btn-sm disabled" role="button">Editar</a>
-            <button type="button" id="btn-excluir" class="btn btn-outline-danger btn-sm" disabled>Excluir</button>
-          </div>
+      <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
+          <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por codigo interno, fornecedor ou nome..." value="{{ termo_busca|default_if_none:'' }}" autocomplete="off">
+          <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
         </div>
-
-        <div class="table-responsive">
-          <table class="table table-hover table-bordered align-middle">
-            <thead class="table-light">
-              <tr>
-                <th><input type="checkbox" id="select-all-produtos"></th>
-                <th>C?d. Interno</th>
-                <th>C?d. Fornecedor</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Unidade</th>
-                <th class="text-end">Pre?o Custo</th>
-                <th class="text-end">Estoque Atual</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for produto in produtos %}
-              <tr>
-                <td><input type="checkbox" class="check-produto" value="{{ produto.id }}"></td>
-                <td>{{ produto.codigo_interno|default:"-" }}</td>
-                <td>{{ produto.codigo_fornecedor|default:"-" }}</td>
-                <td>{{ produto.nome }}</td>
-                {% with categoria=produto.categoria %}
-                  <td>{{ categoria.nome|default:"Sem categoria" }}</td>
-                {% endwith %}
-                {% with unidade=produto.unidade_medida_interna %}
-                  <td>{{ unidade.sigla|default:"-" }}</td>
-                {% endwith %}
-                <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
-                <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
-                <td>
-                  {% if produto.ativo %}
-                    <span class="badge bg-success">Ativo</span>
-                  {% else %}
-                    <span class="badge bg-secondary">Inativo</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <a href="{% url 'produto:cadastrar_produto' %}" class="btn btn-primary ajax-link">
+            <i class="bi bi-plus-lg"></i> Novo Produto
+          </a>
+          <button id="btn-editar-selecionado" type="button" class="btn btn-outline-primary btn-sm" disabled data-edit-url-base="{% url 'produto:editar_produto' 0 %}">Editar</button>
+          <button type="button" id="btn-excluir-selecionados" class="btn btn-outline-danger btn-sm" disabled data-delete-url="{% url 'produto:excluir_produto_multiplo' %}" data-entity-label-singular="produto" data-entity-label-plural="produtos">Excluir</button>
         </div>
-      {% else %}
-        <div class="alert alert-warning">Nenhum produto cadastrado ainda.</div>
-      {% endif %}
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th><input type="checkbox" id="select-all-checkbox"></th>
+              <th>Cod. Interno</th>
+              <th>Cod. Fornecedor</th>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Unidade</th>
+              <th class="text-end">Preco Custo</th>
+              <th class="text-end">Estoque Atual</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for produto in produtos %}
+            <tr>
+              <td><input type="checkbox" class="row-checkbox" value="{{ produto.id }}"></td>
+              <td>{{ produto.codigo_interno|default:"-" }}</td>
+              <td>{{ produto.codigo_fornecedor|default:"-" }}</td>
+              <td>{{ produto.nome }}</td>
+              {% with categoria=produto.categoria %}
+                <td>{{ categoria.nome|default:"Sem categoria" }}</td>
+              {% endwith %}
+              {% with unidade=produto.unidade_medida_interna %}
+                <td>{{ unidade.sigla|default:"-" }}</td>
+              {% endwith %}
+              <td class="text-end">R$ {{ produto.preco_custo|floatformat:2 }}</td>
+              <td class="text-end">{{ produto.estoque_atual|floatformat:2 }}</td>
+              <td>
+                {% if produto.ativo %}
+                  <span class="badge bg-success">Ativo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inativo</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="9" class="text-center">
+                {% if termo_busca %}
+                  Nenhum produto encontrado para a busca informada.
+                {% else %}
+                  Nenhum produto cadastrado.
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>

@@ -171,6 +171,45 @@ function ensureNavbarReady() {
 
     return;
 }
+
+
+let navbarSyncInFlight = null;
+function syncNavbarWithServerIfNeeded(force = false) {
+  const body = document.body;
+  if (!body || !body.classList.contains('logged-in')) return;
+
+  const navbarContainer = document.getElementById('navbar-container');
+  if (!navbarContainer) return;
+
+  const currentNavbar = navbarContainer.querySelector('.navbar-superior');
+  if (!force && currentNavbar) return;
+  if (navbarSyncInFlight) return;
+
+  const navbarUrl = '/accounts/get-navbar/';
+  navbarSyncInFlight = fetchWithCreds(navbarUrl, { method: 'GET' }, 'text/html')
+    .then(async (response) => {
+      if (!response || !response.ok) return;
+      const html = await response.text();
+      if (!html) return;
+
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const freshNavbar = temp.querySelector('.navbar-superior');
+      if (!freshNavbar) return;
+
+      navbarContainer.innerHTML = '';
+      navbarContainer.appendChild(freshNavbar);
+      initNestedNavbarSubmenus(navbarContainer);
+      syncNavbarOffset(navbarContainer);
+    })
+    .catch((error) => {
+      console.error('Falha ao sincronizar navbar:', error);
+    })
+    .finally(() => {
+      navbarSyncInFlight = null;
+    });
+}
+
 function updateButtonStates(mainContent) {
     if (!mainContent) return;
     const identificadorTela = mainContent.querySelector("#identificador-tela");
@@ -455,8 +494,20 @@ function loadAjaxContent(url) {
 document.body.addEventListener('submit', async (e) => {
   const form = e.target.closest('form.ajax-form');
   if (!form || form.dataset.skipGlobal === '1') return;
-  
+
   e.preventDefault();
+
+  const loadingMessage = (form.dataset.loadingMessage || '').trim();
+  const shouldShowLoading = Boolean(loadingMessage) && window.Swal && typeof Swal.fire === 'function';
+
+  if (shouldShowLoading) {
+    Swal.fire({
+      title: loadingMessage,
+      text: 'Por favor, aguarde...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+  }
 
   try {
     const result = await submitAjaxForm(form);
@@ -484,9 +535,12 @@ document.body.addEventListener('submit', async (e) => {
   } catch (err) {
     console.error('Ã¢ÂÅ’ [DEBUG] Erro CAPTURADO na submissÃƒÂ£o do formulÃƒÂ¡rio AJAX:', err);
     notify('error', 'Falha ao processar a requisiÃƒÂ§ÃƒÂ£o. Verifique o console.');
+  } finally {
+    if (shouldShowLoading && window.Swal && Swal.isVisible()) {
+      Swal.close();
+    }
   }
 });
-
 document.body.addEventListener('click', async (e) => {
   // Handler para paginaÃƒÂ§ÃƒÂ£o/ordenaÃƒÂ§ÃƒÂ£o
   const ajaxTargetLink = e.target.closest('a[data-ajax-target]');
@@ -563,7 +617,7 @@ document.body.addEventListener('click', async (e) => {
           showCancelButton: true,
           confirmButtonColor: '#d33',
           cancelButtonColor: '#3085d6',
-          confirmButtonText: 'Sim, excluir!',
+          confirmButtonText: `Sim, ${actionVerb}!`,
           cancelButtonText: 'Cancelar'
       }).then(async (result) => {
           if (result.isConfirmed) {
@@ -600,7 +654,7 @@ document.body.addEventListener('click', async (e) => {
                           finalizarExclusao();
                       }
                   } else {
-                      mostrarMensagem('danger', data.message || 'Ocorreu um erro ao excluir os itens.');
+                      mostrarMensagem('danger', data.message || 'Ocorreu um erro ao processar os itens.');
                   }
               } catch (error) {
                   console.error('Erro ao excluir:', error);
@@ -675,37 +729,6 @@ window.addEventListener('popstate', async () => {
 
 
 // --- MÃƒÂ³dulos de PÃƒÂ¡gina EspecÃƒÂ­ficos ---
-
-function initListaEmpresas() {
-  const form = document.getElementById('filtro-empresas');
-  if (!form || form.dataset.debounced === 'true') return;
-  form.dataset.debounced = 'true';
-
-  const clearButton = form.querySelector('#btn-limpar-empresas');
-
-  const submitFilter = () => {
-    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-  };
-
-  const handler = debounce(submitFilter, 400);
-
-  form.addEventListener('input', (e) => {
-    if (e.target.matches('input, select, textarea')) handler();
-  });
-
-  if (clearButton) {
-    clearButton.addEventListener('click', () => {
-      form.querySelectorAll('input[type="text"], input[type="search"], input:not([type])').forEach((input) => {
-        input.value = '';
-      });
-      form.querySelectorAll('select').forEach((select) => {
-        select.selectedIndex = 0;
-      });
-      submitFilter();
-    });
-  }
-}
-
 
 function setupAutocomplete(inputId, apiUrl, displayField = 'text', valueField = 'id', options = {}) {
   const inputElement = document.getElementById(inputId);
@@ -941,115 +964,8 @@ function initGenericAutocomplete(root = document) {
   });
 }
 
-function initListaTanques(root = document) {
-  const pageRoot = root.querySelector('#identificador-tela[data-tela="lista_tanques"]');
-  if (!pageRoot) return;
-
-  const searchInput = pageRoot.querySelector('#search-tanques-lista');
-  const clearButton = pageRoot.querySelector('#btn-limpar-tanques-lista');
-  const tableWrapper = pageRoot.querySelector('#tanques-table-wrapper');
-  if (!searchInput || !tableWrapper) return;
-
-  const bindSelectionControls = () => {
-    const selectAllCheckbox = pageRoot.querySelector('#select-all-tanques');
-    const rowCheckboxes = () => Array.from(pageRoot.querySelectorAll('.check-tanque'));
-    const btnEditar = pageRoot.querySelector('#btn-editar');
-    const btnExcluir = pageRoot.querySelector('#btn-excluir');
-
-    const updateStates = () => {
-      const selected = rowCheckboxes().filter(cb => cb.checked);
-      if (btnEditar) btnEditar.disabled = selected.length !== 1;
-      if (btnExcluir) btnExcluir.disabled = selected.length === 0;
-      if (selectAllCheckbox) {
-        const total = rowCheckboxes().length;
-        selectAllCheckbox.checked = total > 0 && selected.length === total;
-        selectAllCheckbox.indeterminate = selected.length > 0 && selected.length < total;
-      }
-    };
-
-    if (selectAllCheckbox && selectAllCheckbox.dataset.bound !== '1') {
-      selectAllCheckbox.dataset.bound = '1';
-      selectAllCheckbox.addEventListener('change', function() {
-        rowCheckboxes().forEach(cb => {
-          cb.checked = this.checked;
-        });
-        updateStates();
-      });
-    }
-
-    rowCheckboxes().forEach(cb => {
-      if (cb.dataset.bound === '1') return;
-      cb.dataset.bound = '1';
-      cb.addEventListener('change', updateStates);
-    });
-
-    updateStates();
-  };
-
-  bindSelectionControls();
-
-  if (pageRoot.dataset.searchInitialized === '1') return;
-  pageRoot.dataset.searchInitialized = '1';
-
-  const restoreFocus = (cursorPosition = null) => {
-    requestAnimationFrame(() => {
-      searchInput.focus({ preventScroll: true });
-      const cursor = Number.isInteger(cursorPosition) ? cursorPosition : searchInput.value.length;
-      searchInput.setSelectionRange(cursor, cursor);
-    });
-  };
-
-  const updateTable = debounce(async (value, options = {}) => {
-    const currentUrl = new URL(window.location.href);
-    const normalized = (value || '').trim();
-    const previousCursor = Number.isInteger(options.cursor) ? options.cursor : searchInput.selectionStart;
-    if (normalized) currentUrl.searchParams.set('termo_tanque', normalized);
-    else currentUrl.searchParams.delete('termo_tanque');
-    currentUrl.searchParams.set('partial', '1');
-
-    const response = await fetchWithCreds(`${currentUrl.pathname}${currentUrl.search}`, { method: 'GET' }, 'text/html');
-    if (!response || !response.ok) return;
-
-    const html = await response.text();
-    tableWrapper.innerHTML = html;
-
-    const urlForHistory = new URL(window.location.href);
-    if (normalized) urlForHistory.searchParams.set('termo_tanque', normalized);
-    else urlForHistory.searchParams.delete('termo_tanque');
-    history.replaceState({}, '', `${urlForHistory.pathname}${urlForHistory.search}`);
-
-    bindSelectionControls();
-
-    if (options.keepFocus !== false) {
-      restoreFocus(previousCursor);
-    }
-  }, 350);
-
-  searchInput.addEventListener('input', function() {
-    updateTable(this.value, { keepFocus: true, cursor: this.selectionStart });
-  });
-
-  searchInput.addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      updateTable(this.value, { keepFocus: true, cursor: this.selectionStart });
-    }
-    if (event.key === 'Escape') {
-      this.value = '';
-      updateTable('', { keepFocus: true, cursor: 0 });
-    }
-  });
-
-  if (clearButton) {
-    clearButton.addEventListener('click', function() {
-      searchInput.value = '';
-      updateTable('', { keepFocus: true, cursor: 0 });
-    });
-  }
-}
-
 function initFiscalList(root = document) {
-  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"], [data-page="regra_icms_list"]';
+  const selector = '[data-list-controller="unified-list"]';
   const pageRoot = root.querySelector(selector) || document.querySelector(selector);
   if (!pageRoot) return;
 
@@ -1073,7 +989,7 @@ function initFiscalListDelegation() {
   if (fiscalListDelegationBound) return;
   fiscalListDelegationBound = true;
 
-  const selector = '[data-page="cfop_list"], [data-page="natureza_operacao_list"], [data-page="regra_icms_list"]';
+  const selector = '[data-list-controller="unified-list"]';
   const debounceTimers = new WeakMap();
 
   const getPageRoot = (el) => (el && el.closest) ? el.closest(selector) : null;
@@ -1082,8 +998,9 @@ function initFiscalListDelegation() {
     const base = pageRoot.dataset.listUrl || window.location.pathname;
     const url = new URL(base, window.location.origin);
     const normalized = String(value || '').trim();
-    if (normalized) url.searchParams.set('busca', normalized);
-    else url.searchParams.delete('busca');
+    const searchParam = pageRoot.dataset.searchParam || 'busca';
+    if (normalized) url.searchParams.set(searchParam, normalized);
+    else url.searchParams.delete(searchParam);
     url.searchParams.delete('ordenacao');
     return `${url.pathname}${url.search}`;
   };
@@ -1105,7 +1022,37 @@ function initFiscalListDelegation() {
     }
   };
 
-  const runSearch = (pageRoot, value, immediate = false) => {
+  const setPendingSearchFocus = (pageRoot, inputEl) => {
+    if (!pageRoot || !inputEl) return;
+    window.__unifiedListSearchFocus = {
+      page: pageRoot.dataset.page || '',
+      cursor: Number.isInteger(inputEl.selectionStart) ? inputEl.selectionStart : String(inputEl.value || '').length,
+    };
+  };
+
+  const restorePendingSearchFocus = () => {
+    const pending = window.__unifiedListSearchFocus;
+    if (!pending || !pending.page) return;
+
+    const nextPageRoot = document.querySelector(`[data-page="${pending.page}"]`);
+    if (!nextPageRoot) return;
+
+    const nextInput = nextPageRoot.querySelector('#search-input');
+    if (!nextInput) return;
+
+    nextInput.focus({ preventScroll: true });
+    const len = String(nextInput.value || '').length;
+    const cursor = Math.max(0, Math.min(Number(pending.cursor || len), len));
+    try {
+      nextInput.setSelectionRange(cursor, cursor);
+    } catch (error) {
+      // browsers podem rejeitar setSelectionRange em tipos nao text
+    }
+
+    window.__unifiedListSearchFocus = null;
+  };
+
+  const runSearch = (pageRoot, value, immediate = false, inputEl = null) => {
     const existing = debounceTimers.get(pageRoot);
     if (existing) {
       clearTimeout(existing);
@@ -1113,6 +1060,9 @@ function initFiscalListDelegation() {
     }
 
     const exec = () => {
+      if (inputEl) {
+        setPendingSearchFocus(pageRoot, inputEl);
+      }
       const url = buildListUrl(pageRoot, value);
       loadAjaxContent(url);
     };
@@ -1126,25 +1076,53 @@ function initFiscalListDelegation() {
     debounceTimers.set(pageRoot, t);
   };
 
+  document.addEventListener('ajaxContentLoaded', restorePendingSearchFocus);
+
+  const resolveSearchInput = (target) => {
+    if (!target) return null;
+    if (target.id === 'search-input') return target;
+    if (target.closest) return target.closest('#search-input');
+    return null;
+  };
+
   document.body.addEventListener('input', (event) => {
-    if (!event.target.matches || !event.target.matches('#search-input')) return;
-    const pageRoot = getPageRoot(event.target);
+    const searchInput = resolveSearchInput(event.target);
+    if (!searchInput) return;
+    const pageRoot = getPageRoot(searchInput);
     if (!pageRoot) return;
-    runSearch(pageRoot, event.target.value, false);
+    runSearch(pageRoot, searchInput.value, false, searchInput);
+  });
+
+  document.body.addEventListener('change', (event) => {
+    const searchInput = resolveSearchInput(event.target);
+    if (!searchInput) return;
+    const pageRoot = getPageRoot(searchInput);
+    if (!pageRoot) return;
+    runSearch(pageRoot, searchInput.value, true, searchInput);
   });
 
   document.body.addEventListener('keydown', (event) => {
-    if (!event.target.matches || !event.target.matches('#search-input')) return;
-    const pageRoot = getPageRoot(event.target);
+    const searchInput = resolveSearchInput(event.target);
+    if (!searchInput) return;
+    const pageRoot = getPageRoot(searchInput);
     if (!pageRoot) return;
 
     if (event.key === 'Enter') {
       event.preventDefault();
-      runSearch(pageRoot, event.target.value, true);
+      runSearch(pageRoot, searchInput.value, true, searchInput);
     } else if (event.key === 'Escape') {
-      event.target.value = '';
-      runSearch(pageRoot, '', true);
+      searchInput.value = '';
+      runSearch(pageRoot, '', true, searchInput);
     }
+  });
+
+  document.body.addEventListener('keyup', (event) => {
+    const searchInput = resolveSearchInput(event.target);
+    if (!searchInput) return;
+    if (event.key === 'Enter' || event.key === 'Escape' || event.key === 'Tab') return;
+    const pageRoot = getPageRoot(searchInput);
+    if (!pageRoot) return;
+    runSearch(pageRoot, searchInput.value, false, searchInput);
   });
 
   document.body.addEventListener('click', (event) => {
@@ -1157,7 +1135,7 @@ function initFiscalListDelegation() {
         search.value = '';
         search.focus();
       }
-      runSearch(pageRoot, '', true);
+      runSearch(pageRoot, '', true, search);
       return;
     }
 
@@ -1169,8 +1147,79 @@ function initFiscalListDelegation() {
       if (checked.length !== 1) return;
       const editUrlBase = editBtn.dataset.editUrlBase || '';
       if (!editUrlBase) return;
-      const editUrl = editUrlBase.replace(/0\/?$/, `${checked[0].value}/`);
+      const buildEditUrl = (baseUrl, selectedId) => {
+        if (!baseUrl) return '';
+        if (baseUrl.includes('/0/')) return baseUrl.replace('/0/', `/${selectedId}/`);
+        if (baseUrl.endsWith('/0')) return `${baseUrl.slice(0, -2)}/${selectedId}`;
+        return baseUrl.replace(/0\/?$/, `${selectedId}/`);
+      };
+      const editUrl = buildEditUrl(editUrlBase, checked[0].value);
       loadAjaxContent(editUrl);
+      return;
+    }
+
+    const deleteBtn = event.target.closest ? event.target.closest('#btn-excluir-selecionados') : null;
+    if (deleteBtn) {
+      const pageRoot = getPageRoot(deleteBtn);
+      if (!pageRoot || deleteBtn.disabled) return;
+
+      const checked = Array.from(pageRoot.querySelectorAll('.row-checkbox')).filter(cb => cb.checked);
+      const selectedIds = checked.map(cb => cb.value);
+      if (!selectedIds.length) return;
+
+      const entityPlural = deleteBtn.dataset.entityLabelPlural || 'itens';
+      const entitySingular = deleteBtn.dataset.entityLabelSingular || 'item';
+      const actionVerb = deleteBtn.dataset.actionVerb || 'excluir';
+      const actionWarning = deleteBtn.dataset.actionWarning || 'Esta acao nao pode ser desfeita.';
+      const deleteUrl = deleteBtn.dataset.deleteUrl || '';
+      const itemType = deleteBtn.dataset.itemType || '';
+      if (!deleteUrl) return;
+
+      Swal.fire({
+        title: 'Voce tem certeza?',
+        text: `Voce esta prestes a ${actionVerb} ${selectedIds.length} ${selectedIds.length === 1 ? entitySingular : entityPlural}. ${actionWarning}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: `Sim, ${actionVerb}!`,
+        cancelButtonText: 'Cancelar'
+      }).then(async (result) => {
+        if (!result.isConfirmed) return;
+
+        const payload = { ids: selectedIds };
+        if (itemType) payload.item_type = itemType;
+
+        try {
+          const response = await fetchWithCreds(deleteUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(payload)
+          });
+          if (!response) return;
+
+          const data = await response.json();
+          if (!response.ok || data.success === false) {
+            mostrarMensagem('danger', data.message || 'Ocorreu um erro ao processar os itens.');
+            return;
+          }
+
+          if (data.message) mostrarMensagem('success', data.message);
+          if (data.redirect_url) {
+            loadAjaxContent(data.redirect_url);
+          } else {
+            const searchInput = pageRoot.querySelector('#search-input');
+            const currentValue = searchInput ? searchInput.value : '';
+            runSearch(pageRoot, currentValue, true);
+          }
+        } catch (error) {
+          console.error('Erro ao excluir selecionados:', error);
+          mostrarMensagem('danger', 'Erro de comunicacao com o servidor.');
+        }
+      });
       return;
     }
   });
@@ -1450,66 +1499,38 @@ function initListaEventos() {
   if (!form || form.dataset.debounced === 'true') return;
   form.dataset.debounced = 'true';
 
-  const handler = debounce(() => {
-    // O formulÃƒÂ¡rio tem a classe 'ajax-form', entÃƒÂ£o o manipulador de envio global irÃƒÂ¡ capturÃƒÂ¡-lo
+  const submitFilters = () => {
     form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-  }, 400);
+  };
 
-  form.addEventListener('input', (e) => {
-    if (e.target.matches('input, select')) {
-        handler();
+  const debouncedSubmit = debounce(submitFilters, 250);
+
+  form.addEventListener('change', (e) => {
+    if (e.target.matches('select, input[type="date"]')) {
+      submitFilters();
     }
   });
-}
 
-function initListaEmitentes(root = document) {
-  const pageRoot = root.querySelector('[data-page="lista-emitentes"]');
-  if (!pageRoot || pageRoot.dataset.bound === '1') return;
-  pageRoot.dataset.bound = '1';
-
-  const confirmDeleteModal = pageRoot.querySelector('#confirmDeleteModal');
-  const deleteConfirmBtn = pageRoot.querySelector('#delete-confirm-btn');
-  if (!confirmDeleteModal || !deleteConfirmBtn) return;
-
-  confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const deleteUrl = button?.getAttribute('data-delete-url') || '';
-    deleteConfirmBtn.setAttribute('href', deleteUrl);
+  form.addEventListener('keydown', (e) => {
+    if (e.target.matches('input[type="date"]') && e.key === 'Enter') {
+      e.preventDefault();
+      submitFilters();
+    }
   });
 
-  deleteConfirmBtn.addEventListener('click', function (e) {
-    e.preventDefault();
-    const deleteUrl = deleteConfirmBtn.getAttribute('href');
-    if (!deleteUrl) return;
-
-    fetch(deleteUrl, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          if (window.bootstrap && bootstrap.Modal) {
-            const instance = bootstrap.Modal.getInstance(confirmDeleteModal);
-            if (instance) instance.hide();
-          }
-          if (data.redirect_url) {
-            loadAjaxContent(data.redirect_url);
-          }
-        } else {
-          alert(deleteConfirmBtn.dataset.errorMessage || 'Erro ao excluir.');
-        }
-      })
-      .catch(() => {
-        alert(deleteConfirmBtn.dataset.errorMessage || 'Erro ao excluir.');
+  const clearButton = form.querySelector('#btn-limpar-filtros-eventos');
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      form.querySelectorAll('select').forEach((select) => {
+        select.selectedIndex = 0;
       });
-  });
+      form.querySelectorAll('input[type="date"]').forEach((input) => {
+        input.value = '';
+      });
+      debouncedSubmit();
+    });
+  }
 }
-
-
 function initCriarNfeSaida(root = document) {
   const pageRoot = root.querySelector('[data-page="criar-nfe-saida"]');
   if (!pageRoot || pageRoot.dataset.bound === '1') return;
@@ -1742,6 +1763,10 @@ function runInitializers() {
         updateButtonStates(mainContent);
     }
     initTooltips(document);
+    if (!window.__navbarSyncedOnce) {
+        window.__navbarSyncedOnce = true;
+        syncNavbarWithServerIfNeeded(true);
+    }
     initMigrationTenantSelect(document);
     initNestedNavbarSubmenus(document);
     initSearchAutocompletePolicy(document);
@@ -1753,7 +1778,6 @@ function runInitializers() {
 
     // MÃƒÂ³dulos especÃƒÂ­ficos de pÃƒÂ¡gina
     const initializers = [
-        initListaEmpresas,
         initListaEventos,
         () => {
             if (typeof initReprocessarLotes === 'function') {
@@ -1791,12 +1815,6 @@ function runInitializers() {
             }
         },
         () => {
-            if (window.OneTech && window.OneTech.NotasEntradas) {
-                const root = document.querySelector(OneTech.NotasEntradas.SELECTOR_ROOT);
-                if (root) OneTech.NotasEntradas.init(root);
-            }
-        },
-        () => {
             // A inicializaÃƒÂ§ÃƒÂ£o de PovoamentoLotes foi movida para o prÃƒÂ³prio arquivo (povoamento_lotes.js)
             // para garantir a execuÃƒÂ§ÃƒÂ£o correta e eliminar condiÃƒÂ§ÃƒÂµes de corrida.
         },
@@ -1828,22 +1846,10 @@ function runInitializers() {
             }
         },
         () => {
-            if (window.OneTech && window.OneTech.ComercialCondicaoPagamento) {
-                const root = document.querySelector(OneTech.ComercialCondicaoPagamento.SELECTOR_ROOT);
-                if (root) OneTech.ComercialCondicaoPagamento.init(root);
-            }
-        },
-        () => {
             if (window.OneTech && window.OneTech.ReprocessarLotes) {
                 const root = document.querySelector(window.OneTech.ReprocessarLotes.SELECTOR_ROOT);
                 if (root) window.OneTech.ReprocessarLotes.init(root);
             }
-        },
-        () => {
-            initListaTanques(document);
-        },
-        () => {
-            initListaEmitentes(document);
         },
         () => {
             initEmitirNfeList(document);
@@ -1867,6 +1873,16 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("ajaxContentLoaded", () => {
     runInitializers();
 });
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -117,11 +117,11 @@ MENU_ITEMS = [
         ]
     },
     {
-        'name': 'Relat\u00f3rios',
+        'name': 'Relatórios',
         'icon': '📊',
         'children': [
             {'name': 'Notas de Entrada', 'url_name': 'relatorios:notas_entradas', 'required_perms': ['relatorios.view_notafiscalrelatorio']},
-            {'name': 'Impress\u00e3o de Relat\u00f3rios', 'url_name': 'relatorios:impressao_relatorios'},
+            {'name': 'Impressão de Relatórios', 'url_name': 'relatorios:impressao_relatorios'},
         ]
     },
 ]

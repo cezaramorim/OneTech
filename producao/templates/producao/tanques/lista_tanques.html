@@ -1,13 +1,9 @@
-{% load static %}
+﻿{% load static %}
 <div class="container-fluid pt-3 pb-4"
-    id="identificador-tela"
-    data-tela="lista_tanques"
-    data-entidade-singular="tanque"
-    data-entidade-plural="tanques"
-    data-url-editar="{% url 'producao:editar_tanque' pk=0 %}"
-    data-url-excluir="{% url 'producao:excluir_tanques_multiplos' %}"
-    data-seletor-checkbox=".check-tanque"
-    data-seletor-pai="#select-all-tanques">
+    data-page="lista_tanques"
+    data-list-controller="unified-list"
+    data-list-url="{% url 'producao:lista_tanques' %}"
+    data-search-param="termo_tanque">
 
     <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
       <div>
@@ -18,14 +14,14 @@
 
     <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="page-toolbar-form d-flex align-items-center gap-2 mb-0">
-            <input type="text" id="search-tanques-lista" class="form-control page-toolbar-search" placeholder="Buscar por nome, tag, unidade, linha, tipo ou situa??o..." value="{{ termo_busca }}">
-            <button type="button" id="btn-limpar-tanques-lista" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+            <input type="text" id="search-input" class="form-control page-toolbar-search" placeholder="Buscar por nome, tag, unidade, linha, tipo ou situacao..." value="{{ termo_busca }}" autocomplete="off">
+            <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2">
             <a href="{% url 'producao:importar_tanques' %}" class="btn btn-info ajax-link">Importar de Excel</a>
             <a href="{% url 'producao:cadastrar_tanque' %}" class="btn btn-primary ajax-link">Novo Tanque</a>
-            <button id="btn-editar" class="btn btn-secondary" disabled>Editar</button>
-            <button id="btn-excluir" class="btn btn-danger" disabled>Excluir</button>
+            <button id="btn-editar-selecionado" class="btn btn-secondary" disabled data-edit-url-base="{% url 'producao:editar_tanque' pk=0 %}">Editar selecionado</button>
+            <button id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'producao:excluir_tanques_multiplos' %}" data-entity-label-singular="tanque" data-entity-label-plural="tanques">Excluir selecionados</button>
         </div>
     </div>
 

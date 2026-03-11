@@ -4,71 +4,57 @@
 
 <div class="container-fluid pt-3 pb-4" data-page="editar_usuario">
   <div id="identificador-tela" data-tela="editar_usuario"></div>
-  <!-- 🔔 Mensagens instantâneas -->
-  
 
   <div class="row justify-content-center">
     <div class="col-md-6">
-
-      <!-- ✏️ Título -->
       <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
         <div>
-          <h4 class="fw-semibold mb-2">Editar Usuário</h4>
+          <h4 class="fw-semibold mb-2">Editar Usuario</h4>
           <hr class="mt-0">
         </div>
       </header>
-      <p class="text-center text-muted mb-4">Atualize os dados do usuário ou redefina sua senha.</p>
+      <p class="text-center text-muted mb-4">Atualize os dados do usuario ou redefina sua senha.</p>
 
       <div class="card shadow-sm p-4">
-
         <form method="post" class="ajax-form" data-url="{% url 'accounts:editar_usuario' usuario.id %}" data-response-type="json">
           {% csrf_token %}
 
-          <!-- 👤 Nome de Usuário -->
           <div class="mb-3">
-            <label class="form-label fw-bold">Nome de Usuário (Login):</label>
-            <div class="form-control-plaintext dark-plaintext rounded px-3 py-2">
-              {{ usuario.username }}
-            </div>
+            <label class="form-label fw-bold" for="username_readonly">Nome de Usuario (Login):</label>
+            <input id="username_readonly" type="text" class="form-control" value="{{ usuario.username }}" readonly>
           </div>
 
-          <!-- 🔤 Nome Completo -->
           <div class="mb-3">
             <label for="id_nome_completo">Nome Completo:</label>
             {{ form.nome_completo }}
           </div>
 
-          <!-- 📧 E-mail -->
           <div class="mb-3">
             <label for="id_email">E-mail:</label>
             {{ form.email }}
           </div>
 
-          <!-- 📞 WhatsApp -->
           <div class="mb-3">
             <label for="id_whatsapp">WhatsApp:</label>
             {{ form.whatsapp }}
           </div>
 
-          <!-- 👥 Grupo -->
           <div class="mb-3">
             {{ form.grupo.label_tag }}
             {{ form.grupo }}
           </div>
 
-          <!-- ✅ Ativo -->
           <div class="mb-3 d-flex align-items-center">
             <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
-                {{ form.is_active.label }}
+              {{ form.is_active.label }}
             </label>
             <div class="ms-2">
-                {{ form.is_active }}
+              {{ form.is_active }}
             </div>
           </div>
 
           <hr>
 
-          <!-- 🔐 Senha -->
           <h5 class="mb-3">Alterar Senha <small class="text-muted">(opcional)</small></h5>
 
           <div class="mb-3">
@@ -86,28 +72,26 @@
             {{ form.current_password }}
           </div>
 
-          <!-- Botões -->
           <div class="d-flex justify-content-between gap-2">
             <button type="submit" class="btn btn-primary">
-              💾 Salvar Alterações
+              Salvar Alteracoes
             </button>
             <a href="{% url 'accounts:gerenciar_permissoes_usuario' usuario.id %}" class="btn btn-outline-info ajax-link">
-              <i class="bi bi-shield-lock"></i> Gerenciar Permissões
+              <i class="bi bi-shield-lock"></i> Gerenciar Permissoes
             </a>
             <a href="{% url 'accounts:lista_usuarios' %}" class="btn btn-secondary ajax-link">
-              ← Voltar
+              Voltar
             </a>
           </div>
 
         </form>
-
       </div>
     </div>
   </div>
-</main>
+</div>
 
 {% else %}
 <div class="alert alert-danger text-center mt-5">
-  Você não tem permissão para acessar esta funcionalidade.
+  Voce nao tem permissao para acessar esta funcionalidade.
 </div>
 {% endif %}

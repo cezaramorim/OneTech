@@ -22,9 +22,14 @@ from .models import CategoriaEmpresa, Empresa
 @login_required_json
 @permission_required('empresas.view_categoriaempresa', raise_exception=True)
 def lista_categorias_view(request):
+    termo_busca = request.GET.get('busca', '').strip()
     categorias = CategoriaEmpresa.objects.all().order_by('nome')
+    if termo_busca:
+        categorias = categorias.filter(nome__icontains=termo_busca)
+
     return render_ajax_or_base(request, 'partials/empresas/lista_categorias.html', {
-        'categorias': categorias
+        'categorias': categorias,
+        'termo_busca': termo_busca,
     })
 
 
@@ -55,7 +60,7 @@ def categoria_form_view(request, pk=None):
                 message = app_messages.success_created(form.instance)
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'redirect_url': reverse('empresas:lista_categorias'), 'message': message})
+                return JsonResponse({'success': True, 'redirect_url': reverse('empresas:lista_categorias'), 'message': message})
             return redirect('empresas:lista_empresas')
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -174,17 +179,16 @@ def lista_empresas_view(request):
         )
     if tipo in {'pj', 'pf'}:
         empresas = empresas.filter(tipo_empresa=tipo)
+    elif tipo == 'transportadora':
+        empresas = empresas.filter(categoria__nome__icontains='transportadora')
+
     if status:
         status_map = {'ativo': 'ativa', 'inativo': 'inativa'}
         if status in status_map:
             empresas = empresas.filter(status_empresa=status_map[status])
 
     context = {'empresas': empresas, 'request': request}
-
-    mixin = AjaxListMixin()
-    mixin.template_page = 'partials/empresas/lista_empresas.html'
-    mixin.template_partial = 'partials/empresas/_lista_empresas_table.html'
-    return mixin.render_list(request, context)
+    return render_ajax_or_base(request, 'partials/empresas/lista_empresas.html', context)
 
 
 @login_required_json

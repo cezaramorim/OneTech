@@ -1,6 +1,6 @@
 ﻿# relatorios/views.py
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET, require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -11,11 +11,41 @@ from nota_fiscal.models import NotaFiscal, TransporteNotaFiscal, DuplicataNotaFi
 from relatorios.forms import NotaFiscalForm
 from common.serializers.nota_fiscal import NotaFiscalSerializer
 from decimal import Decimal
+from datetime import datetime
 from produto.models_entradas import EntradaProduto
+from django.db.models import Q
 
 from common.utils import formatters
 
 valor = formatters.formatar_moeda_br("1234.56")
+
+
+def _notas_entrada_queryset():
+    # Entrada: tipo_operacao = '0'. Mantemos legado (NULL) quando houver emitente e nao for saida.
+    return (
+        NotaFiscal.objects
+        .select_related('emitente', 'created_by')
+        .prefetch_related('itens__produto')
+        .exclude(tipo_operacao='1')
+    )
+
+
+def _parse_filter_date(raw_value):
+    value = (raw_value or '').strip()
+    if not value:
+        return None
+
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _normalize_filter_date(raw_value):
+    parsed = _parse_filter_date(raw_value)
+    return parsed.isoformat() if parsed else ''
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -26,13 +56,13 @@ def api_notas_entradas(request):
       - Requer autenticação (token/session).
       - Retorna: numero, fornecedor, data_emissao, data_saida, valor_total_nota, usuario.
     """
-    qs = NotaFiscal.objects.select_related('emitente', 'created_by').prefetch_related('itens__produto').all()
+    qs = _notas_entrada_queryset()
 
     fornecedor = (request.GET.get('fornecedor') or '').strip()
-    emissao_de = (request.GET.get('emissao_de') or '').strip()
-    emissao_ate = (request.GET.get('emissao_ate') or '').strip()
-    entrada_de = (request.GET.get('entrada_de') or '').strip()
-    entrada_ate = (request.GET.get('entrada_ate') or '').strip()
+    emissao_de = _parse_filter_date(request.GET.get('emissao_de'))
+    emissao_ate = _parse_filter_date(request.GET.get('emissao_ate'))
+    entrada_de = _parse_filter_date(request.GET.get('entrada_de'))
+    entrada_ate = _parse_filter_date(request.GET.get('entrada_ate'))
     produto = (request.GET.get('produto') or '').strip()
 
     if fornecedor:
@@ -67,46 +97,76 @@ def api_notas_entradas(request):
 def notas_entradas_view(request):
     """
     View HTML para listagem de Notas:
-      - GET normal: renderiza 'relatorios/notas_entradas.html' (página completa).
+      - GET normal: renderiza 'relatorios/notas_entradas.html' (pagina completa).
       - AJAX (XHR): renderiza apenas 'partials/relatorios/notas_entradas.html'.
     """
-    qs = NotaFiscal.objects.select_related('emitente', 'created_by').all()
-    context = {'entradas': qs}
+    qs = _notas_entrada_queryset()
+
+    termo_busca = (request.GET.get('busca') or '').strip()
+    fornecedor = (request.GET.get('fornecedor') or '').strip()
+    emissao_de_raw = request.GET.get('emissao_de')
+    emissao_ate_raw = request.GET.get('emissao_ate')
+    entrada_de_raw = request.GET.get('entrada_de')
+    entrada_ate_raw = request.GET.get('entrada_ate')
+
+    emissao_de = _parse_filter_date(emissao_de_raw)
+    emissao_ate = _parse_filter_date(emissao_ate_raw)
+    entrada_de = _parse_filter_date(entrada_de_raw)
+    entrada_ate = _parse_filter_date(entrada_ate_raw)
+    produto = (request.GET.get('produto') or '').strip()
+
+    if termo_busca:
+        qs = qs.filter(
+            Q(numero__icontains=termo_busca)
+            | Q(emitente__razao_social__icontains=termo_busca)
+            | Q(emitente__nome_fantasia__icontains=termo_busca)
+            | Q(emitente__nome__icontains=termo_busca)
+        )
+
+    if fornecedor:
+        qs = qs.filter(
+            Q(emitente__razao_social__icontains=fornecedor)
+            | Q(emitente__nome_fantasia__icontains=fornecedor)
+            | Q(emitente__nome__icontains=fornecedor)
+            | Q(numero__icontains=fornecedor)
+        )
+    if emissao_de:
+        qs = qs.filter(data_emissao__gte=emissao_de)
+    if emissao_ate:
+        qs = qs.filter(data_emissao__lte=emissao_ate)
+    if entrada_de:
+        qs = qs.filter(data_saida__gte=entrada_de)
+    if entrada_ate:
+        qs = qs.filter(data_saida__lte=entrada_ate)
+    if produto:
+        qs = qs.filter(
+            Q(itens__descricao__icontains=produto)
+            | Q(itens__codigo__icontains=produto)
+            | Q(itens__produto__nome__icontains=produto)
+        )
+
+    qs = qs.distinct().order_by('-data_emissao', '-id')
+
+    context = {
+        'entradas': qs,
+        'termo_busca': termo_busca,
+        'fornecedor': fornecedor,
+        'emissao_de': _normalize_filter_date(emissao_de_raw),
+        'emissao_ate': _normalize_filter_date(emissao_ate_raw),
+        'entrada_de': _normalize_filter_date(entrada_de_raw),
+        'entrada_ate': _normalize_filter_date(entrada_ate_raw),
+        'produto': produto,
+    }
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     tpl = 'partials/relatorios/notas_entradas.html' if is_ajax else 'relatorios/notas_entradas.html'
     return render(request, tpl, context)
 
-
 @login_required
 @require_http_methods(['GET', 'POST'])
 def editar_entrada_view(request, pk):
-    nota = get_object_or_404(NotaFiscal, pk=pk)
-
-    if request.method == 'POST':
-        form = NotaFiscalForm(request.POST, instance=nota)
-        if form.is_valid():
-            form.save()
-            return JsonResponse({'mensagem': 'Entrada atualizada com sucesso.'})
-        return JsonResponse({'erros': form.errors}, status=400)
-
-    form = NotaFiscalForm(instance=nota)
-    produtos = nota.itens.all()
-    transporte = getattr(nota, 'transporte', None)
-    duplicatas = nota.duplicatas.all()
-    for d in duplicatas:
-        if d.valor:
-            d.valor = Decimal(d.valor) / Decimal('100')  # Corrige centavos -> reais
-
-
-    return render(request, 'partials/relatorios/editar_entrada.html', {
-        'form': form,
-        'nota': nota,
-        'produtos': produtos,
-        'transporte': transporte,
-        'duplicatas': duplicatas,
-        'data_page': 'editar-entrada',  # Adicionado
-    })
+    # Compatibilidade: rota antiga de relatorios agora usa a tela oficial de edicao da NF.
+    return redirect('nota_fiscal:editar_nota', pk=pk)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -221,7 +281,6 @@ from producao.models import (
     TipoTela,
 )
 from empresas.models import Empresa, CategoriaEmpresa
-from django.db.models import Q
 from django.urls import reverse
 import csv
 
@@ -581,3 +640,4 @@ def impressao_relatorios_download_csv_view(request):
         writer.writerow([_excel_safe(row.get(key, '')) for key, _ in columns])
 
     return response
+

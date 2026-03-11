@@ -39,8 +39,8 @@ class RegraAliquotaICMSForm(forms.ModelForm):
             'fcp': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'reducao_base_icms': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'prioridade': forms.NumberInput(attrs={'class': 'form-control'}),
-            'vigencia_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'vigencia_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'vigencia_inicio': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'vigencia_fim': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 

@@ -5,6 +5,8 @@ from django.apps import apps
 from django.forms import inlineformset_factory
 from .models import NotaFiscal, ItemNotaFiscal, DuplicataNotaFiscal, TransporteNotaFiscal
 from produto.ncm_utils import normalizar_codigo_ncm
+from control.models import Emitente
+from empresas.models import Empresa, CategoriaEmpresa
 
 
 class NotaFiscalForm(forms.ModelForm):
@@ -195,6 +197,173 @@ class NotaFiscalForm(forms.ModelForm):
         self.instance.emitente_proprio_id = emitente_id or None
 
 
+class NotaFiscalEntradaForm(forms.ModelForm):
+    natureza_operacao = forms.ChoiceField(
+        choices=(('', 'Selecione a natureza de operacao'),),
+        required=False,
+        label='Natureza da Operacao',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    condicao_pagamento = forms.ChoiceField(
+        choices=(('', 'Selecione a condicao de pagamento'),),
+        required=False,
+        label='Condicao de Pagamento',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    class Meta:
+        model = NotaFiscal
+        fields = [
+            'numero',
+            'emitente',
+            'destinatario',
+            'tipo_operacao',
+            'finalidade_emissao',
+            'data_emissao',
+            'data_saida',
+            'natureza_operacao',
+            'condicao_pagamento',
+            'quantidade_parcelas',
+            'valor_total_desconto',
+            'valor_total_nota',
+            'informacoes_adicionais',
+        ]
+        labels = {
+            'numero': 'Nota Fiscal',
+            'emitente': 'Fornecedor (Emitente)',
+            'destinatario': 'Destinatario',
+            'tipo_operacao': 'Tipo de Operacao',
+            'finalidade_emissao': 'Finalidade da Emissao',
+            'data_emissao': 'Data de Emissao',
+            'data_saida': 'Data de Saida/Entrada',
+            'natureza_operacao': 'Natureza da Operacao',
+            'condicao_pagamento': 'Condicao de Pagamento',
+            'quantidade_parcelas': 'Quantidade de Parcelas',
+            'valor_total_nota': 'Valor Total da Nota',
+            'informacoes_adicionais': 'Informacoes Adicionais',
+        }
+        widgets = {
+            'emitente': forms.Select(attrs={'class': 'form-select'}),
+            'destinatario': forms.Select(attrs={'class': 'form-select'}),
+            'tipo_operacao': forms.Select(attrs={'class': 'form-select'}),
+            'finalidade_emissao': forms.Select(attrs={'class': 'form-select'}),
+            'data_emissao': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'data_saida': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'quantidade_parcelas': forms.NumberInput(attrs={'min': 1, 'step': 1, 'readonly': 'readonly', 'class': 'bg-light'}),
+            'valor_total_desconto': forms.NumberInput(attrs={'step': '0.01'}),
+            'informacoes_adicionais': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['emitente'].queryset = Empresa.objects.all().order_by('razao_social', 'nome')
+        self.fields['destinatario'].queryset = Empresa.objects.all().order_by('razao_social', 'nome')
+
+        self._naturezas_map = {}
+        try:
+            NaturezaOperacao = apps.get_model('fiscal', 'NaturezaOperacao')
+            naturezas = NaturezaOperacao.objects.all().only('id', 'codigo', 'descricao')
+            self.fields['natureza_operacao'].choices = [
+                ('', 'Selecione a natureza de operacao'),
+                *[(str(n.id), f"{(n.codigo or '').strip()} - {(n.descricao or '').strip()}".strip(' -')) for n in naturezas]
+            ]
+            self._naturezas_map = {str(n.id): n for n in naturezas}
+
+            atual = (self.instance.natureza_operacao or '').strip() if self.instance else ''
+            if atual:
+                def _norm_nat(value):
+                    return ' '.join(str(value or '').strip().lower().split())
+
+                alvo_nat = _norm_nat(atual)
+                match = ''
+                for n in naturezas:
+                    codigo = str(n.codigo or '').strip()
+                    descricao = str(n.descricao or '').strip()
+                    candidatos = {
+                        _norm_nat(descricao),
+                        _norm_nat(codigo),
+                        _norm_nat(f"{codigo} - {descricao}"),
+                    }
+                    if alvo_nat in candidatos:
+                        match = str(n.id)
+                        break
+
+                if match:
+                    self.fields['natureza_operacao'].initial = match
+                    self.initial['natureza_operacao'] = match
+        except LookupError:
+            self.fields['natureza_operacao'].choices = [('', 'Modulo Fiscal indisponivel')]
+
+        self._condicoes_pagamento_map = {}
+        self.fields['condicao_pagamento'].widget = CondicaoPagamentoSelect(attrs={'class': 'form-select'})
+        try:
+            CondicaoPagamento = apps.get_model('comercial', 'CondicaoPagamento')
+            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas')
+            self.fields['condicao_pagamento'].choices = [
+                ('', 'Selecione a condicao de pagamento'),
+                *[(str(c.id), f"{c.codigo} - {c.descricao}") for c in condicoes]
+            ]
+            self._condicoes_pagamento_map = {str(c.id): c for c in condicoes}
+            self.fields['condicao_pagamento'].widget.condicoes_map = self._condicoes_pagamento_map
+
+            atual = (self.instance.condicao_pagamento or '').strip() if self.instance else ''
+            if atual:
+                def _norm(value):
+                    return ' '.join(str(value or '').strip().lower().split())
+
+                alvo = _norm(atual)
+                match = ''
+                for c in condicoes:
+                    codigo = str(c.codigo or '').strip()
+                    descricao = str(c.descricao or '').strip()
+                    candidatos = {
+                        _norm(descricao),
+                        _norm(codigo),
+                        _norm(f"{codigo} - {descricao}"),
+                    }
+                    if alvo in candidatos:
+                        match = str(c.id)
+                        break
+
+                if match:
+                    self.fields['condicao_pagamento'].initial = match
+                    self.initial['condicao_pagamento'] = match
+        except LookupError:
+            self.fields['condicao_pagamento'].choices = [('', 'Modulo Comercial indisponivel')]
+
+        if self.instance and self.instance.pk and not self.instance.tipo_operacao:
+            self.fields['tipo_operacao'].initial = '0'
+            self.initial['tipo_operacao'] = '0'
+
+        self.fields['quantidade_parcelas'].widget.attrs['readonly'] = True
+        self.fields['quantidade_parcelas'].widget.attrs['class'] = f"{self.fields['quantidade_parcelas'].widget.attrs.get('class', '')} bg-light".strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        natureza_id = (cleaned_data.get('natureza_operacao') or '').strip()
+        if natureza_id and natureza_id in self._naturezas_map:
+            cleaned_data['natureza_operacao'] = (self._naturezas_map[natureza_id].descricao or '').strip()
+        elif self.instance and self.instance.pk:
+            cleaned_data['natureza_operacao'] = self.instance.natureza_operacao
+
+        condicao_id = (cleaned_data.get('condicao_pagamento') or '').strip()
+        if condicao_id and condicao_id in self._condicoes_pagamento_map:
+            condicao = self._condicoes_pagamento_map[condicao_id]
+            cleaned_data['condicao_pagamento'] = (condicao.descricao or '').strip()
+            cleaned_data['quantidade_parcelas'] = condicao.quantidade_parcelas or 1
+        elif self.instance and self.instance.pk and self.instance.condicao_pagamento:
+            cleaned_data['condicao_pagamento'] = self.instance.condicao_pagamento
+            cleaned_data['quantidade_parcelas'] = self.instance.quantidade_parcelas or 1
+        elif not cleaned_data.get('quantidade_parcelas'):
+            cleaned_data['quantidade_parcelas'] = 1
+
+        if not cleaned_data.get('tipo_operacao'):
+            cleaned_data['tipo_operacao'] = '0'
+
+        return cleaned_data
+
+
 class ItemNotaFiscalForm(forms.ModelForm):
     class Meta:
         model = ItemNotaFiscal
@@ -246,6 +415,22 @@ class TransporteNotaFiscalForm(forms.ModelForm):
             qs = qs.none()
         self.fields['transportadora'].queryset = qs.order_by('razao_social', 'nome')
         self.fields['transportadora'].required = False
+
+        self.fields['modalidade_frete'].label = 'Modalidade do Frete'
+        self.fields['placa_veiculo'].label = 'Placa do Veiculo'
+        self.fields['uf_veiculo'].label = 'UF do Veiculo'
+        self.fields['especie_volumes'].label = 'Especie dos Volumes'
+        self.fields['peso_liquido'].label = 'Peso Liquido (kg)'
+        self.fields['peso_bruto'].label = 'Peso Bruto (kg)'
+
+        self.fields['modalidade_frete'].choices = [
+            ('0', 'Contratacao do Frete por conta do Remetente (CIF)'),
+            ('1', 'Contratacao do Frete por conta do Destinatario (FOB)'),
+            ('2', 'Contratacao do Frete por conta de Terceiros'),
+            ('3', 'Transporte Proprio por conta do Remetente'),
+            ('4', 'Transporte Proprio por conta do Destinatario'),
+            ('9', 'Sem Ocorrencia de Transporte'),
+        ]
 
         transportadora = getattr(self.instance, 'transportadora', None)
         if transportadora:
@@ -327,10 +512,6 @@ TransporteNotaFiscalFormSet = inlineformset_factory(
     can_delete=False,
     fk_name='nota_fiscal'
 )
-
-
-from control.models import Emitente
-from empresas.models import Empresa, CategoriaEmpresa
 
 
 class EmpresaDestinatarioSelect(forms.Select):

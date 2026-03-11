@@ -1,15 +1,7 @@
-﻿{% load static %}
+{% load static %}
 
-<div class="container-fluid pt-3 pb-4">
-  <div id="identificador-tela"
-       data-tela="lista_empresas"
-       data-entidade-singular="empresa"
-       data-entidade-plural="empresas"
-       data-url-editar="{% url 'empresas:editar_empresa' 0 %}"
-       data-url-excluir="{% url 'empresas:excluir_empresas_multiplos' %}"
-       data-seletor-checkbox=".check-empresa"
-       data-seletor-pai="#select-all-empresas">
-  </div>
+<div class="container-fluid pt-3 pb-4" data-page="lista_empresas" data-list-controller="unified-list" data-list-url="{% url 'empresas:lista_empresas' %}" data-search-param="termo_empresa" data-filter-form="#filtro-empresas">
+  
 
   <div class="card shadow-sm mx-auto" style="max-width: 1100px;">
     <div class="card-header bg-light">
@@ -19,39 +11,38 @@
 
       <div class="page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <form id="filtro-empresas"
-              class="page-toolbar-form d-flex align-items-center gap-2 mb-0 ajax-form"
+              class="page-toolbar-form d-flex align-items-center gap-2 mb-0"
               method="get"
-              action="{% url 'empresas:lista_empresas' %}"
-              data-target-container="#empresas-tabela-wrapper"
-              data-response-type="html">
+              action="{% url 'empresas:lista_empresas' %}">
           <input type="text"
-                 id="busca-empresa"
+                 id="search-input"
                  name="termo_empresa"
                  class="form-control page-toolbar-search"
-                 placeholder="Buscar por raz?o social, nome ou documento"
+                 placeholder="Buscar por raz&atilde;o social, nome ou documento"
                  value="{{ request.GET.termo_empresa|default_if_none:'' }}"
                  autocomplete="off">
           <select name="tipo" class="form-select" style="width: 180px;">
             <option value="">Tipo de Empresa</option>
-            <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jur?dica</option>
-            <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa F?sica</option>
+            <option value="PJ" {% if request.GET.tipo == 'PJ' %}selected{% endif %}>Pessoa Jur&iacute;dica</option>
+            <option value="PF" {% if request.GET.tipo == 'PF' %}selected{% endif %}>Pessoa F&iacute;sica</option>
+            <option value="transportadora" {% if request.GET.tipo == 'transportadora' %}selected{% endif %}>Transportadora</option>
           </select>
           <select name="status" class="form-select" style="width: 150px;">
             <option value="">Status</option>
             <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativa</option>
             <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativa</option>
           </select>
-          <button type="button" id="btn-limpar-empresas" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
+          <button type="button" id="btn-limpar-busca" class="btn btn-outline-secondary page-toolbar-btn">Limpar</button>
         </form>
 
         <div class="d-flex flex-wrap align-items-center gap-2">
           <a href="{% url 'empresas:cadastrar_empresa' %}" class="btn btn-success ajax-link">
             <i class="bi bi-plus-circle"></i> Novo
           </a>
-          <a id="btn-editar" class="btn btn-primary disabled" role="button">
+          <button id="btn-editar-selecionado" type="button" class="btn btn-primary" disabled data-edit-url-base="{% url 'empresas:editar_empresa' 0 %}">
             <i class="bi bi-pencil"></i> Editar
-          </a>
-          <button id="btn-excluir" class="btn btn-danger" disabled>
+          </button>
+          <button id="btn-excluir-selecionados" type="button" class="btn btn-danger" disabled data-delete-url="{% url 'empresas:excluir_empresas_multiplos' %}" data-entity-label-singular="empresa" data-entity-label-plural="empresas">
             <i class="bi bi-trash"></i> Excluir
           </button>
         </div>

@@ -18,6 +18,7 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.template.response import TemplateResponse
+from django.db.models import Q
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
@@ -156,18 +157,29 @@ def criar_usuario(request):
 
 @login_required_json
 def lista_usuarios(request):
-    usuarios = User.objects.all()
-    template = 'partials/accounts/lista_usuarios.html' if request.headers.get('x-requested-with') == 'XMLHttpRequest' else 'base.html'
-    context = {
-        'usuarios': usuarios,
-        'data_page': 'lista_usuarios'
-    } if 'partials' in template else {
-        'usuarios': usuarios,
-        'content_template': 'partials/accounts/lista_usuarios.html',
-        'data_page': 'lista_usuarios'
-    }
-    return render(request, template, context)
+    termo_busca = (request.GET.get('busca') or '').strip()
+    usuarios = User.objects.prefetch_related('groups').all()
 
+    if termo_busca:
+        usuarios = usuarios.filter(
+            Q(first_name__icontains=termo_busca)
+            | Q(last_name__icontains=termo_busca)
+            | Q(nome_completo__icontains=termo_busca)
+            | Q(username__icontains=termo_busca)
+            | Q(email__icontains=termo_busca)
+            | Q(whatsapp__icontains=termo_busca)
+            | Q(groups__name__icontains=termo_busca)
+        ).distinct()
+
+    return render_ajax_or_base(
+        request,
+        'partials/accounts/lista_usuarios.html',
+        {
+            'usuarios': usuarios,
+            'termo_busca': termo_busca,
+            'data_page': 'lista_usuarios',
+        }
+    )
 
 @login_required_json
 @user_passes_test(is_super_or_group_admin)
@@ -183,8 +195,8 @@ def editar_usuario(request, usuario_id):
             form.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'sucesso': True,
-                    'mensagem': app_messages.success_updated(usuario), # Mensagem será gerada aqui
+                    'success': True,
+                    'message': app_messages.success_updated(usuario), # Mensagem será gerada aqui
                     'redirect_url': reverse('accounts:lista_usuarios')
                 })
             app_messages.success_updated(usuario)
@@ -193,8 +205,8 @@ def editar_usuario(request, usuario_id):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 # Retorna erros e mensagem via JSON
                 return JsonResponse({
-                    'sucesso': False,
-                    'mensagem': app_messages.error("Erro ao atualizar usuário. Verifique os campos."),
+                    'success': False,
+                    'message': app_messages.error("Erro ao atualizar usuário. Verifique os campos."),
                     'errors': form.errors # Mantém os erros do formulário para o frontend
                 }, status=400)
 
@@ -370,11 +382,23 @@ def gerenciar_permissoes_usuario(request, user_id):
 @login_required_json
 @user_passes_test(is_super_or_group_admin)
 def lista_grupos(request):
-    grupos = Group.objects.prefetch_related('profile').all()
+    termo_busca = (request.GET.get('busca') or '').strip()
+    grupos = Group.objects.select_related('profile').all()
+
+    if termo_busca:
+        grupos = grupos.filter(
+            Q(name__icontains=termo_busca)
+            | Q(profile__finalidade__icontains=termo_busca)
+        ).distinct()
+
     return render_ajax_or_base(
         request,
         'partials/accounts/lista_grupos.html',
-        {'grupos': grupos}
+        {
+            'grupos': grupos,
+            'termo_busca': termo_busca,
+            'data_page': 'lista_grupos',
+        }
     )
 
 @login_required_json
@@ -391,7 +415,7 @@ def cadastrar_grupo(request):
                 finalidade=form.cleaned_data['finalidade']
             )
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_created(group)})
+                return JsonResponse({'success': True, 'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_created(group)})
             app_messages.success_created(group)
             return redirect('accounts:lista_grupos')
         else:
@@ -418,7 +442,7 @@ def editar_grupo(request, grupo_id):
             perfil.finalidade = form.cleaned_data['finalidade']
             perfil.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_updated(grupo)})
+                return JsonResponse({'success': True, 'redirect_url': reverse('accounts:lista_grupos'), 'message': app_messages.success_updated(grupo)})
             app_messages.success_updated(grupo)
             return redirect('accounts:lista_grupos')
         else:
