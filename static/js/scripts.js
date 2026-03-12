@@ -602,6 +602,7 @@ document.body.addEventListener('click', async (e) => {
       const urlExcluir = identificadorTela.dataset.urlExcluir;
       const seletorCheckbox = identificadorTela.dataset.seletorCheckbox;
       const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
+      const actionVerb = identificadorTela.dataset.actionVerb || 'excluir';
 
       const selectedIds = Array.from(mainContent.querySelectorAll(`${seletorCheckbox}:checked`)).map(cb => cb.value);
 
@@ -1873,6 +1874,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("ajaxContentLoaded", () => {
     runInitializers();
 });
+
 
 
 

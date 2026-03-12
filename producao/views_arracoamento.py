@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -42,6 +42,9 @@ def api_sugestoes_arracoamento(request):
             
         data_inicial = datetime.strptime(data_inicial_str, '%Y-%m-%d').date()
         data_final = datetime.strptime(data_final_str, '%Y-%m-%d').date()
+        hoje = localdate()
+        if data_final > hoje:
+            data_final = hoje
         
         linha_producao_id = request.GET.get('linha_producao_id')
         # CORRECAO: valor padr?o vazio para status
@@ -56,6 +59,18 @@ def api_sugestoes_arracoamento(request):
         }, status=400)
 
     erros = []
+    if data_inicial > data_final:
+        return JsonResponse({
+            'success': True,
+            'sugestoes': [],
+            'totais': {
+                'total_sugerido_kg': '0.000',
+                'total_real_kg': '0.000',
+            },
+            'erros': ['Periodo sem dados validos para consulta.'],
+            'has_pending_previous_approvals': False,
+            'pending_previous_approvals': [],
+        })
     
     # Busca todos os lotes ativos
     lotes_query = Lote.objects.filter(
@@ -230,61 +245,35 @@ def api_sugestoes_arracoamento(request):
 
     
     # --- Verificação de pendências anteriores à data inicial ---
-        # --- Verificação de pendências anteriores à data inicial ---
     logger.info("Verificando pendências anteriores à data inicial...")
     lotes_com_pendencias = []
+    lotes_pendencias_ids = set()
     for lote in lotes_com_estoque:
         try:
-            # ?ltima data realizada antes da data inicial (baseada no evento realizado)
-            data_ultimo = ArracoamentoRealizado.objects.filter(
-                lote_diario__lote=lote,
-                data_evento__lt=data_inicial
-            ).aggregate(max_data=Max('data_evento'))['max_data']
-            
-            if data_ultimo:
-                data_inicio_pendencia = max(data_ultimo + timedelta(days=1), lote.data_povoamento)
-                # Pend?ncia ? calculada por data:
-                # existe LoteDiario no intervalo cuja data n?o aparece em nenhuma realizaOKo.
-                datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
-                    lote_diario__lote=lote,
-                    data_evento__gte=data_inicio_pendencia,
-                    data_evento__lt=data_inicial
-                ).values('data_evento')
+            data_inicio_analise = lote.data_povoamento or data_inicial
+            if data_inicio_analise >= data_inicial:
+                continue
 
-                dias_sem_aprovacao = LoteDiario.objects.filter(
-                    lote=lote,
-                    data_evento__gte=data_inicio_pendencia,
-                    data_evento__lt=data_inicial
-                ).exclude(
-                    data_evento__in=datas_realizadas_no_intervalo
-                ).exists()
-                if dias_sem_aprovacao:
-                    lotes_com_pendencias.append({
-                        'lote_nome': lote.nome,
-                        'ultima_data': data_ultimo.strftime("%d/%m/%Y")
-                    })
-            else:
-                # Nunca houve realizaOKo antes da data inicial
-                data_inicio_pendencia = lote.data_povoamento
-                datas_realizadas_no_intervalo = ArracoamentoRealizado.objects.filter(
-                    lote_diario__lote=lote,
-                    data_evento__gte=data_inicio_pendencia,
-                    data_evento__lt=data_inicial
-                ).values('data_evento')
-                dias_sem_aprovacao = LoteDiario.objects.filter(
-                    lote=lote,
-                    data_evento__gte=data_inicio_pendencia,
-                    data_evento__lt=data_inicial
-                ).exclude(
-                    data_evento__in=datas_realizadas_no_intervalo
-                ).exists()
-                if dias_sem_aprovacao:
-                    lotes_com_pendencias.append({
-                        'lote_nome': lote.nome,
-                        'ultima_data': 'Nunca aprovado'
-                    })
-        except Exception as e:
-            logger.error(f"Erro ao verificar pend?ncias para lote {lote.id}: {str(e)}")
+            # Usa a mesma base da UI: pendencia = sugestao existente e nao aprovada.
+            primeira_data_pendente = ArracoamentoSugerido.objects.filter(
+                lote_diario__lote=lote,
+                lote_diario__data_evento__gte=data_inicio_analise,
+                lote_diario__data_evento__lt=data_inicial
+            ).exclude(
+                status="Aprovado"
+            ).order_by(
+                "lote_diario__data_evento"
+            ).values_list(
+                "lote_diario__data_evento", flat=True
+            ).first()
+
+            if primeira_data_pendente and lote.id not in lotes_pendencias_ids:
+                lotes_com_pendencias.append({
+                    "lote_nome": lote.nome,
+                    "lote_ref": f"{lote.nome} (ID {lote.id})",
+                    "primeira_data_pendente": primeira_data_pendente.strftime("%d/%m/%Y")
+                })
+                lotes_pendencias_ids.add(lote.id)
         except Exception as e:
             logger.error(f"Erro ao verificar pendências para lote {lote.id}: {str(e)}")
     # Serializa as sugestões
@@ -296,8 +285,11 @@ def api_sugestoes_arracoamento(request):
 
     for s in todas_sugestoes:
         try:
-            realizado = s.lote_diario.realizacoes.first()
+            realizado = s.lote_diario.realizacoes.order_by('-id').first()
             realizado_id = realizado.id if realizado else None
+            status_ui = s.status
+            if status_ui == 'Aprovado' and not realizado_id:
+                status_ui = 'Pendente'
             racao_realizada_obj = s.lote_diario.racao_realizada
             tanque_no_dia = s.lote_diario.tanque or s.lote_diario.lote.tanque_atual
 
@@ -339,7 +331,7 @@ def api_sugestoes_arracoamento(request):
                 'qtd_sugerida_kg': f"{qtd_sugerida:.3f}",
                 'qtd_sugerida_ajustada_kg': f"{qtd_ajustada:.3f}",
                 'qtd_real_kg': f"{realizado.quantidade_kg:.3f}" if realizado else "",
-                'status': s.status,
+                'status': status_ui,
                 'fator_ambiente': f"{amb['fator_ambiente']:.2f}" if amb.get('fator_ambiente') else None,
                 'od_medio': f"{amb['od_medio']:.2f}" if amb.get('od_medio') else None,
                 'temp_media': f"{amb['temp_media']:.2f}" if amb.get('temp_media') else None,
@@ -361,6 +353,59 @@ def api_sugestoes_arracoamento(request):
         'pending_previous_approvals': lotes_com_pendencias
     })
 
+@login_required
+@require_http_methods(["GET"])
+@permission_required('producao.view_lote', raise_exception=True)
+def api_pendencias_arracoamento(request):
+    data_ref_str = request.GET.get('data_referencia', '').strip()
+    try:
+        if data_ref_str:
+            data_referencia = datetime.strptime(data_ref_str, '%Y-%m-%d').date()
+        else:
+            data_referencia = localdate()
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'success': False,
+            'message': 'Data invalida. Use o formato AAAA-MM-DD.'
+        }, status=400)
+
+    lotes_qs = Lote.objects.filter(
+        ativo=True,
+        data_povoamento__lte=data_referencia
+    ).only('id', 'nome', 'data_povoamento')
+
+    pendencias = []
+    for lote in lotes_qs:
+        data_inicio_analise = lote.data_povoamento or data_referencia
+        if data_inicio_analise >= data_referencia:
+            continue
+
+        primeira_data = ArracoamentoSugerido.objects.filter(
+            lote_diario__lote=lote,
+            lote_diario__data_evento__gte=data_inicio_analise,
+            lote_diario__data_evento__lt=data_referencia
+        ).exclude(
+            status='Aprovado'
+        ).order_by(
+            'lote_diario__data_evento'
+        ).values_list(
+            'lote_diario__data_evento', flat=True
+        ).first()
+
+        if primeira_data:
+            pendencias.append({
+                'lote_id': lote.id,
+                'lote_nome': lote.nome,
+                'lote_ref': f'{lote.nome} (ID {lote.id})',
+                'primeira_data_pendente': primeira_data.strftime('%d/%m/%Y'),
+            })
+
+    return JsonResponse({
+        'success': True,
+        'data_referencia': data_referencia.strftime('%d/%m/%Y'),
+        'has_pending_previous_approvals': bool(pendencias),
+        'pending_previous_approvals': pendencias,
+    })
 
 @login_required
 @require_http_methods(["POST"])
@@ -374,7 +419,7 @@ def api_aprovar_arracoamento(request):
         observacoes = data.get('observacoes', '')
 
         with transaction.atomic():
-            sugestao = ArracoamentoSugerido.objects.select_related(
+            sugestao = ArracoamentoSugerido.objects.select_for_update().select_related(
                 'lote_diario__lote',
                 'produto_racao'
             ).filter(id=sugestao_id).first()
@@ -387,7 +432,7 @@ def api_aprovar_arracoamento(request):
                             'success': True,
                             'message': 'Lançamento já aprovado anteriormente.'
                         })
-                    sugestao = ArracoamentoSugerido.objects.select_related(
+                    sugestao = ArracoamentoSugerido.objects.select_for_update().select_related(
                         'lote_diario__lote',
                         'produto_racao'
                     ).filter(lote_diario=ld).order_by('-id').first()
@@ -410,6 +455,19 @@ def api_aprovar_arracoamento(request):
                     'success': True,
                     'message': 'Sugestão já aprovada anteriormente.'
                 })
+
+            realizado_existente = ArracoamentoRealizado.objects.select_for_update().filter(
+                lote_diario=sugestao.lote_diario
+            ).order_by('-id').first()
+            if realizado_existente:
+                if sugestao.status != 'Aprovado':
+                    sugestao.status = 'Aprovado'
+                    sugestao.save(update_fields=['status'])
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Lançamento já aprovado anteriormente.'
+                })
+
 
             # Lógica para determinar a quantidade a ser usada
             quantidade_real_kg_str = data.get('quantidade_real_kg')
@@ -630,7 +688,6 @@ def api_delete_arracoamento_realizado(request, pk):
             'message': f'Erro ao excluir lançamento: {str(e)}'
         }, status=500)
 
-
 @login_required
 @require_http_methods(["POST"])
 @permission_required('producao.delete_arracoamentorealizado', raise_exception=True)
@@ -756,132 +813,6 @@ def api_bulk_delete_arracoamento_realizado(request):
             'message': f'Erro ao excluir lancamentos: {str(e)}'
         }, status=500)
 
-
-@login_required
-@require_http_methods(["POST"])
-@permission_required('producao.change_arracoamentorealizado', raise_exception=True)
-@transaction.atomic
-def api_update_arracoamento_realizado(request, pk):
-    try:
-        data = json.loads(request.body)
-        obj = ArracoamentoRealizado.objects.select_related(
-            'lote_diario__lote',
-            'produto_racao'
-        ).get(pk=pk)
-        
-        lote_diario = obj.lote_diario
-        quantidade_anterior = obj.quantidade_kg
-        nova_quantidade = q3(data.get('quantidade_kg'))
-
-        # Validar nova quantidade
-        if not nova_quantidade or nova_quantidade <= 0:
-            return JsonResponse({
-                'success': False, 
-                'message': 'A quantidade deve ser um número positivo.'
-            }, status=400)
-
-        # Ajustar estoque se a quantidade mudou
-        if nova_quantidade != quantidade_anterior and obj.produto_racao:
-            diferenca = nova_quantidade - quantidade_anterior
-            try:
-                produto = Produto.objects.select_for_update().get(pk=obj.produto_racao.pk)
-                
-                # Verificar estoque se for aumento
-                if diferenca > 0 and hasattr(produto, 'quantidade_estoque'):
-                    if produto.quantidade_estoque < diferenca:
-                        return JsonResponse({
-                            'success': False,
-                            'message': f'Estoque insuficiente para aumento. Disponível: {produto.quantidade_estoque:.3f} kg'
-                        }, status=400)
-                
-                # Atualizar estoque
-                Produto.objects.filter(pk=obj.produto_racao.pk).update(
-                    quantidade_saidas=F('quantidade_saidas') + diferenca
-                )
-            except Produto.DoesNotExist:
-                logger.error(f"Produto {obj.produto_racao.pk} não encontrado para atualização de estoque")
-            except DatabaseError as e:
-                logger.error(f"Erro ao atualizar estoque: {e}")
-                raise Exception("Falha ao atualizar estoque")
-
-        # Atualizar o objeto
-        obj.quantidade_kg = nova_quantidade
-        obj.observacoes = data.get('observacoes', '')
-        obj.usuario_edicao = request.user
-        obj.data_edicao = timezone.now()
-        obj.save()
-
-        # --- INÍCIO DA LÓGICA DE CÁLCULO DE MÉTRICAS REAIS ---
-        lote = lote_diario.lote
-        lote_diario.data_edicao = timezone.now()
-        lote_diario.usuario_edicao = request.user
-
-        # Define a quantidade inicial do dia com base no dia anterior ou no lote
-        dia_anterior = lote_diario.data_evento - timedelta(days=1)
-        lote_diario_anterior = LoteDiario.objects.filter(lote=lote, data_evento=dia_anterior).first()
-        
-        quantidade_inicial_dia = lote.quantidade_inicial
-        if lote_diario_anterior and lote_diario_anterior.quantidade_real is not None:
-            quantidade_inicial_dia = lote_diario_anterior.quantidade_real
-        lote_diario.quantidade_inicial = quantidade_inicial_dia
-
-        # Apura a quantidade real do dia (inicial +/- eventos do dia)
-        lote_diario.quantidade_real = _apurar_quantidade_real_no_dia(lote_diario)
-        
-        # Define o peso médio inicial do dia
-        peso_medio_inicial_dia = lote.peso_medio_inicial
-        if lote_diario_anterior and lote_diario_anterior.peso_medio_real is not None:
-            peso_medio_inicial_dia = lote_diario_anterior.peso_medio_real
-        lote_diario.peso_medio_inicial = peso_medio_inicial_dia
-        
-        # Define a biomassa inicial do dia
-        biomassa_inicial_dia = calc_biomassa_kg(lote_diario.quantidade_inicial, lote_diario.peso_medio_inicial)
-        lote_diario.biomassa_inicial = biomassa_inicial_dia
-
-        ld = lote_diario
-        # Mantém o snapshot do LoteDiario alinhado ao lançamento editado
-        lote_diario.racao_realizada = obj.produto_racao
-
-        # Chamar a função única de recálculo
-        recalcular_lote_diario_real(ld, request.user)
-
-        # --- LÓGICA DE ENCADEAMENTO D -> D+1 ---
-        proximo_dia = lote_diario.data_evento + timedelta(days=1)
-        proximo = LoteDiario.objects.filter(lote=lote, data_evento=proximo_dia).first()
-        if proximo:
-            base_bio = lote_diario.biomassa_real if lote_diario.biomassa_real is not None else lote_diario.biomassa_projetada
-            base_peso = lote_diario.peso_medio_real if lote_diario.peso_medio_real is not None else lote_diario.peso_medio_projetado
-            base_qtd = lote_diario.quantidade_real if lote_diario.quantidade_real is not None else lote_diario.quantidade_projetada
-
-            proximo.biomassa_inicial = base_bio
-            proximo.peso_medio_inicial = base_peso
-            proximo.quantidade_inicial = base_qtd
-            proximo.save(update_fields=['biomassa_inicial', 'peso_medio_inicial', 'quantidade_inicial'])
-
-        reprojetar_ciclo_de_vida(lote_diario.lote, lote_diario.data_evento + timedelta(days=1))
-
-        return JsonResponse({
-            'success': True, 
-            'message': 'Lançamento atualizado e projeção recalculada.'
-        })
-    except ArracoamentoRealizado.DoesNotExist:
-        return JsonResponse({
-            'success': False, 
-            'message': 'Lançamento não encontrado.'
-        }, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False, 
-            'message': 'Formato JSON inválido.'
-        }, status=400)
-    except Exception as e:
-        logger.exception(f"Erro ao atualizar lançamento {pk}: {e}")
-        return JsonResponse({
-            'success': False, 
-            'message': f'Erro ao atualizar lançamento: {str(e)}'
-        }, status=500)
-
-
 @login_required
 @require_http_methods(["GET"])
 @permission_required('producao.view_arracoamentorealizado', raise_exception=True)
@@ -918,7 +849,141 @@ def api_get_arracoamento_realizado(request, pk):
             'message': f'Erro ao buscar lançamento: {str(e)}'
         }, status=500)
         
-# views_arracoamento.py (adicione esta função)
+
+@login_required
+@require_http_methods(["POST"])
+@permission_required('producao.change_arracoamentorealizado', raise_exception=True)
+@transaction.atomic
+def api_update_arracoamento_realizado(request, pk):
+    try:
+        data = json.loads(request.body)
+        obj = ArracoamentoRealizado.objects.select_related(
+            'lote_diario__lote',
+            'produto_racao'
+        ).get(pk=pk)
+
+        lote_diario = obj.lote_diario
+        quantidade_anterior = obj.quantidade_kg
+        nova_quantidade = q3(data.get('quantidade_kg'))
+
+        if not nova_quantidade or nova_quantidade <= 0:
+            return JsonResponse({
+                'success': False,
+                'message': 'A quantidade deve ser um numero positivo.'
+            }, status=400)
+
+        produto_racao_id_raw = data.get("produto_racao_id")
+        produto_anterior = obj.produto_racao
+        produto_novo = produto_anterior
+
+        if produto_racao_id_raw not in (None, "", "null", "None"):
+            try:
+                produto_novo = Produto.objects.select_for_update().get(pk=int(produto_racao_id_raw))
+            except (TypeError, ValueError):
+                return JsonResponse({
+                    "success": False,
+                    "message": "Racao invalida para atualizacao."
+                }, status=400)
+            except Produto.DoesNotExist:
+                return JsonResponse({
+                    "success": False,
+                    "message": "Racao informada nao encontrada."
+                }, status=404)
+
+        if produto_anterior and produto_novo and produto_anterior.pk == produto_novo.pk:
+            diferenca = nova_quantidade - quantidade_anterior
+            if diferenca != 0:
+                produto_lock = Produto.objects.select_for_update().get(pk=produto_novo.pk)
+                if diferenca > 0 and hasattr(produto_lock, "quantidade_estoque") and produto_lock.quantidade_estoque < diferenca:
+                    return JsonResponse({
+                        "success": False,
+                        "message": f"Estoque insuficiente para aumento. Disponivel: {produto_lock.quantidade_estoque:.3f} kg"
+                    }, status=400)
+                Produto.objects.filter(pk=produto_novo.pk).update(
+                    quantidade_saidas=F("quantidade_saidas") + diferenca
+                )
+        else:
+            if produto_anterior:
+                Produto.objects.filter(pk=produto_anterior.pk).update(
+                    quantidade_saidas=F("quantidade_saidas") - quantidade_anterior
+                )
+            if produto_novo:
+                produto_novo_lock = Produto.objects.select_for_update().get(pk=produto_novo.pk)
+                if hasattr(produto_novo_lock, "quantidade_estoque") and produto_novo_lock.quantidade_estoque < nova_quantidade:
+                    return JsonResponse({
+                        "success": False,
+                        "message": f"Estoque insuficiente para a racao selecionada. Disponivel: {produto_novo_lock.quantidade_estoque:.3f} kg"
+                    }, status=400)
+                Produto.objects.filter(pk=produto_novo.pk).update(
+                    quantidade_saidas=F("quantidade_saidas") + nova_quantidade
+                )
+
+        obj.produto_racao = produto_novo
+        obj.quantidade_kg = nova_quantidade
+        obj.observacoes = data.get("observacoes", "")
+        obj.usuario_edicao = request.user
+        obj.data_edicao = timezone.now()
+        obj.save()
+
+        lote = lote_diario.lote
+        lote_diario.data_edicao = timezone.now()
+        lote_diario.usuario_edicao = request.user
+
+        dia_anterior = lote_diario.data_evento - timedelta(days=1)
+        lote_diario_anterior = LoteDiario.objects.filter(lote=lote, data_evento=dia_anterior).first()
+
+        quantidade_inicial_dia = lote.quantidade_inicial
+        if lote_diario_anterior and lote_diario_anterior.quantidade_real is not None:
+            quantidade_inicial_dia = lote_diario_anterior.quantidade_real
+        lote_diario.quantidade_inicial = quantidade_inicial_dia
+
+        lote_diario.quantidade_real = _apurar_quantidade_real_no_dia(lote_diario)
+
+        peso_medio_inicial_dia = lote.peso_medio_inicial
+        if lote_diario_anterior and lote_diario_anterior.peso_medio_real is not None:
+            peso_medio_inicial_dia = lote_diario_anterior.peso_medio_real
+        lote_diario.peso_medio_inicial = peso_medio_inicial_dia
+
+        biomassa_inicial_dia = calc_biomassa_kg(lote_diario.quantidade_inicial, lote_diario.peso_medio_inicial)
+        lote_diario.biomassa_inicial = biomassa_inicial_dia
+
+        lote_diario.racao_realizada = obj.produto_racao
+        recalcular_lote_diario_real(lote_diario, request.user)
+
+        proximo_dia = lote_diario.data_evento + timedelta(days=1)
+        proximo = LoteDiario.objects.filter(lote=lote, data_evento=proximo_dia).first()
+        if proximo:
+            base_bio = lote_diario.biomassa_real if lote_diario.biomassa_real is not None else lote_diario.biomassa_projetada
+            base_peso = lote_diario.peso_medio_real if lote_diario.peso_medio_real is not None else lote_diario.peso_medio_projetado
+            base_qtd = lote_diario.quantidade_real if lote_diario.quantidade_real is not None else lote_diario.quantidade_projetada
+
+            proximo.biomassa_inicial = base_bio
+            proximo.peso_medio_inicial = base_peso
+            proximo.quantidade_inicial = base_qtd
+            proximo.save(update_fields=['biomassa_inicial', 'peso_medio_inicial', 'quantidade_inicial'])
+
+        reprojetar_ciclo_de_vida(lote_diario.lote, lote_diario.data_evento + timedelta(days=1))
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Lancamento atualizado e projecao recalculada.'
+        })
+    except ArracoamentoRealizado.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Lancamento nao encontrado.'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Formato JSON invalido.'
+        }, status=400)
+    except Exception as e:
+        logger.exception(f"Erro ao atualizar lancamento {pk}: {e}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar lancamento: {str(e)}'
+        }, status=500)# views_arracoamento.py (adicione esta função)
 
 @login_required
 @require_http_methods(["GET"])
@@ -1015,7 +1080,6 @@ def api_ambiente_get(request):
             'message': str(e)
         }, status=500)
 
-
 @login_required
 @require_http_methods(["POST"])
 @permission_required('producao.add_parametroambientaldiario', raise_exception=True)
@@ -1075,6 +1139,7 @@ def api_ambiente_upsert(request):
             'success': False,
             'message': str(e)
         }, status=500)
+
 
 
 

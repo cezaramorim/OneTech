@@ -8,6 +8,7 @@
         SELECTOR_ROOT: '[data-page="arracoamento-diario"]',
 
         API_URL_SUGESTOES: '/producao/api/arracoamento/sugestoes/',
+        API_URL_PENDENCIAS: '/producao/api/arracoamento/pendencias/',
         API_URL_LINHAS_PRODUCAO: '/producao/api/linhas-producao/',
         API_URL_APROVAR: '/producao/api/arracoamento/aprovar/',
         API_URL_FASES: '/producao/api/fases-com-tanques/',
@@ -23,35 +24,92 @@
             try {
                 const root = document.querySelector(this.SELECTOR_ROOT);
                 if (!root) return;
+                if (root.dataset.arracoamentoInitialized === '1') return;
+                root.dataset.arracoamentoInitialized = '1';
 
                 if (this.abortController) this.abortController.abort();
                 this.abortController = new AbortController();
                 const { signal } = this.abortController;
                 const self = this;
+                const getCSRFTokenSafe = () => {
+                    if (typeof window.getCSRFToken === 'function') return window.getCSRFToken();
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find((row) => row.startsWith('csrftoken='));
+                    return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : '';
+                };
+                const fetchWithCredsSafe = async (url, options = {}) => {
+                    if (typeof window.fetchWithCreds === 'function') {
+                        return window.fetchWithCreds(url, options);
+                    }
+                    const method = String(options.method || 'GET').toUpperCase();
+                    const headers = { ...(options.headers || {}) };
+                    if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+                        const csrf = getCSRFTokenSafe();
+                        if (csrf && !headers['X-CSRFToken']) headers['X-CSRFToken'] = csrf;
+                    }
+                    return fetch(url, { credentials: 'same-origin', ...options, headers });
+                };
 
                 // Seletores
                 const dataInicialInput = root.querySelector('#data-inicial');
                 const dataFinalInput = root.querySelector('#data-final');
+                const hojeIso = new Date().toISOString().slice(0, 10);
+                if (dataInicialInput) dataInicialInput.setAttribute('max', hojeIso);
+                if (dataFinalInput) dataFinalInput.setAttribute('max', hojeIso);
                 const filtroStatusSelect = root.querySelector('#filtro-status');
                 const filtroLinhaProducaoSelect = root.querySelector('#filtro-linha-producao');
                 const btnBuscar = root.querySelector('#btn-buscar');
+                const btnLimparFiltros = root.querySelector('#btn-limpar-filtros');
                 const loadingSpinner = root.querySelector('#loading-spinner');
                 const tabelaBody = root.querySelector('#corpo-tabela-sugestoes');
                 const selecionarTodosCheckbox = root.querySelector('#selecionar-todos-sugestoes');
                 const aprovarBtn = root.querySelector('#btn-aprovar-selecionados');
+                const btnEditar = root.querySelector('#btn-editar');
+                const btnExcluir = root.querySelector('#btn-excluir');
+                const identificadorTela = root.querySelector('#identificador-tela');
 
                 const modalAmbiente = document.querySelector('#modalAmbiente');
                 const btnSalvarAmbiente = document.querySelector('#btn-salvar-ambiente');
                 const ambienteDataInput = document.querySelector('#ambiente-data');
                 const ambienteContainer = document.querySelector('#ambiente-container');
                 const btnAmbienteHeader = root.querySelector('#btn-ambiente');
+                const btnPendencias = root.querySelector('#btn-pendencias');
 
                 const modalEdicao = document.querySelector('#modalEdicao');
                 const formEdicao = document.querySelector('#formEdicao');
 
+                const ensureModalInBody = (modalEl) => {
+                    if (!modalEl) return;
+                    if (modalEl.parentElement !== document.body) {
+                        document.body.appendChild(modalEl);
+                    }
+                };
+                ensureModalInBody(modalAmbiente);
+                ensureModalInBody(modalEdicao);
+
                 const getAmbienteModal = () => modalAmbiente ? bootstrap.Modal.getOrCreateInstance(modalAmbiente) : null;
+                const escapeHtml = (value) => String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
 
                 // ---------- Funções auxiliares ----------
+                const resetFiltros = () => {
+                    if (dataInicialInput) dataInicialInput.value = '';
+                    if (dataFinalInput) dataFinalInput.value = '';
+                    if (filtroStatusSelect) filtroStatusSelect.value = '';
+                    if (filtroLinhaProducaoSelect) filtroLinhaProducaoSelect.value = '';
+                    if (selecionarTodosCheckbox) {
+                        selecionarTodosCheckbox.checked = false;
+                        selecionarTodosCheckbox.indeterminate = false;
+                    }
+                    self.lastAmbienteDateOpened = null;
+                    atualizarBotoesAcao();
+                };
+
                 const clearTable = () => {
                     if (tabelaBody) {
                         tabelaBody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">Utilize os filtros e clique em "Buscar" para ver as sugestões.</td></tr>';
@@ -62,9 +120,50 @@
                     if (totalReal) totalReal.textContent = '0.000';
                 };
 
+
+                const mostrarPendencias = (pendencias, dataReferenciaLabel = null) => {
+                    if (!Array.isArray(pendencias) || pendencias.length === 0) {
+                        Swal.fire('Info', 'Nao existem pendencias anteriores para a data informada.', 'info');
+                        return;
+                    }
+
+                    const lista = pendencias
+                        .map((p) => `&bull; ${escapeHtml(p.lote_ref || p.lote_nome)}: pendente desde ${escapeHtml(p.primeira_data_pendente || 'N/A')}`)
+                        .join('<br>');
+
+                    const complemento = dataReferenciaLabel
+                        ? `<br><small>Data de referencia: ${escapeHtml(dataReferenciaLabel)}</small>`
+                        : '';
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Pendencias anteriores',
+                        html: `Existem aprovacoes pendentes em datas anteriores:<br><br>${lista}${complemento}`,
+                        confirmButtonText: 'Entendi'
+                    });
+                };
+
+                const consultarPendencias = async () => {
+                    const dataRef = dataInicialInput?.value || new Date().toISOString().slice(0, 10);
+                    try {
+                        const url = `${self.API_URL_PENDENCIAS}?data_referencia=${encodeURIComponent(dataRef)}`;
+                        const response = await fetchWithCredsSafe(url);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const result = await response.json();
+                        if (!result.success) {
+                            Swal.fire('Erro', result.message || 'Nao foi possivel consultar pendencias.', 'error');
+                            return;
+                        }
+                        mostrarPendencias(result.pending_previous_approvals || [], result.data_referencia || null);
+                    } catch (error) {
+                        console.error('Erro ao consultar pendencias:', error);
+                        Swal.fire('Erro', 'Falha ao consultar pendencias.', 'error');
+                    }
+                };
+
                 const carregarRacoes = async () => {
                     try {
-                        const response = await fetchWithCreds(self.API_URL_RACOES);
+                        const response = await fetchWithCredsSafe(self.API_URL_RACOES);
                         if (response.ok) {
                             self.racoes = await response.json();
                         } else {
@@ -78,7 +177,7 @@
                 const popularFiltroLinhaProducao = async () => {
                     if (!filtroLinhaProducaoSelect) return;
                     try {
-                        const response = await fetchWithCreds(self.API_URL_LINHAS_PRODUCAO);
+                        const response = await fetchWithCredsSafe(self.API_URL_LINHAS_PRODUCAO);
                         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                         const data = await response.json();
 
@@ -100,16 +199,41 @@
                 // Funções de controle dos checkboxes
                 function atualizarSelecionarTodos() {
                     if (!selecionarTodosCheckbox) return;
-                    const totalHabilitados = document.querySelectorAll('.sugestao-checkbox:not([disabled])').length;
-                    const totalSelecionados = document.querySelectorAll('.sugestao-checkbox:checked:not([disabled])').length;
+                    const totalHabilitados = root.querySelectorAll('.sugestao-checkbox:not([disabled])').length;
+                    const totalSelecionados = root.querySelectorAll('.sugestao-checkbox:checked:not([disabled])').length;
                     selecionarTodosCheckbox.checked = totalHabilitados > 0 && totalSelecionados === totalHabilitados;
                     selecionarTodosCheckbox.indeterminate = totalSelecionados > 0 && totalSelecionados < totalHabilitados;
                 }
-
                 function atualizarBotoesAcao() {
-                    const temSelecionados = document.querySelectorAll('.sugestao-checkbox:checked').length > 0;
-                    if (aprovarBtn) aprovarBtn.disabled = !temSelecionados;
-                    // Se houver outros botões que dependam de seleção, adicione aqui
+                    const selecionados = Array.from(root.querySelectorAll('.sugestao-checkbox:checked'));
+                    const pendentes = selecionados.filter(cb => cb.dataset.status === 'Pendente');
+                    const aprovadosComRealizado = selecionados.filter((cb) => {
+                        if (cb.dataset.status !== 'Aprovado') return false;
+                        const realizadoId = Number.parseInt(cb.dataset.realizadoId || '', 10);
+                        return Number.isInteger(realizadoId) && realizadoId > 0;
+                    });
+
+                    if (aprovarBtn) aprovarBtn.disabled = pendentes.length === 0;
+
+                    if (btnEditar) {
+                        const podeEditar = selecionados.length === 1 && aprovadosComRealizado.length === 1;
+                        btnEditar.disabled = !podeEditar;
+                        btnEditar.classList.toggle('disabled', !podeEditar);
+
+                        if (podeEditar) {
+                            const realizadoId = aprovadosComRealizado[0].dataset.realizadoId;
+                            const editUrlBase = identificadorTela?.dataset?.urlEditar || '/producao/api/arracoamento/realizado/0/';
+                            btnEditar.dataset.href = editUrlBase.replace('/0/', `/${realizadoId}/`);
+                        } else {
+                            btnEditar.removeAttribute('data-href');
+                        }
+                    }
+
+                    if (btnExcluir) {
+                        const podeExcluir = selecionados.length > 0 && aprovadosComRealizado.length === selecionados.length;
+                        btnExcluir.disabled = !podeExcluir;
+                        btnExcluir.classList.toggle('disabled', !podeExcluir);
+                    }
                 }
 
                 const buscarSugestoes = async () => {
@@ -118,8 +242,12 @@
                         return;
                     }
 
-                    const dataInicial = dataInicialInput.value;
-                    const dataFinal = dataFinalInput.value;
+                    let dataInicial = dataInicialInput.value;
+                    let dataFinal = dataFinalInput.value;
+                    if (dataInicial > hojeIso) dataInicial = hojeIso;
+                    if (dataFinal > hojeIso) dataFinal = hojeIso;
+                    if (dataInicialInput && dataInicialInput.value !== dataInicial) dataInicialInput.value = dataInicial;
+                    if (dataFinalInput && dataFinalInput.value !== dataFinal) dataFinalInput.value = dataFinal;
 
                     if (!dataInicial || !dataFinal) {
                         Swal.fire('Atenção', 'Por favor, selecione a Data Inicial e a Data Final.', 'warning');
@@ -137,26 +265,26 @@
                     });
 
                     try {
-                        const response = await fetchWithCreds(`${self.API_URL_SUGESTOES}?${params.toString()}`);
+                        const response = await fetchWithCredsSafe(`${self.API_URL_SUGESTOES}?${params.toString()}`);
                         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                         const result = await response.json();
 
                         if (result.success && Array.isArray(result.sugestoes)) {
                             // Preenche a tabela
                             if (result.sugestoes.length > 0) {
-                                const racoesOptions = self.racoes.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+                                const racoesOptions = self.racoes.map(r => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.nome)}</option>`).join('');
 
                                 tabelaBody.innerHTML = result.sugestoes.map(s => {
                                     return `<tr data-id="${s.id}" data-status="${s.status}">
-                                        <td><input type="checkbox" class="sugestao-checkbox" value="${s.realizado_id || s.id}" data-sugestao-id="${s.id}" data-lote-diario-id="${s.lote_diario_id}" data-status="${s.status}"></td>
-                                        <td>${s.data || ''}</td>
-                                        <td>${s.lote_nome || ''}</td>
-                                        <td>${s.tanque_nome || ''}</td>
-                                        <td>${s.qtd_lote || ''}</td>
-                                        <td>${s.peso_medio || ''}</td>
-                                        <td>${s.linha_producao_nome || ''}</td>
-                                        <td>${s.sequencia || ''}</td>
-                                        <td>${s.racao_sugerida_nome || ''}</td>
+                                        <td><input type="checkbox" class="sugestao-checkbox" value="${s.id}" data-sugestao-id="${s.id}" data-realizado-id="${s.realizado_id || ''}" data-lote-diario-id="${s.lote_diario_id}" data-status="${s.status}"></td>
+                                        <td>${escapeHtml(s.data || '')}</td>
+                                        <td>${escapeHtml(s.lote_nome || '')}</td>
+                                        <td>${escapeHtml(s.tanque_nome || '')}</td>
+                                        <td>${escapeHtml(s.qtd_lote || '')}</td>
+                                        <td>${escapeHtml(s.peso_medio || '')}</td>
+                                        <td>${escapeHtml(s.linha_producao_nome || '')}</td>
+                                        <td>${escapeHtml(s.sequencia || '')}</td>
+                                        <td>${escapeHtml(s.racao_sugerida_nome || '')}</td>
                                         <td>
                                             <select class="form-select form-select-sm racao-realizada-select" data-sugestao-id="${s.id}" ${s.status !== 'Pendente' ? 'disabled' : ''}>
                                                 <option value="">Sugerida</option>
@@ -165,8 +293,8 @@
                                         </td>
                                         <td class="text-end">${s.qtd_sugerida_kg || '0.000'}</td>
                                         <td class="text-end">${s.qtd_sugerida_ajustada_kg || '0.000'}</td>
-                                        <td><input type="text" class="form-control form-control-sm qtd-real-input" value="${s.qtd_real_kg || ''}" ${s.status !== 'Pendente' ? 'disabled' : ''}></td>
-                                        <td><span class="badge bg-${s.status === 'Pendente' ? 'warning' : 'success'}">${s.status}</span></td>
+                                        <td><input type="text" class="form-control form-control-sm qtd-real-input" value="${escapeHtml(s.qtd_real_kg || '')}" ${s.status !== 'Pendente' ? 'disabled' : ''}></td>
+                                        <td><span class="badge bg-${s.status === 'Pendente' ? 'warning' : 'success'}">${escapeHtml(s.status)}</span></td>
                                     </tr>`;
                                 }).join('');
 
@@ -182,23 +310,13 @@
                             const totalRealEl = root.querySelector('#total-real');
                             if (totalSugeridoEl) totalSugeridoEl.textContent = result.totais?.total_sugerido_kg || '0.000';
                             if (totalRealEl) totalRealEl.textContent = result.totais?.total_real_kg || '0.000';
-
-                            // MODAL DE PENDENCIAS (movido para fora do if/else de sugestoes)
-                            if (result.has_pending_previous_approvals && result.pending_previous_approvals) {
-                                const lista = result.pending_previous_approvals
-                                    .map(p => `&bull; ${p.lote_nome}: ${p.ultima_data}`)
-                                    .join('<br>');
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Aprova\u00e7\u00f5es pendentes',
-                                    html: `Existem aprova\u00e7\u00f5es pendentes em datas anteriores:<br><br>${lista}`,
-                                    confirmButtonText: 'Entendi'
-                                });
+                            if (result.has_pending_previous_approvals && Array.isArray(result.pending_previous_approvals)) {
+                                mostrarPendencias(result.pending_previous_approvals);
                             }
                             if (self.lastAmbienteDateOpened !== dataInicial) {
                                 self.lastAmbienteDateOpened = dataInicial;
                                 try {
-                                    const checkResponse = await fetchWithCreds(`${self.API_URL_AMBIENTE_GET}?data=${dataInicial}`);
+                                    const checkResponse = await fetchWithCredsSafe(`${self.API_URL_AMBIENTE_GET}?data=${dataInicial}`);
                                     const checkData = await checkResponse.json();
                                     const dadosExistem =
                                         (checkData && checkData.success && Array.isArray(checkData.fases) && checkData.fases.length > 0) ||
@@ -232,7 +350,7 @@
                     ambienteContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></div>';
 
                     try {
-                        const fasesResponse = await fetchWithCreds(self.API_URL_FASES);
+                        const fasesResponse = await fetchWithCredsSafe(self.API_URL_FASES);
                         if (!fasesResponse.ok) throw new Error(`Erro ao carregar fases: ${fasesResponse.status}`);
                         const fasesData = await fasesResponse.json();
 
@@ -246,7 +364,7 @@
                             return;
                         }
 
-                        const ambienteResponse = await fetchWithCreds(`${self.API_URL_AMBIENTE_GET}?data=${dataISO}`);
+                        const ambienteResponse = await fetchWithCredsSafe(`${self.API_URL_AMBIENTE_GET}?data=${dataISO}`);
                         if (!ambienteResponse.ok) throw new Error(`Erro ao carregar ambiente: ${ambienteResponse.status}`);
                         const ambienteData = await ambienteResponse.json();
 
@@ -376,7 +494,7 @@
                         });
 
                         try {
-                            const response = await fetchWithCreds(self.API_URL_AMBIENTE_UPSERT, {
+                            const response = await fetchWithCredsSafe(self.API_URL_AMBIENTE_UPSERT, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(faseData)
@@ -406,7 +524,7 @@
                 };
 
                 const aprovarSugestoes = async () => {
-                    const checkboxes = Array.from(document.querySelectorAll('.sugestao-checkbox:checked'));
+                    const checkboxes = Array.from(root.querySelectorAll('.sugestao-checkbox:checked')).filter(cb => cb.dataset.status === 'Pendente');
                     if (checkboxes.length === 0) {
                         Swal.fire('Atenção', 'Nenhuma sugestão selecionada.', 'warning');
                         return;
@@ -451,7 +569,7 @@
                         };
 
                         try {
-                            const response = await fetchWithCreds(self.API_URL_APROVAR, {
+                            const response = await fetchWithCredsSafe(self.API_URL_APROVAR, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
@@ -503,6 +621,65 @@
                 if (aprovarBtn) aprovarBtn.addEventListener('click', aprovarSugestoes, { signal });
                 if (btnSalvarAmbiente) btnSalvarAmbiente.addEventListener('click', salvarAmbiente, { signal });
 
+                if (btnExcluir) {
+                    btnExcluir.addEventListener('click', async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (btnExcluir.disabled) return;
+
+                        const selecionados = Array.from(root.querySelectorAll('.sugestao-checkbox:checked'));
+                        const idsRealizados = selecionados
+                            .filter(cb => cb.dataset.status === 'Aprovado' && cb.dataset.realizadoId)
+                            .map(cb => cb.dataset.realizadoId);
+
+                        if (!idsRealizados.length) {
+                            Swal.fire('Atencao', 'Selecione apenas lancamentos aprovados para exclusao.', 'warning');
+                            return;
+                        }
+
+                        const confirmar = await Swal.fire({
+                            title: 'Voce tem certeza?',
+                            text: `Voce esta prestes a excluir ${idsRealizados.length} lancamento(s) aprovado(s). Esta acao nao pode ser desfeita.`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Sim, excluir!',
+                            cancelButtonText: 'Cancelar'
+                        });
+
+                        if (!confirmar.isConfirmed) return;
+
+                        try {
+                            const response = await fetchWithCredsSafe(identificadorTela?.dataset?.urlExcluir || '/producao/api/arracoamento/realizado/bulk-delete/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCSRFTokenSafe()
+                                },
+                                body: JSON.stringify({ ids: idsRealizados })
+                            });
+                            const result = await response.json();
+                            if (response.ok && result.success) {
+                                Swal.fire('Sucesso', result.message || 'Lancamentos excluidos com sucesso.', 'success');
+                                buscarSugestoes();
+                            } else {
+                                Swal.fire('Erro', result.message || 'Nao foi possivel excluir os lancamentos.', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao excluir lancamentos de arracoamento:', error);
+                            Swal.fire('Erro', 'Falha de comunicacao com o servidor.', 'error');
+                        }
+                    }, { signal });
+                }
+
+
+                if (btnPendencias) {
+                    btnPendencias.addEventListener('click', () => {
+                        consultarPendencias();
+                    }, { signal });
+                }
+
                 if (btnAmbienteHeader) {
                     btnAmbienteHeader.addEventListener('click', () => {
                         const data = dataInicialInput?.value;
@@ -517,18 +694,18 @@
 
                 if (modalAmbiente) {
                     modalAmbiente.addEventListener('hide.bs.modal', () => {
-                        // Evita warning de acessibilidade: move o foco para fora do modal antes do aria-hidden.
+                        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                            document.activeElement.blur();
+                        }
                         if (btnAmbienteHeader && typeof btnAmbienteHeader.focus === 'function') {
                             btnAmbienteHeader.focus({ preventScroll: true });
-                            return;
                         }
-
-                        if (document.body && typeof document.body.focus === 'function') {
-                            if (!document.body.hasAttribute('tabindex')) {
-                                document.body.setAttribute('tabindex', '-1');
-                            }
-                            document.body.focus({ preventScroll: true });
-                        }
+                    }, { signal });
+                    modalAmbiente.addEventListener('show.bs.modal', () => {
+                        modalAmbiente.setAttribute('aria-hidden', 'false');
+                    }, { signal });
+                    modalAmbiente.addEventListener('shown.bs.modal', () => {
+                        modalAmbiente.setAttribute('aria-hidden', 'false');
                     }, { signal });
 
                     modalAmbiente.addEventListener('hidden.bs.modal', () => {
@@ -548,27 +725,105 @@
                     }, { signal });
                 }
                 if (modalEdicao && formEdicao) {
-                    modalEdicao.addEventListener('show.bs.modal', async (event) => {
-                        const button = event.relatedTarget;
-                        const url = button?.dataset?.href;
-                        if (!url) return;
-                        try {
-                            const response = await fetchWithCreds(url);
-                            const result = await response.json();
-                            if (result.success) {
-                                formEdicao.querySelector('#edit-id').value = result.data.id;
-                                formEdicao.querySelector('#edit-lote-nome').value = result.data.lote_nome;
-                                formEdicao.querySelector('#edit-produto-racao-nome').value = result.data.produto_racao_nome;
-                                formEdicao.querySelector('#edit-quantidade-kg').value = result.data.quantidade_kg;
-                                formEdicao.querySelector('#edit-observacoes').value = result.data.observacoes;
-                                formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${result.data.id}/update/`;
-                            } else {
-                                Swal.fire('Erro', result.message || 'Erro ao carregar dados.', 'error');
-                            }
-                        } catch (error) {
-                            console.error('Erro ao carregar dados para edição:', error);
+                    modalEdicao.addEventListener('hide.bs.modal', () => {
+                        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                            document.activeElement.blur();
+                        }
+                        if (btnEditar && typeof btnEditar.focus === 'function') {
+                            btnEditar.focus({ preventScroll: true });
                         }
                     }, { signal });
+                    modalEdicao.addEventListener('show.bs.modal', () => {
+                        modalEdicao.setAttribute('aria-hidden', 'false');
+                    }, { signal });
+                    modalEdicao.addEventListener('shown.bs.modal', () => {
+                        modalEdicao.setAttribute('aria-hidden', 'false');
+                    }, { signal });
+                    const abrirModalEdicao = async () => {
+                        if (!btnEditar || btnEditar.disabled) return;
+
+                        const selecionadosNoClique = Array.from(root.querySelectorAll('.sugestao-checkbox:checked'));
+                        const selecionadosValidos = selecionadosNoClique.filter((cb) => {
+                            if (cb.dataset.status !== 'Aprovado') return false;
+                            const rid = Number.parseInt(cb.dataset.realizadoId || '', 10);
+                            return Number.isInteger(rid) && rid > 0;
+                        });
+                        if (selecionadosNoClique.length !== 1 || selecionadosValidos.length !== 1) {
+                            atualizarBotoesAcao();
+                            Swal.fire('Atencao', 'Lançamento pendente de aprovação. Selecione um lançamento já aprovado para editar.', 'warning');
+                            return;
+                        }
+
+                        const realizadoIdSelecionado = String(selecionadosValidos[0].dataset.realizadoId || '').trim();
+                        if (!realizadoIdSelecionado) {
+                            Swal.fire('Atencao', 'Selecione um lancamento aprovado para editar.', 'warning');
+                            return;
+                        }
+                        const url = `/producao/api/arracoamento/realizado/${realizadoIdSelecionado}/`;
+
+                        try {
+                            const response = await fetchWithCredsSafe(url);
+                            const result = await response.json();
+                            if (!response.ok || !result.success) {
+                                buscarSugestoes();
+                                Swal.fire('Erro', result.message || 'Erro ao carregar dados.', 'error');
+                                return;
+                            }
+
+                            formEdicao.querySelector('#edit-id').value = result.data.id;
+                            formEdicao.querySelector('#edit-lote-nome').value = result.data.lote_nome;
+                                                        const racaoSelect = formEdicao.querySelector('#edit-produto-racao-id');
+                            if (racaoSelect) {
+                                if (!Array.isArray(self.racoes) || self.racoes.length === 0) {
+                                    await carregarRacoes();
+                                }
+
+                                const currentRacaoId = String(result.data.produto_racao_id || '');
+                                const currentRacaoNome = String(result.data.produto_racao_nome || '').trim();
+                                const racoesDisponiveis = Array.isArray(self.racoes) ? [...self.racoes] : [];
+
+                                if (currentRacaoId && !racoesDisponiveis.some((r) => String(r.id) === currentRacaoId)) {
+                                    racoesDisponiveis.unshift({
+                                        id: currentRacaoId,
+                                        nome: currentRacaoNome || `Ração #${currentRacaoId}`,
+                                    });
+                                }
+
+                                if (racoesDisponiveis.length === 0 && currentRacaoId) {
+                                    racoesDisponiveis.push({
+                                        id: currentRacaoId,
+                                        nome: currentRacaoNome || `Ração #${currentRacaoId}`,
+                                    });
+                                }
+
+                                racaoSelect.innerHTML = racoesDisponiveis
+                                    .map((r) => {
+                                        const rid = String(r.id);
+                                        const selected = rid === currentRacaoId ? ' selected' : '';
+                                        return `<option value="${escapeHtml(rid)}"${selected}>${escapeHtml(r.nome)}</option>`;
+                                    })
+                                    .join('');
+                            }
+                            formEdicao.querySelector('#edit-quantidade-kg').value = result.data.quantidade_kg;
+                            formEdicao.querySelector('#edit-observacoes').value = result.data.observacoes;
+                            formEdicao.dataset.apiUrl = `/producao/api/arracoamento/realizado/${result.data.id}/update/`;
+
+                            modalEdicao.setAttribute('aria-hidden', 'false');
+                            bootstrap.Modal.getOrCreateInstance(modalEdicao).show();
+                        } catch (error) {
+                            buscarSugestoes();
+                            console.error('Erro ao carregar dados para edicao:', error);
+                            Swal.fire('Erro', 'Falha ao carregar dados do lancamento.', 'error');
+                        }
+                    };
+
+                    if (btnEditar) {
+                        btnEditar.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            abrirModalEdicao();
+                        }, { signal });
+                    }
 
                     formEdicao.addEventListener('submit', async (event) => {
                         event.preventDefault();
@@ -578,7 +833,7 @@
                         const payload = Object.fromEntries(formData.entries());
 
                         try {
-                            const response = await fetchWithCreds(apiUrl, {
+                            const response = await fetchWithCredsSafe(apiUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
@@ -601,7 +856,7 @@
                 if (selecionarTodosCheckbox) {
                     selecionarTodosCheckbox.addEventListener('change', function (e) {
                         const checked = e.target.checked;
-                        document.querySelectorAll('.sugestao-checkbox:not([disabled])').forEach(cb => {
+                        root.querySelectorAll('.sugestao-checkbox:not([disabled])').forEach(cb => {
                             cb.checked = checked;
                         });
                         atualizarBotoesAcao();
@@ -618,10 +873,19 @@
                     }, { signal });
                 }
 
+                if (btnLimparFiltros) {
+                    btnLimparFiltros.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        resetFiltros();
+                        clearTable();
+                    }, { signal });
+                }
+
                 // ---------- Inicialização ----------
                 clearTable();
                 popularFiltroLinhaProducao();
                 carregarRacoes();
+                resetFiltros();
                 console.log('Módulo de Arraçoamento Diário inicializado.');
             } catch (err) {
                 console.error('Erro na inicialização do módulo Arraçoamento Diário:', err);
@@ -641,6 +905,8 @@
         }
     });
 })();
+
+
 
 
 

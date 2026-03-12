@@ -114,6 +114,7 @@ urlpatterns = [
     # Arraçoamento (Sugestões e Aprovações)
     path('arracoamento/diario/', views.arracoamento_diario_view, name='arracoamento_diario'),
     path('api/arracoamento/sugestoes/', views_arracoamento.api_sugestoes_arracoamento, name='api_sugestoes_arracoamento'),
+    path('api/arracoamento/pendencias/', views_arracoamento.api_pendencias_arracoamento, name='api_pendencias_arracoamento'),
     path('api/arracoamento/aprovar/', views_arracoamento.api_aprovar_arracoamento, name='api_aprovar_arracoamento'),
     path('api/linhas-producao/', views.api_linhas_producao_list, name='api_linhas_producao_list'),
     path('api/fases-com-tanques/', views.api_fases_com_tanques, name='api_fases_com_tanques'),

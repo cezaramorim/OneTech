@@ -1076,15 +1076,26 @@ html.dark #resultado-xml {
 }
 
 
-/* Evita que o input aumente ou empurre conteúdo ao receber foco */
+/* Evita que o input altere de tamanho ao receber foco */
 input.form-control:focus {
   box-shadow: none !important;
-  border-color: #6c757d !important;  /* ou a cor atual */
+  border-color: #6c757d !important;
   outline: none !important;
-  padding: 0.375rem 0.75rem !important; /* igual ao estado normal */
   transition: none !important;
 }
 
+/* Mantem alturas consistentes por tamanho do Bootstrap */
+input.form-control.form-control-sm:focus {
+  padding: 0.25rem 0.5rem !important;
+}
+
+input.form-control:not(.form-control-sm):not(.form-control-lg):focus {
+  padding: 0.375rem 0.75rem !important;
+}
+
+input.form-control.form-control-lg:focus {
+  padding: 0.5rem 1rem !important;
+}
 #filtro-notas-form input.form-control {
   padding: 0.375rem 0.75rem;
   height: auto;

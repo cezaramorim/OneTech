@@ -20,11 +20,16 @@
     <div class="page-toolbar-spacer"></div>
     <div class="d-flex flex-wrap align-items-center gap-2">
       <button
+        id="btn-pendencias"
+        type="button"
+        class="btn btn-outline-warning btn-sm"
+      >
+        <i class="fas fa-exclamation-triangle me-2"></i>Pendencias
+      </button>
+      <button
         id="btn-ambiente"
         type="button"
-        class="btn btn-outline-primary btn-sm"
-        data-bs-toggle="modal"
-        data-bs-target="#modalAmbiente"
+        class="btn btn-outline-primary btn-sm"        data-bs-target="#modalAmbiente"
       >
         <i class="fas fa-water me-2"></i>Ambiente
       </button>
@@ -36,15 +41,15 @@
       <div class="row g-2 mb-4 align-items-end">
         <div class="col-12 col-sm-6 col-md-2">
           <label for="data-inicial" class="form-label">Data Inicial</label>
-          <input type="date" id="data-inicial" class="form-control" />
+          <input type="date" id="data-inicial" class="form-control form-control-sm" />
         </div>
         <div class="col-12 col-sm-6 col-md-2">
           <label for="data-final" class="form-label">Data Final</label>
-          <input type="date" id="data-final" class="form-control" />
+          <input type="date" id="data-final" class="form-control form-control-sm" />
         </div>
         <div class="col-12 col-sm-6 col-md-2">
           <label for="filtro-status" class="form-label">Status</label>
-          <select id="filtro-status" class="form-select">
+          <select id="filtro-status" class="form-select form-select-sm">
             <option value="">Todos</option>
             <option value="Pendente">Pendente</option>
             <option value="Aprovado">Aprovado</option>
@@ -52,13 +57,18 @@
         </div>
         <div class="col-12 col-sm-6 col-md-2">
           <label for="filtro-linha-producao" class="form-label">Linha de Produ&ccedil;&atilde;o</label>
-          <select id="filtro-linha-producao" class="form-select">
+          <select id="filtro-linha-producao" class="form-select form-select-sm">
             <option value="">Todas</option>
           </select>
         </div>
-        <div class="col-12 col-sm-6 col-md-2 d-grid">
-          <button id="btn-buscar" class="btn btn-primary">
+        <div class="col-6 col-sm-4 col-md-auto d-grid">
+          <button id="btn-buscar" class="btn btn-primary btn-sm px-2" style="min-width: 92px;">
             <i class="fas fa-search me-2"></i>Buscar
+          </button>
+        </div>
+        <div class="col-6 col-sm-4 col-md-auto d-grid">
+          <button id="btn-limpar-filtros" class="btn btn-outline-secondary btn-sm px-2" style="min-width: 92px;">
+            <i class="fas fa-eraser me-2"></i>Limpar
           </button>
         </div>
       </div>
@@ -109,8 +119,6 @@
           id="btn-editar"
           class="btn btn-info ms-2"
           disabled
-          data-bs-toggle="modal"
-          data-bs-target="#modalEdicao"
           data-action="editar"
         >
           <i class="fas fa-edit me-2"></i>Editar
@@ -132,9 +140,7 @@
   class="modal fade"
   id="modalEdicao"
   tabindex="-1"
-  aria-labelledby="modalEdicaoLabel"
-  aria-hidden="true"
->
+  aria-labelledby="modalEdicaoLabel">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -160,25 +166,24 @@
             <label for="edit-lote-nome" class="form-label">Lote</label>
             <input
               type="text"
-              class="form-control"
+              class="form-control form-control-sm"
               id="edit-lote-nome"
               disabled
             />
           </div>
           <div class="mb-3">
-            <label for="edit-produto-racao-nome" class="form-label">Ra&ccedil;&atilde;o</label>
-            <input
-              type="text"
-              class="form-control"
-              id="edit-produto-racao-nome"
-              disabled
-            />
+            <label for="edit-produto-racao-id" class="form-label">Ra&ccedil;&atilde;o</label>
+            <select
+              class="form-select form-select-sm"
+              id="edit-produto-racao-id"
+              name="produto_racao_id"
+            ></select>
           </div>
           <div class="mb-3">
             <label for="edit-quantidade-kg" class="form-label">Quantidade (kg)</label>
             <input
               type="number"
-              class="form-control"
+              class="form-control form-control-sm"
               id="edit-quantidade-kg"
               name="quantidade_kg"
               step="0.001"
@@ -187,7 +192,7 @@
           <div class="mb-3">
             <label for="edit-observacoes" class="form-label">Observa&ccedil;&otilde;es</label>
             <textarea
-              class="form-control"
+              class="form-control form-control-sm"
               id="edit-observacoes"
               name="observacoes"
               rows="3"
@@ -206,9 +211,7 @@
   class="modal fade"
   id="modalAmbiente"
   tabindex="-1"
-  aria-labelledby="modalAmbienteLabel"
-  aria-hidden="true"
->
+  aria-labelledby="modalAmbienteLabel">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
@@ -230,7 +233,7 @@
 
         <div class="mb-3">
           <label class="form-label">Data</label>
-          <input type="date" id="ambiente-data" class="form-control" disabled />
+          <input type="date" id="ambiente-data" class="form-control form-control-sm" disabled />
         </div>
 
         <div id="ambiente-container">
@@ -253,3 +256,4 @@
     </div>
   </div>
 </div>
+

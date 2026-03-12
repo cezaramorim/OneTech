@@ -471,9 +471,14 @@ def buscar_ncm_ajax(request):
 @login_required_json
 def api_racoes_list(request):
     """
-    Retorna uma lista de produtos da categoria 'RaÃƒÂ§ÃƒÂ£o' em formato JSON.
+    Retorna lista de produtos de racao para uso em selects de producao.
     """
-    racoes = Produto.objects.filter(categoria__nome__iexact='RaÃƒÂ§ÃƒÂ£o').values('id', 'nome').order_by('nome')
+    racoes = Produto.objects.filter(
+        Q(categoria__nome__iexact='Ração') |
+        Q(categoria__nome__iexact='Racao') |
+        Q(categoria__nome__icontains='ração') |
+        Q(categoria__nome__icontains='racao')
+    ).values('id', 'nome').order_by('nome')
     return JsonResponse(list(racoes), safe=False)
 
 
