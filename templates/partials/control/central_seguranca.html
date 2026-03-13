@@ -45,12 +45,12 @@
     <div class="card-header"><strong>Checklist de Requisitos de Seguranca</strong></div>
     <div class="card-body">
       <div class="row g-2">
-        <div class="col-md-6">`[x]` Permissoes backend + matriz de acesso</div>
-        <div class="col-md-6">`[x]` Contrato 401/403 padronizado</div>
-        <div class="col-md-6">`[x]` Telemetria de negacao de autorizacao</div>
-        <div class="col-md-6">`[x]` Webhook com assinatura HMAC + anti-replay</div>
-        <div class="col-md-6">`[x]` Auditoria consolidada (`auditar_seguranca`)</div>
-        <div class="col-md-6">`[x]` Pipeline CI com auditoria estrita</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Permissoes backend + matriz de acesso</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Contrato 401/403 padronizado</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Telemetria de negacao de autorizacao</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Webhook com assinatura HMAC + anti-replay</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Auditoria consolidada (auditar_seguranca)</div>
+        <div class="col-md-6"><span class="fw-bold text-success fs-4 me-1" aria-hidden="true">&#10003;</span>Pipeline CI com auditoria estrita</div>
       </div>
       <div class="mt-3">
         <label class="form-label mb-1">Saida da Auditoria</label>
@@ -120,11 +120,11 @@
             <td>{{ ev.created_at|date:'d/m/Y H:i:s' }}</td>
             <td>{{ ev.event_type }}</td>
             <td>{{ ev.code }}</td>
-            <td>{% if ev.user %}{{ ev.user.username }}{% else %}-{% endif %}</td>
+            <td>{% if ev.user %}{{ ev.user.username }}{% elif ev.metadata.request_username %}{{ ev.metadata.request_username }}{% else %}-{% endif %}</td>
             <td>{{ ev.method }}</td>
             <td title="{{ ev.detail }}">{{ ev.path }}</td>
             <td>{{ ev.host }} / {{ ev.ip_address }}</td>
-            <td>{{ ev.tenant_slug|default:'-' }}</td>
+            <td>{% if ev.tenant_slug %}{{ ev.tenant_slug }}{% elif ev.metadata.request_tenant_slug %}{{ ev.metadata.request_tenant_slug }}{% else %}-{% endif %}</td>
           </tr>
           {% empty %}
           <tr><td colspan="8" class="text-center text-muted py-3">Sem eventos registrados.</td></tr>

@@ -1,13 +1,77 @@
+[data-page="central_seguranca"] {
+  --security-output-bg: rgba(9, 26, 44, 0.55);
+  --security-output-color: var(--bs-body-color, #d6e3f0);
+  --security-output-border: var(--bs-border-color, #3b5268);
+  --security-output-placeholder: rgba(214, 227, 240, 0.62);
+  --security-scrollbar-track: rgba(9, 26, 44, 0.35);
+  --security-scrollbar-thumb: rgba(105, 148, 190, 0.55);
+}
+
+html:not(.dark):not(.azul) [data-page="central_seguranca"] {
+  --security-output-bg: #f8fafc;
+  --security-output-color: #16324b;
+  --security-output-border: #c9d8e8;
+  --security-output-placeholder: #5f7286;
+  --security-scrollbar-track: #eaf1f8;
+  --security-scrollbar-thumb: #9fb8d0;
+}
+
+html.dark [data-page="central_seguranca"] {
+  --security-output-bg: rgba(9, 26, 44, 0.55);
+  --security-output-color: #dce8f5;
+  --security-output-border: #4f6b86;
+  --security-output-placeholder: rgba(220, 232, 245, 0.62);
+  --security-scrollbar-track: rgba(9, 26, 44, 0.35);
+  --security-scrollbar-thumb: rgba(105, 148, 190, 0.55);
+}
+
+html.azul [data-page="central_seguranca"] {
+  --security-output-bg: rgba(10, 36, 60, 0.62);
+  --security-output-color: #e1edf8;
+  --security-output-border: #5d82a6;
+  --security-output-placeholder: rgba(225, 237, 248, 0.62);
+  --security-scrollbar-track: rgba(10, 36, 60, 0.4);
+  --security-scrollbar-thumb: rgba(122, 168, 214, 0.62);
+}
+
 [data-page="central_seguranca"] .security-audit-output {
   max-height: 260px;
   overflow: auto;
   margin: 0;
   padding: 0.75rem;
-  border: 1px solid var(--bs-border-color, #3b5268);
+  border: 1px solid var(--security-output-border);
   border-radius: 0.5rem;
-  background: rgba(7, 22, 39, 0.65);
-  color: var(--bs-body-color, #d6e3f0);
+  background-color: var(--security-output-bg);
+  color: var(--security-output-color);
   font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--bs-font-monospace, "Cascadia Code", "Consolas", monospace);
+}
+
+[data-page="central_seguranca"] .security-audit-output:empty::before {
+  content: "Sem saida.";
+  color: var(--security-output-placeholder);
+}
+
+[data-page="central_seguranca"] .security-audit-output::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-page="central_seguranca"] .security-audit-output::-webkit-scrollbar-track {
+  background: var(--security-scrollbar-track);
+  border-radius: 999px;
+}
+
+[data-page="central_seguranca"] .security-audit-output::-webkit-scrollbar-thumb {
+  background: var(--security-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+[data-page="central_seguranca"] .security-audit-output {
+  scrollbar-color: var(--security-scrollbar-thumb) var(--security-scrollbar-track);
 }
 
 [data-page="central_seguranca"] .card .display-6 {

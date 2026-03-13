@@ -1,10 +1,10 @@
 import json
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from control.db_router import TenantRouter
 from control.utils import get_current_tenant, set_current_tenant, use_tenant
-from control.models import Tenant
+from control.models import SecurityAuditEvent, Tenant
 from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
@@ -229,3 +229,40 @@ class SecurityCenterTests(DjangoTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Session.objects.filter(session_key=session.session_key).exists())
+
+    @patch('control.views.call_command')
+    def test_security_run_audit_superuser_persiste_evento(self, mock_call_command):
+        mock_call_command.return_value = None
+
+        self.client.force_login(self.superuser)
+        before = SecurityAuditEvent.objects.count()
+        response = self.client.post(
+            reverse('control:security_run_audit'),
+            data=json.dumps({'mode': 'normal'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(SecurityAuditEvent.objects.count(), before + 1)
+
+        event = SecurityAuditEvent.objects.order_by('-id').first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.code, 'run_security_audit')
+        self.assertEqual(event.event_type, SecurityAuditEvent.EVENT_SYSTEM)
+
+    @patch('control.views.call_command', side_effect=SystemExit(1))
+    def test_security_run_audit_strict_reprovada_retorna_200_com_saida(self, _mock_call_command):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_run_audit'),
+            data=json.dumps({'mode': 'strict'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+        self.assertEqual(payload.get('mode'), 'strict')
+        self.assertIn('reprovada', payload.get('message', '').lower())

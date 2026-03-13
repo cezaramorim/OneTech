@@ -1,7 +1,7 @@
 # Plano de Seguranca e Permissoes de Rotas/APIs
 
 - Data de criacao: 2026-03-11
-- Ultima atualizacao: 2026-03-13
+- Ultima atualizacao: 2026-03-13 (consolidacao da Central de Seguranca)
 - Status: Fase 2 concluida e Fase 3 em consolidacao final (auditoria operacional ativa)
 
 ## Fase 2 - Progresso atual
@@ -33,6 +33,10 @@
 26. [x] Script operacional de validacao de baseline de producao criado (`scripts/seguranca/validar_baseline_producao.ps1`).
 27. [x] Template de ambiente de producao criado (`config/.env.production.example`) para padronizar rollout seguro.
 28. [x] Checklist operacional de rollout/rollback de seguranca em producao documentado (docs/checklist_rollout_rollback_seguranca_producao.md).
+29. [x] Central de Seguranca implementada com cards operacionais, auditoria via UI e sessoes ativas (control/views + template/css/js dedicados).
+30. [x] Fluxo de auditoria strict ajustado para contrato funcional (reprovacao retorna success=false com saida legivel, sem erro HTTP tecnico no frontend).
+31. [x] Persistencia de eventos de seguranca endurecida: sem falha silenciosa, fallback seguro multi-banco e enriquecimento de metadata (usuario/tenant/contexto).
+32. [x] Cobertura de testes da Central ampliada (auditoria persiste evento + strict reprovada + contratos existentes de permissao/logout).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:

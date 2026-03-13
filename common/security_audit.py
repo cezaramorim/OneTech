@@ -1,5 +1,7 @@
 import logging
 
+from django.contrib.auth import get_user_model
+from django.db import DatabaseError, IntegrityError
 from django.utils.timezone import now
 
 logger = logging.getLogger('security.authz')
@@ -12,28 +14,74 @@ def _extract_ip_address(request):
     return (request.META.get('REMOTE_ADDR') or '').strip()
 
 
+def _resolve_default_user_id(user_obj):
+    if not getattr(user_obj, 'is_authenticated', False):
+        return None
+
+    user_id = getattr(user_obj, 'id', None)
+    if not user_id:
+        return None
+
+    user_model = get_user_model()
+    exists_on_default = user_model.objects.using('default').filter(pk=user_id).exists()
+    return user_id if exists_on_default else None
+
+
 def _persist_security_event(request, event_type, code='', detail='', metadata=None):
+    from control.models import SecurityAuditEvent
+
+    user = getattr(request, 'user', None)
+    tenant = getattr(request, 'tenant', None)
+
+    metadata_payload = dict(metadata or {})
+    if getattr(user, 'is_authenticated', False):
+        metadata_payload.setdefault('request_user_id', getattr(user, 'id', None))
+        metadata_payload.setdefault('request_username', getattr(user, 'username', ''))
+        metadata_payload.setdefault('request_user_db', getattr(getattr(user, '_state', None), 'db', ''))
+
+    metadata_payload.setdefault('request_tenant_slug', getattr(tenant, 'slug', '') or '')
+
+    payload = {
+        'event_type': event_type,
+        'code': code or '',
+        'detail': detail or '',
+        'method': getattr(request, 'method', ''),
+        'path': getattr(request, 'path', ''),
+        'host': (request.get_host() if hasattr(request, 'get_host') else ''),
+        'ip_address': _extract_ip_address(request),
+        'tenant_slug': (getattr(tenant, 'slug', '') or ''),
+        'metadata': metadata_payload,
+        # Evita bloqueio de relacao por router usando user_id direto no banco default.
+        'user_id': _resolve_default_user_id(user),
+    }
+
     try:
-        from control.models import SecurityAuditEvent
-
-        user = getattr(request, 'user', None)
-        tenant = getattr(request, 'tenant', None)
-
-        SecurityAuditEvent.objects.create(
-            event_type=event_type,
-            code=code or '',
-            detail=detail or '',
-            method=getattr(request, 'method', ''),
-            path=getattr(request, 'path', ''),
-            host=(request.get_host() if hasattr(request, 'get_host') else ''),
-            ip_address=_extract_ip_address(request),
-            tenant_slug=(getattr(tenant, 'slug', '') or ''),
-            user=(user if getattr(user, 'is_authenticated', False) else None),
-            metadata=(metadata or {}),
-        )
+        SecurityAuditEvent.objects.create(**payload)
+        return
+    except (ValueError, DatabaseError, IntegrityError):
+        # Fallback: preserva telemetria mesmo que a referencia de usuario nao seja viavel.
+        payload['user_id'] = None
+        payload['metadata']['audit_fallback'] = 'user_omitted'
+        try:
+            SecurityAuditEvent.objects.create(**payload)
+            return
+        except Exception:
+            logger.exception(
+                'Falha ao persistir evento de seguranca (fallback tambem falhou). '
+                'event_type=%s code=%s path=%s',
+                event_type,
+                code,
+                payload.get('path', ''),
+            )
+            return
     except Exception:
-        # Nunca interromper a resposta por falha de auditoria.
-        pass
+        logger.exception(
+            'Falha ao persistir evento de seguranca. event_type=%s code=%s path=%s',
+            event_type,
+            code,
+            payload.get('path', ''),
+        )
+        return
 
 
 def log_system_event(request, code='system_event', detail='', metadata=None):
