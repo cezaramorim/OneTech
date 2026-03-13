@@ -32,6 +32,7 @@
 25. [x] Endpoints auxiliares de produto incluidos na matriz PATH (`/produtos/api/racoes/`, `buscar-ncm`) com testes de contrato auth-only.
 26. [x] Script operacional de validacao de baseline de producao criado (`scripts/seguranca/validar_baseline_producao.ps1`).
 27. [x] Template de ambiente de producao criado (`config/.env.production.example`) para padronizar rollout seguro.
+28. [x] Checklist operacional de rollout/rollback de seguranca em producao documentado (docs/checklist_rollout_rollback_seguranca_producao.md).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
