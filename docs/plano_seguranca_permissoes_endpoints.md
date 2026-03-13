@@ -29,6 +29,7 @@
 22. [x] Comando unificado de auditoria de seguranca criado (manage.py auditar_seguranca).
 23. [x] Politica do painel concluida com permissao dedicada (painel.view_dashboard) e cobertura de testes.
 24. [x] Cobertura de seguranca do modulo producao ampliada (matriz PATH + testes negativos de APIs operacionais).
+25. [x] Endpoints auxiliares de produto incluidos na matriz PATH (/produtos/api/racoes/, uscar-ncm) com testes de contrato auth-only.
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
@@ -49,7 +50,7 @@ Legenda:
 | `nota_fiscal` | [x] | [x] | [x] | rotas criticas com permissao explicita (emissao/criacao/edicao/exclusao) |
 | `painel` | [x] | [x] | [x] | permissao dedicada `painel.view_dashboard` aplicada e testada |
 | `producao` | [x] | [x] | [x] | matriz PATH e testes de authz aplicados nas APIs operacionais criticas |
-| `produto` | [x] | [x] | [x] | `categoria_list_api` protegido; revisar endpoints auxiliares restantes |
+| `produto` | [x] | [x] | [x] | endpoints auxiliares mapeados na matriz PATH com contrato auth-only validado |
 | `relatorios` | [x] | [x] | [x] | views/API protegidas com permissao de dominio (`relatorios.view_notafiscalrelatorio`) |
 | `common/api` | [x] | [x] | [x] | `ProdutoViewSet`, `ItemNotaFiscalViewSet`, `NotaFiscalViewSet` e `FornecedorViewSet` com permissao granular (`view_*`) |
 
@@ -291,7 +292,7 @@ Legenda:
 ## Residuos e Pendencias Objetivas
 1. [x] Politica final do modulo `painel` definida com permissao dedicada (`painel.view_dashboard`).
 2. [ ] Definir parametros finais de producao para `USE_HTTPS=True` e executar `validar_baseline_seguranca --strict` no ambiente alvo.
-3. [ ] Opcional: adicionar pipeline CI para rodar `manage.py auditar_seguranca --strict` no stage de release.
+3. [x] Pipeline CI adicionada para rodar `manage.py auditar_seguranca --strict` no stage de release (`.github/workflows/security-audit.yml`).
 
 ## Comando de Fechamento da Fase
 - Auditoria padrao (ambiente atual):

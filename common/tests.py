@@ -145,3 +145,22 @@ class PathPermissionMatrixContractTests(TestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 401)
+    def test_produtos_api_racoes_anon_redireciona_login(self):
+        response = self.client.get('/produtos/api/racoes/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_produtos_api_racoes_autenticado_retorna_200(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/produtos/api/racoes/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_produtos_buscar_ncm_anon_redireciona_login(self):
+        response = self.client.get('/produtos/buscar-ncm/', {'search': '0101'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_produtos_buscar_ncm_autenticado_retorna_200(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/produtos/buscar-ncm/', {'search': '0101'})
+        self.assertEqual(response.status_code, 200)

@@ -72,6 +72,9 @@ PATH_PERMISSION_MATRIX = {
     ),
     '/producao/api/arracoamento/sugestoes/': ('producao.view_lote',),
     '/producao/api/linhas-producao/': ('producao.view_linhaproducao',),
+    '/produtos/api/racoes/': ('__auth_only__',),
+    '/produtos/buscar-ncm/': ('__auth_only__',),
+    '/produtos/ncm-autocomplete-produto/': ('__auth_only__',),
 }
 
 
