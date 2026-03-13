@@ -27,6 +27,7 @@
 20. [x] Modo estrito no baseline de seguranca implementado (validar_baseline_seguranca --strict) para gate de producao.
 21. [x] Testes de contrato dos paths criticos da PATH_PERMISSION_MATRIX adicionados em common/tests.py (anon/autenticado sem permissao/ping/webhook).
 22. [x] Comando unificado de auditoria de seguranca criado (manage.py auditar_seguranca).
+23. [x] Politica do painel concluida com permissao dedicada (painel.view_dashboard) e cobertura de testes.
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
@@ -45,7 +46,7 @@ Legenda:
 | `fiscal_regras` | [x] | [x] | [x] | sem gap critico inicial |
 | `integracao_nfe` | [x] | [~] | [x] | `sefaz_webhook` protegido com HMAC + timestamp (anti-replay) |
 | `nota_fiscal` | [x] | [x] | [x] | rotas criticas com permissao explicita (emissao/criacao/edicao/exclusao) |
-| `painel` | [x] | [x] | [ ] | avaliar se painel requer permissao adicional por perfil |
+| `painel` | [x] | [x] | [x] | permissao dedicada `painel.view_dashboard` aplicada e testada |
 | `producao` | [x] | [x] | [x] | permissao reforcada em endpoints sensiveis; validar escopo tenant em APIs operacionais |
 | `produto` | [x] | [x] | [x] | `categoria_list_api` protegido; revisar endpoints auxiliares restantes |
 | `relatorios` | [x] | [x] | [x] | views/API protegidas com permissao de dominio (`relatorios.view_notafiscalrelatorio`) |
@@ -284,10 +285,10 @@ Legenda:
 | `menu/matriz` | OK | `auditar_matriz_acesso` + teste automatizado |
 | `hardening settings` | OK | flags `SECURE_*` e cookies por ambiente |
 | `auditoria operacional` | OK | `auditar_seguranca` + `validar_baseline_seguranca` |
-| `painel` | PARCIAL | autenticado; decisao pendente sobre permissao adicional por perfil |
+| `painel` | OK | permissao dedicada `painel.view_dashboard` aplicada na home com testes de acesso |
 
 ## Residuos e Pendencias Objetivas
-1. [ ] Definir politica final do modulo `painel` (somente autenticado vs permissao dedicada).
+1. [x] Politica final do modulo `painel` definida com permissao dedicada (`painel.view_dashboard`).
 2. [ ] Definir parametros finais de producao para `USE_HTTPS=True` e executar `validar_baseline_seguranca --strict` no ambiente alvo.
 3. [ ] Opcional: adicionar pipeline CI para rodar `manage.py auditar_seguranca --strict` no stage de release.
 

@@ -26,6 +26,7 @@ ROUTE_PERMISSION_MATRIX = {
     'nota_fiscal:entradas_nota': ('nota_fiscal.view_notafiscal',),
     'nota_fiscal:importar_xml': ('nota_fiscal.add_notafiscal',),
     'nota_fiscal:lancar_nota_manual': ('nota_fiscal.add_notafiscal',),
+    'painel:home': ('painel.view_dashboard',),
     'producao:arracoamento_diario': ('producao.view_arracoamentosugerido',),
     'producao:cadastrar_curva': ('producao.add_curva',),
     'producao:cadastrar_lote': ('producao.add_lote',),
@@ -62,6 +63,7 @@ PATH_PERMISSION_MATRIX = {
     '/empresas/api/v1/fornecedores/': ('empresas.view_empresa',),
     '/gerenciamento/ping/': ('__auth_only__',),
     '/integracao-nfe/webhook/sefaz/': ('__webhook_hmac__',),
+    '/painel/': ('painel.view_dashboard',),
 }
 
 

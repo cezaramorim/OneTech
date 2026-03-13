@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 
-@login_required(login_url='/accounts/login/')
+from accounts.utils.decorators import login_required_json, permission_required_json
+
+
+@login_required_json
+@permission_required_json('painel.view_dashboard', raise_exception=True)
 def painel_onetech(request):
     """
     View principal que renderiza o layout base do sistema (base.html).

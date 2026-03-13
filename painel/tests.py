@@ -1,22 +1,33 @@
-from django.urls import reverse
-from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.test import TestCase
+from django.urls import reverse
 
-class PainelViewTests(TestCase):
+
+class PainelPermissionTests(TestCase):
     def setUp(self):
-        self.client = Client()
         self.user = get_user_model().objects.create_user(
-            username='teste',
-            password='senha123',
-            email='teste@example.com'
+            username='user_painel_sem_perm',
+            password='secret123',
         )
 
-    def test_painel_view_com_login(self):
-        self.client.login(username='teste', password='senha123')
+    def test_home_sem_permissao_retorna_403(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('painel:home'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_home_ajax_sem_permissao_retorna_403_json(self):
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse('painel:home'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+    def test_home_com_permissao_retorna_200(self):
+        permission = Permission.objects.get(codename='view_dashboard')
+        self.user.user_permissions.add(permission)
+        self.client.force_login(self.user)
         response = self.client.get(reverse('painel:home'))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'base.html')
-    
-    def test_painel_view_sem_login(self):
-        response = self.client.get(reverse('painel:home'))
-        self.assertEqual(response.status_code, 302)  # redireciona para login
