@@ -29,7 +29,8 @@
 22. [x] Comando unificado de auditoria de seguranca criado (manage.py auditar_seguranca).
 23. [x] Politica do painel concluida com permissao dedicada (painel.view_dashboard) e cobertura de testes.
 24. [x] Cobertura de seguranca do modulo producao ampliada (matriz PATH + testes negativos de APIs operacionais).
-25. [x] Endpoints auxiliares de produto incluidos na matriz PATH (/produtos/api/racoes/, uscar-ncm) com testes de contrato auth-only.
+25. [x] Endpoints auxiliares de produto incluidos na matriz PATH (`/produtos/api/racoes/`, `buscar-ncm`) com testes de contrato auth-only.
+26. [x] Script operacional de validacao de baseline de producao criado (`scripts/seguranca/validar_baseline_producao.ps1`).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
@@ -291,7 +292,7 @@ Legenda:
 
 ## Residuos e Pendencias Objetivas
 1. [x] Politica final do modulo `painel` definida com permissao dedicada (`painel.view_dashboard`).
-2. [ ] Definir parametros finais de producao para `USE_HTTPS=True` e executar `validar_baseline_seguranca --strict` no ambiente alvo.
+2. [ ] Definir parametros finais de producao para `USE_HTTPS=True` e executar validacao estrita no ambiente alvo (`scripts/seguranca/validar_baseline_producao.ps1`).
 3. [x] Pipeline CI adicionada para rodar `manage.py auditar_seguranca --strict` no stage de release (`.github/workflows/security-audit.yml`).
 
 ## Comando de Fechamento da Fase
