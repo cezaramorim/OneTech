@@ -1,4 +1,5 @@
 # control/models.py
+from django.conf import settings
 from django.db import models
 from .utils import tenant_media_path
 from .utils import tenant_media_path
@@ -103,3 +104,40 @@ class Emitente(models.Model):
             # Desmarca todos os outros como padrão antes de salvar
             Emitente.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+
+class SecurityAuditEvent(models.Model):
+    EVENT_AUTHZ_DENIED = 'AUTHZ_DENIED'
+    EVENT_SYSTEM = 'SYSTEM'
+
+    EVENT_CHOICES = (
+        (EVENT_AUTHZ_DENIED, 'Autorização negada'),
+        (EVENT_SYSTEM, 'Evento de sistema'),
+    )
+
+    event_type = models.CharField(max_length=32, choices=EVENT_CHOICES, db_index=True)
+    code = models.CharField(max_length=64, blank=True, default='', db_index=True)
+    detail = models.TextField(blank=True, default='')
+    method = models.CharField(max_length=16, blank=True, default='')
+    path = models.CharField(max_length=512, blank=True, default='', db_index=True)
+    host = models.CharField(max_length=255, blank=True, default='')
+    ip_address = models.CharField(max_length=64, blank=True, default='')
+    tenant_slug = models.CharField(max_length=128, blank=True, default='', db_index=True)
+    metadata = models.JSONField(blank=True, default=dict)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='security_audit_events',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Evento de Auditoria de Segurança'
+        verbose_name_plural = 'Eventos de Auditoria de Segurança'
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        user_label = getattr(self.user, 'username', 'anônimo')
+        return f'[{self.event_type}] {self.code} {self.path} ({user_label})'

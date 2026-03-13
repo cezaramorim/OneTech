@@ -1,0 +1,139 @@
+{% load static %}
+
+<div class="container-fluid py-2" data-page="central_seguranca" data-audit-url="{% url 'control:security_run_audit' %}" data-force-logout-url="{% url 'control:security_force_logout_user' %}">
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h3 class="mb-1">Central de Seguranca</h3>
+        <p class="mb-0 text-muted">Visao operacional de requisitos, eventos e sessoes ativas.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm" data-action="run-audit" data-mode="normal">Auditoria Normal</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-action="run-audit" data-mode="strict">Auditoria Estrita</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted d-block">Eventos (24h)</small>
+          <div class="display-6 fw-bold">{{ security_stats.events_24h }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted d-block">Negacoes de autorizacao (24h)</small>
+          <div class="display-6 fw-bold text-danger">{{ security_stats.denied_24h }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted d-block">Usuarios com sessao ativa</small>
+          <div class="display-6 fw-bold">{{ active_sessions|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><strong>Checklist de Requisitos de Seguranca</strong></div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-6">`[x]` Permissoes backend + matriz de acesso</div>
+        <div class="col-md-6">`[x]` Contrato 401/403 padronizado</div>
+        <div class="col-md-6">`[x]` Telemetria de negacao de autorizacao</div>
+        <div class="col-md-6">`[x]` Webhook com assinatura HMAC + anti-replay</div>
+        <div class="col-md-6">`[x]` Auditoria consolidada (`auditar_seguranca`)</div>
+        <div class="col-md-6">`[x]` Pipeline CI com auditoria estrita</div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label mb-1">Saida da Auditoria</label>
+        <pre class="security-audit-output" data-role="audit-output">Selecione "Auditoria Normal" ou "Auditoria Estrita" para executar.</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Sessoes Ativas</strong>
+      <span class="text-muted small">Deslogar com um clique por usuario</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th class="text-center">Sessoes</th>
+            <th class="text-center">Perfil</th>
+            <th class="text-center">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in active_sessions %}
+          <tr>
+            <td>{{ s.username }}</td>
+            <td>{{ s.nome }}</td>
+            <td>{{ s.email }}</td>
+            <td class="text-center">{{ s.session_count }}</td>
+            <td class="text-center">
+              {% if s.is_superuser %}<span class="badge bg-danger">Superuser</span>{% elif s.is_staff %}<span class="badge bg-info">Staff</span>{% else %}<span class="badge bg-secondary">Usuario</span>{% endif %}
+            </td>
+            <td class="text-center">
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="force-logout" data-user-id="{{ s.id }}" data-username="{{ s.username }}">Encerrar Sessoes</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma sessao ativa encontrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><strong>Tentativas e Eventos Recentes</strong></div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Evento</th>
+            <th>Codigo</th>
+            <th>Usuario</th>
+            <th>Metodo</th>
+            <th>Rota</th>
+            <th>Host/IP</th>
+            <th>Tenant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in security_events %}
+          <tr>
+            <td>{{ ev.created_at|date:'d/m/Y H:i:s' }}</td>
+            <td>{{ ev.event_type }}</td>
+            <td>{{ ev.code }}</td>
+            <td>{% if ev.user %}{{ ev.user.username }}{% else %}-{% endif %}</td>
+            <td>{{ ev.method }}</td>
+            <td title="{{ ev.detail }}">{{ ev.path }}</td>
+            <td>{{ ev.host }} / {{ ev.ip_address }}</td>
+            <td>{{ ev.tenant_slug|default:'-' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-3">Sem eventos registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'control/css/central_seguranca.css' %}">
+<script src="{% static 'control/js/central_seguranca.js' %}"></script>

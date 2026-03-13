@@ -10,6 +10,7 @@ ROUTE_PERMISSION_MATRIX = {
     'accounts:lista_usuarios': ('accounts.view_user',),
     'comercial:condicao_pagamento_list': ('comercial.view_condicaopagamento',),
     'control:central_migracoes': (),
+    'control:central_seguranca': (),
     'control:lista_emitentes': ('control.view_emitente',),
     'control:tenant_create': ('control.add_tenant',),
     'control:tenant_list': ('control.view_tenant',),

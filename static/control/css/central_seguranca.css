@@ -1,0 +1,20 @@
+[data-page="central_seguranca"] .security-audit-output {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--bs-border-color, #3b5268);
+  border-radius: 0.5rem;
+  background: rgba(7, 22, 39, 0.65);
+  color: var(--bs-body-color, #d6e3f0);
+  font-size: 0.82rem;
+}
+
+[data-page="central_seguranca"] .card .display-6 {
+  line-height: 1;
+}
+
+[data-page="central_seguranca"] .table td,
+[data-page="central_seguranca"] .table th {
+  white-space: nowrap;
+}

@@ -1,3 +1,4 @@
+import json
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -179,3 +180,52 @@ class TenantMiddlewareTests(DjangoTestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, '/painel/?admin_restrito=1')
+class SecurityCenterTests(DjangoTestCase):
+    def setUp(self):
+        self.superuser = get_user_model().objects.create_superuser(
+            username='sec_admin',
+            email='sec_admin@example.com',
+            password='secret123',
+        )
+        self.common_user = get_user_model().objects.create_user(
+            username='sec_user',
+            password='secret123',
+        )
+
+    def test_security_center_superuser_retorna_200(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_security_center_usuario_comum_redireciona(self):
+        self.client.force_login(self.common_user)
+        response = self.client.get(reverse('control:central_seguranca'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_security_run_audit_usuario_comum_redireciona(self):
+        self.client.force_login(self.common_user)
+        response = self.client.post(
+            reverse('control:security_run_audit'),
+            data='{"mode":"normal"}',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_security_force_logout_superuser(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.contrib.sessions.models import Session
+
+        session = SessionStore()
+        session['_auth_user_id'] = str(self.common_user.id)
+        session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+        session['_auth_user_hash'] = self.common_user.get_session_auth_hash()
+        session.save()
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_force_logout_user'),
+            data=json.dumps({'user_id': self.common_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Session.objects.filter(session_key=session.session_key).exists())

@@ -12,19 +12,23 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.apps import apps as django_apps
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
+from django.contrib.sessions.models import Session
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 from django.conf import settings
 
 from common.utils import render_ajax_or_base
-from .models import Tenant
+from common.security_audit import log_system_event
+from .models import SecurityAuditEvent, Tenant
 from .forms import TenantForm, TenantUserCreationForm, TenantUserChangeForm
 from .utils import is_principal_context, use_tenant
 from control.db_router import TenantRouter
 from accounts.models import User
 from django.contrib.auth.models import Group
 
-# --- Decorator para Superusuário ---
+# --- Decorator para SuperusuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio ---
 def superuser_required(view_func):
-    """Decorator que garante que o usuário logado é um superusuário."""
+    """Decorator que garante que o usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio logado ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© um superusuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio."""
     return user_passes_test(lambda u: u.is_superuser, login_url='/painel/')(view_func)
 
 def principal_context_required(view_func):
@@ -254,7 +258,7 @@ def central_migracoes_view(request):
     return render_ajax_or_base(request, 'partials/control/central_migracoes.html', context)
 
 
-# --- Views de Gestão de Tenants (Clientes) ---
+# --- Views de GestÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o de Tenants (Clientes) ---
 
 @superuser_required
 @principal_context_required
@@ -316,7 +320,7 @@ def tenant_delete_multiplo_view(request):
 @superuser_required
 @principal_context_required
 def tenant_create_view(request):
-    """Lida com a criação de um novo tenant."""
+    """Lida com a criaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o de um novo tenant."""
     if request.method == 'POST':
         form = TenantForm(request.POST, request.FILES, is_creation=True)
         if form.is_valid():
@@ -344,7 +348,7 @@ def tenant_create_view(request):
                 # Limpeza: se o comando falhou, tenta apagar o registro do tenant que pode ter sido criado.
                 Tenant.objects.filter(slug=opts.get('slug')).delete()
         else:
-            messages.error(request, "Foram encontrados erros no formulário. Por favor, corrija-os.")
+            messages.error(request, "Foram encontrados erros no formulÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio. Por favor, corrija-os.")
     else:
         form = TenantForm(is_creation=True)
     context = {'form': form, 'data_page': 'tenant_form'}
@@ -353,7 +357,7 @@ def tenant_create_view(request):
 @superuser_required
 @principal_context_required
 def tenant_edit_view(request, pk):
-    """Lida com a edição de um tenant existente."""
+    """Lida com a ediÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o de um tenant existente."""
     tenant = get_object_or_404(Tenant, pk=pk)
     if request.method == 'POST':
         form = TenantForm(request.POST, request.FILES, instance=tenant)
@@ -366,15 +370,15 @@ def tenant_edit_view(request, pk):
     context = {'form': form, 'tenant': tenant, 'data_page': 'tenant_form'}
     return render_ajax_or_base(request, 'partials/control/tenant_form.html', context)
 
-# --- Views de Gestão de Usuários por Tenant ---
+# --- Views de GestÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o de UsuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios por Tenant ---
 
 @superuser_required
 @principal_context_required
 def tenant_user_list_view(request):
     """
-    Página principal para listar usuários de um tenant selecionado.
-    Carrega o primeiro tenant por padrão se nenhum for especificado.
-    Responde a requisições AJAX para atualizar a lista de usuários.
+    PÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina principal para listar usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios de um tenant selecionado.
+    Carrega o primeiro tenant por padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o se nenhum for especificado.
+    Responde a requisiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes AJAX para atualizar a lista de usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios.
     """
     if not request.user.is_superuser:
         return HttpResponseForbidden("Acesso negado.")
@@ -388,15 +392,15 @@ def tenant_user_list_view(request):
     if selected_tenant_id:
         selected_tenant = get_object_or_404(Tenant, pk=selected_tenant_id)
     elif tenants.exists():
-        # Se nenhum tenant for selecionado na URL, seleciona o primeiro da lista como padrão.
+        # Se nenhum tenant for selecionado na URL, seleciona o primeiro da lista como padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o.
         selected_tenant = tenants.first()
 
-    # Se temos um tenant (selecionado ou o padrão), busca seus usuários.
+    # Se temos um tenant (selecionado ou o padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o), busca seus usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios.
     if selected_tenant:
         with use_tenant(selected_tenant):
             users = User.objects.all().order_by('nome_completo')
 
-    # Se a requisição for AJAX, retorna apenas o HTML da tabela de usuários.
+    # Se a requisiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o for AJAX, retorna apenas o HTML da tabela de usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios.
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         context = {
             'selected_tenant': selected_tenant,
@@ -404,7 +408,7 @@ def tenant_user_list_view(request):
         }
         return render(request, 'partials/control/_tenant_user_table.html', context)
 
-    # Para a carga inicial da página, renderiza o layout completo.
+    # Para a carga inicial da pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina, renderiza o layout completo.
     context = {
         'tenants': tenants,
         'selected_tenant': selected_tenant,
@@ -416,7 +420,7 @@ def tenant_user_list_view(request):
 @superuser_required
 @principal_context_required
 def tenant_user_create_view(request, tenant_id):
-    """Cria um novo usuário dentro do contexto de um tenant específico."""
+    """Cria um novo usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio dentro do contexto de um tenant especÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­fico."""
     tenant = get_object_or_404(Tenant, pk=tenant_id)
     with use_tenant(tenant):
         if request.method == 'POST':
@@ -424,7 +428,7 @@ def tenant_user_create_view(request, tenant_id):
             form.fields['grupo'].queryset = Group.objects.all()
             if form.is_valid():
                 form.save()
-                messages.success(request, f"Usuário '{form.cleaned_data['username']}' criado com sucesso para o cliente {tenant.nome}.")
+                messages.success(request, f"UsuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio '{form.cleaned_data['username']}' criado com sucesso para o cliente {tenant.nome}.")
                 return redirect(f"{reverse('control:tenant_user_list')}?tenant_id={tenant.id}")
         else:
             form = TenantUserCreationForm()
@@ -435,7 +439,7 @@ def tenant_user_create_view(request, tenant_id):
 @superuser_required
 @principal_context_required
 def tenant_user_edit_view(request, tenant_id, user_id):
-    """Edita um usuário existente dentro do contexto de um tenant."""
+    """Edita um usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio existente dentro do contexto de um tenant."""
     tenant = get_object_or_404(Tenant, pk=tenant_id)
     with use_tenant(tenant):
         user_to_edit = get_object_or_404(User, pk=user_id)
@@ -444,7 +448,7 @@ def tenant_user_edit_view(request, tenant_id, user_id):
             form.fields['grupo'].queryset = Group.objects.all()
             if form.is_valid():
                 form.save()
-                messages.success(request, f"Usuário '{user_to_edit.username}' atualizado com sucesso.")
+                messages.success(request, f"UsuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio '{user_to_edit.username}' atualizado com sucesso.")
                 return redirect(f"{reverse('control:tenant_user_list')}?tenant_id={tenant.id}")
         else:
             form = TenantUserChangeForm(instance=user_to_edit)
@@ -457,7 +461,7 @@ def tenant_user_edit_view(request, tenant_id, user_id):
 @superuser_required
 @require_POST
 def tenant_user_toggle_active_view(request, tenant_id, user_id):
-    """Ativa ou desativa um usuário via AJAX."""
+    """Ativa ou desativa um usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio via AJAX."""
     tenant = get_object_or_404(Tenant, pk=tenant_id)
     with use_tenant(tenant):
         try:
@@ -466,17 +470,157 @@ def tenant_user_toggle_active_view(request, tenant_id, user_id):
             user.save()
             return JsonResponse({'success': True, 'is_active': user.is_active})
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Usuário não encontrado.'}, status=404)
+            return JsonResponse({'success': False, 'message': 'UsuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o encontrado.'}, status=404)
     return JsonResponse({'success': False, 'message': 'Ocorreu um erro inesperado.'}, status=500)
 
 @login_required
 def ping_view(request):
-    return HttpResponse("Pong! A URL de controle está funcionando.")
+    return HttpResponse("Pong! A URL de controle esta funcionando.")
 
 
 # ==============================================================================
-# 🚀 VIEWS PARA EMITENTE (MATRIZ/FILIAIS)
+# ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ VIEWS PARA EMITENTE (MATRIZ/FILIAIS)
 # ==============================================================================
+
+def _build_active_sessions_summary():
+    sessions = Session.objects.filter(expire_date__gte=timezone.now())
+    user_session_count = {}
+
+    for session in sessions:
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+        user_id = data.get('_auth_user_id')
+        if not user_id:
+            continue
+        user_session_count[str(user_id)] = user_session_count.get(str(user_id), 0) + 1
+
+    if not user_session_count:
+        return []
+
+    UserModel = get_user_model()
+    users = UserModel.objects.filter(id__in=[int(uid) for uid in user_session_count.keys()]).order_by('username')
+    summary = []
+    for user in users:
+        summary.append(
+            {
+                'id': user.id,
+                'username': user.username,
+                'nome': (getattr(user, 'nome_completo', '') or user.get_full_name() or '-'),
+                'email': user.email or '-',
+                'is_superuser': bool(user.is_superuser),
+                'is_staff': bool(user.is_staff),
+                'is_active': bool(user.is_active),
+                'session_count': user_session_count.get(str(user.id), 0),
+                'last_login': user.last_login,
+            }
+        )
+    return summary
+
+
+@superuser_required
+@principal_context_required
+def central_seguranca_view(request):
+    now = timezone.now()
+    events_qs = SecurityAuditEvent.objects.select_related('user').order_by('-created_at')
+
+    total_24h = events_qs.filter(created_at__gte=now - timezone.timedelta(hours=24)).count()
+    denied_24h = events_qs.filter(
+        event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+        created_at__gte=now - timezone.timedelta(hours=24),
+    ).count()
+
+    context = {
+        'security_events': events_qs[:80],
+        'active_sessions': _build_active_sessions_summary(),
+        'security_stats': {
+            'events_24h': total_24h,
+            'denied_24h': denied_24h,
+        },
+        'data_page': 'central_seguranca',
+    }
+    return render_ajax_or_base(request, 'partials/control/central_seguranca.html', context)
+
+
+@superuser_required
+@principal_context_required
+@require_POST
+def security_force_logout_user_view(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Payload invalido.'}, status=400)
+
+    user_id = payload.get('user_id')
+    if not user_id:
+        return JsonResponse({'success': False, 'message': 'Usuario alvo nao informado.'}, status=400)
+
+    if str(user_id) == str(request.user.id):
+        return JsonResponse(
+            {'success': False, 'message': 'Nao e permitido encerrar a propria sessao por este atalho.'},
+            status=400,
+        )
+
+    sessions = Session.objects.filter(expire_date__gte=timezone.now())
+    deleted = 0
+    for session in sessions:
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+        if str(data.get('_auth_user_id')) == str(user_id):
+            session.delete()
+            deleted += 1
+
+    log_system_event(
+        request,
+        code='force_logout_user',
+        detail=f'Logout forcado para user_id={user_id}',
+        metadata={'target_user_id': str(user_id), 'deleted_sessions': deleted},
+    )
+
+    return JsonResponse({'success': True, 'message': f'{deleted} sessao(oes) encerrada(s) com sucesso.'})
+
+
+@superuser_required
+@principal_context_required
+@require_POST
+def security_run_audit_view(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Payload invalido.'}, status=400)
+
+    mode = (payload.get('mode') or 'normal').strip().lower()
+    if mode not in {'normal', 'strict'}:
+        return JsonResponse({'success': False, 'message': 'Modo de auditoria invalido.'}, status=400)
+
+    out = StringIO()
+    try:
+        if mode == 'strict':
+            call_command('auditar_seguranca', '--strict', stdout=out)
+        else:
+            call_command('auditar_seguranca', stdout=out)
+        success = True
+        message = f'Auditoria {mode} executada com sucesso.'
+    except SystemExit:
+        success = False
+        message = f'Auditoria {mode} reprovada.'
+    except Exception as exc:
+        success = False
+        message = f'Falha ao executar auditoria: {exc}'
+
+    output = out.getvalue()[-12000:]
+    log_system_event(
+        request,
+        code='run_security_audit',
+        detail=f'auditar_seguranca mode={mode} success={success}',
+        metadata={'mode': mode, 'success': success},
+    )
+
+    status = 200 if success else 400
+    return JsonResponse({'success': success, 'message': message, 'output': output, 'mode': mode}, status=status)
 from .models import Emitente
 from .forms import EmitenteForm
 
@@ -564,8 +708,8 @@ def excluir_emitente(request, pk):
     emitente = get_object_or_404(Emitente, pk=pk)
     nome_emitente = emitente.nome_fantasia or emitente.razao_social
     emitente.delete()
-    messages.success(request, f'Emitente "{nome_emitente}" excluído com sucesso.')
-    # A resposta JSON é para o caso de o frontend tratar a exclusão via fetch/AJAX
+    messages.success(request, f'Emitente "{nome_emitente}" excluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do com sucesso.')
+    # A resposta JSON ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© para o caso de o frontend tratar a exclusÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o via fetch/AJAX
     return JsonResponse({'success': True, 'redirect_url': reverse('control:lista_emitentes')})
 
 
