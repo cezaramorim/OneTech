@@ -1,4 +1,4 @@
-﻿import json
+import json
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import permission_required
@@ -6,7 +6,6 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from accounts.utils.decorators import login_required_json
@@ -107,12 +106,17 @@ def excluir_categorias_view(request):
 
 # === Empresas (cadastro e edicao) ===
 @login_required_json
-@permission_required('empresas.add_empresa', raise_exception=True)
 def empresa_form_view(request, pk=None):
     app_messages = get_app_messages(request)
     if pk:
+        if not request.user.has_perm('empresas.change_empresa'):
+            message = app_messages.error('Voce nao tem permissao para editar empresas.')
+            return JsonResponse({'success': False, 'message': message}, status=403)
         empresa = get_object_or_404(Empresa, pk=pk)
     else:
+        if not request.user.has_perm('empresas.add_empresa'):
+            message = app_messages.error('Voce nao tem permissao para adicionar empresas.')
+            return JsonResponse({'success': False, 'message': message}, status=403)
         empresa = None
 
     form = EmpresaForm(request.POST or None, instance=empresa)
@@ -156,6 +160,7 @@ def empresa_form_view(request, pk=None):
 
 
 @login_required_json
+@permission_required('empresas.view_empresa', raise_exception=True)
 def lista_empresas_view(request):
     """
     View que lista empresas com suporte a:
@@ -192,7 +197,7 @@ def lista_empresas_view(request):
 
 
 @login_required_json
-@csrf_exempt
+@permission_required('empresas.change_empresa', raise_exception=True)
 @require_POST
 def atualizar_status_empresa(request, pk):
     app_messages = get_app_messages(request)

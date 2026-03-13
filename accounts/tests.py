@@ -112,3 +112,48 @@ class PermissionSeparationTests(TestCase):
         user.refresh_from_db()
         self.assertEqual(set(user.user_permissions.all()), set())
         self.assertTrue(user.has_perm("accounts.add_user"))
+
+class AccountsSecurityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='user_accounts_sem_perm',
+            password='secret123',
+        )
+        self.client.force_login(self.user)
+
+    def test_lista_usuarios_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('accounts:lista_usuarios'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_lista_grupos_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('accounts:lista_grupos'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_common_notas_entradas_sem_permissao_retorna_403(self):
+        response = self.client.get('/api/v1/notas-entradas/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_common_itens_nota_sem_permissao_retorna_403(self):
+        response = self.client.get('/api/v1/nota-fiscal/itens/')
+        self.assertEqual(response.status_code, 403)
+
+
+class NotaFiscalSecurityViewTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='user_nf_sem_perm',
+            password='secret123',
+        )
+        self.client.force_login(self.user)
+
+    def test_emitir_nfe_lista_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('nota_fiscal:emitir_nfe_list'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_criar_nfe_saida_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('nota_fiscal:criar_nfe_saida'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_entradas_nota_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('nota_fiscal:entradas_nota'))
+        self.assertEqual(response.status_code, 403)

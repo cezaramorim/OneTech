@@ -1,9 +1,42 @@
-﻿# Plano de Seguranca e Permissoes de Rotas/APIs
+# Plano de Seguranca e Permissoes de Rotas/APIs
 
 - Data de criacao: 2026-03-11
-- Ultima atualizacao: 2026-03-11
-- Status: Planejado (nao iniciado)
+- Ultima atualizacao: 2026-03-13
+- Status: Em execucao (Fase 0/1 iniciada)
 
+## Cobertura Completa por Modulo (Inventario Inicial)
+Legenda:
+- `ROTAS`: rotas mapeadas no `urls.py`
+- `AUTH`: exige autenticacao (`login_required`/`login_required_json`/`IsAuthenticated`)
+- `PERM`: exige permissao granular (`permission_required`/`DjangoModelPermissions`)
+- `GAP`: ponto critico identificado na revisao inicial
+
+| Modulo | ROTAS | AUTH | PERM | GAP inicial |
+|---|---|---|---|---|
+| `accounts` | [x] | [x] | [x] | listas sensiveis alinhadas com permissao explicita (`accounts.*`/`auth.*`) |
+| `comercial` | [x] | [x] | [x] | sem gap critico inicial |
+| `control` | [x] | [x] | [~] | `ping_view` protegido com autenticacao; pendente decidir permissao granular especifica (se necessario) |
+| `empresas` | [x] | [x] | [x] | rotas de listagem/form/status alinhadas com permissao explicita |
+| `fiscal` | [x] | [x] | [x] | sem gap critico inicial |
+| `fiscal_regras` | [x] | [x] | [x] | sem gap critico inicial |
+| `integracao_nfe` | [x] | [~] | [x] | `sefaz_webhook` protegido com HMAC + timestamp (anti-replay) |
+| `nota_fiscal` | [x] | [x] | [x] | rotas criticas com permissao explicita (emissao/criacao/edicao/exclusao) |
+| `painel` | [x] | [x] | [ ] | avaliar se painel requer permissao adicional por perfil |
+| `producao` | [x] | [x] | [x] | permissao reforcada em endpoints sensiveis; validar escopo tenant em APIs operacionais |
+| `produto` | [x] | [x] | [x] | `categoria_list_api` protegido; revisar endpoints auxiliares restantes |
+| `relatorios` | [x] | [x] | [x] | views/API protegidas com permissao de dominio (`relatorios.view_notafiscalrelatorio`) |
+| `common/api` | [x] | [x] | [x] | `ProdutoViewSet`, `ItemNotaFiscalViewSet`, `NotaFiscalViewSet` e `FornecedorViewSet` com permissao granular (`view_*`) |
+
+## Backlog Objetivo da Fase 1 (Critico)
+1. [x] Proteger `integracao_nfe.views.sefaz_webhook` com assinatura HMAC + anti-replay.
+2. [x] Definir politica e aplicar em `control.views.ping_view` (autenticacao obrigatoria).
+3. [x] Fechar `produto.views.categoria_list_api` com auth + permissao.
+4. [x] Aplicar permissao granular nos ViewSets sem `DjangoModelPermissions`:
+- `common.api.produto.ProdutoViewSet`
+- `common.api.item_nota_fiscal.ItemNotaFiscalViewSet`
+- revisar `common.api.nota_fiscal.NotaFiscalViewSet` para permissao de dominio.
+5. [x] Regularizar permissao explicita para emissao/criacao em `nota_fiscal.views` (rotas criticas).
+6. [x] Adicionar testes negativos 401/403 para os gaps criticos fechados na Fase 1.
 ## Objetivo
 Fortalecer seguranca de acesso no projeto com regras consistentes entre:
 - visibilidade de menu

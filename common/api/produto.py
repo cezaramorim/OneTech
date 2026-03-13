@@ -1,11 +1,13 @@
 # common/api/produto.py
 from rest_framework import viewsets
+from common.api.permissions import DjangoModelPermissionsWithView
 from django_filters.rest_framework import DjangoFilterBackend
 from produto.models import Produto
 from common.serializers.produto import ProdutoSerializer
 from common.filters.produto import ProdutoFilter
 
 class ProdutoViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [DjangoModelPermissionsWithView]
     queryset = Produto.objects.all()
     serializer_class = ProdutoSerializer
     filter_backends = [DjangoFilterBackend]

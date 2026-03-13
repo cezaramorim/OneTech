@@ -1036,6 +1036,7 @@ def _to_decimal(s):
         return None
 
 @login_required
+@permission_required('producao.view_tanque', raise_exception=True)
 @require_http_methods(["GET"])
 def tanque_detail(request, pk):
     obj = get_object_or_404(Tanque, pk=pk)
@@ -1052,6 +1053,7 @@ def tanque_detail(request, pk):
     return JsonResponse(d, safe=False)
 
 @login_required
+@permission_required('producao.change_tanque', raise_exception=True)
 @require_http_methods(["POST"])
 def tanque_update(request, pk):
     obj = get_object_or_404(Tanque, pk=pk)
@@ -1091,6 +1093,7 @@ def tanque_update(request, pk):
     return JsonResponse({"success": True, "message": "Tanque atualizado com sucesso.", "id": obj.id})
 
 @login_required
+@permission_required('producao.add_tanque', raise_exception=True)
 @require_http_methods(["POST"])
 def tanque_create(request):
     # reusa a lógica do update mudando a criação
@@ -1462,6 +1465,7 @@ def povoamento_lotes_view(request):
     return render_ajax_or_base(request, 'producao/povoamento_lotes.html', context)
 
 @login_required
+@permission_required('producao.view_lote', raise_exception=True)
 def historico_povoamento_view(request):
     """Filtra e retorna o histórico de eventos de manejo."""
     try:
@@ -1516,6 +1520,7 @@ def historico_povoamento_view(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @login_required
+@permission_required('producao.view_lote', raise_exception=True)
 @require_http_methods(["GET"])
 def get_active_lote_for_tanque_api(request, tanque_id):
     """
@@ -1741,6 +1746,7 @@ def registrar_mortalidade_api(request):
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @login_required
+@permission_required('producao.view_eventomanejo', raise_exception=True)
 @require_http_methods(["GET"])
 def api_ultimos_eventos(request):
     offset = int(request.GET.get('offset', 0))
@@ -1824,6 +1830,7 @@ def arracoamento_diario_view(request):
 
 
 @login_required
+@permission_required('producao.view_linhaproducao', raise_exception=True)
 @require_http_methods(["GET"])
 def api_linhas_producao_list(request):
     linhas = LinhaProducao.objects.all().order_by('nome')
@@ -1831,6 +1838,7 @@ def api_linhas_producao_list(request):
     return JsonResponse(data, safe=False)
 
 @login_required
+@permission_required('producao.view_faseproducao', raise_exception=True)
 @require_http_methods(["GET"])
 def api_fases_com_tanques(request):
     """
@@ -1849,7 +1857,8 @@ def api_fases_com_tanques(request):
     return JsonResponse(data, safe=False)
 
 @login_required
-@require_http_methods(["GET"])  # Garante que a view só aceite requisições GET
+@permission_required('producao.view_reprocessar_lotes', raise_exception=True)
+@require_http_methods(["GET"])  # Garante que a view so aceite requisicoes GET
 def reprocessar_lotes_view(request):
     ctx = {
         "lotes": Lote.objects.all().order_by("-id")[:500],
@@ -1859,6 +1868,7 @@ def reprocessar_lotes_view(request):
     return render_ajax_or_base(request, "producao/reprocessar_lotes.html", ctx)
 
 @login_required
+@permission_required('producao.view_reprocessar_lotes', raise_exception=True)
 @require_POST
 def reprocessar_lotes_api(request):
     """

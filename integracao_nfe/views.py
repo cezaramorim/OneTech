@@ -1,4 +1,9 @@
-import json
+﻿import json
+import hmac
+import hashlib
+import logging
+import time
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -7,9 +12,57 @@ from nota_fiscal.models import NotaFiscal
 from control.models import Emitente
 from .services import emitir_nfe_api
 
+logger = logging.getLogger(__name__)
+
+
+def _validate_webhook_signature(request):
+    # Headers esperados:
+    # - X-OneTech-Timestamp: epoch seconds
+    # - X-OneTech-Signature: hex sha256(secret, f"{timestamp}.{payload}")
+    secret = (getattr(settings, 'NFE_WEBHOOK_SECRET', '') or '').strip()
+    if not secret:
+        return False, 'Segredo de webhook nao configurado.'
+
+    raw_timestamp = (request.headers.get('X-OneTech-Timestamp') or '').strip()
+    received_signature = (request.headers.get('X-OneTech-Signature') or '').strip().lower()
+
+    if not raw_timestamp or not received_signature:
+        return False, 'Headers de autenticacao ausentes.'
+
+    try:
+        timestamp = int(raw_timestamp)
+    except ValueError:
+        return False, 'Timestamp invalido.'
+
+    tolerance = int(getattr(settings, 'NFE_WEBHOOK_TOLERANCE_SECONDS', 300) or 300)
+    now = int(time.time())
+    if abs(now - timestamp) > tolerance:
+        return False, 'Timestamp expirado.'
+
+    signed_payload = f'{raw_timestamp}.'.encode('utf-8') + request.body
+    expected_signature = hmac.new(
+        key=secret.encode('utf-8'),
+        msg=signed_payload,
+        digestmod=hashlib.sha256
+    ).hexdigest().lower()
+
+    if not hmac.compare_digest(expected_signature, received_signature):
+        return False, 'Assinatura invalida.'
+
+    return True, ''
+
 @csrf_exempt
 @require_POST
 def sefaz_webhook(request):
+    is_valid, reason = _validate_webhook_signature(request)
+    if not is_valid:
+        logger.warning(
+            'Webhook NFe rejeitado: %s | ip=%s host=%s',
+            reason,
+            request.META.get('REMOTE_ADDR'),
+            request.get_host(),
+        )
+        return JsonResponse({'status': 'erro', 'mensagem': 'Webhook nao autorizado.'}, status=401)
     try:
         payload = json.loads(request.body.decode('utf-8'))
         

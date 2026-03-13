@@ -117,6 +117,7 @@ def delete_regras_icms(request):
 
 
 @login_required
+@permission_required('fiscal_regras.view_regraaliquotaicms', raise_exception=True)
 @require_GET
 def resolver_aliquota_icms_api(request):
     data_emissao = parse_date((request.GET.get('data_emissao') or '').strip())

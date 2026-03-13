@@ -1,6 +1,6 @@
 # nota_fiscal/api.py
 from rest_framework import viewsets, filters
-from rest_framework.permissions import IsAuthenticated
+from common.api.permissions import DjangoModelPermissionsWithView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -20,7 +20,7 @@ class NotaFiscalViewSet(viewsets.ReadOnlyModelViewSet):
     Permite filtros via query params:
       ?numero=&fornecedor=&emissao_de=&emissao_ate=&entrada_de=&entrada_ate=
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [DjangoModelPermissionsWithView]
     serializer_class = NotaFiscalSerializer
     queryset = (
         NotaFiscal.objects

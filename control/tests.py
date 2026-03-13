@@ -6,6 +6,9 @@ from control.utils import get_current_tenant, set_current_tenant, use_tenant
 from control.models import Tenant
 from accounts.models import User
 from django.contrib.auth.models import Group
+from django.contrib.auth import get_user_model
+from django.test import TestCase as DjangoTestCase
+from django.urls import reverse
 
 
 class TenantContextTests(TestCase):
@@ -95,3 +98,15 @@ class TenantRouterTests(TestCase):
         self.assertTrue(self.router.allow_migrate('db_de_tenant', 'auth'))
         self.assertTrue(self.router.allow_migrate('db_de_tenant', 'accounts'))
         self.assertTrue(self.router.allow_migrate('db_de_tenant', 'empresas'))
+
+class ControlSecurityTests(DjangoTestCase):
+    def test_ping_sem_login_redireciona_para_login(self):
+        response = self.client.get(reverse('control:ping'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_ping_com_login_retorna_200(self):
+        user = get_user_model().objects.create_user(username='user_ping', password='secret123')
+        self.client.force_login(user)
+        response = self.client.get(reverse('control:ping'))
+        self.assertEqual(response.status_code, 200)

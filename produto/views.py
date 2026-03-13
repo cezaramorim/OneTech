@@ -7,7 +7,7 @@ from django.contrib import messages
 from common.messages_utils import get_app_messages
 from django.urls import reverse
 from django.forms import inlineformset_factory
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from accounts.utils.decorators import login_required_json
@@ -277,6 +277,8 @@ def cadastrar_categoria_view(request):
         {"form": form, "data_tela": "cadastrar_categoria"}
     )
 
+@login_required_json
+@permission_required('produto.view_categoriaproduto', raise_exception=True)
 def categoria_list_api(request):
     """
     Retorna todas as categorias como JSON: [{id: <int>, nome: <str>}, ...]

@@ -1,6 +1,8 @@
-﻿import json
+import json
 
+from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from nota_fiscal.models import ItemNotaFiscal, NotaFiscal
 from produto.models import NCM
@@ -119,3 +121,19 @@ class BuscarNcmAjaxTests(TestCase):
         codigos = {item['id'] for item in payload['results']}
         self.assertIn('01012', codigos)
         self.assertNotIn('40101200', codigos)
+
+class ProdutoSecurityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='user_produto_sem_perm',
+            password='secret123',
+        )
+        self.client.force_login(self.user)
+
+    def test_categoria_list_api_sem_permissao_retorna_403(self):
+        response = self.client.get(reverse('produto:categoria-list-api'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_produto_api_drf_sem_permissao_retorna_403(self):
+        response = self.client.get('/produtos/api/v1/produtos/')
+        self.assertEqual(response.status_code, 403)

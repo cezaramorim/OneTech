@@ -1,9 +1,11 @@
-﻿from rest_framework import viewsets
+from rest_framework import viewsets
+from common.api.permissions import DjangoModelPermissionsWithView
 from empresas.models import Empresa
 from common.serializers.empresa import EmpresaSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 
 class FornecedorViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [DjangoModelPermissionsWithView]
     queryset = Empresa.objects.filter(fornecedor=True)
     serializer_class = EmpresaSerializer
     filter_backends = [DjangoFilterBackend]

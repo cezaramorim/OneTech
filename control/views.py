@@ -469,6 +469,7 @@ def tenant_user_toggle_active_view(request, tenant_id, user_id):
             return JsonResponse({'success': False, 'message': 'Usuário não encontrado.'}, status=404)
     return JsonResponse({'success': False, 'message': 'Ocorreu um erro inesperado.'}, status=500)
 
+@login_required
 def ping_view(request):
     return HttpResponse("Pong! A URL de controle está funcionando.")
 

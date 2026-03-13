@@ -1,9 +1,9 @@
-﻿# relatorios/views.py
+# relatorios/views.py
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET, require_http_methods
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -50,6 +50,8 @@ def _normalize_filter_date(raw_value):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_notas_entradas(request):
+    if not request.user.has_perm('relatorios.view_notafiscalrelatorio'):
+        return Response({'detail': 'Permissao negada.'}, status=403)
     """
     API endpoint REST (JSON) para listar todas as Notas Fiscais:
       - URL: GET /relatorios/api/v1/notas-entradas/
@@ -93,6 +95,7 @@ def api_notas_entradas(request):
 
 
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 @require_GET
 def notas_entradas_view(request):
     """
@@ -163,6 +166,7 @@ def notas_entradas_view(request):
     return render(request, tpl, context)
 
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 @require_http_methods(['GET', 'POST'])
 def editar_entrada_view(request, pk):
     # Compatibilidade: rota antiga de relatorios agora usa a tela oficial de edicao da NF.
@@ -171,6 +175,8 @@ def editar_entrada_view(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_nota_detalhada(request, pk):
+    if not request.user.has_perm('relatorios.view_notafiscalrelatorio'):
+        return Response({'detail': 'Permissao negada.'}, status=403)
     """
     Retorna os dados completos da Nota Fiscal para preencher a tela de edição.
     """
@@ -263,6 +269,7 @@ def api_nota_detalhada(request, pk):
 
 # relatorios/views.py
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 def relatorio_nota_fiscal_view(request):
     """
     Exibe a tela de relatório de notas fiscais com filtros (cliente, data, etc.).
@@ -569,6 +576,7 @@ def _build_report_data(report_type, params):
 
 
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 def impressao_relatorios_view(request):
     """Tela principal de impressao de relatorios (layout com menu lateral)."""
     context = {
@@ -592,6 +600,7 @@ def impressao_relatorios_view(request):
 
 
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 @require_GET
 def impressao_relatorios_preview_view(request):
     """Pre-visualizacao do relatorio em nova janela com layout completo do projeto."""
@@ -621,6 +630,7 @@ def impressao_relatorios_preview_view(request):
 
 
 @login_required
+@permission_required('relatorios.view_notafiscalrelatorio', raise_exception=True)
 @require_GET
 def impressao_relatorios_download_csv_view(request):
     """Download CSV do relatorio solicitado."""

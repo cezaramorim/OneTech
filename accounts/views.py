@@ -156,6 +156,7 @@ def criar_usuario(request):
 
 
 @login_required_json
+@permission_required('accounts.view_user', raise_exception=True)
 def lista_usuarios(request):
     termo_busca = (request.GET.get('busca') or '').strip()
     usuarios = User.objects.prefetch_related('groups').all()
@@ -182,6 +183,7 @@ def lista_usuarios(request):
     )
 
 @login_required_json
+@permission_required('accounts.change_user', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def editar_usuario(request, usuario_id):
     app_messages = get_app_messages(request)
@@ -230,6 +232,7 @@ def editar_usuario(request, usuario_id):
 import json
 
 @login_required_json
+@permission_required('accounts.delete_user', raise_exception=True)
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_usuario_multiplo(request):
@@ -311,6 +314,7 @@ def _get_ids_permissoes_herdadas(usuario):
 
 
 @login_required_json
+@permission_required('auth.change_group', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_grupo(request, group_id):
     app_messages = get_app_messages(request)
@@ -345,6 +349,7 @@ def gerenciar_permissoes_grupo(request, group_id):
 
 
 @login_required_json
+@permission_required('accounts.change_user', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def gerenciar_permissoes_usuario(request, user_id):
     app_messages = get_app_messages(request)
@@ -380,6 +385,7 @@ def gerenciar_permissoes_usuario(request, user_id):
 
 
 @login_required_json
+@permission_required('auth.view_group', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def lista_grupos(request):
     termo_busca = (request.GET.get('busca') or '').strip()
@@ -402,6 +408,7 @@ def lista_grupos(request):
     )
 
 @login_required_json
+@permission_required('auth.add_group', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def cadastrar_grupo(request):
     app_messages = get_app_messages(request)
@@ -427,6 +434,7 @@ def cadastrar_grupo(request):
     return render_ajax_or_base(request, 'partials/accounts/cadastrar_grupo.html', {'form': form})
 
 @login_required_json
+@permission_required('auth.change_group', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def editar_grupo(request, grupo_id):
     app_messages = get_app_messages(request)
@@ -459,12 +467,14 @@ def editar_grupo(request, grupo_id):
     return render_ajax_or_base(request, 'partials/accounts/editar_grupo.html', {'form': form, 'grupo': grupo})
 
 @login_required_json
+@permission_required('auth.delete_group', raise_exception=True)
 @user_passes_test(is_super_or_group_admin)
 def confirmar_exclusao_grupo(request, grupo_id):
     grupo = get_object_or_404(Group, id=grupo_id)
     return render_ajax_or_base(request, 'partials/accounts/confirmar_exclusao_grupo.html', {'grupo': grupo, 'data_tela': 'confirmar_exclusao_grupo'})
 
 @login_required_json
+@permission_required('auth.delete_group', raise_exception=True)
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo(request, grupo_id):
@@ -477,6 +487,7 @@ def excluir_grupo(request, grupo_id):
     return redirect('accounts:lista_grupos')
 
 @login_required_json
+@permission_required('auth.delete_group', raise_exception=True)
 @require_POST
 @user_passes_test(is_super_or_group_admin)
 def excluir_grupo_multiplo(request):
