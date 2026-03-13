@@ -65,10 +65,9 @@
                 const tabelaBody = root.querySelector('#corpo-tabela-sugestoes');
                 const selecionarTodosCheckbox = root.querySelector('#selecionar-todos-sugestoes');
                 const aprovarBtn = root.querySelector('#btn-aprovar-selecionados');
-                const btnEditar = root.querySelector('#btn-editar');
-                const btnExcluir = root.querySelector('#btn-excluir');
-                const identificadorTela = root.querySelector('#identificador-tela');
-
+                const btnEditar = root.querySelector('#btn-editar-selecionado');
+                const btnExcluir = root.querySelector('#btn-excluir-selecionados');
+                
                 const modalAmbiente = document.querySelector('#modalAmbiente');
                 const btnSalvarAmbiente = document.querySelector('#btn-salvar-ambiente');
                 const ambienteDataInput = document.querySelector('#ambiente-data');
@@ -222,7 +221,7 @@
 
                         if (podeEditar) {
                             const realizadoId = aprovadosComRealizado[0].dataset.realizadoId;
-                            const editUrlBase = identificadorTela?.dataset?.urlEditar || '/producao/api/arracoamento/realizado/0/';
+                            const editUrlBase = btnEditar?.dataset?.editUrlBase || '/producao/api/arracoamento/realizado/0/';
                             btnEditar.dataset.href = editUrlBase.replace('/0/', `/${realizadoId}/`);
                         } else {
                             btnEditar.removeAttribute('data-href');
@@ -651,7 +650,7 @@
                         if (!confirmar.isConfirmed) return;
 
                         try {
-                            const response = await fetchWithCredsSafe(identificadorTela?.dataset?.urlExcluir || '/producao/api/arracoamento/realizado/bulk-delete/', {
+                            const response = await fetchWithCredsSafe(btnExcluir?.dataset?.deleteUrl || '/producao/api/arracoamento/realizado/bulk-delete/', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',

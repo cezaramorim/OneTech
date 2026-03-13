@@ -2,11 +2,6 @@
   <div
     id="identificador-tela"
     data-tela="arracoamento-diario"
-    data-seletor-checkbox=".sugestao-checkbox"
-    data-url-editar="{% url 'producao:api_get_arracoamento_realizado' pk=0 %}"
-    data-url-excluir="{% url 'producao:api_bulk_delete_arracoamento_realizado' %}"
-    data-entidade-singular="lan&ccedil;amento"
-    data-entidade-plural="lan&ccedil;amentos"
   ></div>
 
   <header class="page-header d-flex flex-wrap align-items-start justify-content-between mb-4">
@@ -116,20 +111,22 @@
           <i class="fas fa-check me-2"></i>Aprovar Selecionados
         </button>
         <button
-          id="btn-editar"
+          id="btn-editar-selecionado"
           class="btn btn-info ms-2"
           disabled
           data-action="editar"
+          data-edit-url-base="{% url 'producao:api_get_arracoamento_realizado' pk=0 %}"
         >
-          <i class="fas fa-edit me-2"></i>Editar
+          <i class="fas fa-edit me-2"></i>Editar selecionado
         </button>
         <button
-          id="btn-excluir"
+          id="btn-excluir-selecionados"
           class="btn btn-danger ms-2"
           disabled
           data-action="excluir"
+          data-delete-url="{% url 'producao:api_bulk_delete_arracoamento_realizado' %}"
         >
-          <i class="fas fa-trash-alt me-2"></i>Excluir
+          <i class="fas fa-trash-alt me-2"></i>Excluir selecionados
         </button>
       </div>
     </div>

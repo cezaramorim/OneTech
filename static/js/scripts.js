@@ -210,64 +210,6 @@ function syncNavbarWithServerIfNeeded(force = false) {
     });
 }
 
-function updateButtonStates(mainContent) {
-    if (!mainContent) return;
-    const identificadorTela = mainContent.querySelector("#identificador-tela");
-    if (!identificadorTela) return;
-
-    const seletorFilho = identificadorTela?.dataset.seletorCheckbox;
-    if (!seletorFilho) return;
-
-    const itemCheckboxes = mainContent.querySelectorAll(seletorFilho);
-    const btnEditar = mainContent.querySelector('#btn-editar');
-    const btnExcluir = mainContent.querySelector('#btn-excluir');
-    const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
-    const hasSelection = selectedItems.length > 0;
-    const hasSingleSelection = selectedItems.length === 1;
-
-    if (btnEditar) {
-        let canEdit = hasSingleSelection;
-        let editId = null;
-        if (hasSingleSelection) {
-            editId = selectedItems[0].value;
-        }
-
-        btnEditar.disabled = !canEdit;
-        btnEditar.classList.toggle('disabled', !canEdit);
-
-        if (canEdit && editId) {
-            const editUrlBase = identificadorTela.dataset.urlEditar;
-            if (editUrlBase) {
-                btnEditar.setAttribute('data-href', editUrlBase.replace('0', editId));
-            }
-        } else {
-            btnEditar.removeAttribute('data-href');
-        }
-    }
-
-    if (btnExcluir) {
-        btnExcluir.disabled = !hasSelection;
-        btnExcluir.classList.toggle('disabled', !hasSelection);
-    }
-    
-    const seletorPai = identificadorTela.dataset.seletorPai;
-    const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
-    if (paiCheckbox) {
-        const total = itemCheckboxes.length;
-        const marcados = selectedItems.length;
-        if (marcados === 0) {
-            paiCheckbox.checked = false;
-            paiCheckbox.indeterminate = false;
-        } else if (marcados === total && total > 0) {
-            paiCheckbox.checked = true;
-            paiCheckbox.indeterminate = false;
-        } else {
-            paiCheckbox.checked = false;
-            paiCheckbox.indeterminate = true;
-        }
-    }
-}
-
 // --- Motor AJAX e Handlers de Resposta ---
 
 async function submitAjaxForm(form) {
@@ -578,94 +520,6 @@ document.body.addEventListener('click', async (e) => {
       loadAjaxContent(ajaxLink.href);
       return;
   }
-  
-  // Handler para o botÃƒÂ£o Editar genÃƒÂ©rico
-  const btnEditar = e.target.closest('#btn-editar');
-  if (btnEditar && !btnEditar.disabled && !btnEditar.hasAttribute('data-bs-toggle')) {
-      e.preventDefault();
-      const href = btnEditar.getAttribute('data-href');
-      if (href) {
-          loadAjaxContent(href);
-      }
-      return;
-  }
-
-  // Handler para o botÃƒÂ£o Excluir genÃƒÂ©rico
-  const btnExcluir = e.target.closest('#btn-excluir');
-  if (btnExcluir && !btnExcluir.disabled) {
-      e.preventDefault();
-
-      const mainContent = document.getElementById('main-content');
-      const identificadorTela = mainContent.querySelector("#identificador-tela");
-      if (!identificadorTela) return;
-
-      const urlExcluir = identificadorTela.dataset.urlExcluir;
-      const seletorCheckbox = identificadorTela.dataset.seletorCheckbox;
-      const entidadePlural = identificadorTela.dataset.entidadePlural || 'itens';
-      const actionVerb = identificadorTela.dataset.actionVerb || 'excluir';
-
-      const selectedIds = Array.from(mainContent.querySelectorAll(`${seletorCheckbox}:checked`)).map(cb => cb.value);
-
-      if (selectedIds.length === 0) {
-          mostrarMensagem('warning', 'Nenhum item selecionado para exclusÃƒÂ£o.');
-          return;
-      }
-
-      Swal.fire({
-          title: 'VocÃƒÂª tem certeza?',
-          text: `VocÃƒÂª estÃƒÂ¡ prestes a excluir ${selectedIds.length} ${entidadePlural}. Esta aÃƒÂ§ÃƒÂ£o nÃƒÂ£o pode ser desfeita.`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#3085d6',
-          confirmButtonText: `Sim, ${actionVerb}!`,
-          cancelButtonText: 'Cancelar'
-      }).then(async (result) => {
-          if (result.isConfirmed) {
-              try {
-                  const response = await fetchWithCreds(urlExcluir, {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'X-CSRFToken': getCSRFToken()
-                      },
-                      body: JSON.stringify({ ids: selectedIds })
-                  });
-
-                  const data = await response.json();
-
-                  if (data.success) {
-                      const finalizarExclusao = () => {
-                          if (data.redirect_url) {
-                              loadAjaxContent(data.redirect_url);
-                          } else {
-                              window.location.reload();
-                          }
-                      };
-
-                      const errosExclusao = Array.isArray(data.errors) ? data.errors.filter(Boolean) : [];
-                      if (errosExclusao.length > 0) {
-                          Swal.fire({
-                              icon: 'warning',
-                              title: 'Exclusao parcial',
-                              html: `${data.message || 'Operacao concluida com ressalvas.'}<br><br>${errosExclusao.map(e => `<li class="text-start">${e}</li>`).join('')}`
-                          }).then(() => finalizarExclusao());
-                      } else {
-                          mostrarMensagem('success', data.message);
-                          finalizarExclusao();
-                      }
-                  } else {
-                      mostrarMensagem('danger', data.message || 'Ocorreu um erro ao processar os itens.');
-                  }
-              } catch (error) {
-                  console.error('Erro ao excluir:', error);
-                  mostrarMensagem('danger', 'Erro de comunicaÃƒÂ§ÃƒÂ£o com o servidor.');
-              }
-          }
-      });
-      return;
-  }
-
   // Handler para os links de tema no menu de perfil
   const themeOption = e.target.closest('.theme-option');
   if (themeOption) {
@@ -677,39 +531,6 @@ document.body.addEventListener('click', async (e) => {
 
   // Adicionar outros handlers de clique aqui (ex: #btn-excluir)
 });
-
-document.body.addEventListener('change', function(e) {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent || !e.target.matches('input[type="checkbox"]')) return;
-
-    const identificadorTela = mainContent.querySelector("#identificador-tela");
-    if (!identificadorTela) return;
-
-    const seletorPai = identificadorTela.dataset.seletorPai;
-    const seletorFilho = identificadorTela.dataset.seletorCheckbox;
-
-    if (!seletorFilho) return;
-
-    const paiCheckbox = seletorPai ? mainContent.querySelector(seletorPai) : null;
-    const filhosCheckboxes = mainContent.querySelectorAll(seletorFilho);
-
-    // LÃƒÂ³gica PAI -> FILHO: Se o checkbox mestre for alterado, atualiza todos os filhos.
-    if (paiCheckbox && e.target === paiCheckbox) {
-        filhosCheckboxes.forEach(filho => {
-            filho.checked = paiCheckbox.checked;
-        });
-    }
-
-    let isCheckboxRelevante = false;
-    if ((paiCheckbox && e.target === paiCheckbox) || (filhosCheckboxes && Array.from(filhosCheckboxes).includes(e.target))) {
-        isCheckboxRelevante = true;
-    }
-    
-    if (isCheckboxRelevante) {
-        updateButtonStates(mainContent);
-    }
-});
-
 window.addEventListener('popstate', async () => {
   const activeWrapper = document.querySelector('[data-ajax-root="true"]'); 
   if (!activeWrapper) {
@@ -1759,10 +1580,6 @@ function releaseBootingState() {
 function runInitializers() {
     showFlashMessage();
     // LÃƒÂ³gica global que roda em todas as cargas de pÃƒÂ¡gina/ajax
-    const mainContent = document.getElementById("main-content");
-    if (mainContent && typeof updateButtonStates === 'function') {
-        updateButtonStates(mainContent);
-    }
     initTooltips(document);
     if (!window.__navbarSyncedOnce) {
         window.__navbarSyncedOnce = true;

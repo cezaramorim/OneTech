@@ -1,7 +1,7 @@
-﻿# Plano Global de Padronizacao de Listas v2 10/03/2026
+# Plano Global de Padronizacao de Listas v2 10/03/2026
 
 - Data de criacao: 2026-03-10
-- Ultima atualizacao: 2026-03-11 (lote 4 Producao: unidade_list migrada para contrato unificado; lote 3 Producao: statustanque/tipoevento/tipotanque/tipotela migrados para contrato unificado; lote 2 Producao: curvas/faseproducao/linhaproducao/malha migrados; lote 1 Producao: tanques/lotes/eventos migrados; escopo principal unificado concluido)
+- Ultima atualizacao: 2026-03-12 (Fase 3 concluida: arracoamento_diario migrado para contrato unificado de acoes; escopo principal e Producao 100% migrados)
 
 ## Objetivo
 Criar um padrao unico, previsivel e reutilizavel para telas de listagem com:
@@ -23,11 +23,11 @@ A migracao sera controlada, sem lote massivo, com rastreio de residuos (logica a
 - robustez: anti-race em navegacao AJAX e regras claras de migracao
 
 ## Mapeamento do Estado Atual (Codigo Existente)
-### Motor A (legado generico por `#identificador-tela`)
+### Motor A (legado generico por `#identificador-tela`) [REMOVIDO]
 - arquivo: `static/js/scripts.js`
 - funcoes: `updateButtonStates`, handlers globais para `#btn-editar` e `#btn-excluir`
 - contrato: `data-url-editar`, `data-url-excluir`, `data-seletor-checkbox`, `data-seletor-pai`
-- status: ainda necessario enquanto houver telas de `producao/` nao migradas
+- status: removido do fluxo global; nenhuma dependencia ativa identificada
 
 ### Motor B (delegacao unificada de listas)
 - arquivo: `static/js/scripts.js`
@@ -59,6 +59,7 @@ A migracao sera controlada, sem lote massivo, com rastreio de residuos (logica a
 - regra de seguranca:
 - nao remover globalmente `updateButtonStates` enquanto houver tela com `MIG=[ ]`
 - confirmar uso antes de cada exclusao de trecho legado
+- status: concluida em 2026-03-12
 
 ## Regra de Ouro
 Nenhuma tela pode ser marcada como concluida sem:
@@ -93,7 +94,7 @@ Legenda:
 
 ## Status da Fase 1
 - Situacao: concluida para telas elegiveis ao contrato de lista unificada.
-- Pendencia remanescente: migracao Fase 3 (legado de `producao/`).
+- Pendencia remanescente: nenhuma no escopo de listas.
 
 ## Matriz de Checklist - Fase 3 (Producao Legado)
 | Modulo | Template | Motor atual | MIG | RES | OBS |
@@ -110,7 +111,7 @@ Legenda:
 | Producao | `producao/templates/producao/suporte/tipotanque_list.html` | A -> Unificado | [x] | [x] | lote 3: contrato unificado |
 | Producao | `producao/templates/producao/suporte/tipotela_list.html` | A -> Unificado | [x] | [x] | lote 3: contrato unificado |
 | Producao | `producao/templates/producao/suporte/unidade_list.html` | A -> Unificado | [x] | [x] | lote 4 em 2026-03-11: contrato unificado aplicado |
-| Producao | `producao/templates/producao/arracoamento_diario.html` | A + JS especifico | [ ] | [ ] | pendente: tela com motor proprio (producao/js/arracoamento_diario.js) e fluxo de API dedicado; migrar em etapa especifica |
+| Producao | `producao/templates/producao/arracoamento_diario.html` | C (JS especifico + contrato unificado de acoes) | [x] | [x] | migrado: sem dependencia de `data-url-*`/`data-seletor-checkbox` do legado |
 
 ## Definicao de Pronto por Tela
 Uma tela recebe `MIG=[x]` quando:
