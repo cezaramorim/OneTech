@@ -2,7 +2,7 @@
 
 - Data de criacao: 2026-03-11
 - Ultima atualizacao: 2026-03-13
-- Status: Fase 2 concluida e Fase 3 em execucao (baseline operacional validada)
+- Status: Fase 2 concluida e Fase 3 em consolidacao final (auditoria operacional ativa)
 
 ## Fase 2 - Progresso atual
 1. [x] Matriz baseline de rotas e permissoes gerada em docs/matriz_acesso_rotas_fase2.md.
@@ -24,6 +24,9 @@
 17. [x] Telemetria de autorizacao negada implementada (logger security.authz com trilha de usuario/rota/host/tenant em decorators e handler DRF).
 18. [x] Comando de baseline de seguranca OWASP basico criado (manage.py validar_baseline_seguranca).
 19. [x] Checklist operacional OWASP Fase 3 documentado (docs/checklist_owasp_basico_fase3.md).
+20. [x] Modo estrito no baseline de seguranca implementado (validar_baseline_seguranca --strict) para gate de producao.
+21. [x] Testes de contrato dos paths criticos da PATH_PERMISSION_MATRIX adicionados em common/tests.py (anon/autenticado sem permissao/ping/webhook).
+22. [x] Comando unificado de auditoria de seguranca criado (manage.py auditar_seguranca).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
@@ -262,3 +265,34 @@ Este plano deve rodar em paralelo, com prioridade de seguranca:
 - primeiro garantir autorizacao backend das telas listadas no plano de listas
 - depois continuar migracao de UX/JS da lista
 - cada tela so pode ser marcada como concluida no plano de listas se o item de permissao correspondente estiver ao menos com `PERM=[x]`
+
+## Fechamento por Modulo (Status Atual)
+Legenda:
+- `OK`: implementado e validado por teste/comando
+- `PARCIAL`: implementado, com decisao de produto/negocio pendente
+
+| Modulo | Status | Evidencia principal |
+|---|---|---|
+| `accounts` | OK | `permission_required_json`, testes 401/403, log `security.authz` |
+| `empresas` | OK | 403 JSON com `code`, testes de contrato API/HTML |
+| `fiscal` | OK | controle de permissao + contrato 403, testes de exclusao protegida |
+| `nota_fiscal` | OK | rotas criticas com permissao explicita e resposta padronizada |
+| `relatorios` | OK | API com contrato `permission_denied`/`not_authenticated` |
+| `integracao_nfe` | OK | webhook HMAC + anti-replay, validacoes de emissao por tenant |
+| `control` | OK | `ping` autenticado + testes de isolamento por host/tenant |
+| `common/api` | OK | handler DRF global + `DjangoModelPermissionsWithView` |
+| `menu/matriz` | OK | `auditar_matriz_acesso` + teste automatizado |
+| `hardening settings` | OK | flags `SECURE_*` e cookies por ambiente |
+| `auditoria operacional` | OK | `auditar_seguranca` + `validar_baseline_seguranca` |
+| `painel` | PARCIAL | autenticado; decisao pendente sobre permissao adicional por perfil |
+
+## Residuos e Pendencias Objetivas
+1. [ ] Definir politica final do modulo `painel` (somente autenticado vs permissao dedicada).
+2. [ ] Definir parametros finais de producao para `USE_HTTPS=True` e executar `validar_baseline_seguranca --strict` no ambiente alvo.
+3. [ ] Opcional: adicionar pipeline CI para rodar `manage.py auditar_seguranca --strict` no stage de release.
+
+## Comando de Fechamento da Fase
+- Auditoria padrao (ambiente atual):
+  - `python manage.py auditar_seguranca`
+- Auditoria estrita (gate de producao):
+  - `python manage.py auditar_seguranca --strict`

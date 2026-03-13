@@ -14,7 +14,9 @@
 7. [x] Testes automatizados de autorizacao e isolamento por host/tenant.
 8. [x] Comandos de auditoria disponiveis:
 - `python manage.py auditar_matriz_acesso`
-- `python manage.py validar_baseline_seguranca`
+- `python manage.py auditar_seguranca` (matriz + baseline em uma unica execucao)
+- `python manage.py validar_baseline_seguranca` (ambiente atual)
+- `python manage.py validar_baseline_seguranca --strict` (gate de producao)
 
 ## Evidencias Tecnicas
 - Matriz de acesso: `common/access_matrix.py`

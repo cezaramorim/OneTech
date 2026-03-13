@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 
 from common.access_matrix import ROUTE_PERMISSION_MATRIX
 from common.menu_config import MENU_ITEMS
@@ -51,6 +51,36 @@ class AccessMatrixCommandTests(TestCase):
         # Deve concluir sem excecao quando menu e matriz estao consistentes.
         call_command('auditar_matriz_acesso')
 
+    def test_management_command_validar_baseline_seguranca_executa_com_sucesso(self):
+        # Deve concluir sem excecao com a baseline atual de settings.
+        call_command('validar_baseline_seguranca')
+
+    @override_settings(
+        USE_HTTPS=False,
+        SESSION_COOKIE_SECURE=False,
+        CSRF_COOKIE_SECURE=False,
+        SECURE_SSL_REDIRECT=False,
+        SECURE_HSTS_SECONDS=0,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=False,
+        SECURE_HSTS_PRELOAD=False,
+    )
+    def test_management_command_validar_baseline_seguranca_strict_falha_sem_flags_https(self):
+        with self.assertRaises(SystemExit):
+            call_command('validar_baseline_seguranca', '--strict')
+
+    @override_settings(
+        USE_HTTPS=True,
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+        SECURE_SSL_REDIRECT=True,
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_HSTS_PRELOAD=True,
+    )
+    def test_management_command_validar_baseline_seguranca_strict_aprova_com_flags_https(self):
+        call_command('validar_baseline_seguranca', '--strict')
+
+
 class SecurityAuditTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -67,3 +97,51 @@ class SecurityAuditTests(TestCase):
         self.assertTrue(captured.output)
         self.assertIn('AUTHZ_DENIED', captured.output[0])
         self.assertIn('permission_denied', captured.output[0])
+
+class PathPermissionMatrixContractTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='matrix_user_sem_perm',
+            password='secret123',
+        )
+
+    def test_api_notas_entradas_anon_retorna_not_authenticated(self):
+        response = self.client.get('/api/v1/notas-entradas/')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json().get('code'), 'not_authenticated')
+
+    def test_api_notas_entradas_autenticado_sem_perm_retorna_permission_denied(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/api/v1/notas-entradas/')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+    def test_api_itens_nota_autenticado_sem_perm_retorna_permission_denied(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/api/v1/nota-fiscal/itens/')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+    def test_api_fornecedores_autenticado_sem_perm_retorna_permission_denied(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/empresas/api/v1/fornecedores/')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+    def test_ping_anon_redireciona_login(self):
+        response = self.client.get('/gerenciamento/ping/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_ping_autenticado_retorna_200(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/gerenciamento/ping/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_webhook_sefaz_sem_assinatura_retorna_401(self):
+        response = self.client.post(
+            '/integracao-nfe/webhook/sefaz/',
+            data='{}',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 401)

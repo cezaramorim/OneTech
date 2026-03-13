@@ -5,8 +5,12 @@ from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     help = 'Valida baseline de seguranca (OWASP basico) via configuracoes do projeto.'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--strict', action='store_true', help='Forca validacoes de ambiente HTTPS/producao.')
+
     def handle(self, *args, **options):
-        use_https = bool(getattr(settings, 'USE_HTTPS', False))
+        strict_mode = bool(options.get('strict'))
+        use_https = bool(getattr(settings, 'USE_HTTPS', False)) or strict_mode
 
         checks = [
             ('SESSION_COOKIE_HTTPONLY', bool(getattr(settings, 'SESSION_COOKIE_HTTPONLY', False))),
@@ -22,7 +26,11 @@ class Command(BaseCommand):
             ('CSRF_COOKIE_SAMESITE', str(getattr(settings, 'CSRF_COOKIE_SAMESITE', '')) in ('Lax', 'Strict')),
             ('SECURE_CONTENT_TYPE_NOSNIFF', bool(getattr(settings, 'SECURE_CONTENT_TYPE_NOSNIFF', False))),
             ('X_FRAME_OPTIONS', str(getattr(settings, 'X_FRAME_OPTIONS', '')) in ('DENY', 'SAMEORIGIN')),
-            ('REST_EXCEPTION_HANDLER', getattr(settings, 'REST_FRAMEWORK', {}).get('EXCEPTION_HANDLER') == 'common.api.exception_handler.onetech_exception_handler'),
+            (
+                'REST_EXCEPTION_HANDLER',
+                getattr(settings, 'REST_FRAMEWORK', {}).get('EXCEPTION_HANDLER')
+                == 'common.api.exception_handler.onetech_exception_handler',
+            ),
         ]
 
         if use_https:
@@ -36,6 +44,7 @@ class Command(BaseCommand):
         failed = [name for name, ok in checks if not ok]
 
         self.stdout.write(f'[INFO] USE_HTTPS={use_https}')
+        self.stdout.write(f'[INFO] STRICT_MODE={strict_mode}')
         for name, ok in checks:
             marker = 'OK' if ok else 'FAIL'
             self.stdout.write(f'[{marker}] {name}')
