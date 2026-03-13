@@ -1,5 +1,6 @@
 param(
-    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
+    [string]$EnvPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -72,13 +73,17 @@ function Assert-PositiveInt {
 
 Push-Location $ProjectRoot
 try {
-    $envPath = Join-Path $ProjectRoot 'config/.env'
-    if (-not (Test-Path $envPath)) {
-        Write-Host "Arquivo nao encontrado: $envPath" -ForegroundColor Red
+    $resolvedEnvPath = $EnvPath
+    if (-not $resolvedEnvPath) {
+        $resolvedEnvPath = Join-Path $ProjectRoot 'config/.env'
+    }
+
+    if (-not (Test-Path $resolvedEnvPath)) {
+        Write-Host "Arquivo nao encontrado: $resolvedEnvPath" -ForegroundColor Red
         exit 1
     }
 
-    $envMap = Parse-EnvFile -Path $envPath
+    $envMap = Parse-EnvFile -Path $resolvedEnvPath
     $errors = [System.Collections.Generic.List[string]]::new()
 
     Assert-Equals -EnvMap $envMap -Key 'DEBUG' -Expected 'False' -Errors $errors
@@ -91,9 +96,9 @@ try {
     Assert-PositiveInt -EnvMap $envMap -Key 'SECURE_HSTS_SECONDS' -Errors $errors
 
     if ($errors.Count -gt 0) {
-        Write-Host "Baseline de seguranca de producao NAO conforme no config/.env:" -ForegroundColor Red
+        Write-Host "Baseline de seguranca de producao NAO conforme no ${resolvedEnvPath}:" -ForegroundColor Red
         $errors | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
-        Write-Host "`nAjuste o config/.env do ambiente alvo e execute novamente." -ForegroundColor Yellow
+        Write-Host "`nAjuste o arquivo .env do ambiente alvo e execute novamente." -ForegroundColor Yellow
         exit 1
     }
 
@@ -102,7 +107,7 @@ try {
         $pythonExe = 'python'
     }
 
-    Write-Host 'config/.env validado. Executando auditoria estrita...' -ForegroundColor Cyan
+    Write-Host "Arquivo $resolvedEnvPath validado. Executando auditoria estrita..." -ForegroundColor Cyan
     & $pythonExe manage.py auditar_seguranca --strict
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
@@ -113,3 +118,4 @@ try {
 finally {
     Pop-Location
 }
+
