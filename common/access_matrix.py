@@ -64,6 +64,14 @@ PATH_PERMISSION_MATRIX = {
     '/gerenciamento/ping/': ('__auth_only__',),
     '/integracao-nfe/webhook/sefaz/': ('__webhook_hmac__',),
     '/painel/': ('painel.view_dashboard',),
+    '/producao/api/ambiente/': ('producao.view_parametroambientaldiario',),
+    '/producao/api/ambiente/upsert/': ('producao.change_parametroambientaldiario',),
+    '/producao/api/arracoamento/aprovar/': (
+        'producao.change_arracoamentosugerido',
+        'producao.add_arracoamentorealizado',
+    ),
+    '/producao/api/arracoamento/sugestoes/': ('producao.view_lote',),
+    '/producao/api/linhas-producao/': ('producao.view_linhaproducao',),
 }
 
 

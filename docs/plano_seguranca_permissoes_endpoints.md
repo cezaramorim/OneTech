@@ -28,6 +28,7 @@
 21. [x] Testes de contrato dos paths criticos da PATH_PERMISSION_MATRIX adicionados em common/tests.py (anon/autenticado sem permissao/ping/webhook).
 22. [x] Comando unificado de auditoria de seguranca criado (manage.py auditar_seguranca).
 23. [x] Politica do painel concluida com permissao dedicada (painel.view_dashboard) e cobertura de testes.
+24. [x] Cobertura de seguranca do modulo producao ampliada (matriz PATH + testes negativos de APIs operacionais).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:
@@ -40,14 +41,14 @@ Legenda:
 |---|---|---|---|---|
 | `accounts` | [x] | [x] | [x] | listas sensiveis alinhadas com permissao explicita (`accounts.*`/`auth.*`) |
 | `comercial` | [x] | [x] | [x] | sem gap critico inicial |
-| `control` | [x] | [x] | [~] | `ping_view` protegido com autenticacao; pendente decidir permissao granular especifica (se necessario) |
+| `control` | [x] | [x] | [x] | `ping_view` auth-only intencional para healthcheck interno (coberto por testes) |
 | `empresas` | [x] | [x] | [x] | rotas de listagem/form/status alinhadas com permissao explicita |
 | `fiscal` | [x] | [x] | [x] | sem gap critico inicial |
 | `fiscal_regras` | [x] | [x] | [x] | sem gap critico inicial |
 | `integracao_nfe` | [x] | [~] | [x] | `sefaz_webhook` protegido com HMAC + timestamp (anti-replay) |
 | `nota_fiscal` | [x] | [x] | [x] | rotas criticas com permissao explicita (emissao/criacao/edicao/exclusao) |
 | `painel` | [x] | [x] | [x] | permissao dedicada `painel.view_dashboard` aplicada e testada |
-| `producao` | [x] | [x] | [x] | permissao reforcada em endpoints sensiveis; validar escopo tenant em APIs operacionais |
+| `producao` | [x] | [x] | [x] | matriz PATH e testes de authz aplicados nas APIs operacionais criticas |
 | `produto` | [x] | [x] | [x] | `categoria_list_api` protegido; revisar endpoints auxiliares restantes |
 | `relatorios` | [x] | [x] | [x] | views/API protegidas com permissao de dominio (`relatorios.view_notafiscalrelatorio`) |
 | `common/api` | [x] | [x] | [x] | `ProdutoViewSet`, `ItemNotaFiscalViewSet`, `NotaFiscalViewSet` e `FornecedorViewSet` com permissao granular (`view_*`) |
@@ -197,7 +198,7 @@ Legenda:
 | Produto API | N/A | `common.api.produto.ProdutoViewSet` | `produto.view_produto` | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | Item Nota API | N/A | `common.api.item_nota_fiscal.ItemNotaFiscalViewSet` | `nota_fiscal.view_itemnotafiscal` | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | Categoria Produto API | N/A | `produto.views.categoria_list_api` | autenticado + perm definida | Media | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| Controle Ping | N/A | `control.views.ping_view` | publico intencional ou autenticado | Baixa | [ ] | [ ] | [ ] | [ ] | [ ] | decidir politica |
+| Controle Ping | N/A | `control.views.ping_view` | autenticado (`__auth_only__`) | Baixa | [x] | [x] | [x] | [x] | [x] | politica consolidada para healthcheck interno |
 | Integracao webhook | N/A | `integracao_nfe.views.sefaz_webhook` | assinatura HMAC valida | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
 
 ## Lista de Arquivos-Alvo (por etapa)
