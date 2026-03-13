@@ -1,4 +1,4 @@
-﻿import json
+import json
 import hmac
 import hashlib
 import logging
@@ -123,7 +123,7 @@ def emitir_nota_fiscal_view(request):
 
         # Valida se o emitente da nota e o mesmo emitente ativo do tenant atual
         if nota.emitente_proprio_id != emitente_ativo_id:
-            return JsonResponse({'success': False, 'message': 'A nota fiscal nao pertence a empresa ativa do tenant.'}, status=403)
+            return JsonResponse({'success': False, 'message': 'A nota fiscal nao pertence a empresa ativa do tenant.', 'code': 'permission_denied'}, status=403)
 
         # Carrega o certificado e a senha quando houver tenant ativo no contexto
         if not tenant_atual:

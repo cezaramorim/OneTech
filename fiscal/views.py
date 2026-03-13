@@ -393,7 +393,7 @@ def delete_fiscal_items(request):
         return JsonResponse({'success': False, 'message': message}, status=400)
     except PermissionDenied:
         message = app_messages.error('Voc? n?o tem permiss?o para excluir estes itens.')
-        return JsonResponse({'success': False, 'message': message}, status=403)
+        return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
     except Exception as exc:
         message = app_messages.error(f'Erro ao excluir itens fiscais: {exc}')
         return JsonResponse({'success': False, 'message': message}, status=500)

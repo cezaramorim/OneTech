@@ -1,14 +1,13 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import permission_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from accounts.utils.decorators import login_required_json
+from accounts.utils.decorators import login_required_json, permission_required_json
 from common.messages_utils import get_app_messages
 from common.mixins import AjaxListMixin
 from common.utils import render_ajax_or_base
@@ -19,7 +18,7 @@ from .models import CategoriaEmpresa, Empresa
 # === Categorias ===
 
 @login_required_json
-@permission_required('empresas.view_categoriaempresa', raise_exception=True)
+@permission_required_json('empresas.view_categoriaempresa', raise_exception=True)
 def lista_categorias_view(request):
     termo_busca = request.GET.get('busca', '').strip()
     categorias = CategoriaEmpresa.objects.all().order_by('nome')
@@ -39,12 +38,12 @@ def categoria_form_view(request, pk=None):
     if pk:
         if not request.user.has_perm('empresas.change_categoriaempresa'):
             message = app_messages.error('Você não tem permissão para editar categorias.')
-            return JsonResponse({'success': False, 'message': message}, status=403)
+            return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
         categoria = get_object_or_404(CategoriaEmpresa, pk=pk)
     else:
         if not request.user.has_perm('empresas.add_categoriaempresa'):
             message = app_messages.error('Você não tem permissão para adicionar categorias.')
-            return JsonResponse({'success': False, 'message': message}, status=403)
+            return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
         categoria = None
 
     form = CategoriaEmpresaForm(request.POST or None, instance=categoria)
@@ -81,7 +80,7 @@ def categoria_form_view(request, pk=None):
 
 @require_POST
 @login_required_json
-@permission_required('empresas.delete_categoriaempresa', raise_exception=True)
+@permission_required_json('empresas.delete_categoriaempresa', raise_exception=True)
 def excluir_categorias_view(request):
     app_messages = get_app_messages(request)
     try:
@@ -111,12 +110,12 @@ def empresa_form_view(request, pk=None):
     if pk:
         if not request.user.has_perm('empresas.change_empresa'):
             message = app_messages.error('Voce nao tem permissao para editar empresas.')
-            return JsonResponse({'success': False, 'message': message}, status=403)
+            return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
         empresa = get_object_or_404(Empresa, pk=pk)
     else:
         if not request.user.has_perm('empresas.add_empresa'):
             message = app_messages.error('Voce nao tem permissao para adicionar empresas.')
-            return JsonResponse({'success': False, 'message': message}, status=403)
+            return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
         empresa = None
 
     form = EmpresaForm(request.POST or None, instance=empresa)
@@ -160,7 +159,7 @@ def empresa_form_view(request, pk=None):
 
 
 @login_required_json
-@permission_required('empresas.view_empresa', raise_exception=True)
+@permission_required_json('empresas.view_empresa', raise_exception=True)
 def lista_empresas_view(request):
     """
     View que lista empresas com suporte a:
@@ -197,7 +196,7 @@ def lista_empresas_view(request):
 
 
 @login_required_json
-@permission_required('empresas.change_empresa', raise_exception=True)
+@permission_required_json('empresas.change_empresa', raise_exception=True)
 @require_POST
 def atualizar_status_empresa(request, pk):
     app_messages = get_app_messages(request)
@@ -219,7 +218,7 @@ def atualizar_status_empresa(request, pk):
 
 @require_POST
 @login_required_json
-@permission_required('empresas.delete_empresa', raise_exception=True)
+@permission_required_json('empresas.delete_empresa', raise_exception=True)
 def excluir_empresas_view(request):
     app_messages = get_app_messages(request)
     try:

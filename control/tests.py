@@ -7,7 +7,8 @@ from control.models import Tenant
 from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-from django.test import TestCase as DjangoTestCase
+from django.http import HttpResponse
+from django.test import RequestFactory, TestCase as DjangoTestCase, override_settings
 from django.urls import reverse
 
 
@@ -110,3 +111,71 @@ class ControlSecurityTests(DjangoTestCase):
         self.client.force_login(user)
         response = self.client.get(reverse('control:ping'))
         self.assertEqual(response.status_code, 200)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'ativo.localhost', 'inativo.localhost', 'bloqueado.localhost'])
+class TenantMiddlewareTests(DjangoTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _build_tenant(self, dominio='tenant.localhost', ativo=True):
+        return Tenant.objects.create(
+            nome='Tenant Teste',
+            slug=dominio.replace('.', '-'),
+            dominio=dominio,
+            db_name=f"db_{dominio.replace('.', '_')}",
+            db_user='tenant_user',
+            db_password='tenant_pass',
+            db_host='127.0.0.1',
+            db_port='3306',
+            razao_social='Tenant Teste LTDA',
+            nome_fantasia='Tenant Teste',
+            cnpj=f'00.000.000/0001-{Tenant.objects.count() + 10:02d}',
+            ativo=ativo,
+        )
+
+    def tearDown(self):
+        set_current_tenant(None)
+        super().tearDown()
+
+    def test_resolve_tenant_por_host_ativo(self):
+        tenant = self._build_tenant(dominio='ativo.localhost', ativo=True)
+
+        middleware = __import__('control.middleware', fromlist=['TenantMiddleware']).TenantMiddleware(
+            lambda request: HttpResponse('ok')
+        )
+        request = self.factory.get('/painel/', HTTP_HOST='ativo.localhost')
+
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(request.tenant)
+        self.assertEqual(request.tenant.id, tenant.id)
+        self.assertEqual(get_current_tenant().id, tenant.id)
+
+    def test_nao_resolve_tenant_inativo(self):
+        self._build_tenant(dominio='inativo.localhost', ativo=False)
+
+        middleware = __import__('control.middleware', fromlist=['TenantMiddleware']).TenantMiddleware(
+            lambda request: HttpResponse('ok')
+        )
+        request = self.factory.get('/painel/', HTTP_HOST='inativo.localhost')
+
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(request.tenant)
+        self.assertIsNone(get_current_tenant())
+
+    def test_admin_bloqueado_em_contexto_tenant(self):
+        self._build_tenant(dominio='bloqueado.localhost', ativo=True)
+
+        middleware = __import__('control.middleware', fromlist=['TenantMiddleware']).TenantMiddleware(
+            lambda request: HttpResponse('ok')
+        )
+        request = self.factory.get('/admin/', HTTP_HOST='bloqueado.localhost')
+
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/painel/?admin_restrito=1')

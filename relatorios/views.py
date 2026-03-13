@@ -51,7 +51,7 @@ def _normalize_filter_date(raw_value):
 @permission_classes([IsAuthenticated])
 def api_notas_entradas(request):
     if not request.user.has_perm('relatorios.view_notafiscalrelatorio'):
-        return Response({'detail': 'Permissao negada.'}, status=403)
+        return Response({'success': False, 'message': 'Permissao negada para executar esta acao.', 'code': 'permission_denied'}, status=403)
     """
     API endpoint REST (JSON) para listar todas as Notas Fiscais:
       - URL: GET /relatorios/api/v1/notas-entradas/
@@ -176,7 +176,7 @@ def editar_entrada_view(request, pk):
 @permission_classes([IsAuthenticated])
 def api_nota_detalhada(request, pk):
     if not request.user.has_perm('relatorios.view_notafiscalrelatorio'):
-        return Response({'detail': 'Permissao negada.'}, status=403)
+        return Response({'success': False, 'message': 'Permissao negada para executar esta acao.', 'code': 'permission_denied'}, status=403)
     """
     Retorna os dados completos da Nota Fiscal para preencher a tela de edição.
     """

@@ -1,4 +1,4 @@
-﻿from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -18,3 +18,11 @@ class RelatoriosSecurityTests(TestCase):
     def test_api_notas_entradas_sem_permissao_retorna_403(self):
         response = self.client.get(reverse('relatorios:api_notas_entradas'))
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+
+class RelatoriosApiAuthContractTests(TestCase):
+    def test_api_notas_entradas_sem_login_retorna_not_authenticated(self):
+        response = self.client.get(reverse('relatorios:api_notas_entradas'))
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json().get('code'), 'not_authenticated')

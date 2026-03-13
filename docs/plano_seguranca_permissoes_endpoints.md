@@ -2,7 +2,28 @@
 
 - Data de criacao: 2026-03-11
 - Ultima atualizacao: 2026-03-13
-- Status: Em execucao (Fase 0/1 iniciada)
+- Status: Fase 2 concluida e Fase 3 em execucao (baseline operacional validada)
+
+## Fase 2 - Progresso atual
+1. [x] Matriz baseline de rotas e permissoes gerada em docs/matriz_acesso_rotas_fase2.md.
+2. [x] Inconsistencia de menu corrigida (relatorios:impressao_relatorios com permissao explicita).
+3. [x] Teste de consistencia de menu adicionado (common/tests.py).
+4. [x] Migrar validacao para matriz central em codigo (common/access_matrix.py + common/tests.py).
+5. [x] Comando de auditoria criado: python manage.py auditar_matriz_acesso.
+6. [x] Revisao de prefixos/API documentada em docs/analise_prefixos_api_fase2.md (sem breaking change nesta fase).
+7. [x] Padronizacao de 403 JSON para views AJAX com @login_required_json + permissao (permission_required_json).
+8. [x] Contrato de erro 403 padronizado em APIs de relatorios (campo code=permission_denied).
+9. [x] Handler global DRF configurado para padrao de resposta 401/403 com codigo estavel.
+10. [x] 403 JSON manual padronizado em modulos fiscais e nota fiscal (empresas/fiscal/nota_fiscal/integracao_nfe).
+11. [x] Testes de contrato adicionados/ajustados para retorno code em 403/401 (accounts/relatorios/empresas/fiscal).
+12. [x] Varredura final de 403 JSON concluida: respostas de permissao negada padronizadas com code=permission_denied nos modulos mapeados.
+13. [x] Auditoria automatica menu x matriz executavel e validada via comando manage.py auditar_matriz_acesso.
+14. [x] Teste automatizado do comando de auditoria adicionado em common/tests.py.
+15. [x] Hardening de sessao/transporte implementado em settings.py com controle por variaveis de ambiente (USE_HTTPS e flags SECURE_*).
+16. [x] Testes de isolamento por host/tenant no middleware adicionados (resolucao por dominio ativo/inativo e bloqueio de admin em contexto tenant).
+17. [x] Telemetria de autorizacao negada implementada (logger security.authz com trilha de usuario/rota/host/tenant em decorators e handler DRF).
+18. [x] Comando de baseline de seguranca OWASP basico criado (manage.py validar_baseline_seguranca).
+19. [x] Checklist operacional OWASP Fase 3 documentado (docs/checklist_owasp_basico_fase3.md).
 
 ## Cobertura Completa por Modulo (Inventario Inicial)
 Legenda:

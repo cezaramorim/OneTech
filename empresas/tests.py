@@ -1,4 +1,4 @@
-﻿from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -30,3 +30,19 @@ class EmpresasApiSecurityTests(TestCase):
     def test_fornecedores_api_sem_permissao_retorna_403(self):
         response = self.client.get('/empresas/api/v1/fornecedores/')
         self.assertEqual(response.status_code, 403)
+
+    def test_cadastrar_categoria_sem_permissao_retorna_403_json_com_code(self):
+        response = self.client.get(
+            reverse('empresas:cadastrar_categoria'),
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
+    def test_cadastrar_empresa_sem_permissao_retorna_403_json_com_code(self):
+        response = self.client.get(
+            reverse('empresas:cadastrar_empresa'),
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')

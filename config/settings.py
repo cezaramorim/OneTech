@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'django.contrib.humanize',
+    'common',
 
     # Apps do projeto
     'control',
@@ -85,6 +86,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'EXCEPTION_HANDLER': 'common.api.exception_handler.onetech_exception_handler',
     # opcional: paginação
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.LimitOffsetPagination',
@@ -232,3 +234,37 @@ LOGGING = {
 # =======================
 DATABASE_ROUTERS = ['control.db_router.TenantRouter']
 
+
+# =======================
+# Security hardening (env-driven)
+# =======================
+USE_HTTPS = config('USE_HTTPS', cast=bool, default=(not DEBUG))
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = USE_HTTPS
+CSRF_COOKIE_SECURE = USE_HTTPS
+SESSION_COOKIE_SAMESITE = config('SESSION_COOKIE_SAMESITE', default='Lax')
+CSRF_COOKIE_SAMESITE = config('CSRF_COOKIE_SAMESITE', default='Lax')
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='DENY')
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', cast=bool, default=(USE_HTTPS and not DEBUG))
+
+SECURE_HSTS_SECONDS = config(
+    'SECURE_HSTS_SECONDS',
+    cast=int,
+    default=(31536000 if (USE_HTTPS and not DEBUG) else 0),
+)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
+    'SECURE_HSTS_INCLUDE_SUBDOMAINS',
+    cast=bool,
+    default=(USE_HTTPS and not DEBUG),
+)
+SECURE_HSTS_PRELOAD = config(
+    'SECURE_HSTS_PRELOAD',
+    cast=bool,
+    default=(USE_HTTPS and not DEBUG),
+)
+
+if config('SECURE_PROXY_SSL_HEADER_ENABLED', cast=bool, default=False):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

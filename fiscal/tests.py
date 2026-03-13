@@ -159,6 +159,7 @@ class FiscalPermissionViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
         self.cfop.refresh_from_db()
 
     def test_anonymous_full_request_redirects_to_login_instead_of_403(self):

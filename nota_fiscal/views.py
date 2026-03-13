@@ -11,9 +11,8 @@ from decimal import Decimal
 from django.urls import reverse
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import permission_required
 from common.messages_utils import get_app_messages
-from accounts.utils.decorators import login_required_json
+from accounts.utils.decorators import login_required_json, permission_required_json
 from django.core.files.storage import default_storage
 from django.db import transaction, DatabaseError
 from django.db.models import Q, IntegerField
@@ -87,7 +86,7 @@ def xml_to_dict(element):
 # --- Views Principais --- #
 
 @login_required_json
-@permission_required('integracao_nfe.can_emit_nfe', raise_exception=True)
+@permission_required_json('integracao_nfe.can_emit_nfe', raise_exception=True)
 @require_GET
 def emitir_nfe_list_view(request):
     """
@@ -135,7 +134,7 @@ def emitir_nfe_list_view(request):
 
 
 @login_required_json
-@permission_required('nota_fiscal.add_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.add_notafiscal', raise_exception=True)
 @require_GET
 def importar_xml_view(request):
     """Renderiza a pÃƒÆ’Ã‚Â¡gina de upload de XML para importaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de notas fiscais."""
@@ -173,7 +172,7 @@ def importar_xml_nfe_view(request):
     # 1. VerificaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de PermissÃƒÆ’Ã‚Â£o do UsuÃƒÆ’Ã‚Â¡rio
     if not request.user.has_perm('nota_fiscal.can_import_xml'):
         message = app_messages.error('VocÃƒÆ’Ã‚Âª nÃƒÆ’Ã‚Â£o tem permissÃƒÆ’Ã‚Â£o para importar XML de Notas Fiscais.')
-        return JsonResponse({'success': False, 'message': message}, status=403)
+        return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
 
     if not xml_file or not xml_file.name.lower().strip().endswith('.xml'):
         print(f"DEBUG: CondiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de arquivo XML invÃƒÆ’Ã‚Â¡lido acionada. xml_file is None: {xml_file is None}")
@@ -619,7 +618,7 @@ def _parse_datetime(dt_str, date_only=False):
 # --- Views de Listagem e Outras --- #
 
 @login_required_json
-@permission_required('nota_fiscal.view_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.view_notafiscal', raise_exception=True)
 @require_GET
 def entradas_nota_view(request):
     """Lista as notas fiscais de entrada com opÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de busca e ordenaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o."""
@@ -664,7 +663,7 @@ def entradas_nota_view(request):
     return render(request, 'base.html', context)
 
 @login_required_json
-@permission_required('nota_fiscal.add_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.add_notafiscal', raise_exception=True)
 @require_GET
 def lancar_nota_manual_view(request):
     """
@@ -694,7 +693,7 @@ def lancar_nota_manual_view(request):
 # Substitua a sua funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o editar_nota_view por esta:
 
 @login_required_json
-@permission_required('nota_fiscal.change_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.change_notafiscal', raise_exception=True)
 @require_http_methods(["GET", "POST"] )
 @transaction.atomic
 def editar_nota_view(request, pk):
@@ -803,7 +802,7 @@ def editar_nota_view(request, pk):
     return render(request, 'base.html', context)
 
 @login_required_json
-@permission_required('nota_fiscal.delete_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.delete_notafiscal', raise_exception=True)
 @require_POST
 @transaction.atomic
 def excluir_notas_multiplo_view(request):
@@ -948,7 +947,7 @@ def resolver_aliquota_item_view(request):
 # ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â¡ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ VIEW PARA CRIAR NOTA FISCAL DE SAIDA
 # ==============================================================================
 @login_required_json
-@permission_required('nota_fiscal.add_notafiscal', raise_exception=True)
+@permission_required_json('nota_fiscal.add_notafiscal', raise_exception=True)
 def criar_nfe_saida(request):
     """
     Renderiza o formulÃƒÆ’Ã‚Â¡rio para criar uma nova Nota Fiscal de SaÃƒÆ’Ã‚Â­da e processa a sua submissÃƒÆ’Ã‚Â£o.

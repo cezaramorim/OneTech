@@ -125,6 +125,14 @@ class AccountsSecurityTests(TestCase):
         response = self.client.get(reverse('accounts:lista_usuarios'))
         self.assertEqual(response.status_code, 403)
 
+    def test_lista_usuarios_sem_permissao_accept_json_retorna_403_json(self):
+        response = self.client.get(
+            reverse('accounts:lista_usuarios'),
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'permission_denied')
+
     def test_lista_grupos_sem_permissao_retorna_403(self):
         response = self.client.get(reverse('accounts:lista_grupos'))
         self.assertEqual(response.status_code, 403)
