@@ -189,18 +189,18 @@ Legenda:
 
 | Recurso | Menu | Rota/Endpoint | Permissao esperada | Criticidade | INV | PERM | TEN | API | TEST | OBS |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Configuracoes > Lista de Usuarios | `accounts:lista_usuarios` | `accounts.views.lista_usuarios` | `accounts.view_user` | Alta | [ ] | [ ] | [ ] | N/A | [ ] | |
-| Configuracoes > Lista de Grupos | `accounts:lista_grupos` | `accounts.views.lista_grupos` | `auth.view_group` | Alta | [ ] | [ ] | [ ] | N/A | [ ] | |
-| Nota Fiscal > Emitir NF-e | `nota_fiscal:emitir_nfe_list` | `nota_fiscal.views.emitir_nfe_list_view` | `integracao_nfe.can_emit_nfe` | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| Nota Fiscal > Entradas | `nota_fiscal:entradas_nota` | `nota_fiscal.views.entradas_nota_view` | `nota_fiscal.view_notafiscal` | Alta | [ ] | [ ] | [ ] | N/A | [ ] | |
-| Nota Fiscal > Criar NF-e Saida | `nota_fiscal:criar_nfe_saida` | `nota_fiscal.views.criar_nfe_saida` | `nota_fiscal.add_notafiscal` | Alta | [ ] | [ ] | [ ] | N/A | [ ] | |
-| Relatorios > Notas de Entrada | `relatorios:notas_entradas` | `relatorios.views.notas_entradas_view` | `relatorios.view_notafiscalrelatorio` | Alta | [ ] | [ ] | [ ] | N/A | [ ] | |
-| Fiscal API CFOP | N/A | `common.api.fiscal.CfopViewSet` | `fiscal.*_cfop` | Media | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| Produto API | N/A | `common.api.produto.ProdutoViewSet` | `produto.view_produto` | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| Item Nota API | N/A | `common.api.item_nota_fiscal.ItemNotaFiscalViewSet` | `nota_fiscal.view_itemnotafiscal` | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| Categoria Produto API | N/A | `produto.views.categoria_list_api` | autenticado + perm definida | Media | [ ] | [ ] | [ ] | [ ] | [ ] | |
+| Configuracoes > Lista de Usuarios | `accounts:lista_usuarios` | `accounts.views.lista_usuarios` | `accounts.view_user` | Alta | [x] | [x] | [x] | N/A | [x] | cobertura consolidada em matriz + testes de contrato |
+| Configuracoes > Lista de Grupos | `accounts:lista_grupos` | `accounts.views.lista_grupos` | `auth.view_group` | Alta | [x] | [x] | [x] | N/A | [x] | cobertura consolidada em matriz + testes de contrato |
+| Nota Fiscal > Emitir NF-e | `nota_fiscal:emitir_nfe_list` | `nota_fiscal.views.emitir_nfe_list_view` | `integracao_nfe.can_emit_nfe` | Alta | [x] | [x] | [x] | [x] | [x] | validado no endurecimento de emissao e contratos 403/401 |
+| Nota Fiscal > Entradas | `nota_fiscal:entradas_nota` | `nota_fiscal.views.entradas_nota_view` | `nota_fiscal.view_notafiscal` | Alta | [x] | [x] | [x] | N/A | [x] | validado por testes e matriz central |
+| Nota Fiscal > Criar NF-e Saida | `nota_fiscal:criar_nfe_saida` | `nota_fiscal.views.criar_nfe_saida` | `nota_fiscal.add_notafiscal` | Alta | [x] | [x] | [x] | N/A | [x] | validado por testes e matriz central |
+| Relatorios > Notas de Entrada | `relatorios:notas_entradas` | `relatorios.views.notas_entradas_view` | `relatorios.view_notafiscalrelatorio` | Alta | [x] | [x] | [x] | N/A | [x] | contrato de permissao JSON padronizado e testado |
+| Fiscal API CFOP | N/A | `common.api.fiscal.CfopViewSet` | `fiscal.*_cfop` | Media | [x] | [x] | [x] | [x] | [x] | cobertura de contrato 403/401 e matriz PATH |
+| Produto API | N/A | `common.api.produto.ProdutoViewSet` | `produto.view_produto` | Alta | [x] | [x] | [x] | [x] | [x] | DjangoModelPermissionsWithView aplicado e testado |
+| Item Nota API | N/A | `common.api.item_nota_fiscal.ItemNotaFiscalViewSet` | `nota_fiscal.view_itemnotafiscal` | Alta | [x] | [x] | [x] | [x] | [x] | DjangoModelPermissionsWithView aplicado e testado |
+| Categoria Produto API | N/A | `produto.views.categoria_list_api` | autenticado + perm definida | Media | [x] | [x] | [x] | [x] | [x] | endpoint protegido com permissao explicita e teste de 403 |
 | Controle Ping | N/A | `control.views.ping_view` | autenticado (`__auth_only__`) | Baixa | [x] | [x] | [x] | [x] | [x] | politica consolidada para healthcheck interno |
-| Integracao webhook | N/A | `integracao_nfe.views.sefaz_webhook` | assinatura HMAC valida | Alta | [ ] | [ ] | [ ] | [ ] | [ ] | |
+| Integracao webhook | N/A | `integracao_nfe.views.sefaz_webhook` | assinatura HMAC valida | Alta | [x] | [x] | [x] | [x] | [x] | HMAC + anti-replay + testes negativos |
 
 ## Lista de Arquivos-Alvo (por etapa)
 Core de seguranca:
