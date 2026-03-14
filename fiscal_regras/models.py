@@ -79,9 +79,42 @@ class RegraAliquotaICMS(models.Model):
         if self.vigencia_fim and self.vigencia_fim < self.vigencia_inicio:
             raise ValidationError({'vigencia_fim': 'Vigencia fim nao pode ser anterior a vigencia inicio.'})
 
+        self._validate_conflito_escopo_vigencia()
+
+    def _validate_conflito_escopo_vigencia(self):
+        if not self.ativo:
+            return
+
+        conflitos = RegraAliquotaICMS.objects.filter(
+            ativo=True,
+            ncm_prefixo=self.ncm_prefixo,
+            tipo_operacao=self.tipo_operacao,
+            modalidade=self.modalidade,
+            uf_origem=self.uf_origem,
+            uf_destino=self.uf_destino,
+            origem_mercadoria=self.origem_mercadoria,
+            cst_icms_id=self.cst_icms_id,
+            csosn_icms_id=self.csosn_icms_id,
+        )
+
+        if self.pk:
+            conflitos = conflitos.exclude(pk=self.pk)
+
+        # Conflito de intervalo: [inicio, fim] cruza com intervalo existente.
+        if self.vigencia_fim:
+            conflitos = conflitos.filter(vigencia_inicio__lte=self.vigencia_fim)
+
+        conflitos = conflitos.filter(
+            models.Q(vigencia_fim__isnull=True) | models.Q(vigencia_fim__gte=self.vigencia_inicio)
+        )
+
+        if conflitos.exists():
+            raise ValidationError('Ja existe regra ativa com mesmo escopo e vigencia sobreposta para este contexto fiscal.')
+
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.ncm_prefixo} | {self.descricao}'
+

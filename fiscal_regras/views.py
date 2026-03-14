@@ -1,7 +1,8 @@
-import json
+﻿import json
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required, permission_required
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
@@ -12,7 +13,7 @@ from common.utils.rendering import render_ajax_or_base
 
 from .forms import RegraAliquotaICMSForm
 from .models import RegraAliquotaICMS
-from .services import resolver_regra_icms_item
+from .services import get_resolver_metrics_snapshot, resolver_regra_icms_item
 
 
 @login_required
@@ -40,6 +41,7 @@ def regra_icms_list(request):
         'regras': regras.order_by(ordenacao),
         'ordenacao_atual': ordenacao,
         'termo_busca': termo_busca,
+        'resolver_metrics': get_resolver_metrics_snapshot(),
         'content_template': 'partials/fiscal_regras/regra_icms_list.html',
         'data_page': 'regra_icms_list',
     }
@@ -156,14 +158,89 @@ def resolver_aliquota_icms_api(request):
 @permission_required('fiscal_regras.add_regraaliquotaicms', raise_exception=True)
 @require_POST
 def importar_regras_view(request):
-    return JsonResponse({'success': False, 'message': 'Importacao via interface sera disponibilizada na proxima etapa.'}, status=501)
+    app_messages = get_app_messages(request)
+    upload = request.FILES.get('arquivo')
+    if not upload:
+        return JsonResponse({'success': False, 'message': app_messages.error('Selecione um arquivo JSON para importar.')}, status=400)
+
+    try:
+        payload = json.load(upload)
+    except Exception:
+        return JsonResponse({'success': False, 'message': app_messages.error('Arquivo JSON invalido.')}, status=400)
+
+    if not isinstance(payload, list):
+        return JsonResponse({'success': False, 'message': app_messages.error('O JSON deve ser uma lista de regras.')}, status=400)
+
+    created = 0
+    updated = 0
+    errors = []
+
+    for idx, row in enumerate(payload, start=1):
+        if not isinstance(row, dict):
+            errors.append({'linha': idx, 'erro': 'Registro nao e objeto JSON'})
+            continue
+
+        data = dict(row)
+        data.pop('id', None)
+        form = RegraAliquotaICMSForm(data)
+        if not form.is_valid():
+            errors.append({'linha': idx, 'erro': form.errors.get_json_data()})
+            continue
+
+        obj = form.save(commit=False)
+        obj.created_by = request.user
+        obj.updated_by = request.user
+
+        escopo = {
+            'ncm_prefixo': obj.ncm_prefixo,
+            'tipo_operacao': obj.tipo_operacao,
+            'modalidade': obj.modalidade,
+            'uf_origem': obj.uf_origem,
+            'uf_destino': obj.uf_destino,
+            'origem_mercadoria': obj.origem_mercadoria,
+            'cst_icms_id': obj.cst_icms_id,
+            'csosn_icms_id': obj.csosn_icms_id,
+            'vigencia_inicio': obj.vigencia_inicio,
+            'vigencia_fim': obj.vigencia_fim,
+        }
+        existing = RegraAliquotaICMS.objects.filter(**escopo).first()
+        if existing:
+            for field in [
+                'ativo', 'descricao', 'aliquota_icms', 'fcp', 'reducao_base_icms',
+                'prioridade', 'observacoes', 'updated_by'
+            ]:
+                setattr(existing, field, getattr(obj, field))
+            existing.save()
+            updated += 1
+        else:
+            obj.save()
+            created += 1
+
+    message = f'Importacao concluida. Criadas: {created}. Atualizadas: {updated}. Erros: {len(errors)}.'
+    return JsonResponse({'success': True, 'message': message, 'created': created, 'updated': updated, 'errors': errors[:20]})
 
 
 @login_required
 @permission_required('fiscal_regras.view_regraaliquotaicms', raise_exception=True)
 @require_POST
 def validar_regras_view(request):
-    return JsonResponse({'success': True, 'message': 'Validacao basica concluida.'})
+    conflitos = (
+        RegraAliquotaICMS.objects.values(
+            'ncm_prefixo', 'tipo_operacao', 'modalidade', 'uf_origem', 'uf_destino', 'origem_mercadoria',
+            'cst_icms_id', 'csosn_icms_id', 'vigencia_inicio', 'vigencia_fim'
+        )
+        .annotate(total=Count('id'))
+        .filter(total__gt=1)
+        .order_by('-total')
+    )
+
+    conflitos_list = []
+    for c in conflitos[:50]:
+        conflitos_list.append(c)
+
+    metrics = get_resolver_metrics_snapshot()
+    message = 'Validacao concluida sem conflitos.' if not conflitos_list else f'Validacao concluida com {len(conflitos_list)} conflito(s).'
+    return JsonResponse({'success': True, 'message': message, 'conflitos': conflitos_list, 'metrics': metrics})
 
 
 @login_required
