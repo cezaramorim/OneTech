@@ -1,15 +1,19 @@
 {% load static %}
 
-<div class="container-fluid py-2" data-page="central_seguranca" data-audit-url="{% url 'control:security_run_audit' %}" data-force-logout-url="{% url 'control:security_force_logout_user' %}">
+<div class="container-fluid py-2" data-page="central_seguranca" data-audit-url="{% url 'control:security_run_audit' %}" data-force-logout-url="{% url 'control:security_force_logout_user' %}" data-user-lock-url="{% url 'control:security_toggle_user_lock' %}" data-tenant-quarantine-url="{% url 'control:security_toggle_tenant_quarantine' %}" data-dependency-audit-url="{% url 'control:security_run_dependency_audit' %}" data-matrix-audit-url="{% url 'control:security_run_matrix_audit' %}">
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
       <div>
         <h3 class="mb-1">Central de Seguranca</h3>
         <p class="mb-0 text-muted">Visao operacional de requisitos, eventos e sessoes ativas.</p>
       </div>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap justify-content-end">
         <button type="button" class="btn btn-primary btn-sm" data-action="run-audit" data-mode="normal">Auditoria Normal</button>
         <button type="button" class="btn btn-outline-primary btn-sm" data-action="run-audit" data-mode="strict">Auditoria Estrita</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="run-matrix-audit">Auditoria Matriz</button>
+        <button type="button" class="btn btn-outline-info btn-sm" data-action="run-dependency-audit">Auditoria Dependencias</button>
+        <a class="btn btn-outline-light btn-sm" href="{% url 'control:security_export_consolidated' %}?format=json" target="_blank" rel="noopener">Exportar JSON</a>
+        <a class="btn btn-outline-light btn-sm" href="{% url 'control:security_export_consolidated' %}?format=csv">Exportar CSV</a>
       </div>
     </div>
   </div>
@@ -26,8 +30,12 @@
     <div class="col-md-4">
       <div class="card h-100">
         <div class="card-body">
-          <small class="text-muted d-block">Negacoes de autorizacao (24h)</small>
-          <div class="display-6 fw-bold text-danger">{{ security_stats.denied_24h }}</div>
+          <small class="text-muted d-block">Negacoes de autorizacao</small>
+          <div class="d-flex flex-column gap-1 mt-2">
+            <div class="d-flex justify-content-between"><span>24h</span><strong class="text-danger">{{ security_stats.denied_24h }}</strong></div>
+            <div class="d-flex justify-content-between"><span>7d</span><strong class="text-danger">{{ security_stats.denied_7d }}</strong></div>
+            <div class="d-flex justify-content-between"><span>30d</span><strong class="text-danger">{{ security_stats.denied_30d }}</strong></div>
+          </div>
         </div>
       </div>
     </div>
@@ -36,6 +44,194 @@
         <div class="card-body">
           <small class="text-muted d-block">Usuarios com sessao ativa</small>
           <div class="display-6 fw-bold">{{ active_sessions|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Alertas de Burst (24h)</strong>
+      <span class="text-muted small">Acessos negados repetidos (limiar: 5)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Chave</th>
+            <th class="text-end">Ocorrencias</th>
+            <th class="text-center">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alert in burst_alerts %}
+          <tr>
+            <td>{{ alert.tipo }}</td>
+            <td>{{ alert.chave }}</td>
+            <td class="text-end"><span class="badge bg-danger">{{ alert.total }}</span></td>
+            <td class="text-center"><a class="btn btn-outline-primary btn-sm ajax-link" href="{% url 'control:central_seguranca' %}?q={{ alert.chave|urlencode }}&tipo=AUTHZ_DENIED">Detalhar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">Sem alertas de burst nas ultimas 24h.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Endpoints Sensiveis (24h)</strong>
+      <span class="text-muted small">Tentativas repetidas em rotas criticas (limiar: 3)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Rota</th>
+            <th class="text-end">Ocorrencias</th>
+            <th class="text-center">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alert in sensitive_alerts %}
+          <tr>
+            <td>{{ alert.path }}</td>
+            <td class="text-end"><span class="badge bg-warning text-dark">{{ alert.total }}</span></td>
+            <td class="text-center"><a class="btn btn-outline-primary btn-sm ajax-link" href="{% url 'control:central_seguranca' %}?q={{ alert.path|urlencode }}&tipo=AUTHZ_DENIED">Detalhar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-center text-muted py-3">Sem alertas de endpoint sensivel nas ultimas 24h.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Top Origens (24h)</strong>
+      <span class="text-muted small">Hosts/IPs com mais negacoes de autorizacao</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>IP</th>
+            <th class="text-end">Ocorrencias</th>
+            <th class="text-center">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_origin_offenders %}
+          <tr>
+            <td>{{ row.host }}</td>
+            <td>{{ row.ip_address }}</td>
+            <td class="text-end"><span class="badge bg-danger">{{ row.total }}</span></td>
+            <td class="text-center"><a class="btn btn-outline-primary btn-sm ajax-link" href="{% url 'control:central_seguranca' %}?q={{ row.ip_address|urlencode }}&tipo=AUTHZ_DENIED">Detalhar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">Sem ofensores nas ultimas 24h.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Risco por Tenant (24h)</strong>
+      <span class="text-muted small">Classificacao por volume de negacoes</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Tenant</th>
+            <th class="text-end">Negacoes</th>
+            <th class="text-center">Risco</th>
+            <th class="text-center">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tenant_risk_rows %}
+          <tr>
+            <td>{{ row.tenant_slug }}</td>
+            <td class="text-end">{{ row.total }}</td>
+            <td class="text-center">
+              {% if row.risk == 'ALTO' %}
+                <span class="badge bg-danger">{{ row.risk }}</span>
+              {% elif row.risk == 'MEDIO' %}
+                <span class="badge bg-warning text-dark">{{ row.risk }}</span>
+              {% else %}
+                <span class="badge bg-success">{{ row.risk }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center d-flex justify-content-center gap-1 flex-wrap">
+              <a class="btn btn-outline-primary btn-sm ajax-link" href="{% url 'control:central_seguranca' %}?q={{ row.tenant_slug|urlencode }}&tipo=AUTHZ_DENIED">Detalhar</a>
+              {% if row.is_quarantined %}
+                <button type="button" class="btn btn-outline-success btn-sm" data-action="toggle-tenant-quarantine" data-mode="disable" data-tenant-slug="{{ row.tenant_slug }}">Remover Quarentena</button>
+                <span class="badge bg-danger">Em quarentena</span>
+              {% else %}
+                <button type="button" class="btn btn-outline-warning btn-sm" data-action="toggle-tenant-quarantine" data-mode="enable" data-tenant-slug="{{ row.tenant_slug }}">Ativar Quarentena</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">Sem risco por tenant no periodo.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Vulnerabilidades de Dependencias</strong>
+      <span class="text-muted small">Ultima auditoria local de pacotes Python</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 mb-2">
+        <div class="col-md-3"><small class="text-muted d-block">Status</small><strong>{% if dependency_audit_snapshot %}{% if dependency_audit_snapshot.success %}OK{% else %}Falha{% endif %}{% else %}-{% endif %}</strong></div>
+        <div class="col-md-3"><small class="text-muted d-block">Vulnerabilidades</small><strong class="text-danger">{% if dependency_audit_snapshot %}{{ dependency_audit_snapshot.vulnerable_count }}{% else %}0{% endif %}</strong></div>
+        <div class="col-md-3"><small class="text-muted d-block">Dependencias auditadas</small><strong>{% if dependency_audit_snapshot %}{{ dependency_audit_snapshot.dependencies_count }}{% else %}0{% endif %}</strong></div>
+        <div class="col-md-3"><small class="text-muted d-block">Ultima execucao</small><strong>{% if dependency_audit_snapshot %}{{ dependency_audit_snapshot.ran_at_display|default:dependency_audit_snapshot.ran_at }}{% else %}-{% endif %}</strong></div>
+      </div>
+      <label class="form-label mb-1">Saida da Auditoria de Dependencias</label>
+      <pre class="security-audit-output" data-role="dependency-audit-output">Clique em "Auditoria Dependencias" para executar.</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Compliance Tecnico (Fase 4)</strong>
+      <span class="text-muted small">Baseline strict e matriz x menu</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="border rounded p-2 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-semibold">Baseline Strict</span>
+              <span class="badge {% if baseline_strict_snapshot and baseline_strict_snapshot.success %}bg-success{% elif baseline_strict_snapshot %}bg-danger{% else %}bg-secondary{% endif %}" data-role="baseline-strict-status">{% if baseline_strict_snapshot %}{% if baseline_strict_snapshot.success %}Aprovado{% else %}Reprovado{% endif %}{% else %}Sem execucao{% endif %}</span>
+            </div>
+            <div class="small text-muted" data-role="baseline-strict-ran-at">{% if baseline_strict_snapshot %}{{ baseline_strict_snapshot.ran_at_display|default:baseline_strict_snapshot.ran_at }}{% else %}-{% endif %}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="border rounded p-2 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-semibold">Matriz x Menu</span>
+              <span class="badge {% if matrix_audit_snapshot and matrix_audit_snapshot.success %}bg-success{% elif matrix_audit_snapshot %}bg-danger{% else %}bg-secondary{% endif %}" data-role="matrix-audit-status">{% if matrix_audit_snapshot %}{% if matrix_audit_snapshot.success %}Consistente{% else %}Divergente{% endif %}{% else %}Sem execucao{% endif %}</span>
+            </div>
+            <div class="small text-muted" data-role="matrix-audit-ran-at">{% if matrix_audit_snapshot %}{{ matrix_audit_snapshot.ran_at_display|default:matrix_audit_snapshot.ran_at }}{% else %}-{% endif %}</div>
+            <label class="form-label mb-1 mt-2">Saida da Auditoria Matriz</label>
+            <pre class="security-audit-output" data-role="matrix-audit-output">Clique em "Auditoria Matriz" para executar.</pre>
+          </div>
         </div>
       </div>
     </div>
@@ -56,6 +252,38 @@
         <label class="form-label mb-1">Saida da Auditoria</label>
         <pre class="security-audit-output" data-role="audit-output">Selecione "Auditoria Normal" ou "Auditoria Estrita" para executar.</pre>
       </div>
+    </div>
+  </div>
+
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Historico de Acoes Administrativas</strong>
+      <span class="text-muted small">Eventos operacionais da Central</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Codigo</th>
+            <th>Ator</th>
+            <th>Detalhe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in admin_actions %}
+          <tr>
+            <td>{{ ev.created_at|date:'d/m/Y H:i:s' }}</td>
+            <td>{{ ev.code }}</td>
+            <td>{% if ev.user %}{{ ev.user.username }}{% elif ev.metadata.request_username %}{{ ev.metadata.request_username }}{% else %}-{% endif %}</td>
+            <td title="{{ ev.detail }}">{{ ev.detail|truncatechars:100 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">Sem acoes administrativas registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -86,8 +314,14 @@
             <td class="text-center">
               {% if s.is_superuser %}<span class="badge bg-danger">Superuser</span>{% elif s.is_staff %}<span class="badge bg-info">Staff</span>{% else %}<span class="badge bg-secondary">Usuario</span>{% endif %}
             </td>
-            <td class="text-center">
+            <td class="text-center d-flex justify-content-center gap-1 flex-wrap">
               <button type="button" class="btn btn-outline-danger btn-sm" data-action="force-logout" data-user-id="{{ s.id }}" data-username="{{ s.username }}">Encerrar Sessoes</button>
+              {% if s.is_locked %}
+                <button type="button" class="btn btn-outline-success btn-sm" data-action="toggle-lock" data-mode="unlock" data-user-id="{{ s.id }}" data-username="{{ s.username }}">Desbloquear</button>
+                <span class="badge bg-warning text-dark">Bloqueado ate {{ s.locked_until }}</span>
+              {% else %}
+                <button type="button" class="btn btn-outline-warning btn-sm" data-action="toggle-lock" data-mode="lock" data-user-id="{{ s.id }}" data-username="{{ s.username }}" data-minutes="15">Bloquear 15m</button>
+              {% endif %}
             </td>
           </tr>
           {% empty %}
@@ -100,6 +334,25 @@
 
   <div class="card">
     <div class="card-header"><strong>Tentativas e Eventos Recentes</strong></div>
+    <div class="card-body pb-2">
+      <form method="get" action="{% url 'control:central_seguranca' %}" class="ajax-form row g-2" data-target-container="#main-content" data-response-type="html" data-push-state="true" autocomplete="off">
+        <div class="col-md-6">
+          <input type="search" class="form-control" name="q" value="{{ filtro_q }}" placeholder="Buscar por codigo, usuario, rota, host ou tenant">
+        </div>
+        <div class="col-md-3">
+          <select class="form-select" name="tipo">
+            <option value="">Todos os tipos</option>
+            <option value="SYSTEM" {% if filtro_tipo == 'SYSTEM' %}selected{% endif %}>SYSTEM</option>
+            <option value="AUTHZ_DENIED" {% if filtro_tipo == 'AUTHZ_DENIED' %}selected{% endif %}>AUTHZ_DENIED</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
+          <a href="{% url 'control:central_seguranca' %}" class="btn btn-outline-secondary btn-sm ajax-link">Limpar</a>
+          <a href="{% url 'control:security_export_events_csv' %}?q={{ filtro_q|urlencode }}&tipo={{ filtro_tipo|urlencode }}" class="btn btn-outline-primary btn-sm">Exportar CSV</a>
+        </div>
+      </form>
+    </div>
     <div class="table-responsive">
       <table class="table table-sm table-striped align-middle mb-0">
         <thead>
@@ -137,3 +390,11 @@
 
 <link rel="stylesheet" href="{% static 'control/css/central_seguranca.css' %}">
 <script src="{% static 'control/js/central_seguranca.js' %}"></script>
+
+
+
+
+
+
+
+

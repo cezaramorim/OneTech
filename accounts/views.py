@@ -19,12 +19,14 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.template.response import TemplateResponse
 from django.db.models import Q
+from django.core.cache import cache
 
 from .forms import SignUpForm, EditUserForm, GroupForm
 from .models import User, GroupProfile
 from accounts.utils import nome_entidade_permissao, ordem_acao_permissao, ordem_app_permissao, traduzir_nome_app, traduzir_permissao, is_super_or_group_admin
 from common.utils import render_ajax_or_base
 from common.context_processors import dynamic_menu
+from common.security_audit import log_system_event
 
 
 # === Autenticação ===
@@ -50,8 +52,42 @@ def login_view(request):
     error = None
 
     if request.method == 'POST':
-        username = request.POST.get('username')
+        username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password')
+
+        user_model = get_user_model()
+        candidate = user_model.objects.filter(username=username).only('id', 'username').first() if username else None
+        if candidate:
+            lock_info = cache.get(f'security:user-lock:{candidate.id}')
+            if isinstance(lock_info, dict) and str(lock_info.get('until') or '').strip():
+                error = 'Usuario temporariamente bloqueado. Tente novamente mais tarde.'
+                log_system_event(
+                    request,
+                    code='auth_login_blocked',
+                    detail=f'Login bloqueado para username={candidate.username}',
+                    metadata={
+                        'username': candidate.username,
+                        'user_id': candidate.id,
+                        'locked_until': str(lock_info.get('until') or ''),
+                    },
+                )
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': error}, status=403)
+            else:
+                cache.delete(f'security:user-lock:{candidate.id}')
+
+        if error:
+            return render(request, 'partials/accounts/login.html', {
+                'error': error,
+                'data_page': 'login',
+                'data_tela': 'login',
+            }) if request.headers.get('x-requested-with') == 'XMLHttpRequest' else render(request, 'base.html', {
+                'error': error,
+                'content_template': 'partials/accounts/login.html',
+                'data_page': 'login',
+                'data_tela': 'login',
+            })
+
         user = authenticate(request, username=username, password=password)
 
         if user:

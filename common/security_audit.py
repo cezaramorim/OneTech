@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 
 from django.contrib.auth import get_user_model
 from django.db import DatabaseError, IntegrityError
@@ -7,11 +7,22 @@ from django.utils.timezone import now
 logger = logging.getLogger('security.authz')
 
 
+def _as_text(value):
+    return '' if value is None else str(value)
+
+
 def _extract_ip_address(request):
-    xff = (request.META.get('HTTP_X_FORWARDED_FOR') or '').strip()
+    xff = _as_text(request.META.get('HTTP_X_FORWARDED_FOR')).strip()
     if xff:
         return xff.split(',')[0].strip()
-    return (request.META.get('REMOTE_ADDR') or '').strip()
+    return _as_text(request.META.get('REMOTE_ADDR')).strip()
+
+
+def _extract_host(request):
+    try:
+        return _as_text(request.get_host())
+    except Exception:
+        return ''
 
 
 def _resolve_default_user_id(user_obj):
@@ -36,20 +47,20 @@ def _persist_security_event(request, event_type, code='', detail='', metadata=No
     metadata_payload = dict(metadata or {})
     if getattr(user, 'is_authenticated', False):
         metadata_payload.setdefault('request_user_id', getattr(user, 'id', None))
-        metadata_payload.setdefault('request_username', getattr(user, 'username', ''))
-        metadata_payload.setdefault('request_user_db', getattr(getattr(user, '_state', None), 'db', ''))
+        metadata_payload.setdefault('request_username', _as_text(getattr(user, 'username', '')))
+        metadata_payload.setdefault('request_user_db', _as_text(getattr(getattr(user, '_state', None), 'db', '')))
 
-    metadata_payload.setdefault('request_tenant_slug', getattr(tenant, 'slug', '') or '')
+    metadata_payload.setdefault('request_tenant_slug', _as_text(getattr(tenant, 'slug', '') or ''))
 
     payload = {
         'event_type': event_type,
-        'code': code or '',
-        'detail': detail or '',
-        'method': getattr(request, 'method', ''),
-        'path': getattr(request, 'path', ''),
-        'host': (request.get_host() if hasattr(request, 'get_host') else ''),
-        'ip_address': _extract_ip_address(request),
-        'tenant_slug': (getattr(tenant, 'slug', '') or ''),
+        'code': _as_text(code or ''),
+        'detail': _as_text(detail or ''),
+        'method': _as_text(getattr(request, 'method', '')),
+        'path': _as_text(getattr(request, 'path', '')),
+        'host': _extract_host(request),
+        'ip_address': _as_text(_extract_ip_address(request)),
+        'tenant_slug': _as_text(getattr(tenant, 'slug', '') or ''),
         'metadata': metadata_payload,
         # Evita bloqueio de relacao por router usando user_id direto no banco default.
         'user_id': _resolve_default_user_id(user),
@@ -105,13 +116,10 @@ def log_permission_denied(request, code='permission_denied', detail=''):
     tenant_id = getattr(tenant, 'id', None)
     tenant_slug = getattr(tenant, 'slug', None)
 
-    method = getattr(request, 'method', '')
-    path = getattr(request, 'path', '')
+    method = _as_text(getattr(request, 'method', ''))
+    path = _as_text(getattr(request, 'path', ''))
 
-    try:
-        host = request.get_host()
-    except Exception:
-        host = ''
+    host = _extract_host(request)
 
     logger.warning(
         'AUTHZ_DENIED code=%s user_id=%s username=%s is_authenticated=%s method=%s path=%s host=%s tenant_id=%s tenant_slug=%s detail=%s',

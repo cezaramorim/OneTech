@@ -1,6 +1,7 @@
-import json
+﻿import json
 from unittest import TestCase
 from unittest.mock import Mock, patch
+import subprocess
 
 from control.db_router import TenantRouter
 from control.utils import get_current_tenant, set_current_tenant, use_tenant
@@ -8,9 +9,11 @@ from control.models import SecurityAuditEvent, Tenant
 from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase as DjangoTestCase, override_settings
 from django.urls import reverse
+from django.core.cache import cache
 
 
 class TenantContextTests(TestCase):
@@ -114,7 +117,7 @@ class ControlSecurityTests(DjangoTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-@override_settings(ALLOWED_HOSTS=['testserver', 'ativo.localhost', 'inativo.localhost', 'bloqueado.localhost'])
+@override_settings(ALLOWED_HOSTS=['testserver', 'ativo.localhost', 'inativo.localhost', 'bloqueado.localhost', 'quarentena.localhost'])
 class TenantMiddlewareTests(DjangoTestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -180,6 +183,21 @@ class TenantMiddlewareTests(DjangoTestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, '/painel/?admin_restrito=1')
+
+
+    def test_tenant_quarentena_bloqueia_post(self):
+        tenant = self._build_tenant(dominio='quarentena.localhost', ativo=True)
+        cache.set(f'security:tenant-quarantine:{tenant.slug}', {'active': True}, timeout=None)
+
+        middleware = __import__('control.middleware', fromlist=['TenantMiddleware']).TenantMiddleware(
+            lambda request: HttpResponse('ok')
+        )
+        request = self.factory.post('/produtos/novo/', HTTP_HOST='quarentena.localhost', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 423)
+        cache.delete(f'security:tenant-quarantine:{tenant.slug}')
 class SecurityCenterTests(DjangoTestCase):
     def setUp(self):
         self.superuser = get_user_model().objects.create_superuser(
@@ -224,7 +242,7 @@ class SecurityCenterTests(DjangoTestCase):
         self.client.force_login(self.superuser)
         response = self.client.post(
             reverse('control:security_force_logout_user'),
-            data=json.dumps({'user_id': self.common_user.id}),
+            data=json.dumps({'user_id': self.common_user.id, 'confirm_username': self.common_user.username}),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 200)
@@ -266,3 +284,449 @@ class SecurityCenterTests(DjangoTestCase):
         self.assertFalse(payload.get('success'))
         self.assertEqual(payload.get('mode'), 'strict')
         self.assertIn('reprovada', payload.get('message', '').lower())
+
+    def test_security_event_filtro_por_texto_e_tipo(self):
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_SYSTEM,
+            code='auth_login_success',
+            detail='Login realizado',
+            method='POST',
+            path='/accounts/login/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.superuser.id,
+            metadata={'request_username': self.superuser.username},
+        )
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+            code='permission_denied',
+            detail='Bloqueado',
+            method='GET',
+            path='/fiscal/cfops/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.common_user.id,
+            metadata={'request_username': self.common_user.username},
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'), {'q': 'permission', 'tipo': 'AUTHZ_DENIED'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'permission_denied')
+        self.assertNotContains(response, 'auth_login_success')
+
+    def test_security_signals_login_logout_failed_persistem_eventos(self):
+        factory = RequestFactory()
+
+        req_login = factory.post('/accounts/login/')
+        req_login.user = self.superuser
+        user_logged_in.send(sender=get_user_model(), request=req_login, user=self.superuser)
+
+        req_logout = factory.post('/accounts/logout/')
+        req_logout.user = self.superuser
+        user_logged_out.send(sender=get_user_model(), request=req_logout, user=self.superuser)
+
+        req_failed = factory.post('/accounts/login/')
+        req_failed.user = self.common_user
+        user_login_failed.send(
+            sender=get_user_model(),
+            credentials={'username': 'usuario.invalido'},
+            request=req_failed,
+        )
+
+        codes = list(SecurityAuditEvent.objects.values_list('code', flat=True))
+        self.assertIn('auth_login_success', codes)
+        self.assertIn('auth_logout', codes)
+        self.assertIn('auth_login_failed', codes)
+
+
+    def test_security_export_csv_aplica_filtro(self):
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_SYSTEM,
+            code='auth_login_success',
+            detail='Login realizado',
+            method='POST',
+            path='/accounts/login/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.superuser.id,
+            metadata={'request_username': self.superuser.username},
+        )
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+            code='permission_denied',
+            detail='Bloqueado',
+            method='GET',
+            path='/fiscal/cfops/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.common_user.id,
+            metadata={'request_username': self.common_user.username},
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(
+            reverse('control:security_export_events_csv'),
+            {'q': 'permission', 'tipo': 'AUTHZ_DENIED'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response['Content-Type'])
+        csv_text = response.content.decode('utf-8')
+        self.assertIn('permission_denied', csv_text)
+        self.assertNotIn('auth_login_success', csv_text)
+
+
+    def test_security_center_stats_inclui_janelas_7d_30d(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        stats = response.context['security_stats']
+        self.assertIn('denied_24h', stats)
+        self.assertIn('denied_7d', stats)
+        self.assertIn('denied_30d', stats)
+
+
+    def test_security_center_exibe_alerta_burst_por_ip(self):
+        for _ in range(5):
+            SecurityAuditEvent.objects.create(
+                event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+                code='permission_denied',
+                detail='Bloqueado',
+                method='GET',
+                path='/fiscal/cfops/',
+                host='127.0.0.1',
+                ip_address='10.10.10.10',
+                user_id=self.common_user.id,
+                metadata={'request_username': self.common_user.username},
+            )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '10.10.10.10')
+        self.assertContains(response, '5')
+
+
+    def test_security_center_exibe_alerta_endpoint_sensivel(self):
+        for _ in range(3):
+            SecurityAuditEvent.objects.create(
+                event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+                code='permission_denied',
+                detail='Bloqueado',
+                method='GET',
+                path='/admin/',
+                host='127.0.0.1',
+                ip_address='172.16.1.10',
+                user_id=self.common_user.id,
+                metadata={'request_username': self.common_user.username},
+            )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/admin/')
+        self.assertContains(response, 'Endpoints Sensiveis (24h)')
+
+
+    def test_security_center_exibe_top_origens(self):
+        for _ in range(4):
+            SecurityAuditEvent.objects.create(
+                event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+                code='permission_denied',
+                detail='Bloqueado',
+                method='GET',
+                path='/fiscal/cfops/',
+                host='api.local',
+                ip_address='192.168.0.10',
+                user_id=self.common_user.id,
+                metadata={'request_username': self.common_user.username},
+            )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Top Origens (24h)')
+        self.assertContains(response, 'api.local')
+        self.assertContains(response, '192.168.0.10')
+
+
+    def test_security_center_exibe_risco_por_tenant(self):
+        for _ in range(10):
+            SecurityAuditEvent.objects.create(
+                event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+                code='permission_denied',
+                detail='Bloqueado',
+                method='GET',
+                path='/gerenciamento/tenants/',
+                host='127.0.0.1',
+                ip_address='10.0.0.2',
+                tenant_slug='aquatech',
+                user_id=self.common_user.id,
+                metadata={'request_username': self.common_user.username},
+            )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Risco por Tenant (24h)')
+        self.assertContains(response, 'aquatech')
+        self.assertContains(response, 'MEDIO')
+
+
+    def test_security_center_exibe_links_detalhar_alertas(self):
+        for _ in range(5):
+            SecurityAuditEvent.objects.create(
+                event_type=SecurityAuditEvent.EVENT_AUTHZ_DENIED,
+                code='permission_denied',
+                detail='Bloqueado',
+                method='GET',
+                path='/admin/',
+                host='api.local',
+                ip_address='192.168.1.1',
+                tenant_slug='aquatech',
+                user_id=self.common_user.id,
+                metadata={'request_username': self.common_user.username},
+            )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Detalhar')
+        self.assertContains(response, 'tipo=AUTHZ_DENIED')
+
+
+    def test_security_force_logout_requer_confirmacao_reforcada(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_force_logout_user'),
+            data=json.dumps({'user_id': self.common_user.id, 'confirm_username': 'errado'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Confirmacao reforcada invalida', response.json().get('message', ''))
+
+
+    def test_security_center_exibe_historico_acoes_admin(self):
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_SYSTEM,
+            code='force_logout_user',
+            detail='Teste de historico administrativo',
+            method='POST',
+            path='/gerenciamento/seguranca/encerrar-sessoes/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.superuser.id,
+            metadata={'request_username': self.superuser.username},
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:central_seguranca'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Historico de Acoes Administrativas')
+        self.assertContains(response, 'force_logout_user')
+
+
+    def test_security_toggle_lock_usuario_comum_redireciona(self):
+        self.client.force_login(self.common_user)
+        response = self.client.post(
+            reverse('control:security_toggle_user_lock'),
+            data=json.dumps({'user_id': self.superuser.id, 'mode': 'lock', 'confirm_username': self.superuser.username}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+    def test_security_toggle_lock_bloqueia_login_ate_desbloqueio(self):
+        lock_key = f'security:user-lock:{self.common_user.id}'
+        cache.delete(lock_key)
+
+        self.client.force_login(self.superuser)
+        lock_response = self.client.post(
+            reverse('control:security_toggle_user_lock'),
+            data=json.dumps({'user_id': self.common_user.id, 'mode': 'lock', 'minutes': 15, 'confirm_username': self.common_user.username}),
+            content_type='application/json',
+        )
+        self.assertEqual(lock_response.status_code, 200)
+
+        self.client.logout()
+        blocked_login_response = self.client.post(
+            reverse('accounts:login'),
+            data={'username': self.common_user.username, 'password': 'secret123'},
+        )
+        self.assertEqual(blocked_login_response.status_code, 200)
+        self.assertContains(blocked_login_response, 'Usuario temporariamente bloqueado')
+
+        self.client.force_login(self.superuser)
+        unlock_response = self.client.post(
+            reverse('control:security_toggle_user_lock'),
+            data=json.dumps({'user_id': self.common_user.id, 'mode': 'unlock', 'confirm_username': self.common_user.username}),
+            content_type='application/json',
+        )
+        self.assertEqual(unlock_response.status_code, 200)
+        self.assertIsNone(cache.get(lock_key))
+
+
+    def test_security_toggle_tenant_quarantine_usuario_comum_redireciona(self):
+        self.client.force_login(self.common_user)
+        response = self.client.post(
+            reverse('control:security_toggle_tenant_quarantine'),
+            data=json.dumps({'tenant_slug': 'qualquer', 'mode': 'enable', 'confirm_slug': 'qualquer'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+    def test_security_toggle_tenant_quarantine_superuser(self):
+        tenant = Tenant.objects.create(
+            nome='Tenant Quarentena',
+            slug='tenant-quarentena',
+            dominio='tenant-quarentena.localhost',
+            db_name='db_tenant_quarentena',
+            db_user='tenant_user',
+            db_password='tenant_pass',
+            db_host='127.0.0.1',
+            db_port='3306',
+            razao_social='Tenant Quarentena LTDA',
+            nome_fantasia='Tenant Quarentena',
+            cnpj='00.000.000/0001-99',
+            ativo=True,
+        )
+
+        key = f'security:tenant-quarantine:{tenant.slug}'
+        cache.delete(key)
+
+        self.client.force_login(self.superuser)
+        enable = self.client.post(
+            reverse('control:security_toggle_tenant_quarantine'),
+            data=json.dumps({'tenant_slug': tenant.slug, 'mode': 'enable', 'confirm_slug': tenant.slug}),
+            content_type='application/json',
+        )
+        self.assertEqual(enable.status_code, 200)
+        self.assertIsNotNone(cache.get(key))
+
+        disable = self.client.post(
+            reverse('control:security_toggle_tenant_quarantine'),
+            data=json.dumps({'tenant_slug': tenant.slug, 'mode': 'disable', 'confirm_slug': tenant.slug}),
+            content_type='application/json',
+        )
+        self.assertEqual(disable.status_code, 200)
+        self.assertIsNone(cache.get(key))
+
+
+    def test_security_run_dependency_audit_usuario_comum_redireciona(self):
+        self.client.force_login(self.common_user)
+        response = self.client.post(
+            reverse('control:security_run_dependency_audit'),
+            data='{}',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+    @patch('control.views.subprocess.run')
+    def test_security_run_dependency_audit_superuser_ok(self, mock_run):
+        mock_run.return_value = Mock(
+            returncode=1,
+            stdout='{"dependencies": [{"name": "pkg-a", "vulns": [{"id": "CVE-1"}]}]}',
+            stderr=''
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_run_dependency_audit'),
+            data='{}',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('snapshot', {}).get('vulnerable_count'), 1)
+
+
+    @patch('control.views.subprocess.run', side_effect=subprocess.TimeoutExpired(cmd='pip_audit', timeout=180))
+    def test_security_run_dependency_audit_timeout(self, _mock_run):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_run_dependency_audit'),
+            data='{}',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 504)
+
+    @patch('control.views.call_command')
+    def test_security_run_matrix_audit_superuser_ok(self, mock_call_command):
+        mock_call_command.return_value = None
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_run_matrix_audit'),
+            data='{}',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertIn('summary', payload)
+
+
+    def test_security_export_consolidated_json_e_csv(self):
+        self.client.force_login(self.superuser)
+
+        response_json = self.client.get(reverse('control:security_export_consolidated'), {'format': 'json'})
+        self.assertEqual(response_json.status_code, 200)
+        self.assertTrue(response_json.json().get('success'))
+
+        response_csv = self.client.get(reverse('control:security_export_consolidated'), {'format': 'csv'})
+        self.assertEqual(response_csv.status_code, 200)
+        self.assertIn('text/csv', response_csv['Content-Type'])
+
+
+    def test_security_siem_events_endpoint_retorna_eventos(self):
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_SYSTEM,
+            code='test_siem_event',
+            detail='Evento SIEM',
+            method='GET',
+            path='/painel/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.superuser.id,
+            metadata={'request_username': self.superuser.username},
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('control:security_siem_events'), {'since_minutes': 120, 'limit': 50})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertGreaterEqual(payload.get('count'), 1)
+
+
+    @patch('control.views.call_command')
+    def test_security_run_audit_strict_atualiza_snapshot_baseline(self, mock_call_command):
+        mock_call_command.return_value = None
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('control:security_run_audit'),
+            data=json.dumps({'mode': 'strict'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('baseline_snapshot', payload)
+        self.assertIsNotNone(payload.get('baseline_snapshot'))
+

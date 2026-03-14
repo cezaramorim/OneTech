@@ -1,4 +1,4 @@
-# control/urls.py
+﻿# control/urls.py
 from django.urls import path
 
 from . import views
@@ -8,8 +8,15 @@ app_name = 'control'
 urlpatterns = [
     path('ping/', views.ping_view, name='ping'),
     path('seguranca/', views.central_seguranca_view, name='central_seguranca'),
+    path('seguranca/eventos/exportar-csv/', views.security_export_events_csv_view, name='security_export_events_csv'),
     path('seguranca/auditoria/', views.security_run_audit_view, name='security_run_audit'),
+    path('seguranca/auditoria-matriz/', views.security_run_matrix_audit_view, name='security_run_matrix_audit'),
+    path('seguranca/auditoria-dependencias/', views.security_run_dependency_audit_view, name='security_run_dependency_audit'),
+    path('seguranca/exportar-consolidado/', views.security_export_consolidated_view, name='security_export_consolidated'),
+    path('seguranca/siem-eventos/', views.security_siem_events_view, name='security_siem_events'),
     path('seguranca/encerrar-sessoes/', views.security_force_logout_user_view, name='security_force_logout_user'),
+    path('seguranca/bloquear-usuario/', views.security_toggle_user_lock_view, name='security_toggle_user_lock'),
+    path('seguranca/quarentena-tenant/', views.security_toggle_tenant_quarantine_view, name='security_toggle_tenant_quarantine'),
 
     path('tenants/', views.tenant_list_view, name='tenant_list'),
     path('tenants/new/', views.tenant_create_view, name='tenant_create'),
@@ -31,3 +38,4 @@ urlpatterns = [
 
     path('migracoes/', views.central_migracoes_view, name='central_migracoes'),
 ]
+
