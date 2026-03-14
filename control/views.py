@@ -6,6 +6,9 @@ import re
 import json
 import subprocess
 import sys
+import time
+import hmac
+import hashlib
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.management import call_command
 from django.db import connections, DEFAULT_DB_ALIAS
@@ -14,7 +17,7 @@ from django.db.migrations.loader import MigrationLoader
 from django.contrib import messages
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.apps import apps as django_apps
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
 from django.contrib.sessions.models import Session
@@ -24,7 +27,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from common.utils import render_ajax_or_base
-from common.security_audit import log_system_event
+from common.security_audit import log_system_event, log_permission_denied
 from .models import SecurityAuditEvent, Tenant
 from .forms import TenantForm, TenantUserCreationForm, TenantUserChangeForm
 from .utils import is_principal_context, use_tenant
@@ -1493,9 +1496,141 @@ def security_export_consolidated_view(request):
     return JsonResponse({'success': True, 'report': report}, status=200)
 
 
-@superuser_required
-@principal_context_required
+def _extract_request_ip(request):
+    xff = str(request.META.get('HTTP_X_FORWARDED_FOR') or '').strip()
+    if xff:
+        return xff.split(',')[0].strip()
+    return str(request.META.get('REMOTE_ADDR') or '').strip()
+
+
+def _parse_csv_values(raw_value):
+    if not raw_value:
+        return set()
+    return {chunk.strip() for chunk in str(raw_value).split(',') if chunk.strip()}
+
+
+def _siem_validate_ip_allowlist(request):
+    allowlist = _parse_csv_values(getattr(settings, 'SECURITY_SIEM_ALLOW_IPS', ''))
+    if not allowlist:
+        return True, ''
+    request_ip = _extract_request_ip(request)
+    if request_ip in allowlist:
+        return True, request_ip
+    return False, request_ip
+
+
+def _siem_validate_hmac(request):
+    require_hmac = bool(getattr(settings, 'SECURITY_SIEM_REQUIRE_HMAC', False))
+    if not require_hmac:
+        return True, ''
+
+    secret = str(getattr(settings, 'SECURITY_SIEM_HMAC_SECRET', '') or '').strip()
+    if not secret:
+        return False, 'SECURITY_SIEM_HMAC_SECRET nao configurado.'
+
+    timestamp = str(request.META.get('HTTP_X_SIEM_TIMESTAMP') or '').strip()
+    signature = str(request.META.get('HTTP_X_SIEM_SIGNATURE') or '').strip().lower()
+    if not timestamp or not signature:
+        return False, 'Headers X-SIEM-Timestamp e X-SIEM-Signature sao obrigatorios.'
+
+    try:
+        ts = int(timestamp)
+    except (TypeError, ValueError):
+        return False, 'Timestamp HMAC invalido.'
+
+    max_skew = int(getattr(settings, 'SECURITY_SIEM_HMAC_MAX_SKEW_SECONDS', 300) or 300)
+    now_ts = int(time.time())
+    if abs(now_ts - ts) > max_skew:
+        return False, 'Timestamp HMAC fora da janela permitida.'
+
+    canonical = f'{timestamp}.{request.get_full_path()}'
+    expected = hmac.new(secret.encode('utf-8'), canonical.encode('utf-8'), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        return False, 'Assinatura HMAC invalida.'
+
+    replay_key = f'security:siem:replay:{signature}:{timestamp}'
+    if not cache.add(replay_key, 1, timeout=max_skew + 60):
+        return False, 'Requisicao repetida detectada (anti-replay).'
+
+    return True, ''
+
+
+def _siem_check_rate_limit(identity):
+    limit_per_min = int(getattr(settings, 'SECURITY_SIEM_RATE_LIMIT_PER_MINUTE', 120) or 120)
+    if limit_per_min <= 0:
+        return True
+
+    window = timezone.now().strftime('%Y%m%d%H%M')
+    key = f'security:siem:rate:{identity}:{window}'
+    current = cache.get(key)
+    if current is None:
+        cache.set(key, 1, timeout=70)
+        return True
+    if int(current) >= limit_per_min:
+        return False
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, int(current) + 1, timeout=70)
+    return True
+
+
+@require_GET
 def security_siem_events_view(request):
+    if not is_principal_context(request):
+        log_permission_denied(request, code='siem_access_denied', detail='siem endpoint outside principal context')
+        return JsonResponse({'success': False, 'message': 'Acesso negado.'}, status=403)
+
+    token_configured = str(getattr(settings, 'SECURITY_SIEM_TOKEN', '') or '').strip()
+    actor = None
+    identity = None
+
+    if getattr(request.user, 'is_authenticated', False) and getattr(request.user, 'is_superuser', False):
+        actor = 'superuser'
+        identity = f'user:{request.user.id}'
+    else:
+        if not token_configured:
+            log_permission_denied(request, code='siem_access_denied', detail='siem token not configured')
+            return JsonResponse({'success': False, 'message': 'Acesso negado.'}, status=403)
+
+        auth_header = str(request.META.get('HTTP_AUTHORIZATION') or '').strip()
+        token_header = str(request.META.get('HTTP_X_SIEM_TOKEN') or '').strip()
+        token_received = ''
+        if auth_header.lower().startswith('bearer '):
+            token_received = auth_header[7:].strip()
+        elif token_header:
+            token_received = token_header
+
+        if not token_received or not hmac.compare_digest(token_received, token_configured):
+            log_permission_denied(request, code='siem_access_denied', detail='invalid siem token')
+            return JsonResponse({'success': False, 'message': 'Token SIEM invalido.'}, status=401)
+
+        actor = 'token'
+        request_ip = _extract_request_ip(request) or 'unknown'
+        identity = f'token:{request_ip}'
+
+        ip_ok, request_ip = _siem_validate_ip_allowlist(request)
+        if not ip_ok:
+            log_permission_denied(
+                request,
+                code='siem_access_denied',
+                detail=f'siem ip not allowlisted: {request_ip}',
+            )
+            return JsonResponse({'success': False, 'message': 'Origem nao autorizada.'}, status=403)
+
+        hmac_ok, hmac_message = _siem_validate_hmac(request)
+        if not hmac_ok:
+            log_permission_denied(
+                request,
+                code='siem_access_denied',
+                detail=f'siem hmac invalid: {hmac_message}',
+            )
+            return JsonResponse({'success': False, 'message': hmac_message}, status=401)
+
+    if not _siem_check_rate_limit(identity or 'unknown'):
+        log_permission_denied(request, code='siem_access_denied', detail=f'siem rate limit exceeded: {identity}')
+        return JsonResponse({'success': False, 'message': 'Limite de requisicoes excedido.'}, status=429)
+
     now = timezone.now()
     try:
         since_minutes = int(request.GET.get('since_minutes') or 60)
@@ -1532,10 +1667,23 @@ def security_siem_events_view(request):
             'metadata': metadata,
         })
 
+    log_system_event(
+        request,
+        code='siem_events_export',
+        detail=f'siem export actor={actor} count={len(events)}',
+        metadata={
+            'actor': actor,
+            'since_minutes': since_minutes,
+            'limit': limit,
+            'count': len(events),
+        },
+    )
+
     return JsonResponse(
         {
             'success': True,
             'generated_at': now.isoformat(),
+            'actor': actor,
             'since_minutes': since_minutes,
             'count': len(events),
             'events': events,

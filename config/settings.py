@@ -269,6 +269,28 @@ SECURE_HSTS_PRELOAD = config(
 if config('SECURE_PROXY_SSL_HEADER_ENABLED', cast=bool, default=False):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# =======================
+# SIEM endpoint hardening (optional, env-driven)
+# =======================
+SECURITY_SIEM_TOKEN = config('SECURITY_SIEM_TOKEN', default='')
+SECURITY_SIEM_ALLOW_IPS = config('SECURITY_SIEM_ALLOW_IPS', default='')
+SECURITY_SIEM_RATE_LIMIT_PER_MINUTE = config(
+    'SECURITY_SIEM_RATE_LIMIT_PER_MINUTE',
+    cast=int,
+    default=120,
+)
+SECURITY_SIEM_REQUIRE_HMAC = config(
+    'SECURITY_SIEM_REQUIRE_HMAC',
+    cast=bool,
+    default=False,
+)
+SECURITY_SIEM_HMAC_SECRET = config('SECURITY_SIEM_HMAC_SECRET', default='')
+SECURITY_SIEM_HMAC_MAX_SKEW_SECONDS = config(
+    'SECURITY_SIEM_HMAC_MAX_SKEW_SECONDS',
+    cast=int,
+    default=300,
+)
+
 
 # =======================
 # Motor Fiscal (ICMS por NCM)

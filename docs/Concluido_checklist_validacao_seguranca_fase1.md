@@ -1,6 +1,8 @@
 # Checklist de Validacao - Seguranca Fase 1
 
 - Data de criacao: 2026-03-13
+- Ultima atualizacao: 2026-03-14
+- Status: Concluido (validado por suite automatizada)
 - Objetivo: validar em ambiente funcional os controles de autenticacao e permissao aplicados na Fase 1.
 
 ## Perfis de teste
@@ -204,3 +206,20 @@ Para cada caso, registrar:
 - Todos os cenarios de negacao (`302/403/401`) validados.
 - Todos os cenarios de acesso legitimo (`200/302 de fluxo`) validados.
 - Sem regressao funcional nas telas principais apos validacao.
+
+
+## Evidencia de execucao (2026-03-14)
+- Comando executado:
+  - `.\venv\Scripts\python.exe manage.py test common.tests control.tests producao.tests integracao_nfe.tests.WebhookSecurityTests nota_fiscal.tests.ImportacaoXmlNotaFiscalTests --keepdb`
+- Resultado:
+  - `72 testes executados, 72 aprovados (OK)`
+- Cobertura validada:
+  - matriz de acesso/menu
+  - baseline de seguranca
+  - negacao de autorizacao (401/403/302)
+  - webhook NFe com assinatura
+  - endpoints operacionais de producao
+
+## Encerramento
+- Checklist de validacao da Fase 1 concluido no ambiente de desenvolvimento/homologacao.
+- Validacao operacional de producao segue nos checklists especificos em `docs/futuro/`.

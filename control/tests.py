@@ -1,4 +1,7 @@
 ﻿import json
+import time
+import hmac
+import hashlib
 from unittest import TestCase
 from unittest.mock import Mock, patch
 import subprocess
@@ -713,6 +716,108 @@ class SecurityCenterTests(DjangoTestCase):
         self.assertTrue(payload.get('success'))
         self.assertGreaterEqual(payload.get('count'), 1)
 
+
+    @override_settings(SECURITY_SIEM_TOKEN='token-siem-123')
+    def test_security_siem_events_endpoint_aceita_token_tecnico(self):
+        SecurityAuditEvent.objects.create(
+            event_type=SecurityAuditEvent.EVENT_SYSTEM,
+            code='token_siem_event',
+            detail='Evento SIEM token',
+            method='GET',
+            path='/painel/',
+            host='127.0.0.1',
+            ip_address='127.0.0.1',
+            user_id=self.superuser.id,
+            metadata={'request_username': self.superuser.username},
+        )
+
+        response = self.client.get(
+            reverse('control:security_siem_events'),
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-siem-123',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('actor'), 'token')
+
+    @override_settings(SECURITY_SIEM_TOKEN='token-siem-123')
+    def test_security_siem_events_endpoint_rejeita_token_invalido(self):
+        response = self.client.get(
+            reverse('control:security_siem_events'),
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-invalido',
+        )
+        self.assertEqual(response.status_code, 401)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    @override_settings(
+        SECURITY_SIEM_TOKEN='token-siem-123',
+        SECURITY_SIEM_REQUIRE_HMAC=True,
+        SECURITY_SIEM_HMAC_SECRET='segredo-hmac',
+    )
+    def test_security_siem_events_endpoint_rejeita_hmac_invalido(self):
+        response = self.client.get(
+            reverse('control:security_siem_events'),
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-siem-123',
+            HTTP_X_SIEM_TIMESTAMP=str(int(time.time())),
+            HTTP_X_SIEM_SIGNATURE='assinatura-invalida',
+        )
+        self.assertEqual(response.status_code, 401)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    @override_settings(
+        SECURITY_SIEM_TOKEN='token-siem-123',
+        SECURITY_SIEM_REQUIRE_HMAC=True,
+        SECURITY_SIEM_HMAC_SECRET='segredo-hmac',
+    )
+    def test_security_siem_events_endpoint_aceita_hmac_valido(self):
+        query = 'since_minutes=60&limit=10'
+        path = f"{reverse('control:security_siem_events')}?{query}"
+        ts = str(int(time.time()))
+        signature_base = f'{ts}.{path}'
+        signature = hmac.new(
+            b'segredo-hmac',
+            signature_base.encode('utf-8'),
+            hashlib.sha256,
+        ).hexdigest()
+
+        response = self.client.get(
+            reverse('control:security_siem_events'),
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-siem-123',
+            HTTP_X_SIEM_TIMESTAMP=ts,
+            HTTP_X_SIEM_SIGNATURE=signature,
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+    @override_settings(
+        SECURITY_SIEM_TOKEN='token-siem-123',
+        SECURITY_SIEM_RATE_LIMIT_PER_MINUTE=1,
+    )
+    def test_security_siem_events_endpoint_aplica_rate_limit(self):
+        url = reverse('control:security_siem_events')
+        remote_ip = '198.51.100.77'
+        response_first = self.client.get(
+            url,
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-siem-123',
+            REMOTE_ADDR=remote_ip,
+        )
+        self.assertEqual(response_first.status_code, 200)
+
+        response_second = self.client.get(
+            url,
+            {'since_minutes': 60, 'limit': 10},
+            HTTP_X_SIEM_TOKEN='token-siem-123',
+            REMOTE_ADDR=remote_ip,
+        )
+        self.assertEqual(response_second.status_code, 429)
 
     @patch('control.views.call_command')
     def test_security_run_audit_strict_atualiza_snapshot_baseline(self, mock_call_command):
