@@ -103,6 +103,9 @@ class NotaFiscal(models.Model):
     status_sefaz = models.CharField(max_length=50, blank=True, null=True, verbose_name="Status SEFAZ")
     motivo_status_sefaz = models.TextField(blank=True, null=True, verbose_name="Motivo Status SEFAZ")
     id_servico_terceiro = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID ServiÃ§o Terceiro")
+    pre_emissao_ok = models.BooleanField(blank=True, null=True, verbose_name="Gate Pre-Emissao Aprovado")
+    pre_emissao_validada_em = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora Validacao Pre-Emissao")
+    pre_emissao_snapshot = models.JSONField(blank=True, null=True, verbose_name="Snapshot da Validacao Pre-Emissao")
 
     # Valores totais da Nota Fiscal (decimal_places ajustados para 4)
     valor_total_produtos = models.DecimalField(max_digits=15, decimal_places=4, default=0, verbose_name="Valor Total dos Produtos")
