@@ -1,8 +1,8 @@
-# Plano de Evolucao da Central de Seguranca
+﻿# Plano de Evolucao da Central de Seguranca
 
 - Data de criacao: 2026-03-13
 - Ultima atualizacao: 2026-03-13
-- Status: Planejado (aguardando inicio apos conclusao do plano atual)
+- Status: Concluido (Fases 1, 2, 3 e 4 concluidas em desenvolvimento/homologacao)
 - Escopo: Modulo Control + Telemetria comum + Auditoria operacional
 
 ## Objetivo
@@ -40,13 +40,13 @@ Evoluir a Central de Seguranca para operar como painel unico de monitoramento, a
 ## Fases de Implementacao
 
 ## Fase 1 - Observabilidade Basica (prioridade alta)
-1. [ ] Corrigir persistencia de eventos sem `except: pass` silencioso.
-2. [ ] Registrar sempre `run_security_audit` (normal/strict) com user e host quando disponivel.
-3. [ ] Adicionar evento de login com sucesso e login com falha.
-4. [ ] Adicionar evento de logout e force logout.
-5. [ ] Exibir filtros na grade de eventos recentes (data, usuario, codigo, rota).
-6. [ ] Adicionar exportacao CSV dos eventos filtrados.
-7. [ ] Testes automatizados para persistencia e listagem dos eventos.
+1. [x] Corrigir persistencia de eventos sem `except: pass` silencioso.
+2. [x] Registrar sempre `run_security_audit` (normal/strict) com user e host quando disponivel.
+3. [x] Adicionar evento de login com sucesso e login com falha.
+4. [x] Adicionar evento de logout e force logout.
+5. [x] Exibir filtros na grade de eventos recentes (data, usuario, codigo, rota).
+6. [x] Adicionar exportacao CSV dos eventos filtrados.
+7. [x] Testes automatizados para persistencia e listagem dos eventos.
 
 Entregaveis Fase 1:
 - `control/views.py` (endpoints e filtros)
@@ -57,13 +57,13 @@ Entregaveis Fase 1:
 - `control/tests.py` (cobertura)
 
 ## Fase 2 - Deteccao e Alertas (prioridade alta)
-1. [ ] Painel de negacoes 401/403 por janela (24h/7d/30d).
-2. [ ] Alertar bursts de negacao por IP/usuario/rota.
-3. [ ] Alertar tentativas repetidas de acesso a endpoint sensivel.
-4. [ ] Painel de origem (host/ip) com top ofensores.
-5. [ ] Painel de risco por tenant (quando em dominio tenant).
-6. [ ] Botao de abrir detalhes do alerta (drill-down).
-7. [ ] Testes de agregacao e contratos de alerta.
+1. [x] Painel de negacoes 401/403 por janela (24h/7d/30d).
+2. [x] Alertar bursts de negacao por IP/usuario/rota.
+3. [x] Alertar tentativas repetidas de acesso a endpoint sensivel.
+4. [x] Painel de origem (host/ip) com top ofensores.
+5. [x] Painel de risco por tenant (quando em dominio tenant).
+6. [x] Botao de abrir detalhes do alerta (drill-down).
+7. [x] Testes de agregacao e contratos de alerta.
 
 Entregaveis Fase 2:
 - `control/services/security_metrics.py` (novo)
@@ -72,12 +72,12 @@ Entregaveis Fase 2:
 - `control/tests.py` (agregacao/contrato)
 
 ## Fase 3 - Resposta Operacional (prioridade media)
-1. [ ] Encerrar sessoes por usuario (ja existente) com auditoria detalhada.
-2. [ ] Encerrar todas as sessoes de um usuario com confirmacao reforcada.
-3. [ ] Bloqueio temporario de usuario (cooldown) com expiracao.
-4. [ ] Quarentena de tenant (modo leitura) para incidente.
-5. [ ] Historico de acoes administrativas da Central.
-6. [ ] Testes de permissao para cada acao de resposta.
+1. [x] Encerrar sessoes por usuario (ja existente) com auditoria detalhada.
+2. [x] Encerrar todas as sessoes de um usuario com confirmacao reforcada.
+3. [x] Bloqueio temporario de usuario (cooldown) com expiracao.
+4. [x] Quarentena de tenant (modo leitura) para incidente.
+5. [x] Historico de acoes administrativas da Central.
+6. [x] Testes de permissao para cada acao de resposta.
 
 Entregaveis Fase 3:
 - `control/views.py`
@@ -86,11 +86,11 @@ Entregaveis Fase 3:
 - `control/tests.py`
 
 ## Fase 4 - Vulnerabilidades e Compliance (prioridade media)
-1. [ ] Integrar resultado de `pip-audit` no painel (ultimo run).
-2. [ ] Exibir status de baseline strict com historico.
-3. [ ] Exibir divergencias menu x matriz com resumo tecnico.
-4. [ ] Exportar relatorio consolidado (JSON/CSV).
-5. [ ] Preparar endpoint para integracao SIEM futuro.
+1. [x] Integrar resultado de `pip-audit` no painel (ultimo run).
+2. [x] Exibir status de baseline strict com historico.
+3. [x] Exibir divergencias menu x matriz com resumo tecnico.
+4. [x] Exportar relatorio consolidado (JSON/CSV).
+5. [x] Preparar endpoint para integracao SIEM futuro.
 
 Entregaveis Fase 4:
 - `control/management/commands/*` (adaptacoes)
@@ -99,13 +99,13 @@ Entregaveis Fase 4:
 - `control/tests.py`
 
 ## Checklist de Seguranca Funcional da Central
-1. [ ] Usuario comum nao acessa Central.
-2. [ ] Usuario comum nao executa auditoria.
-3. [ ] Usuario comum nao encerra sessoes de terceiros.
-4. [ ] Superuser executa auditoria normal/strict com retorno visivel.
-5. [ ] Erros tecnicos exibem mensagem e nao deixam UI travada.
-6. [ ] Eventos sao persistidos mesmo com falha parcial de contexto.
-7. [ ] Nenhum endpoint da Central responde sem autenticacao.
+1. [x] Usuario comum nao acessa Central.
+2. [x] Usuario comum nao executa auditoria.
+3. [x] Usuario comum nao encerra sessoes de terceiros.
+4. [x] Superuser executa auditoria normal/strict com retorno visivel.
+5. [x] Erros tecnicos exibem mensagem e nao deixam UI travada. (Validado manualmente em 2026-03-14 com Failed to fetch / ERR_CONNECTION_REFUSED)
+6. [x] Eventos sao persistidos mesmo com falha parcial de contexto.
+7. [x] Nenhum endpoint da Central responde sem autenticacao.
 
 ## Plano de Testes
 1. Testes unitarios
@@ -143,3 +143,6 @@ Entregaveis Fase 4:
 - Testes da fase passando.
 - Validacao manual em ambiente local (default + tenant).
 - Sem erros no console e sem caracteres invalidos na UI.
+
+
+

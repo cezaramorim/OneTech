@@ -2,6 +2,7 @@
 
 - Data de criacao: 2026-03-10
 - Ultima atualizacao: 2026-03-12 (Fase 3 concluida: arracoamento_diario migrado para contrato unificado de acoes; escopo principal e Producao 100% migrados)
+- Status: Concluido
 
 ## Objetivo
 Criar um padrao unico, previsivel e reutilizavel para telas de listagem com:

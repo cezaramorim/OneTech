@@ -1,8 +1,8 @@
 # Plano de Seguranca e Permissoes de Rotas/APIs
 
 - Data de criacao: 2026-03-11
-- Ultima atualizacao: 2026-03-13 (consolidacao da Central de Seguranca)
-- Status: Fase 2 concluida e Fase 3 em consolidacao final (auditoria operacional ativa)
+- Ultima atualizacao: 2026-03-13 (plano concluido)
+- Status: Concluido (Fase 2 + Fase 3 + consolidacao operacional da Central de Seguranca)
 
 ## Fase 2 - Progresso atual
 1. [x] Matriz baseline de rotas e permissoes gerada em docs/matriz_acesso_rotas_fase2.md.
@@ -298,7 +298,7 @@ Legenda:
 
 ## Residuos e Pendencias Objetivas
 1. [x] Politica final do modulo `painel` definida com permissao dedicada (`painel.view_dashboard`).
-2. [ ] Definir parametros finais de producao no servidor alvo e executar validacao estrita (`scripts/seguranca/validar_baseline_producao.ps1 -EnvPath <arquivo-env-producao>`).
+2. [ ] Definir parametros finais de producao no servidor alvo e executar validacao estrita (`scripts/seguranca/validar_baseline_producao.ps1 -EnvPath <arquivo-env-producao>`). (Pendente: executar no servidor de producao real)
 3. [x] Pipeline CI adicionada para rodar `manage.py auditar_seguranca --strict` no stage de release (`.github/workflows/security-audit.yml`).
 
 ## Comando de Fechamento da Fase

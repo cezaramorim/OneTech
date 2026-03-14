@@ -1,6 +1,6 @@
-﻿# Plano de Robustez e Seguranca para Emissao NFe
+# Plano de Robustez e Seguranca para Emissao NFe
 
-- Data de criacao: 2026-03-11
+- Status: Iniciado
 - Escopo: consolidar base tecnica para emissao de NFe com seguranca, consistencia fiscal e operacao multi-tenant.
 - Objetivo imediato: preparar a trilha para emissao confiavel sem regressao e sem quebra dos fluxos atuais de entrada/saida.
 
@@ -203,4 +203,5 @@ Antes de implementar emissao final em producao:
 - Ordem de trabalho definida:
   1. concluir unificacao das listas (migracao controlada restante + residuos)
   2. retomar Fase 1 deste plano de emissao
+
 

@@ -1,4 +1,5 @@
-﻿# Plano Tecnico - Motor de Aliquotas por NCM (Multitenant) 10/03/2026
+
+- Status: Iniciado
 
 ## 1) Objetivo
 Implementar preenchimento automatico de aliquotas fiscais (principalmente ICMS interno e interestadual) com base no NCM do item, contexto da operacao e UF origem/destino, com suporte multitenant, auditoria, performance e possibilidade de acoplar/desacoplar sem impacto no restante do projeto.
@@ -305,4 +306,5 @@ Fase 5 - Hardening
 
 ## 17) Observacao importante
 Este plano foi desenhado para nao deixar regras espalhadas em varios apps sem controle. O modulo `fiscal_regras` centraliza dados, logica e interface administrativa, mantendo acoplamento minimo com `nota_fiscal` por meio de service/endpoint claro.
+
 
