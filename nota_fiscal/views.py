@@ -1,4 +1,4 @@
-# nota_fiscal/views.py
+﻿# nota_fiscal/views.py
 
 import os
 import re
@@ -21,7 +21,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.text import slugify
-# Removido o @csrf_exempt por razÃƒÆ’Ã‚Âµes de seguranÃƒÆ’Ã‚Â§a
+# Removido o @csrf_exempt por razÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes de seguranÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§a
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from common.utils import render_ajax_or_base
@@ -44,14 +44,110 @@ from .forms import (
     NotaFiscalSaidaForm
 )
 
-# --- FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes Auxiliares de Parsing --- #
+# --- Seguranca de contexto/tenant --- #
+def _get_emitente_ativo_id(request):
+    tenant = getattr(request, 'tenant', None)
+    emitente_ativo_id = getattr(tenant, 'emitente_padrao_id', None)
+    if not emitente_ativo_id:
+        emitente_ativo_id = Emitente.objects.filter(is_default=True).values_list('id', flat=True).first()
+    return emitente_ativo_id
+
+
+def _nota_saida_fora_emitente_ativo(request, nota):
+    if str(nota.tipo_operacao or '') != '1':
+        return False
+    emitente_ativo_id = _get_emitente_ativo_id(request)
+    if not emitente_ativo_id:
+        return True
+    return int(nota.emitente_proprio_id or 0) != int(emitente_ativo_id)
+
+
+def _extrair_dias_vencimento(condicao_pagamento, quantidade_parcelas):
+    parcelas = max(int(quantidade_parcelas or 1), 1)
+    texto = ' '.join(str(condicao_pagamento or '').strip().lower().split())
+    numeros = [int(valor) for valor in re.findall(r'\d+', texto)]
+
+    if not numeros and ('a vista' in texto or 'avista' in texto):
+        numeros = [0]
+
+    if not numeros:
+        return [idx * 30 for idx in range(parcelas)]
+
+    if len(numeros) >= parcelas:
+        dias = numeros[:parcelas]
+    elif len(numeros) == 1:
+        base = max(numeros[0], 0)
+        dias = [base * (idx + 1) for idx in range(parcelas)]
+    else:
+        dias = list(numeros)
+        ultimo = max(dias[-1], 0)
+        while len(dias) < parcelas:
+            ultimo += 30
+            dias.append(ultimo)
+
+    normalizados = []
+    anterior = 0
+    for dia in dias:
+        atual = max(int(dia), 0)
+        if atual < anterior:
+            atual = anterior
+        normalizados.append(atual)
+        anterior = atual
+
+    return normalizados
+
+
+def _sincronizar_duplicatas_nota(nota):
+    parcelas_desejadas = max(int(nota.quantidade_parcelas or 1), 1)
+    duplicatas_atuais = list(nota.duplicatas.order_by('id'))
+
+    if len(duplicatas_atuais) > parcelas_desejadas:
+        ids_excedentes = [dup.id for dup in duplicatas_atuais[parcelas_desejadas:]]
+        DuplicataNotaFiscal.objects.filter(id__in=ids_excedentes).delete()
+        duplicatas_atuais = duplicatas_atuais[:parcelas_desejadas]
+
+    if len(duplicatas_atuais) < parcelas_desejadas:
+        faltantes = parcelas_desejadas - len(duplicatas_atuais)
+        for idx in range(faltantes):
+            numero_seq = len(duplicatas_atuais) + idx + 1
+            DuplicataNotaFiscal.objects.create(
+                nota_fiscal=nota,
+                numero=str(numero_seq).zfill(3),
+                vencimento=nota.data_emissao or timezone.localdate(),
+                valor=Decimal('0.00'),
+            )
+
+    duplicatas = list(nota.duplicatas.order_by('id')[:parcelas_desejadas])
+    dias = _extrair_dias_vencimento(nota.condicao_pagamento, parcelas_desejadas)
+
+    total_nota = Decimal(str(nota.valor_total_nota or 0))
+    total_desconto = Decimal(str(nota.valor_total_desconto or 0))
+    valor_liquido = total_nota - total_desconto
+    if valor_liquido < 0:
+        valor_liquido = Decimal('0')
+
+    total_centavos = int((valor_liquido * Decimal('100')).quantize(Decimal('1')))
+    base_centavos = total_centavos // parcelas_desejadas
+    resto_centavos = total_centavos - (base_centavos * parcelas_desejadas)
+    base_date = nota.data_emissao or timezone.localdate()
+
+    for idx, dup in enumerate(duplicatas):
+        parcela_centavos = base_centavos + (1 if resto_centavos > 0 else 0)
+        if resto_centavos > 0:
+            resto_centavos -= 1
+        dup.numero = str(idx + 1).zfill(3)
+        dup.vencimento = base_date + datetime.timedelta(days=dias[idx])
+        dup.valor = Decimal(parcela_centavos) / Decimal('100')
+        dup.save(update_fields=['numero', 'vencimento', 'valor'])
+
+# --- FunÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes Auxiliares de Parsing --- #
 
 def strip_namespace(tag):
     """Remove o namespace (ex: {http://...}) de uma tag XML."""
     return tag.split('}')[-1]
 
 def xml_to_dict(element):
-    """Converte um elemento XML e seus filhos em um dicionÃƒÆ’Ã‚Â¡rio, tratando namespaces."""
+    """Converte um elemento XML e seus filhos em um dicionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio, tratando namespaces."""
     result = {strip_namespace(element.tag): {}}
     
     # Adiciona atributos do elemento
@@ -63,7 +159,7 @@ def xml_to_dict(element):
         child_dict = xml_to_dict(child)
         child_tag = strip_namespace(child.tag)
 
-        # Se a tag jÃƒÆ’Ã‚Â¡ existe, transforma em lista para agrupar mÃƒÆ’Ã‚Âºltiplos elementos
+        # Se a tag jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ existe, transforma em lista para agrupar mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºltiplos elementos
         if child_tag in result[strip_namespace(element.tag)]:
             if not isinstance(result[strip_namespace(element.tag)][child_tag], list):
                 result[strip_namespace(element.tag)][child_tag] = [result[strip_namespace(element.tag)][child_tag]]
@@ -74,10 +170,10 @@ def xml_to_dict(element):
     # Adiciona o texto do elemento, se houver
     if element.text and element.text.strip():
         text = element.text.strip()
-        # Se jÃƒÆ’Ã‚Â¡ houver filhos, adiciona o texto como uma chave especial
+        # Se jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ houver filhos, adiciona o texto como uma chave especial
         if len(result[strip_namespace(element.tag)]) > 0:
             result[strip_namespace(element.tag)]['#text'] = text
-        # SenÃƒÆ’Ã‚Â£o, o valor da tag ÃƒÆ’Ã‚Â© apenas o texto
+        # SenÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o, o valor da tag ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© apenas o texto
         else:
             result[strip_namespace(element.tag)] = text
             
@@ -90,10 +186,10 @@ def xml_to_dict(element):
 @require_GET
 def emitir_nfe_list_view(request):
     """
-    Lista as notas fiscais que estÃƒÆ’Ã‚Â£o prontas para serem emitidas (status em branco ou 'rascunho').
+    Lista as notas fiscais que estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o prontas para serem emitidas (status em branco ou 'rascunho').
     """
-    # Filtra notas do emitente que ÃƒÆ’Ã‚Â© o tenant atual e que ainda nÃƒÆ’Ã‚Â£o foram enviadas.
-    # O status pode ser '' (vazio) ou um status especÃƒÆ’Ã‚Â­fico como 'rascunho'.
+    # Filtra notas do emitente que ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© o tenant atual e que ainda nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o foram enviadas.
+    # O status pode ser '' (vazio) ou um status especÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­fico como 'rascunho'.
     tenant = getattr(request, 'tenant', None)
     emitente_ativo_id = getattr(tenant, 'emitente_padrao_id', None)
     if not emitente_ativo_id:
@@ -137,7 +233,7 @@ def emitir_nfe_list_view(request):
 @permission_required_json('nota_fiscal.add_notafiscal', raise_exception=True)
 @require_GET
 def importar_xml_view(request):
-    """Renderiza a pÃƒÆ’Ã‚Â¡gina de upload de XML para importaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de notas fiscais."""
+    """Renderiza a pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡gina de upload de XML para importaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de notas fiscais."""
     categorias = list(CategoriaProduto.objects.order_by("nome").values("id", "nome"))
     context = {
         'categorias': categorias,
@@ -151,129 +247,54 @@ def importar_xml_view(request):
 @require_POST
 def importar_xml_nfe_view(request):
     """
-    Recebe um arquivo XML, faz o parsing e retorna um JSON estruturado para o frontend
-    exibir o preview da nota e gerenciar a revisÃƒÆ’Ã‚Â£o de itens, incluindo aviso de duplicidade.
+    Recebe um arquivo XML, faz o parsing e retorna um JSON estruturado para preview.
     """
     app_messages = get_app_messages(request)
-    print("--- Iniciando importaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o e parsing de XML ---")    
-    print(f"DEBUG: ConteÃƒÆ’Ã‚Âºdo de request.FILES: {request.FILES}")
-    
     xml_file = request.FILES.get('xml')
-    
-    if xml_file:
-        print(f"DEBUG: xml_file encontrado. Tipo: {type(xml_file)}")
-        print(f"DEBUG: Nome do arquivo original: '{xml_file.name}'")
-        print(f"DEBUG: Nome do arquivo em minÃƒÆ’Ã‚Âºsculas e sem espaÃƒÆ’Ã‚Â§os: '{xml_file.name.lower().strip()}'")
-        is_xml_file = xml_file.name.lower().strip().endswith('.xml')
-        print(f"DEBUG: Resultado de .endswith('.xml'): {is_xml_file}")
-    else:
-        print("DEBUG: Nenhum arquivo XML encontrado em request.FILES.get('xml').")
-        
-    # 1. VerificaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de PermissÃƒÆ’Ã‚Â£o do UsuÃƒÆ’Ã‚Â¡rio
     if not request.user.has_perm('nota_fiscal.can_import_xml'):
-        message = app_messages.error('VocÃƒÆ’Ã‚Âª nÃƒÆ’Ã‚Â£o tem permissÃƒÆ’Ã‚Â£o para importar XML de Notas Fiscais.')
+        message = app_messages.error('Voce nao tem permissao para importar XML de Notas Fiscais.')
         return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
-
     if not xml_file or not xml_file.name.lower().strip().endswith('.xml'):
-        print(f"DEBUG: CondiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de arquivo XML invÃƒÆ’Ã‚Â¡lido acionada. xml_file is None: {xml_file is None}")
-        if xml_file:
-            print(f"DEBUG: xml_file.name.lower().strip().endswith('.xml'): {xml_file.name.lower().strip().endswith('.xml')}")
-        message = app_messages.error('Arquivo XML invÃƒÆ’Ã‚Â¡lido ou nÃƒÆ’Ã‚Â£o fornecido.')
+        message = app_messages.error('Arquivo XML invalido ou nao fornecido.')
         return JsonResponse({'success': False, 'message': message}, status=400)
-
     try:
-        # 2. Parsing do XML
-        print("DEBUG: Tentando parsear o arquivo XML...")
         tree = ET.parse(xml_file)
         root = tree.getroot()
-        print(f"DEBUG: XML parseado com sucesso. Root tag: {root.tag}")
-        
-        # Usa a funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o xml_to_dict (element_to_dict de utils.py) para parsear o XML completo
         full_xml_dict = xml_to_dict(root).get('nfeProc', {})
-        print(f"DEBUG: ConteÃƒÆ’Ã‚Âºdo de full_xml_dict (primeiros 200 chars): {str(full_xml_dict)[:200]}...")
-
         infNFe = full_xml_dict.get('NFe', {}).get('infNFe', {})
         if not infNFe:
-            print("ERRO: Estrutura do XML invÃƒÆ’Ã‚Â¡lida: <infNFe> nÃƒÆ’Ã‚Â£o encontrado.")
-            message = app_messages.error('Estrutura do XML invÃƒÆ’Ã‚Â¡lida: <infNFe> nÃƒÆ’Ã‚Â£o encontrado.')
+            message = app_messages.error('Estrutura do XML invalida: <infNFe> nao encontrado.')
             return JsonResponse({'success': False, 'message': message}, status=400)
-        print("DEBUG: <infNFe> encontrado no XML.")
-
-        # 3. ExtraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o da Chave de Acesso e VerificaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de Duplicidade
         chave = infNFe.get('Id', '').replace('NFe', '')
-        
         if not chave:
-            print("ERRO: NÃƒÆ’Ã‚Â£o foi possÃƒÆ’Ã‚Â­vel extrair a chave de acesso do XML.")
-            message = app_messages.error('NÃƒÆ’Ã‚Â£o foi possÃƒÆ’Ã‚Â­vel extrair a chave de acesso do XML.')
+            message = app_messages.error('Nao foi possivel extrair a chave de acesso do XML.')
             return JsonResponse({'success': False, 'message': message}, status=400)
-        print(f"DEBUG: Chave de acesso extraÃƒÆ’Ã‚Â­da: {chave}")
-
-        is_duplicate = False
-        if NotaFiscal.objects.filter(chave_acesso=chave).exists():
-            is_duplicate = True
-            print(f"--- Nota Fiscal com a chave de acesso {chave} jÃƒÆ’Ã‚Â¡ existe no sistema. (Detectado como duplicata) ---")
-
-        # ExtraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de dados principais para o preview
+        is_duplicate = NotaFiscal.objects.filter(chave_acesso=chave).exists()
         ide = infNFe.get('ide', {})
-        emit = infNFe.get('emit', {}) # Obter dados do emitente
+        emit = infNFe.get('emit', {})
         total = infNFe.get('total', {}).get('ICMSTot', {})
-        print(f"DEBUG: Dados IDE: {ide.get('nNF', 'N/A')}, Total NF: {total.get('vNF', 'N/A')}")
-
-        # Extrair a razÃƒÆ’Ã‚Â£o social do emitente
-        nome_razao_social_emitente = emit.get('xNome', 'Nome do Emitente NÃƒÆ’Ã‚Â£o Encontrado')
-        print(f"DEBUG: Nome/RazÃƒÆ’Ã‚Â£o Social do Emitente: {nome_razao_social_emitente}") # Adicionado para depuraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o
-        
-        # 4. Montagem da Lista de Produtos e Itens para RevisÃƒÆ’Ã‚Â£o
-        produtos_lista = []
+        nome_razao_social_emitente = emit.get('xNome', 'Nome do Emitente nao encontrado')
         itens_para_revisar = []
         det_list = infNFe.get('det', [])
         if not isinstance(det_list, list):
             det_list = [det_list]
-        
-        if not isinstance(det_list, list):
-            det_list = [det_list]
-        print(f"DEBUG: Encontrados {len(det_list)} item(s) na nota.")
-
         for det_item in det_list:
             prod = det_item.get('prod', {})
             codigo_importado = prod.get('cProd', '')
-
             produto_existente = Produto.objects.filter(codigo_fornecedor=codigo_importado).first()
-            estoque_atual = produto_existente.estoque_atual if produto_existente else 0
-            
-            produto_data = {
-                'nItem': det_item.get('@nItem', ''),
-                'codigo': codigo_importado,
-                'nome': prod.get('xProd', ''),
-                'ncm': formatar_codigo_ncm(prod.get('NCM', '')), 
-                'cfop': prod.get('CFOP', ''),
-                'quantidade': Decimal(prod.get('qCom', '0')),
-                'unidade': prod.get('uCom', ''),
-                'valor_unitario': Decimal(prod.get('vUnCom', '0')),
-                'valor_total': Decimal(prod.get('vProd', '0')),
-                'desconto': Decimal(prod.get('vDesc', '0')),
-                'novo': not produto_existente,
-                'categoria_id': None,
-                'imposto_detalhes': det_item.get('imposto', {}),
-                'estoque_atual': estoque_atual,
-                'cest': prod.get('CEST', ''),
-            }
-            produtos_lista.append(produto_data)
-
             if not produto_existente:
                 itens_para_revisar.append({
-                    'nItem': produto_data['nItem'],
-                    'codigo_produto': produto_data['codigo'],
-                    'descricao_produto': produto_data['nome'],
-                    'ncm': produto_data['ncm'],
+                    'nItem': det_item.get('@nItem', ''),
+                    'codigo_produto': codigo_importado,
+                    'descricao_produto': prod.get('xProd', ''),
+                    'ncm': formatar_codigo_ncm(prod.get('NCM', '')),
                 })
-        print(f"DEBUG: {len(itens_para_revisar)} produto(s) precisam de revisÃƒÆ’Ã‚Â£o.")
-        
-        # 5. Montagem da Resposta JSON para o Frontend
-        message = 'XML processado com sucesso! Verifique os itens para revisÃƒÆ’Ã‚Â£o de categoria, se houver.'
+        message = 'XML processado com sucesso. Verifique os itens para revisao de categoria, se houver.'
         if is_duplicate:
-            message = f'Esta Nota Fiscal (Chave: {chave}) jÃƒÆ’Ã‚Â¡ existe no sistema. Deseja importÃƒÆ’Ã‚Â¡-la novamente e atualizar os dados existentes?'
-
+            message = (
+                f'Esta Nota Fiscal (Chave: {chave}) ja existe no sistema. '
+                'Deseja importa-la novamente e atualizar os dados existentes?'
+            )
         response_payload_for_frontend = {
             'success': True,
             'message': message,
@@ -282,34 +303,28 @@ def importar_xml_nfe_view(request):
             'chave_acesso': chave,
             'numero': ide.get('nNF', ''),
             'valor_total_nota': total.get('vNF', '0'),
-            'data_emissao': ide.get('dhEmi') or ide.get('dEmi', ''), 
+            'data_emissao': ide.get('dhEmi') or ide.get('dEmi', ''),
             'itens_para_revisar': itens_para_revisar,
-            'nome_razao_social': nome_razao_social_emitente, # <-- ADICIONADO AQUI!
+            'nome_razao_social': nome_razao_social_emitente,
         }
-        
-        print("--- Parsing de XML concluÃƒÆ’Ã‚Â­do com sucesso ---")
-        response = JsonResponse(response_payload_for_frontend, encoder=CustomDecimalEncoder)
-        print(f"DEBUG: Content-Type da resposta: {response['Content-Type']}")
-        return response
-
+        return JsonResponse(response_payload_for_frontend, encoder=CustomDecimalEncoder)
     except Exception as e:
-        print(f"ERRO CRÃƒÆ’Ã‚ÂTICO em importar_xml_nfe_view: {type(e).__name__} - {e}")
-        full_traceback = traceback.format_exc()
-        print(f"TRACEBACK COMPLETO:\n{full_traceback}") 
         message = app_messages.error(f'Ocorreu um erro no servidor ao processar o XML: {str(e)}')
         return JsonResponse({'success': False, 'message': message}, status=500)
+
 @login_required_json
-# @csrf_exempt REMOVIDO: `require_POST` jÃƒÆ’Ã‚Â¡ garante a proteÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o CSRF adequada para POST requests.
+@permission_required_json('nota_fiscal.can_import_xml', raise_exception=True)
+# @csrf_exempt REMOVIDO: `require_POST` jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ garante a proteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o CSRF adequada para POST requests.
 @require_POST
-@transaction.atomic # Garante que todas as operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes de banco de dados sejam atÃƒÆ’Ã‚Â´micas
+@transaction.atomic # Garante que todas as operaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes de banco de dados sejam atÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´micas
 def processar_importacao_xml_view(request):
     app_messages = get_app_messages(request)
     """
-    View unificada que recebe o JSON da nota (com categorias dos produtos jÃƒÆ’Ã‚Â¡ definidas),
+    View unificada que recebe o JSON da nota (com categorias dos produtos jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ definidas),
     valida e salva a nota fiscal e todos os seus dados relacionados (empresas, produtos, itens, etc.)
-    em uma ÃƒÆ’Ã‚Âºnica transaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o.
+    em uma ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºnica transaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o.
     """
-    print("--- Iniciando processamento e salvamento da importaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ---")
+    print("--- Iniciando processamento e salvamento da importaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o ---")
     try:
         payload = json.loads(request.body.decode('utf-8'))
         chave = payload.get('chave_acesso')
@@ -317,26 +332,26 @@ def processar_importacao_xml_view(request):
         raw_payload = payload.get('raw_payload', {})
 
         if not chave or not raw_payload:
-            return JsonResponse({'success': False, 'message': app_messages.error('Dados essenciais (chave de acesso ou payload) nÃƒÆ’Ã‚Â£o encontrados.')}, status=400)
+            return JsonResponse({'success': False, 'message': app_messages.error('Dados essenciais (chave de acesso ou payload) nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrados.')}, status=400)
 
         infNFe = raw_payload.get('NFe', {}).get('infNFe', {})
         if not infNFe:
-            return JsonResponse({'success': False, 'message': app_messages.error('Estrutura do XML invÃƒÆ’Ã‚Â¡lida: <infNFe> nÃƒÆ’Ã‚Â£o encontrado no raw_payload.')}, status=400)
+            return JsonResponse({'success': False, 'message': app_messages.error('Estrutura do XML invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida: <infNFe> nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado no raw_payload.')}, status=400)
 
-        # Verifica se a nota fiscal jÃƒÆ’Ã‚Â¡ existe
+        # Verifica se a nota fiscal jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ existe
         nota_existente = NotaFiscal.objects.filter(chave_acesso=chave).first()
         if nota_existente:
             if not force_update:
-                message = app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" jÃƒÆ’Ã‚Â¡ foi importada. Deseja substituir os dados existentes?')
+                message = app_messages.warning(f'A Nota Fiscal "{nota_existente.numero}" jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ foi importada. Deseja substituir os dados existentes?')
                 return JsonResponse({
                     'success': True, 'message': message, 'nota_existente': True,
                     'nota_id': nota_existente.pk, 'redirect_url': reverse('nota_fiscal:entradas_nota')
                 }, status=200)
             else:
-                print(f"--- Excluindo nota fiscal existente (ID: {nota_existente.pk}) para atualizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ---")
+                print(f"--- Excluindo nota fiscal existente (ID: {nota_existente.pk}) para atualizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o ---")
                 nota_existente.delete()
 
-        # 1. Processar Empresas (Emitente e DestinatÃƒÆ’Ã‚Â¡rio)
+        # 1. Processar Empresas (Emitente e DestinatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio)
         emitente = _get_or_create_empresa(infNFe.get('emit', {}), 'emit')
         destinatario = _get_or_create_empresa(infNFe.get('dest', {}), 'dest')
 
@@ -353,8 +368,8 @@ def processar_importacao_xml_view(request):
             natureza_operacao=ide.get('natOp', ''),
             tipo_operacao='0',
             finalidade_emissao=(ide.get('finNFe') or None),
-            modelo_documento=(ide.get('mod') or None),
-            ambiente=(ide.get('tpAmb') or None),
+            modelo_documento=(ide.get('mod') or '55'),
+            ambiente=(ide.get('tpAmb') or ('2' if settings.DEBUG else '1')),
             informacoes_adicionais=infNFe.get('infAdic', {}).get('infCpl', ''),
             valor_total_nota=Decimal(total.get('vNF', '0')),
             valor_total_produtos=Decimal(total.get('vProd', '0')),
@@ -367,7 +382,7 @@ def processar_importacao_xml_view(request):
         )
         print(f"DEBUG: Nota Fiscal {nf.numero} (ID: {nf.pk}) criada.")
 
-        # Mapeamento de cÃƒÆ’Ã‚Â³digo de produto para categoria para acesso rÃƒÆ’Ã‚Â¡pido
+        # Mapeamento de cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digo de produto para categoria para acesso rÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡pido
         categorias_mapeadas = {str(p.get('codigo_produto')): p.get('categoria_id') for p in payload.get('itens_para_revisar', [])}
 
         # 3. PRE-PROCESSAMENTO AGREGADO PARA ATUALIZACAO DE PRODUTOS
@@ -388,7 +403,8 @@ def processar_importacao_xml_view(request):
                 produtos_agregados[codigo_produto] = {
                     'quantidade_total': Decimal('0'),
                     'valor_total_ponderado': Decimal('0'),
-                    'dados_primeiro_item': prod_data, # Guarda dados para criaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o do produto
+                    'dados_primeiro_item': prod_data, # Guarda dados para criaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o do produto
+                    'item_xml_primeiro': item_data,
                     'categoria_id': categorias_mapeadas.get(codigo_produto)
                 }
             
@@ -412,7 +428,7 @@ def processar_importacao_xml_view(request):
             
             # 4.3. Cria a Entrada de Produto
             entrada_produto_obj = EntradaProduto.objects.create( # Captura o objeto criado
-                item_nota_fiscal=ItemNotaFiscal.objects.latest('id'), # Pega o ÃƒÆ’Ã‚Âºltimo item criado
+                item_nota_fiscal=ItemNotaFiscal.objects.latest('id'), # Pega o ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºltimo item criado
                 quantidade=Decimal(prod_data.get('qCom', '0')),
                 preco_unitario=Decimal(prod_data.get('vUnCom', '0')),
                 preco_total=Decimal(prod_data.get('vProd', '0')),
@@ -420,8 +436,8 @@ def processar_importacao_xml_view(request):
                 nota_fiscal=nf,
                 numero_nota=nf.numero,
             )
-            # 4.4. Recalcula o estoque e preÃƒÆ’Ã‚Â§os do Produto mestre
-            produto_obj.recalculate_stock_and_prices() # Chama o mÃƒÆ’Ã‚Â©todo para recalcular
+            # 4.4. Recalcula o estoque e preÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§os do Produto mestre
+            produto_obj.recalculate_stock_and_prices() # Chama o mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©todo para recalcular
 
 
         # 5. Processar Transporte e Duplicatas
@@ -432,6 +448,7 @@ def processar_importacao_xml_view(request):
         cobr_data = infNFe.get('cobr', {})
         if cobr_data and 'dup' in cobr_data:
             _create_duplicatas(nf, cobr_data.get('dup', []))
+            _inferir_condicao_por_cobr(nf, cobr_data)
 
         print(f"--- Sucesso: Nota Fiscal {nf.numero} (ID: {nf.pk}) salva com sucesso. ---")
         message = app_messages.success_updated(nf) if nota_existente and force_update else app_messages.success_imported(nf, source_type="XML")
@@ -449,13 +466,13 @@ def processar_importacao_xml_view(request):
         return JsonResponse({'success': False, 'message': app_messages.error(f'Ocorreu um erro inesperado no servidor: {str(e)}')}, status=500)
 
 
-# --- FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes de Apoio para `processar_importacao_xml_view` ---
+# --- FunÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes de Apoio para `processar_importacao_xml_view` ---
 
 def _get_or_create_empresa(data, tipo):
-    """Cria ou obtÃƒÆ’Ã‚Â©m uma Empresa a partir dos dados do XML (emitente ou destinatÃƒÆ’Ã‚Â¡rio)."""
+    """Cria ou obtÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©m uma Empresa a partir dos dados do XML (emitente ou destinatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio)."""
     identificador = data.get('CNPJ') or data.get('CPF')
     if not identificador:
-        raise ValueError(f"CNPJ/CPF nÃƒÆ’Ã‚Â£o encontrado para {tipo}")
+        raise ValueError(f"CNPJ/CPF nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado para {tipo}")
 
     identificador_limpo = re.sub(r'\D', '', identificador)
     is_cnpj = len(identificador_limpo) == 14
@@ -485,6 +502,27 @@ def _get_or_create_empresa(data, tipo):
     print(f"Empresa ({tipo}) {'criada' if created else 'encontrada'}: {empresa}")
     return empresa
 
+
+def _to_decimal_safe(value, default='0'):
+    try:
+        if value in (None, ''):
+            return Decimal(default)
+        return Decimal(str(value))
+    except Exception:
+        return Decimal(default)
+
+
+def _extrair_blocos_imposto(item_data):
+    imposto_data = (item_data or {}).get('imposto', {}) or {}
+    icms_root = imposto_data.get('ICMS', {}) or {}
+    icms_data = next(iter(icms_root.values()), {}) if isinstance(icms_root, dict) and icms_root else {}
+    ipi_data = imposto_data.get('IPI', {}).get('IPITrib', {}) or imposto_data.get('IPI', {}).get('IPINT', {}) or {}
+    pis_root = imposto_data.get('PIS', {}) or {}
+    pis_data = next(iter(pis_root.values()), {}) if isinstance(pis_root, dict) and pis_root else {}
+    cofins_root = imposto_data.get('COFINS', {}) or {}
+    cofins_data = next(iter(cofins_root.values()), {}) if isinstance(cofins_root, dict) and cofins_root else {}
+    return icms_data, ipi_data, pis_data, cofins_data
+
 def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor):
     """Atualiza ou cria um registro na tabela mestre de Produtos."""
     produto, created = Produto.objects.get_or_create(
@@ -500,13 +538,13 @@ def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor
     # Atualiza o estoque
     produto.estoque_atual += dados_agregados['quantidade_total']
     
-    # Calcula o novo custo mÃƒÆ’Ã‚Â©dio ponderado
+    # Calcula o novo custo mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dio ponderado
     if produto.preco_custo and produto.estoque_atual > dados_agregados['quantidade_total']:
         valor_estoque_antigo = produto.preco_custo * (produto.estoque_atual - dados_agregados['quantidade_total'])
         novo_custo_medio = (valor_estoque_antigo + dados_agregados['valor_total_ponderado']) / produto.estoque_atual
         produto.preco_custo = novo_custo_medio
     else:
-        # Se nÃƒÆ’Ã‚Â£o hÃƒÆ’Ã‚Â¡ estoque anterior, o custo mÃƒÆ’Ã‚Â©dio ÃƒÆ’Ã‚Â© o da nota
+        # Se nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ estoque anterior, o custo mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dio ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© o da nota
         produto.preco_custo = dados_agregados['valor_total_ponderado'] / dados_agregados['quantidade_total']
 
     # Atualiza a categoria se foi informada
@@ -515,6 +553,73 @@ def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor
         produto.categoria = CategoriaProduto.objects.get(pk=categoria_id)
 
     produto.save()
+
+    prod_primeiro_item = dados_agregados.get('dados_primeiro_item', {}) or {}
+    item_xml = dados_agregados.get('item_xml_primeiro', {}) or {}
+    icms_data, ipi_data, pis_data, cofins_data = _extrair_blocos_imposto(item_xml)
+
+    detalhes_fiscais, _ = DetalhesFiscaisProduto.objects.get_or_create(produto=produto)
+    changed_fields = []
+
+    ncm_codigo_xml = normalizar_codigo_ncm(prod_primeiro_item.get('NCM'))
+    if ncm_codigo_xml:
+        ncm_obj, _ = NCM.objects.get_or_create(
+            codigo=ncm_codigo_xml,
+            defaults={'descricao': f'NCM importado via XML ({ncm_codigo_xml})'}
+        )
+        if detalhes_fiscais.ncm_id != ncm_obj.id:
+            detalhes_fiscais.ncm = ncm_obj
+            changed_fields.append('ncm')
+
+    origem_xml = str(icms_data.get('orig') or '').strip()
+    if origem_xml in dict(DetalhesFiscaisProduto.ORIGEM_MERCADORIA_CHOICES):
+        if (detalhes_fiscais.origem_mercadoria or '') != origem_xml:
+            detalhes_fiscais.origem_mercadoria = origem_xml
+            changed_fields.append('origem_mercadoria')
+
+    cfop_xml = str(prod_primeiro_item.get('CFOP') or '').strip()
+    if cfop_xml and (detalhes_fiscais.cfop or '') != cfop_xml:
+        detalhes_fiscais.cfop = cfop_xml
+        changed_fields.append('cfop')
+
+    unidade_xml = str(prod_primeiro_item.get('uCom') or '').strip()
+    if unidade_xml and (detalhes_fiscais.unidade_comercial or '') != unidade_xml:
+        detalhes_fiscais.unidade_comercial = unidade_xml
+        changed_fields.append('unidade_comercial')
+
+    quantidade_xml = _to_decimal_safe(prod_primeiro_item.get('qCom'), default='0')
+    if quantidade_xml > 0 and detalhes_fiscais.quantidade_comercial != quantidade_xml:
+        detalhes_fiscais.quantidade_comercial = quantidade_xml
+        changed_fields.append('quantidade_comercial')
+
+    valor_unit_xml = _to_decimal_safe(prod_primeiro_item.get('vUnCom'), default='0')
+    if valor_unit_xml > 0 and detalhes_fiscais.valor_unitario_comercial != valor_unit_xml:
+        detalhes_fiscais.valor_unitario_comercial = valor_unit_xml
+        changed_fields.append('valor_unitario_comercial')
+
+    v_icms = _to_decimal_safe(icms_data.get('vICMS'), default='0')
+    if v_icms > 0 and detalhes_fiscais.icms != v_icms:
+        detalhes_fiscais.icms = v_icms
+        changed_fields.append('icms')
+
+    v_ipi = _to_decimal_safe(ipi_data.get('vIPI'), default='0')
+    if v_ipi > 0 and detalhes_fiscais.ipi != v_ipi:
+        detalhes_fiscais.ipi = v_ipi
+        changed_fields.append('ipi')
+
+    v_pis = _to_decimal_safe(pis_data.get('vPIS'), default='0')
+    if v_pis > 0 and detalhes_fiscais.pis != v_pis:
+        detalhes_fiscais.pis = v_pis
+        changed_fields.append('pis')
+
+    v_cofins = _to_decimal_safe(cofins_data.get('vCOFINS'), default='0')
+    if v_cofins > 0 and detalhes_fiscais.cofins != v_cofins:
+        detalhes_fiscais.cofins = v_cofins
+        changed_fields.append('cofins')
+
+    if changed_fields:
+        detalhes_fiscais.save(update_fields=changed_fields)
+
     print(f"Produto mestre {'criado' if created else 'atualizado'}: {produto.nome}")
     return produto
 
@@ -542,7 +647,7 @@ def _create_item_nota_fiscal(nota_fiscal, item_data, produto_obj):
         desconto=Decimal(prod_data.get('vDesc', '0')),
         base_calculo_icms=Decimal(icms_data.get('vBC', '0')),
         aliquota_icms=Decimal(icms_data.get('pICMS', '0')),
-        # Adicione outros campos de impostos conforme necessÃƒÆ’Ã‚Â¡rio
+        # Adicione outros campos de impostos conforme necessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio
     )
     print(f"Item da nota criado: {item.descricao}")
     return item
@@ -606,6 +711,32 @@ def _create_duplicatas(nf, duplicatas_data):
         )
     print(f"{len(duplicatas_data)} duplicata(s) salva(s).")
 
+
+def _inferir_condicao_por_cobr(nf, cobr_data):
+    duplicatas_data = (cobr_data or {}).get('dup', [])
+    if not duplicatas_data:
+        return
+    if not isinstance(duplicatas_data, list):
+        duplicatas_data = [duplicatas_data]
+
+    base = nf.data_emissao
+    if hasattr(base, 'date'):
+        base = base.date()
+    dias = []
+    for dup in duplicatas_data:
+        venc = _parse_datetime((dup or {}).get('dVenc'), date_only=True)
+        if hasattr(venc, 'date'):
+            venc = venc.date()
+        if base and venc:
+            dias.append(max((venc - base).days, 0))
+    if not dias:
+        return
+
+    descricao = '/'.join(str(dia) for dia in dias) + ' DDL'
+    nf.condicao_pagamento = descricao
+    nf.quantidade_parcelas = len(dias)
+    nf.save(update_fields=['condicao_pagamento', 'quantidade_parcelas'])
+
 def _parse_datetime(dt_str, date_only=False):
     """Converte string de data/hora ISO para objeto datetime ou date."""
     if not dt_str: return None
@@ -621,12 +752,12 @@ def _parse_datetime(dt_str, date_only=False):
 @permission_required_json('nota_fiscal.view_notafiscal', raise_exception=True)
 @require_GET
 def entradas_nota_view(request):
-    """Lista as notas fiscais de entrada com opÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de busca e ordenaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o."""
+    """Lista as notas fiscais de entrada com opÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de busca e ordenaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o."""
     termo = request.GET.get('termo', '').strip()
     ordenacao = request.GET.get('ordenacao', '-data_emissao')
 
-    # Usamos select_related para otimizar a busca, trazendo os dados do emitente e destinatÃƒÆ’Ã‚Â¡rio
-    # em uma ÃƒÆ’Ã‚Âºnica consulta ao banco de dados.
+    # Usamos select_related para otimizar a busca, trazendo os dados do emitente e destinatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio
+    # em uma ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºnica consulta ao banco de dados.
     qs = NotaFiscal.objects.select_related('emitente', 'destinatario').filter(emitente__isnull=False)
 
     if termo:
@@ -667,8 +798,8 @@ def entradas_nota_view(request):
 @require_GET
 def lancar_nota_manual_view(request):
     """
-    Renderiza a pÃƒÆ’Ã‚Â¡gina para lanÃƒÆ’Ã‚Â§amento manual de notas fiscais,
-    respondendo a requisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes normais e AJAX.
+    Renderiza a pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡gina para lanÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§amento manual de notas fiscais,
+    respondendo a requisiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes normais e AJAX.
     """
     categorias = list(CategoriaProduto.objects.order_by("nome").values("id", "nome"))
     empresas = list(Empresa.objects.all().values(
@@ -683,27 +814,51 @@ def lancar_nota_manual_view(request):
         'data_tela': 'lancar_nota_manual',
     }
 
-    # Se a requisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o for AJAX, retorna apenas o template parcial (o "miolo").
+    # Se a requisiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o for AJAX, retorna apenas o template parcial (o "miolo").
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return render(request, context['content_template'], context)
 
-    # Para acesso direto via URL, retorna a pÃƒÆ’Ã‚Â¡gina completa.
+    # Para acesso direto via URL, retorna a pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡gina completa.
     return render(request, 'base.html', context)
 
-# Substitua a sua funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o editar_nota_view por esta:
+# Substitua a sua funÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o editar_nota_view por esta:
 
+def _item_forca_override_manual(item_form):
+    cleaned = getattr(item_form, 'cleaned_data', {}) or {}
+    if cleaned.get('DELETE'):
+        return False
+    contexto_raw = cleaned.get('dados_contexto_regra')
+    contexto = {}
+    if contexto_raw:
+        if isinstance(contexto_raw, dict):
+            contexto = contexto_raw
+        else:
+            try:
+                contexto = json.loads(contexto_raw)
+            except Exception:
+                contexto = {}
+    if bool(contexto.get('manual_override')):
+        return True
+    origem = (cleaned.get('aliquota_icms_origem') or '').strip().lower()
+    regra_aplicada = cleaned.get('regra_icms_aplicada')
+    return origem == 'manual' and bool(regra_aplicada)
 @login_required_json
 @permission_required_json('nota_fiscal.change_notafiscal', raise_exception=True)
-@require_http_methods(["GET", "POST"] )
+@require_http_methods(["GET", "POST"])
 @transaction.atomic
 def editar_nota_view(request, pk):
     """
-    Lida com a criaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o (GET) e o processamento (POST) do formulÃƒÆ’Ã‚Â¡rio de ediÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de Nota Fiscal,
-    respondendo a requisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes normais e AJAX para a exibiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o do formulÃƒÆ’Ã‚Â¡rio.
+    Lida com a criacao (GET) e o processamento (POST) do formulario de edicao de Nota Fiscal,
+    respondendo a requisicoes normais e AJAX para a exibicao do formulario.
     """
     app_messages = get_app_messages(request)
     nota = get_object_or_404(NotaFiscal, pk=pk)
-
+    if _nota_saida_fora_emitente_ativo(request, nota):
+        message = app_messages.error('A nota fiscal nao pertence a empresa ativa.')
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': message, 'code': 'permission_denied'}, status=403)
+        messages.error(request, message)
+        return redirect('nota_fiscal:emitir_nfe_list')
     if request.method == 'POST':
         if request.POST.get('action') == 'delete_nota':
             status = (nota.status_sefaz or '').strip().lower()
@@ -718,7 +873,6 @@ def editar_nota_view(request, pk):
                 if tipo_operacao == '1':
                     return redirect('nota_fiscal:emitir_nfe_list')
                 return redirect('nota_fiscal:entradas_nota')
-
         post_data = request.POST.copy()
         is_saida = str(nota.tipo_operacao or '') == '1'
         emitente_id = None
@@ -734,54 +888,51 @@ def editar_nota_view(request, pk):
         item_formset = ItemNotaFiscalFormSet(request.POST, instance=nota, prefix='items')
         duplicata_formset = DuplicataNotaFiscalFormSet(request.POST, instance=nota, prefix='duplicatas')
         transporte_formset = TransporteNotaFiscalFormSet(request.POST, instance=nota, prefix='transporte')
-
         if form.is_valid() and item_formset.is_valid() and duplicata_formset.is_valid() and transporte_formset.is_valid():
-            nota_salva = form.save(commit=False)
-            if is_saida and emitente_id:
-                nota_salva.emitente_proprio_id = int(emitente_id)
-            if not is_saida and not (nota_salva.tipo_operacao or '').strip():
-                nota_salva.tipo_operacao = '0'
-            nota_salva.save()
-            item_formset.save()
-            duplicata_formset.save()
-            # Sincroniza quantidade final de duplicatas com a quantidade de parcelas da condicao selecionada.
-            # Isso evita manter parcelas antigas quando a condicao muda para menos vencimentos (ex.: 3 -> 1).
-            parcelas_desejadas = max(int(nota_salva.quantidade_parcelas or 1), 1)
-            duplicatas_atuais = list(nota_salva.duplicatas.order_by('id'))
-
-            if len(duplicatas_atuais) > parcelas_desejadas:
-                ids_excedentes = [dup.id for dup in duplicatas_atuais[parcelas_desejadas:]]
-                DuplicataNotaFiscal.objects.filter(id__in=ids_excedentes).delete()
-                duplicatas_atuais = duplicatas_atuais[:parcelas_desejadas]
-
-            if len(duplicatas_atuais) < parcelas_desejadas:
-                base_date = nota_salva.data_emissao or timezone.localdate()
-                faltantes = parcelas_desejadas - len(duplicatas_atuais)
-                for idx in range(faltantes):
-                    numero_seq = len(duplicatas_atuais) + idx + 1
-                    DuplicataNotaFiscal.objects.create(
-                        nota_fiscal=nota_salva,
-                        numero=str(numero_seq).zfill(3),
-                        vencimento=base_date + datetime.timedelta(days=((numero_seq - 1) * 30)),
-                        valor=Decimal('0.00'),
-                    )
-            transporte_formset.save()
-            
-            app_messages.success_updated(nota)
-            if nota.tipo_operacao == '1':
-                return redirect('nota_fiscal:emitir_nfe_list')
-            return redirect('nota_fiscal:entradas_nota')
+            if any(_item_forca_override_manual(item_form) for item_form in item_formset.forms):
+                if not request.user.has_perm('fiscal_regras.override_aliquota_item'):
+                    form.add_error(None, 'Voce nao tem permissao para sobrescrever aliquota automatica de ICMS.')
+                    app_messages.error('Permissao insuficiente para override manual de aliquota.')
+                else:
+                    for item_form in item_formset.forms:
+                        if _item_forca_override_manual(item_form):
+                            cleaned = getattr(item_form, 'cleaned_data', {}) or {}
+                            contexto_raw = cleaned.get('dados_contexto_regra')
+                            contexto = {}
+                            if contexto_raw:
+                                if isinstance(contexto_raw, dict):
+                                    contexto = contexto_raw
+                                else:
+                                    try:
+                                        contexto = json.loads(contexto_raw)
+                                    except Exception:
+                                        contexto = {}
+                            contexto['manual_override'] = True
+                            cleaned['dados_contexto_regra'] = json.dumps(contexto, ensure_ascii=False)
+            if form.errors or item_formset.non_form_errors():
+                app_messages.error('Foram encontrados erros no formulario. Por favor, corrija-os.')
+            else:
+                nota_salva = form.save(commit=False)
+                if is_saida and emitente_id:
+                    nota_salva.emitente_proprio_id = int(emitente_id)
+                if not is_saida and not (nota_salva.tipo_operacao or '').strip():
+                    nota_salva.tipo_operacao = '0'
+                nota_salva.save()
+                item_formset.save()
+                duplicata_formset.save()
+                _sincronizar_duplicatas_nota(nota_salva)
+                transporte_formset.save()
+                app_messages.success_updated(nota)
+                if nota.tipo_operacao == '1':
+                    return redirect('nota_fiscal:emitir_nfe_list')
+                return redirect('nota_fiscal:entradas_nota')
         else:
-            app_messages.error("Foram encontrados erros no formulÃƒÆ’Ã‚Â¡rio. Por favor, corrija-os.")
-            # A lÃƒÆ’Ã‚Â³gica de printar erros para debug pode ser mantida aqui...
-            
-    # A lÃƒÆ’Ã‚Â³gica para GET comeÃƒÆ’Ã‚Â§a aqui
+            app_messages.error('Foram encontrados erros no formulario. Por favor, corrija-os.')
     is_saida = str(nota.tipo_operacao or '') == '1'
     form = NotaFiscalForm(instance=nota) if is_saida else NotaFiscalEntradaForm(instance=nota)
     item_formset = ItemNotaFiscalFormSet(instance=nota, prefix='items')
     duplicata_formset = DuplicataNotaFiscalFormSet(instance=nota, prefix='duplicatas')
     transporte_formset = TransporteNotaFiscalFormSet(instance=nota, prefix='transporte')
-
     context = {
         'nota': nota,
         'form': form,
@@ -792,13 +943,8 @@ def editar_nota_view(request, pk):
         'data_page': 'editar_nota',
         'data_tela': 'editar_nota',
     }
-
-    # Se a requisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o for AJAX (vinda de um clique em 'Editar' na lista),
-    # renderiza apenas o template parcial.
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return render(request, context['content_template'], context)
-
-    # Para acesso direto via URL ou em caso de erro no POST, renderiza a pÃƒÆ’Ã‚Â¡gina completa.
     return render(request, 'base.html', context)
 
 @login_required_json
@@ -808,15 +954,29 @@ def editar_nota_view(request, pk):
 def excluir_notas_multiplo_view(request):
     app_messages = get_app_messages(request)
     """
-    Exclui mÃƒÆ’Ã‚Âºltiplas notas fiscais com base nos IDs recebidos via POST.
+    Exclui mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºltiplas notas fiscais com base nos IDs recebidos via POST.
     """
     try:
         data = json.loads(request.body.decode('utf-8'))
         ids = data.get('ids', [])
 
         if not ids:
-            message = app_messages.error('Nenhum ID fornecido para exclusÃƒÆ’Ã‚Â£o.')
+            message = app_messages.error('Nenhum ID fornecido para exclusÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o.')
             return JsonResponse({'success': False, 'message': message}, status=400)
+
+        emitente_ativo_id = _get_emitente_ativo_id(request)
+        if emitente_ativo_id:
+            ids_nao_autorizados = list(
+                NotaFiscal.objects.filter(id__in=ids, tipo_operacao='1')
+                .exclude(emitente_proprio_id=emitente_ativo_id)
+                .values_list('id', flat=True)
+            )
+            if ids_nao_autorizados:
+                message = app_messages.error('Ha notas de saida fora da empresa ativa na selecao.')
+                return JsonResponse(
+                    {'success': False, 'message': message, 'code': 'permission_denied', 'ids': ids_nao_autorizados},
+                    status=403
+                )
 
         notas_excluidas, _ = NotaFiscal.objects.filter(id__in=ids).delete()
 
@@ -828,7 +988,7 @@ def excluir_notas_multiplo_view(request):
             return JsonResponse({'success': False, 'message': message}, status=404)
 
     except json.JSONDecodeError:
-        message = app_messages.error('RequisiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida. JSON malformado.')
+        message = app_messages.error('RequisiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida. JSON malformado.')
         return JsonResponse({'success': False, 'message': message}, status=400)
     except Exception as e:
         traceback.print_exc()
@@ -837,6 +997,7 @@ def excluir_notas_multiplo_view(request):
 
 
 @login_required_json
+@permission_required_json('nota_fiscal.view_notafiscal', raise_exception=True)
 @require_GET
 def buscar_produtos_para_nota_view(request):
     """
@@ -894,6 +1055,7 @@ def buscar_produtos_para_nota_view(request):
 
 
 @login_required_json
+@permission_required_json('nota_fiscal.view_notafiscal', raise_exception=True)
 @require_GET
 def resolver_aliquota_item_view(request):
     data_emissao = converter_data_para_date((request.GET.get('data_emissao') or '').strip())
@@ -944,13 +1106,13 @@ def resolver_aliquota_item_view(request):
 
 
 # ==============================================================================
-# ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â¡ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ VIEW PARA CRIAR NOTA FISCAL DE SAIDA
+# ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ VIEW PARA CRIAR NOTA FISCAL DE SAIDA
 # ==============================================================================
 @login_required_json
 @permission_required_json('nota_fiscal.add_notafiscal', raise_exception=True)
 def criar_nfe_saida(request):
     """
-    Renderiza o formulÃƒÆ’Ã‚Â¡rio para criar uma nova Nota Fiscal de SaÃƒÆ’Ã‚Â­da e processa a sua submissÃƒÆ’Ã‚Â£o.
+    Renderiza o formulÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio para criar uma nova Nota Fiscal de SaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­da e processa a sua submissÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o.
     """
     if request.method == 'POST':
         form = NotaFiscalSaidaForm(request.POST)
@@ -977,13 +1139,17 @@ def criar_nfe_saida(request):
                 )
 
             nova_nota.emitente_proprio_id = emitente_ativo_id
-            # Gerar nÃƒÆ’Ã‚Âºmero e chave de acesso provisÃƒÆ’Ã‚Â³rios
+            # Gerar nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºmero e chave de acesso provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rios
             nova_nota.numero = str(NotaFiscal.objects.count() + 1).zfill(9)
             nova_nota.chave_acesso = f"TEMP-{timezone.now().strftime('%Y%m%d%H%M%S')}-{nova_nota.numero}"
+            if not (nova_nota.modelo_documento or '').strip():
+                nova_nota.modelo_documento = '55'
+            if not (nova_nota.ambiente or '').strip():
+                nova_nota.ambiente = '2' if settings.DEBUG else '1'
             nova_nota.save()
             
-            messages.success(request, f"Nota Fiscal de SaÃƒÆ’Ã‚Â­da NÃƒâ€šÃ‚Âº {nova_nota.numero} criada com sucesso. Adicione os itens.")
-            # Redireciona para a tela de ediÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o para adicionar itens
+            messages.success(request, f"Nota Fiscal de SaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­da NÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âº {nova_nota.numero} criada com sucesso. Adicione os itens.")
+            # Redireciona para a tela de ediÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o para adicionar itens
             return JsonResponse({'success': True, 'redirect_url': reverse('nota_fiscal:editar_nota', kwargs={'pk': nova_nota.pk})})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
@@ -1001,6 +1167,7 @@ def criar_nfe_saida(request):
 
 
 @login_required_json
+@permission_required_json('nota_fiscal.view_notafiscal', raise_exception=True)
 @require_GET
 def buscar_naturezas_operacao_view(request):
     """Busca naturezas de operacao para autocomplete da NF-e de saida."""
@@ -1025,4 +1192,6 @@ def buscar_naturezas_operacao_view(request):
             })
 
     return JsonResponse({'results': resultados})
+
+
 

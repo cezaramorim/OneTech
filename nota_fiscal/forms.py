@@ -9,6 +9,17 @@ from control.models import Emitente
 from empresas.models import Empresa, CategoriaEmpresa
 
 
+def _ensure_current_value_choice(field, current_value, label_prefix='Atual'):
+    current = (current_value or '').strip()
+    if not current:
+        return
+    for value, _label in field.choices:
+        if str(value).strip() == current:
+            return
+    field.choices = list(field.choices) + [(current, f'{label_prefix}: {current}')]
+    field.initial = current
+
+
 class NotaFiscalForm(forms.ModelForm):
     emitente_proprio = forms.TypedChoiceField(
         choices=(),
@@ -124,6 +135,8 @@ class NotaFiscalForm(forms.ModelForm):
                 if match:
                     self.fields['natureza_operacao'].initial = match
                     self.initial['natureza_operacao'] = match
+                else:
+                    _ensure_current_value_choice(self.fields['natureza_operacao'], atual, label_prefix='Atual (importado)')
         except LookupError:
             self.fields['natureza_operacao'].choices = [('', 'Modulo Fiscal indisponivel')]
 
@@ -131,7 +144,7 @@ class NotaFiscalForm(forms.ModelForm):
         self.fields['condicao_pagamento'].widget = CondicaoPagamentoSelect(attrs={'class': 'form-select'})
         try:
             CondicaoPagamento = apps.get_model('comercial', 'CondicaoPagamento')
-            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas')
+            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas', 'observacoes')
             self.fields['condicao_pagamento'].choices = [
                 ('', 'Selecione a condicao de pagamento'),
                 *[(str(c.id), f"{c.codigo} - {c.descricao}") for c in condicoes]
@@ -161,6 +174,8 @@ class NotaFiscalForm(forms.ModelForm):
                 if match:
                     self.fields['condicao_pagamento'].initial = match
                     self.initial['condicao_pagamento'] = match
+                else:
+                    _ensure_current_value_choice(self.fields['condicao_pagamento'], atual, label_prefix='Atual (importado)')
         except LookupError:
             self.fields['condicao_pagamento'].choices = [('', 'Modulo Comercial indisponivel')]
 
@@ -169,6 +184,8 @@ class NotaFiscalForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        cleaned_data['tipo_operacao'] = '1'
 
         natureza_id = (cleaned_data.get('natureza_operacao') or '').strip()
         if natureza_id and natureza_id in self._naturezas_map:
@@ -291,6 +308,8 @@ class NotaFiscalEntradaForm(forms.ModelForm):
                 if match:
                     self.fields['natureza_operacao'].initial = match
                     self.initial['natureza_operacao'] = match
+                else:
+                    _ensure_current_value_choice(self.fields['natureza_operacao'], atual, label_prefix='Atual (importado)')
         except LookupError:
             self.fields['natureza_operacao'].choices = [('', 'Modulo Fiscal indisponivel')]
 
@@ -298,7 +317,7 @@ class NotaFiscalEntradaForm(forms.ModelForm):
         self.fields['condicao_pagamento'].widget = CondicaoPagamentoSelect(attrs={'class': 'form-select'})
         try:
             CondicaoPagamento = apps.get_model('comercial', 'CondicaoPagamento')
-            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas')
+            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas', 'observacoes')
             self.fields['condicao_pagamento'].choices = [
                 ('', 'Selecione a condicao de pagamento'),
                 *[(str(c.id), f"{c.codigo} - {c.descricao}") for c in condicoes]
@@ -328,6 +347,8 @@ class NotaFiscalEntradaForm(forms.ModelForm):
                 if match:
                     self.fields['condicao_pagamento'].initial = match
                     self.initial['condicao_pagamento'] = match
+                else:
+                    _ensure_current_value_choice(self.fields['condicao_pagamento'], atual, label_prefix='Atual (importado)')
         except LookupError:
             self.fields['condicao_pagamento'].choices = [('', 'Modulo Comercial indisponivel')]
 
@@ -358,8 +379,7 @@ class NotaFiscalEntradaForm(forms.ModelForm):
         elif not cleaned_data.get('quantidade_parcelas'):
             cleaned_data['quantidade_parcelas'] = 1
 
-        if not cleaned_data.get('tipo_operacao'):
-            cleaned_data['tipo_operacao'] = '0'
+        cleaned_data['tipo_operacao'] = '0'
 
         return cleaned_data
 
@@ -555,6 +575,7 @@ class CondicaoPagamentoSelect(forms.Select):
         option.setdefault('attrs', {})
         option['attrs']['data-parcelas'] = str(condicao.quantidade_parcelas or 1)
         option['attrs']['data-descricao'] = (condicao.descricao or '').strip()
+        option['attrs']['data-dias'] = (condicao.observacoes or '').strip()
         return option
 
 
@@ -625,7 +646,7 @@ class NotaFiscalSaidaForm(forms.ModelForm):
         self._condicoes_pagamento_map = {}
         try:
             CondicaoPagamento = apps.get_model('comercial', 'CondicaoPagamento')
-            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas')
+            condicoes = CondicaoPagamento.objects.all().only('id', 'codigo', 'descricao', 'quantidade_parcelas', 'observacoes')
             self.fields['condicao_pagamento_cadastro'].choices = [
                 ('', 'Selecione a condicao de pagamento'),
                 *[(str(condicao.id), f"{condicao.codigo} - {condicao.descricao}") for condicao in condicoes]
@@ -637,6 +658,7 @@ class NotaFiscalSaidaForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        cleaned_data['tipo_operacao'] = '1'
         condicao_id = (cleaned_data.get('condicao_pagamento_cadastro') or '').strip()
 
         if condicao_id and condicao_id in self._condicoes_pagamento_map:
