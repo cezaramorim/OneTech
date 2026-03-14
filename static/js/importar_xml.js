@@ -1,252 +1,362 @@
-﻿// static/js/importar_xml.js
+// static/js/importar_xml.js
 
-var dadosNotaFiscal = null;
-var todasCategorias = [];
-
-// --- FunÃ§Ãµes UtilitÃ¡rias ---
+let dadosNotaFiscal = null;
+let todasCategorias = [];
 
 function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
+  const cookie = document.cookie.split(';').find((c) => c.trim().startsWith('csrftoken='));
+  return cookie ? cookie.split('=')[1] : '';
 }
 
-function mostrarLoading(message = "Carregando...") {
-    if (window.Swal) {
-        Swal.fire({ title: message, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    }
+function mostrarLoading(message = 'Carregando...') {
+  if (window.Swal) {
+    Swal.fire({
+      title: message,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+  }
 }
 
 function ocultarLoading() {
-    if (window.Swal) Swal.close();
+  if (window.Swal) {
+    Swal.close();
+  }
 }
 
-function mostrarMensagem(type, title, message) {
-    if (window.Swal) {
-        Swal.fire({
-            icon: type,
-            title: title,
-            text: message,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 6000,
-            timerProgressBar: true
-        });
-    }
+function toast(type, title, message) {
+  if (window.Swal) {
+    Swal.fire({
+      icon: type,
+      title,
+      text: message,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 6000,
+      timerProgressBar: true,
+    });
+    return;
+  }
+  if (typeof window.mostrarMensagem === 'function') {
+    window.mostrarMensagem(type, message);
+    return;
+  }
+  console.log(`[${type}] ${title}: ${message}`);
 }
 
 function formatarMoeda(valor) {
-    const num = parseFloat(valor);
-    return isNaN(num) ? 'R$ 0,00' : num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const num = parseFloat(valor);
+  if (Number.isNaN(num)) return 'R$ 0,00';
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function formatarData(datetimeStr) {
-    if (!datetimeStr) return 'N/A';
-    const date = new Date(datetimeStr.includes('T') ? datetimeStr : `${datetimeStr}T00:00:00`);
-    return isNaN(date.getTime()) ? datetimeStr : date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  if (!datetimeStr) return 'N/A';
+  const date = new Date(datetimeStr.includes('T') ? datetimeStr : `${datetimeStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return datetimeStr;
+  return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 }
 
 function getModalidadeFrete(modFrete) {
-    const modalidades = { '0': 'Por conta do Emitente', '1': 'Por conta do DestinatÃ¡rio', '2': 'Por conta de Terceiros', '9': 'Sem Transporte' };
-    return modalidades[modFrete] || 'NÃ£o especificado';
+  const modalidades = {
+    '0': 'Por conta do Emitente',
+    '1': 'Por conta do Destinatario',
+    '2': 'Por conta de Terceiros',
+    '9': 'Sem Transporte',
+  };
+  return modalidades[modFrete] || 'Nao especificado';
 }
 
-// --- FunÃ§Ãµes de LÃ³gica Principal ---
-
 function resetarInterface() {
-    const previewDiv = document.getElementById('preview-nota');
-    const form = document.getElementById('form-importar-xml');
-    if (previewDiv) previewDiv.innerHTML = '';
-    if (form) form.reset();
-    dadosNotaFiscal = null;
+  const previewDiv = document.getElementById('preview-nota');
+  const form = document.getElementById('form-importar-xml');
+  if (previewDiv) previewDiv.innerHTML = '';
+  if (form) form.reset();
+  dadosNotaFiscal = null;
 }
 
 function renderizarPreviewNota(dados) {
-    const previewDiv = document.getElementById('preview-nota');
-    if (!previewDiv) return;
+  const previewDiv = document.getElementById('preview-nota');
+  if (!previewDiv) return;
 
-    const { is_duplicate, itens_para_revisar, raw_payload } = dados;
-    const infNFe = raw_payload?.NFe?.infNFe || {};
-    const emit = infNFe.emit || {};
-    const dest = infNFe.dest || {};
-    const total = infNFe.total?.ICMSTot || {};
-    const transp = infNFe.transp || {};
-    const cobr = infNFe.cobr || {};
-    const dup = Array.isArray(cobr.dup) ? cobr.dup : (cobr.dup ? [cobr.dup] : []);
-    const det = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det].filter(Boolean);
+  const { is_duplicate, itens_para_revisar, raw_payload } = dados;
+  const infNFe = raw_payload?.NFe?.infNFe || {};
+  const emit = infNFe.emit || {};
+  const dest = infNFe.dest || {};
+  const total = infNFe.total?.ICMSTot || {};
+  const transp = infNFe.transp || {};
+  const cobr = infNFe.cobr || {};
+  const dup = Array.isArray(cobr.dup) ? cobr.dup : (cobr.dup ? [cobr.dup] : []);
+  const det = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det].filter(Boolean);
 
-    const duplicataAlertaHtml = `
-        <div class="alert alert-warning shadow-sm p-3" role="alert">
-            <h4 class="alert-heading">Nota Fiscal Duplicada!</h4>
-            <p>Esta nota fiscal jÃ¡ existe no sistema. VocÃª pode revisar os dados abaixo.</p>
-            <hr>
-            <p class="mb-0">Deseja importÃ¡-la novamente e substituir os dados existentes?</p>
-            <div class="mt-3">
-                <button id="btn-confirmar-duplicata" class="btn btn-warning me-2">Sim, importar novamente</button>
-                <button id="btn-cancelar-duplicata" class="btn btn-danger">NÃ£o, cancelar</button>
-            </div>
+  const duplicataHtml = `
+    <div class="alert alert-warning shadow-sm p-3" role="alert">
+      <h4 class="alert-heading">Nota Fiscal Duplicada</h4>
+      <p>Esta nota fiscal ja existe no sistema. Voce pode revisar os dados abaixo.</p>
+      <hr>
+      <p class="mb-0">Deseja importar novamente e substituir os dados existentes?</p>
+      <div class="mt-3">
+        <button id="btn-confirmar-duplicata" class="btn btn-warning me-2">Sim, importar novamente</button>
+        <button id="btn-cancelar-duplicata" class="btn btn-danger">Nao, cancelar</button>
+      </div>
+    </div>
+  `;
+
+  const acoesHtml = `
+    <div class="d-flex justify-content-end mt-4">
+      ${itens_para_revisar.length > 0 ? '<button id="btn-revisar-categorias" class="btn btn-info me-2">Revisar Categorias</button>' : ''}
+      <button id="btn-finalizar-importacao" class="btn btn-primary">Finalizar Importacao</button>
+    </div>
+  `;
+
+  previewDiv.innerHTML = `
+    ${is_duplicate ? duplicataHtml : ''}
+    ${!is_duplicate && itens_para_revisar.length > 0 ? `<div class="alert alert-info"><strong>Revisao Necessaria:</strong> Existem ${itens_para_revisar.length} novo(s) produto(s) que precisam de categoria.</div>` : ''}
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header"><h5 class="mb-0">Dados Principais</h5></div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6"><p><strong>Emitente:</strong> ${emit.xNome || 'N/A'}</p></div>
+          <div class="col-md-6"><p><strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p></div>
         </div>
-    `;
-
-    const acoesFinaisHtml = `
-        <div class="d-flex justify-content-end mt-4">
-            ${itens_para_revisar.length > 0 ? `<button id="btn-revisar-categorias" class="btn btn-info me-2">Revisar Categorias</button>` : ''}
-            <button id="btn-finalizar-importacao" class="btn btn-primary">Finalizar ImportaÃ§Ã£o</button>
+        <div class="row">
+          <div class="col-md-4"><p><strong>Nota Fiscal:</strong> ${infNFe.ide?.nNF || 'N/A'}</p></div>
+          <div class="col-md-8"><p><strong>Chave de Acesso:</strong> <small>${dados.chave_acesso || 'N/A'}</small></p></div>
         </div>
-    `;
-
-    previewDiv.innerHTML = `
-        ${is_duplicate ? duplicataAlertaHtml : ''}
-        ${!is_duplicate && itens_para_revisar.length > 0 ? `<div class="alert alert-info"><strong>RevisÃ£o NecessÃ¡ria:</strong> Existem ${itens_para_revisar.length} novo(s) produto(s) que precisam de categoria.</div>` : ''}
-        
-        <div class="card mb-3 shadow-sm">
-            <div class="card-header"><h5 class="mb-0">Dados Principais</h5></div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6"><p><strong>Emitente:</strong> ${emit.xNome || 'N/A'}</p></div>
-                    <div class="col-md-6"><p><strong>CNPJ:</strong> ${emit.CNPJ || 'N/A'}</p></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-4"><p><strong>Nota Fiscal:</strong> ${infNFe.ide?.nNF || 'N/A'}</p></div>
-                    <div class="col-md-8"><p><strong>Chave de Acesso:</strong> <small>${dados.chave_acesso || 'N/A'}</small></p></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-4"><p><strong>Data EmissÃ£o:</strong> ${formatarData(infNFe.ide?.dhEmi)}</p></div>
-                    <div class="col-md-4"><p><strong>Data SaÃ­da/Entrada:</strong> ${formatarData(infNFe.ide?.dhSaiEnt)}</p></div>
-                    <div class="col-md-4"><p><strong>Valor Total:</strong> ${formatarMoeda(total.vNF)}</p></div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="col-md-6"><p><strong>DestinatÃ¡rio:</strong> ${dest.xNome || 'N/A'}</p></div>
-                    <div class="col-md-6"><p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p></div>
-                </div>
-            </div>
+        <div class="row">
+          <div class="col-md-4"><p><strong>Data Emissao:</strong> ${formatarData(infNFe.ide?.dhEmi)}</p></div>
+          <div class="col-md-4"><p><strong>Data Saida/Entrada:</strong> ${formatarData(infNFe.ide?.dhSaiEnt)}</p></div>
+          <div class="col-md-4"><p><strong>Valor Total:</strong> ${formatarMoeda(total.vNF)}</p></div>
         </div>
+        <hr>
+        <div class="row">
+          <div class="col-md-6"><p><strong>Destinatario:</strong> ${dest.xNome || 'N/A'}</p></div>
+          <div class="col-md-6"><p><strong>CNPJ/CPF:</strong> ${dest.CNPJ || dest.CPF || 'N/A'}</p></div>
+        </div>
+      </div>
+    </div>
 
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h5 class="mb-0">Itens</h5></div><div class="table-responsive"><table class="table table-sm table-striped table-hover mb-0"><thead><tr><th>#</th><th class="text-start">CÃ³d. Fornecedor</th><th>DescriÃ§Ã£o</th><th class="text-end">Qtd.</th><th class="text-end">Vlr. Unit.</th><th class="text-end">Vlr. Total</th><th>Status</th></tr></thead><tbody>
-                        ${det.map(item => `<tr><td>${item.nItem}</td><td>${item.prod.cProd}</td><td>${item.prod.xProd}</td><td class="text-end">${parseFloat(item.prod.qCom).toFixed(2)}</td><td class="text-end">${formatarMoeda(item.prod.vUnCom)}</td><td class="text-end">${formatarMoeda(item.prod.vProd)}</td><td>${itens_para_revisar.some(p => p.codigo_produto === item.prod.cProd) ? '<span class="badge bg-warning">Revisar</span>' : '<span class="badge bg-success">OK</span>'}</td></tr>`).join('')}
-                    </tbody></table></div></div>
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Faturamento (Duplicatas)</h6></div><div class="table-responsive"><table class="table table-sm table-striped mb-0"><thead><tr><th>NÃºmero</th><th>Vencimento</th><th class="text-end">Valor</th></tr></thead><tbody>
-                        ${dup.length > 0 ? dup.map(d => `<tr><td>${d.nDup || 'N/A'}</td><td>${formatarData(d.dVenc)}</td><td class="text-end">${formatarMoeda(d.vDup)}</td></tr>`).join('') : '<tr><td colspan="3" class="text-center">Nenhuma duplicata encontrada.</td></tr>'}
-                    </tbody></table></div></div>
-        <div class="card mb-3 shadow-sm"><div class="card-header"><h6 class="mb-0">Transporte</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>Transportadora:</strong> ${transp.transporta?.xNome || 'N/A'}</p></div><div class="col-md-6"><p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div><div class="col-md-6"><p><strong>Valor do Frete:</strong> ${formatarMoeda(transp.retTransp?.vServ)}</p></div><div class="col-md-3"><p><strong>Placa:</strong> ${transp.veicTransp?.placa || 'N/A'}</p></div><div class="col-md-3"><p><strong>UF:</strong> ${transp.veicTransp?.UF || 'N/A'}</p></div><div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${transp.vol?.qVol || 'N/A'}</p></div><div class="col-md-4"><p><strong>Peso LÃ­quido:</strong> ${transp.vol?.pesoL || 'N/A'} kg</p></div><div class="col-md-4"><p><strong>Peso Bruto:</strong> ${transp.vol?.pesoB || 'N/A'} kg</p></div></div></div></div>
-        
-        ${!is_duplicate ? acoesFinaisHtml : ''}
-    `;
-    adicionarEventListenersBotoes();
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header"><h5 class="mb-0">Itens</h5></div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th class="text-start">Cod. Fornecedor</th>
+              <th>Descricao</th>
+              <th class="text-end">Qtd.</th>
+              <th class="text-end">Vlr. Unit.</th>
+              <th class="text-end">Vlr. Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${det.map((item) => `
+              <tr>
+                <td>${item.nItem}</td>
+                <td>${item.prod.cProd}</td>
+                <td>${item.prod.xProd}</td>
+                <td class="text-end">${parseFloat(item.prod.qCom).toFixed(2)}</td>
+                <td class="text-end">${formatarMoeda(item.prod.vUnCom)}</td>
+                <td class="text-end">${formatarMoeda(item.prod.vProd)}</td>
+                <td>${itens_para_revisar.some((p) => p.codigo_produto === item.prod.cProd) ? '<span class="badge bg-warning">Revisar</span>' : '<span class="badge bg-success">OK</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header"><h6 class="mb-0">Faturamento (Duplicatas)</h6></div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Numero</th>
+              <th>Vencimento</th>
+              <th class="text-end">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dup.length > 0
+              ? dup.map((d) => `<tr><td>${d.nDup || 'N/A'}</td><td>${formatarData(d.dVenc)}</td><td class="text-end">${formatarMoeda(d.vDup)}</td></tr>`).join('')
+              : '<tr><td colspan="3" class="text-center">Nenhuma duplicata encontrada.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header"><h6 class="mb-0">Transporte</h6></div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6"><p><strong>Transportadora:</strong> ${transp.transporta?.xNome || 'N/A'}</p></div>
+          <div class="col-md-6"><p><strong>Modalidade do Frete:</strong> ${getModalidadeFrete(transp.modFrete)}</p></div>
+          <div class="col-md-6"><p><strong>Valor do Frete:</strong> ${formatarMoeda(transp.retTransp?.vServ)}</p></div>
+          <div class="col-md-3"><p><strong>Placa:</strong> ${transp.veicTransp?.placa || 'N/A'}</p></div>
+          <div class="col-md-3"><p><strong>UF:</strong> ${transp.veicTransp?.UF || 'N/A'}</p></div>
+          <div class="col-md-4"><p><strong>Qtd. Volumes:</strong> ${transp.vol?.qVol || 'N/A'}</p></div>
+          <div class="col-md-4"><p><strong>Peso Liquido:</strong> ${transp.vol?.pesoL || 'N/A'} kg</p></div>
+          <div class="col-md-4"><p><strong>Peso Bruto:</strong> ${transp.vol?.pesoB || 'N/A'} kg</p></div>
+        </div>
+      </div>
+    </div>
+
+    ${!is_duplicate ? acoesHtml : ''}
+  `;
+
+  adicionarEventListenersBotoes();
 }
 
 function renderizarItensParaRevisao() {
-    const corpoModal = document.getElementById('corpoModalRevisao');
-    if (!corpoModal) return;
-    corpoModal.innerHTML = dadosNotaFiscal.itens_para_revisar.map(item => `
-        <div class="row mb-3 border-bottom pb-3"><div class="col-md-5"><strong>CÃ³d. Fornecedor:</strong> ${item.codigo_produto}<br><strong>DescriÃ§Ã£o:</strong> ${item.descricao_produto}</div><div class="col-md-3"><strong>NCM:</strong> ${item.ncm}</div><div class="col-md-4"><label for="categoria-${item.codigo_produto}" class="form-label">Categoria:</label><select id="categoria-${item.codigo_produto}" class="form-select form-select-sm categoria-select" data-item-codigo="${item.codigo_produto}" required><option value="" selected disabled>Selecione...</option>${todasCategorias.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('')}</select></div></div>
-    `).join('');
+  const corpoModal = document.getElementById('corpoModalRevisao');
+  if (!corpoModal || !dadosNotaFiscal) return;
+  corpoModal.innerHTML = dadosNotaFiscal.itens_para_revisar.map((item) => `
+    <div class="row mb-3 border-bottom pb-3">
+      <div class="col-md-5">
+        <strong>Cod. Fornecedor:</strong> ${item.codigo_produto}<br>
+        <strong>Descricao:</strong> ${item.descricao_produto}
+      </div>
+      <div class="col-md-3"><strong>NCM:</strong> ${item.ncm}</div>
+      <div class="col-md-4">
+        <label for="categoria-${item.codigo_produto}" class="form-label">Categoria:</label>
+        <select id="categoria-${item.codigo_produto}" class="form-select form-select-sm categoria-select" data-item-codigo="${item.codigo_produto}" required>
+          <option value="" selected disabled>Selecione...</option>
+          ${todasCategorias.map((cat) => `<option value="${cat.id}">${cat.nome}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `).join('');
 }
 
 function adicionarEventListenersBotoes() {
-    // Listeners para o fluxo normal
-    document.getElementById('btn-revisar-categorias')?.addEventListener('click', () => { renderizarItensParaRevisao(); new bootstrap.Modal(document.getElementById('revisaoCategoriasModal')).show(); });
-    document.getElementById('btn-finalizar-importacao')?.addEventListener('click', () => finalizarImportacao(false));
+  document.getElementById('btn-revisar-categorias')?.addEventListener('click', () => {
+    renderizarItensParaRevisao();
+    new bootstrap.Modal(document.getElementById('revisaoCategoriasModal')).show();
+  });
 
-    // Listeners para o fluxo de duplicata
-    document.getElementById('btn-confirmar-duplicata')?.addEventListener('click', () => finalizarImportacao(true));
-    document.getElementById('btn-cancelar-duplicata')?.addEventListener('click', resetarInterface);
+  document.getElementById('btn-finalizar-importacao')?.addEventListener('click', () => finalizarImportacao(false));
+  document.getElementById('btn-confirmar-duplicata')?.addEventListener('click', () => finalizarImportacao(true));
+  document.getElementById('btn-cancelar-duplicata')?.addEventListener('click', resetarInterface);
 }
 
 function salvarCategoriasRevisadas() {
-    const selects = document.querySelectorAll('.categoria-select');
-    const categoriasSelecionadas = {};
-    if (Array.from(selects).some(s => !s.value)) { mostrarMensagem('warning', 'AtenÃ§Ã£o', 'Selecione uma categoria para todos os itens.'); return; }
-    selects.forEach(s => { categoriasSelecionadas[s.dataset.itemCodigo] = { categoria_id: s.value }; });
-    dadosNotaFiscal.itens_para_revisar.forEach(item => { item.categoria_id = categoriasSelecionadas[item.codigo_produto].categoria_id; });
-    bootstrap.Modal.getInstance(document.getElementById('revisaoCategoriasModal'))?.hide();
-    mostrarMensagem('success', 'Sucesso', 'Categorias salvas.');
+  const selects = document.querySelectorAll('.categoria-select');
+  const categoriasSelecionadas = {};
+  if (Array.from(selects).some((s) => !s.value)) {
+    toast('warning', 'Atencao', 'Selecione uma categoria para todos os itens.');
+    return;
+  }
+  selects.forEach((s) => {
+    categoriasSelecionadas[s.dataset.itemCodigo] = { categoria_id: s.value };
+  });
+  dadosNotaFiscal.itens_para_revisar.forEach((item) => {
+    item.categoria_id = categoriasSelecionadas[item.codigo_produto].categoria_id;
+  });
+  bootstrap.Modal.getInstance(document.getElementById('revisaoCategoriasModal'))?.hide();
+  toast('success', 'Sucesso', 'Categorias salvas.');
 }
 
 function finalizarImportacao(force = false) {
-    const apiUrl = document.getElementById('preview-nota')?.dataset.processarUrl;
-    if (!apiUrl) { mostrarMensagem('error', 'Erro', 'URL de processamento nÃ£o encontrada.'); return; }
+  const apiUrl = document.getElementById('preview-nota')?.dataset.processarUrl;
+  if (!apiUrl) {
+    toast('error', 'Erro', 'URL de processamento nao encontrada.');
+    return;
+  }
 
-    mostrarLoading("Processando e salvando a nota fiscal...");
-    const payload = { ...dadosNotaFiscal, force_update: force };
+  mostrarLoading('Processando e salvando a nota fiscal...');
+  const payload = { ...dadosNotaFiscal, force_update: force };
 
-    fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }, body: JSON.stringify(payload) })
-    .then(res => res.json()).then(data => {
-        ocultarLoading();
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: data.message,
-                confirmButtonText: 'OK'
-            }).then(() => {
-                window.location.href = data.redirect_url || '/nota-fiscal/entradas/';
-            });
-        } else { throw new Error(data.message); }
-    }).catch(err => { ocultarLoading(); mostrarMensagem('error', 'Erro ao Salvar', err.message); });
+  fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      ocultarLoading();
+      if (!data.success) throw new Error(data.message);
+      Swal.fire({
+        icon: 'success',
+        title: 'Sucesso',
+        text: data.message,
+        confirmButtonText: 'OK',
+      }).then(() => {
+        window.location.href = data.redirect_url || '/nota-fiscal/entradas/';
+      });
+    })
+    .catch((err) => {
+      ocultarLoading();
+      toast('error', 'Erro ao salvar', err.message || 'Falha na importacao');
+    });
 }
 
 function handleFormSubmit(e) {
-    e.preventDefault();
-    e.stopPropagation(); // Impede que o evento se propague para o listener global em scripts.js
+  e.preventDefault();
+  e.stopPropagation();
 
-    const form = e.target;
-    fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
-    .then(res => { 
-        if (!res.ok) return res.json().then(err => { throw new Error(err.message); }); 
-        return res.json(); 
+  const form = e.target;
+  mostrarLoading('Lendo XML...');
+  fetch(form.action, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCSRFToken(),
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new FormData(form),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        return res.json().then((err) => {
+          throw new Error(err.message);
+        });
+      }
+      return res.json();
     })
-    .then(data => { 
-        if (data.success) { 
-            dadosNotaFiscal = data; 
-            renderizarPreviewNota(data);
-        } else { 
-            throw new Error(data.message); 
-        } 
-        ocultarLoading(); // Oculta o loading APÃ“S a renderizaÃ§Ã£o ou erro de dados
+    .then((data) => {
+      ocultarLoading();
+      if (!data.success) throw new Error(data.message);
+      dadosNotaFiscal = data;
+      renderizarPreviewNota(data);
     })
-    .catch(err => { 
-        ocultarLoading(); 
-        mostrarMensagem('error', 'Erro de Upload', err.message); 
+    .catch((err) => {
+      ocultarLoading();
+      toast('error', 'Erro de upload', err.message || 'Falha ao processar XML');
     });
 }
 
 function initImportarXml() {
-    const form = document.getElementById('form-importar-xml');
-    if (!form) {
-        return; // Sai se o formulÃ¡rio nÃ£o existe.
-    }
+  const form = document.getElementById('form-importar-xml');
+  if (!form) return;
+  if (form.dataset.initialized === 'true') return;
 
-    // Verifica se o listener jÃ¡ foi adicionado usando um atributo de dados.
-    if (form.dataset.initialized === 'true') {
-        return;
-    }
-    form.dataset.initialized = 'true'; // Marca o formulÃ¡rio como inicializado.
-    form.dataset.skipGlobal = '1'; // Evita o handler genÃ©rico global
-    form.addEventListener('submit', handleFormSubmit);
+  form.dataset.initialized = 'true';
+  form.dataset.skipGlobal = '1';
+  form.addEventListener('submit', handleFormSubmit);
 
-    const categoriasDataEl = document.getElementById('categorias-data');
-    const telaRoot = document.querySelector('#identificador-tela[data-tela="importar_xml"]');
-    const categoriasJson = categoriasDataEl?.textContent || telaRoot?.dataset?.categoriasJson || '';
-    if (categoriasJson) {
-        try {
-            todasCategorias = JSON.parse(categoriasJson);
-        } catch (e) {
-            console.error('Erro ao parsear categorias JSON:', e);
-            todasCategorias = [];
-        }
+  const telaRoot = document.querySelector('#identificador-tela[data-tela="importar_xml"]');
+  const categoriasJson = telaRoot?.dataset?.categoriasJson || '';
+  if (categoriasJson) {
+    try {
+      todasCategorias = JSON.parse(categoriasJson);
+    } catch (err) {
+      console.error('Erro ao parsear categorias JSON:', err);
+      todasCategorias = [];
     }
+  }
 }
 
-// Garante que o script rode apÃ³s o carregamento do conteÃºdo, mesmo em navegaÃ§Ã£o AJAX
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initImportarXml);
+  document.addEventListener('DOMContentLoaded', initImportarXml);
 } else {
-    initImportarXml();
+  initImportarXml();
 }
 document.addEventListener('ajaxContentLoaded', initImportarXml);
-
-
-
 

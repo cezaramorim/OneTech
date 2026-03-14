@@ -1678,6 +1678,30 @@ function initEmitirNfeList(root = document) {
         })
           .then(response => response.json())
           .then(data => {
+            const buildGateDetailsHtml = () => {
+              const errors = Array.isArray(data.errors) ? data.errors : [];
+              const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+              const snapshot = data.snapshot || {};
+
+              const renderList = (items, title, cssClass) => {
+                if (!items.length) return '';
+                const rows = items
+                  .map((item) => {
+                    const field = item.field ? `<strong>[${item.field}]</strong> ` : '';
+                    const msg = item.message || '';
+                    return `<li>${field}${msg}</li>`;
+                  })
+                  .join('');
+                return `<div class="text-start mb-2"><div class="${cssClass} fw-semibold">${title}</div><ul class="mb-0 ps-3">${rows}</ul></div>`;
+              };
+
+              const snapshotText = snapshot && Object.keys(snapshot).length
+                ? `<div class="text-start small text-muted mt-2">Snapshot: nota_id=${snapshot.nota_id || '-'}, itens=${snapshot.itens_count || 0}, duplicatas=${snapshot.duplicatas_count || 0}</div>`
+                : '';
+
+              return `${renderList(errors, 'Erros de validacao', 'text-danger')}${renderList(warnings, 'Avisos', 'text-warning')}${snapshotText}`;
+            };
+
             if (data.success) {
               Swal.fire({
                 icon: 'success',
@@ -1693,8 +1717,9 @@ function initEmitirNfeList(root = document) {
             } else {
               Swal.fire({
                 icon: 'error',
-                title: 'Erro!',
-                text: data.message || 'Ocorreu um erro ao enviar a nota.'
+                title: 'Emissao bloqueada',
+                html: `<div>${data.message || 'Ocorreu um erro ao enviar a nota.'}</div>${buildGateDetailsHtml()}`,
+                width: 720
               });
             }
           })

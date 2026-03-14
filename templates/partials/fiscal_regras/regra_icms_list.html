@@ -1,4 +1,5 @@
-<div class="container-fluid px-4 pb-4 pt-0" data-page="regra_icms_list" data-list-controller="unified-list" data-list-url="{% url 'fiscal_regras:regra_icms_list' %}">
+﻿{% load static %}
+<div class="container-fluid px-4 pb-4 pt-0" data-page="regra_icms_list" data-list-controller="unified-list" data-list-url="{% url 'fiscal_regras:regra_icms_list' %}" data-import-url="{% url 'fiscal_regras:importar_regras' %}" data-validar-url="{% url 'fiscal_regras:validar_regras' %}">
     <div class="card shadow-sm mb-4 title-card">
         <div class="card-header bg-light">
             <h2 class="h4 mb-0 text-primary"><i class="bi bi-diagram-3 me-2"></i>Regras ICMS por NCM</h2>
@@ -14,6 +15,34 @@
             {% if perms.fiscal_regras.add_regraaliquotaicms %}<a href="{% url 'fiscal_regras:regra_icms_create' %}" class="btn btn-success">Nova Regra</a>{% endif %}
             {% if perms.fiscal_regras.change_regraaliquotaicms %}<button id="btn-editar-selecionado" class="btn btn-primary" disabled data-edit-url-base="{% url 'fiscal_regras:regra_icms_update' 0 %}">Editar selecionado</button>{% endif %}
             {% if perms.fiscal_regras.delete_regraaliquotaicms %}<button id="btn-excluir-selecionados" class="btn btn-danger" disabled data-delete-url="{% url 'fiscal_regras:delete_regras_icms' %}" data-item-type="regra_icms">Excluir selecionados</button>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm content-card fiscal-regras-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Operacao do Motor</strong>
+            <small class="text-muted">Importacao, validacao e metricas</small>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Arquivo JSON de Regras</label>
+                    <input type="file" id="import-regras-file" class="form-control" accept="application/json,.json">
+                </div>
+                <div class="col-md-7 d-flex flex-wrap gap-2">
+                    {% if perms.fiscal_regras.add_regraaliquotaicms %}<button type="button" class="btn btn-primary" id="btn-importar-regras">Importar JSON</button>{% endif %}
+                    {% if perms.fiscal_regras.view_regraaliquotaicms %}<button type="button" class="btn btn-outline-secondary" id="btn-validar-regras">Validar Regras</button>{% endif %}
+                    {% if perms.fiscal_regras.view_regraaliquotaicms %}<a href="{% url 'fiscal_regras:exportar_regras' %}" class="btn btn-outline-info" target="_blank" rel="noopener">Exportar JSON</a>{% endif %}
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-3"><small class="text-muted d-block">Execucoes</small><strong data-metric="total">{{ resolver_metrics.total|default:0 }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Regras aplicadas</small><strong data-metric="found">{{ resolver_metrics.found|default:0 }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Fallbacks</small><strong data-metric="fallback">{{ resolver_metrics.fallback|default:0 }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Tempo medio (ms)</small><strong data-metric="duration_avg_ms">{{ resolver_metrics.duration_avg_ms|default:0 }}</strong></div>
+            </div>
+            <pre class="security-audit-output mt-3 mb-0" id="fiscal-regras-output">Pronto para operacao.</pre>
         </div>
     </div>
 
@@ -62,3 +91,5 @@
         </div>
     </div>
 </div>
+<link rel="stylesheet" href="{% static 'fiscal_regras/css/fiscal_regras.css' %}">
+<script src="{% static 'fiscal_regras/js/fiscal_regras.js' %}"></script>

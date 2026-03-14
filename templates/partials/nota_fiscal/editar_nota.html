@@ -1338,6 +1338,36 @@
         }
     }
 
+    function getDiasByCondicao(parcelas) {
+        const safeParcelas = Math.max(parseInt(parcelas || '1', 10) || 1, 1);
+        if (!condicaoPagamentoField) {
+            return Array.from({ length: safeParcelas }, (_, idx) => idx * 30);
+        }
+
+        const selected = condicaoPagamentoField.options[condicaoPagamentoField.selectedIndex];
+        const rawDias = ((selected && selected.dataset) ? (selected.dataset.dias || '') : '').trim();
+        const numeros = (rawDias.match(/\d+/g) || [])
+            .map((v) => parseInt(v, 10))
+            .filter((v) => !Number.isNaN(v) && v >= 0);
+
+        if (!numeros.length) {
+            const descricao = String(((selected && selected.dataset) ? (selected.dataset.descricao || '') : '')).toLowerCase();
+            if (descricao.includes('a vista') || descricao.includes('avista')) {
+                return Array.from({ length: safeParcelas }, (_, idx) => (idx === 0 ? 0 : idx * 30));
+            }
+            return Array.from({ length: safeParcelas }, (_, idx) => idx * 30);
+        }
+
+        if (numeros.length >= safeParcelas) return numeros.slice(0, safeParcelas);
+        if (numeros.length === 1) return Array.from({ length: safeParcelas }, (_, idx) => numeros[0] * (idx + 1));
+
+        const dias = [...numeros];
+        while (dias.length < safeParcelas) {
+            dias.push((dias[dias.length - 1] || 0) + 30);
+        }
+        return dias.slice(0, safeParcelas);
+    }
+
 
 
     function addDays(date, days) {
@@ -1474,6 +1504,7 @@
             ? new Date(`${dataEmissaoField.value}T00:00:00`)
 
             : new Date();
+        const diasPorParcela = getDiasByCondicao(parcelas);
 
 
 
@@ -1493,8 +1524,8 @@
             if (numeroField && (!numeroField.value || /^\d+$/.test(numeroField.value))) {
                 numeroField.value = String(idx + 1).padStart(3, '0');
             }
-            if (vencimentoField && !vencimentoField.value) {
-                vencimentoField.value = formatDateISO(addDays(baseDate, idx * 30));
+            if (vencimentoField) {
+                vencimentoField.value = formatDateISO(addDays(baseDate, diasPorParcela[idx] || 0));
             }
             if (valorField) {
                 const raw = formatNumber(parcelaValor);
