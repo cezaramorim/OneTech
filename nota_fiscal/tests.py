@@ -2,6 +2,7 @@ import json
 from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth.models import Permission
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
@@ -9,8 +10,9 @@ from django.urls import reverse
 
 from control.models import Emitente
 from empresas.models import Empresa
-from nota_fiscal.models import DuplicataNotaFiscal, ItemNotaFiscal, NotaFiscal
+from nota_fiscal.models import DuplicataNotaFiscal, ItemNotaFiscal, NotaFiscal, TransporteNotaFiscal
 from nota_fiscal.services.pre_emissao import validar_nota_pre_emissao
+from nota_fiscal.views import _get_emitente_ativo_id
 from produto.models import Produto
 
 
@@ -343,3 +345,243 @@ class PreEmissaoDuplicatasTests(TestCase):
         campos = [erro.get('field') for erro in resultado.get('errors', [])]
         self.assertIn('duplicatas', campos)
         self.assertIn('duplicata_1.vencimento', campos)
+
+
+class NotaFiscalFluxoE2ETests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.superuser = User.objects.create_superuser(
+            username='nf_e2e_super',
+            email='nf_e2e_super@example.com',
+            password='secret123',
+        )
+        self.user_sem_override = User.objects.create_user(
+            username='nf_e2e_user',
+            email='nf_e2e_user@example.com',
+            password='secret123',
+        )
+        self.user_com_override = User.objects.create_user(
+            username='nf_e2e_override',
+            email='nf_e2e_override@example.com',
+            password='secret123',
+        )
+
+        self.user_sem_override.user_permissions.add(
+            Permission.objects.get(codename='change_notafiscal')
+        )
+        self.user_com_override.user_permissions.add(
+            Permission.objects.get(codename='change_notafiscal'),
+            Permission.objects.get(codename='override_aliquota_item'),
+        )
+
+        self.emitente_padrao = Emitente.objects.create(
+            razao_social='Emitente E2E Padrao',
+            cnpj='77777777000191',
+            is_default=True,
+            uf='SP',
+        )
+        self.emitente_secundario = Emitente.objects.create(
+            razao_social='Emitente E2E Secundario',
+            cnpj='88888888000191',
+            is_default=False,
+            uf='SP',
+        )
+        self.destinatario = Empresa.objects.create(
+            tipo_empresa='pj',
+            razao_social='Cliente E2E',
+            cnpj='99999999000191',
+            uf='SP',
+            cliente=True,
+            status_empresa='ativa',
+        )
+
+    def _criar_nota_saida_com_relacoes(self, numero, emitente):
+        nota = NotaFiscal.objects.create(
+            numero=str(numero),
+            chave_acesso=str(numero).zfill(44),
+            natureza_operacao='Venda E2E',
+            tipo_operacao='1',
+            finalidade_emissao='1',
+            modelo_documento='55',
+            ambiente='2',
+            data_emissao=date(2026, 3, 14),
+            data_saida=date(2026, 3, 14),
+            emitente_proprio_id=emitente.id,
+            destinatario_id=self.destinatario.id,
+            condicao_pagamento='A vista',
+            quantidade_parcelas=1,
+            valor_total_nota=Decimal('100.00'),
+            valor_total_desconto=Decimal('0.00'),
+        )
+        item = ItemNotaFiscal.objects.create(
+            nota_fiscal=nota,
+            codigo='PRD001',
+            descricao='Produto E2E',
+            ncm='23099010',
+            cfop='5102',
+            unidade='UN',
+            quantidade=Decimal('1.000000'),
+            valor_unitario=Decimal('100.000000'),
+            valor_total=Decimal('100.000000'),
+            desconto=Decimal('0.000000'),
+            aliquota_icms=Decimal('18.00'),
+        )
+        duplicata = DuplicataNotaFiscal.objects.create(
+            nota_fiscal=nota,
+            numero='001',
+            valor=Decimal('100.00'),
+            vencimento=date(2026, 3, 14),
+        )
+        transporte = TransporteNotaFiscal.objects.create(
+            nota_fiscal=nota,
+            modalidade_frete='0',
+            transportadora_nome='Transportadora E2E',
+            transportadora_cnpj='12345678000199',
+            quantidade_volumes=1,
+            especie_volumes='CAIXA',
+            peso_liquido=Decimal('10.0000'),
+            peso_bruto=Decimal('12.0000'),
+        )
+        return nota, item, duplicata, transporte
+
+    def _payload_edicao(self, nota, item, duplicata, transporte, manual_override):
+        payload = {
+            'numero': nota.numero,
+            'emitente_proprio': str(nota.emitente_proprio_id),
+            'destinatario': str(nota.destinatario_id),
+            'tipo_operacao': '1',
+            'finalidade_emissao': '1',
+            'data_emissao': '2026-03-14',
+            'data_saida': '2026-03-14',
+            'natureza_operacao': '',
+            'condicao_pagamento': '',
+            'quantidade_parcelas': '1',
+            'valor_total_desconto': '0.00',
+            'valor_total_nota': '100.00',
+            'informacoes_adicionais': 'E2E-edicao',
+
+            'items-TOTAL_FORMS': '1',
+            'items-INITIAL_FORMS': '1',
+            'items-MIN_NUM_FORMS': '0',
+            'items-MAX_NUM_FORMS': '1000',
+            'items-0-id': str(item.id),
+            'items-0-codigo': item.codigo,
+            'items-0-descricao': item.descricao,
+            'items-0-ncm': item.ncm,
+            'items-0-cfop': item.cfop,
+            'items-0-unidade': item.unidade,
+            'items-0-quantidade': '1.000000',
+            'items-0-valor_unitario': '100.000000',
+            'items-0-valor_total': '100.000000',
+            'items-0-desconto': '0.000000',
+            'items-0-aliquota_icms': '18.00',
+            'items-0-aliquota_ipi': '',
+            'items-0-aliquota_pis': '',
+            'items-0-aliquota_cofins': '',
+            'items-0-regra_icms_aplicada': '',
+            'items-0-regra_icms_descricao': '',
+            'items-0-aliquota_icms_origem': 'manual' if manual_override else '',
+            'items-0-motor_versao': '',
+            'items-0-dados_contexto_regra': '{"manual_override": true}' if manual_override else '',
+            'duplicatas-TOTAL_FORMS': '1',
+            'duplicatas-INITIAL_FORMS': '1',
+            'duplicatas-MIN_NUM_FORMS': '0',
+            'duplicatas-MAX_NUM_FORMS': '1000',
+            'duplicatas-0-id': str(duplicata.id),
+            'duplicatas-0-numero': duplicata.numero,
+            'duplicatas-0-vencimento': duplicata.vencimento.isoformat(),
+            'duplicatas-0-valor': '100.00',
+
+            'transporte-TOTAL_FORMS': '1',
+            'transporte-INITIAL_FORMS': '1',
+            'transporte-MIN_NUM_FORMS': '0',
+            'transporte-MAX_NUM_FORMS': '1',
+            'transporte-0-id': str(transporte.id),
+            'transporte-0-modalidade_frete': transporte.modalidade_frete or '0',
+            'transporte-0-transportadora': '',
+            'transporte-0-transportadora_nome': transporte.transportadora_nome or '',
+            'transporte-0-transportadora_cnpj': transporte.transportadora_cnpj or '',
+            'transporte-0-placa_veiculo': '',
+            'transporte-0-uf_veiculo': '',
+            'transporte-0-rntc': '',
+            'transporte-0-quantidade_volumes': str(transporte.quantidade_volumes or 0),
+            'transporte-0-especie_volumes': transporte.especie_volumes or '',
+            'transporte-0-peso_liquido': str(transporte.peso_liquido or 0),
+            'transporte-0-peso_bruto': str(transporte.peso_bruto or 0),
+        }
+        return payload
+
+    def test_e2e_listagem_busca_default_e_tenant(self):
+        nota_ok, _, _, _ = self._criar_nota_saida_com_relacoes(4001, self.emitente_padrao)
+        nota_outro, _, _, _ = self._criar_nota_saida_com_relacoes(5001, self.emitente_secundario)
+        self.client.force_login(self.superuser)
+
+        response_default = self.client.get(reverse('nota_fiscal:emitir_nfe_list'), {'busca': '4001'})
+        self.assertEqual(response_default.status_code, 200)
+        self.assertContains(response_default, nota_ok.numero)
+        self.assertNotContains(response_default, nota_outro.numero)
+
+    def test_e2e_resolucao_emitente_ativo_com_tenant(self):
+        class DummyTenant:
+            emitente_padrao_id = 123
+
+        class DummyRequest:
+            tenant = DummyTenant()
+
+        self.assertEqual(_get_emitente_ativo_id(DummyRequest()), 123)
+
+    def test_e2e_edicao_bloqueia_override_sem_permissao(self):
+        nota, item, duplicata, transporte = self._criar_nota_saida_com_relacoes(6001, self.emitente_padrao)
+        self.client.force_login(self.user_sem_override)
+        response = self.client.post(
+            reverse('nota_fiscal:editar_nota', kwargs={'pk': nota.pk}),
+            data=self._payload_edicao(nota, item, duplicata, transporte, manual_override=True),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Permissao insuficiente para override manual de aliquota')
+
+    def test_e2e_edicao_permite_override_com_permissao(self):
+        nota, item, duplicata, transporte = self._criar_nota_saida_com_relacoes(7001, self.emitente_padrao)
+        self.client.force_login(self.user_com_override)
+        response = self.client.post(
+            reverse('nota_fiscal:editar_nota', kwargs={'pk': nota.pk}),
+            data=self._payload_edicao(nota, item, duplicata, transporte, manual_override=True),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('nota_fiscal:emitir_nfe_list'), response.headers.get('Location', ''))
+
+    def test_e2e_importacao_xml_preview_e_processamento(self):
+        self.client.force_login(self.superuser)
+        xml_content = b"""<?xml version='1.0' encoding='UTF-8'?>
+<nfeProc>
+  <NFe>
+    <infNFe Id='NFe35100000000000000000550010000000012000000010'>
+      <ide><nNF>12</nNF><dhEmi>2026-03-14T10:00:00-03:00</dhEmi></ide>
+      <emit><xNome>Fornecedor E2E</xNome><CNPJ>12345678000190</CNPJ></emit>
+      <dest><xNome>Cliente E2E XML</xNome><CPF>12345678909</CPF></dest>
+      <total><ICMSTot><vNF>10.00</vNF></ICMSTot></total>
+      <det nItem='1'>
+        <prod><cProd>E2E001</cProd><xProd>Produto E2E XML</xProd><NCM>01012100</NCM></prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>
+"""
+        preview = self.client.post(
+            reverse('nota_fiscal:api_importar_xml_nfe'),
+            {'xml': SimpleUploadedFile('e2e.xml', xml_content, content_type='application/xml')}
+        )
+        self.assertEqual(preview.status_code, 200)
+        payload = preview.json()
+        self.assertTrue(payload.get('success'))
+        self.assertTrue(payload.get('raw_payload'))
+
+    def test_e2e_erro_amigavel_json_malformado(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse('nota_fiscal:excluir_nota_multiplo'),
+            data='{"ids":[1,2]',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('JSON', response.json().get('message', ''))
