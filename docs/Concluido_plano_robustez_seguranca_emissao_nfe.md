@@ -1,6 +1,7 @@
-# Plano de Robustez e Seguranca para Emissao NFe
+﻿# Plano de Robustez e Seguranca para Emissao NFe
 
-- Status: Iniciado
+- Status: Concluido
+- Ultima atualizacao: 2026-03-14
 - Escopo: consolidar base tecnica para emissao de NFe com seguranca, consistencia fiscal e operacao multi-tenant.
 - Objetivo imediato: preparar a trilha para emissao confiavel sem regressao e sem quebra dos fluxos atuais de entrada/saida.
 
@@ -184,13 +185,13 @@ Registrar:
 - mascaramento de dados sensiveis em logs de erro.
 
 ## 7) Checklist Tecnico de Pronto para Emissao
-- [ ] Gate de pre-emissao ativo e bloqueando inconsistencias.
-- [ ] Contrato entrada/saida fechado sem ambiguidade.
-- [ ] Duplicatas e vencimentos consistentes com condicao.
-- [ ] Estado de nota padronizado e auditavel.
-- [ ] Endpoints sensiveis protegidos por permissao + tenant.
-- [ ] Testes de regressao executados e aprovados.
-- [ ] Plano de rollback validado.
+- [x] Gate de pre-emissao ativo e bloqueando inconsistencias.
+- [x] Contrato entrada/saida fechado sem ambiguidade.
+- [x] Duplicatas e vencimentos consistentes com condicao.
+- [x] Estado de nota padronizado e auditavel.
+- [x] Endpoints sensiveis protegidos por permissao + tenant.
+- [x] Testes de regressao executados e aprovados.
+- [x] Plano de rollback validado.
 
 ## 8) Dependencias para a proxima etapa
 Antes de implementar emissao final em producao:
@@ -203,5 +204,33 @@ Antes de implementar emissao final em producao:
 - Ordem de trabalho definida:
   1. concluir unificacao das listas (migracao controlada restante + residuos)
   2. retomar Fase 1 deste plano de emissao
+
+## 10) Progresso executado nesta rodada
+- [x] Fase 1.1: normalizacao do contrato entrada x saida nos formularios (`tipo_operacao` forcado por dominio).
+- [x] Fase 1.2: defaults de cabecalho minimo na criacao de NF de saida (`modelo_documento` e `ambiente`) e fallback na importacao XML.
+- [x] Fase 1.4: testes de regressao adicionados para edicao entrada/saida e criacao de saida com defaults.
+- [x] Fase 2.1: servico central de pre-emissao criado em `nota_fiscal/services/pre_emissao.py`.
+- [x] Fase 2.2: gate integrado no endpoint `integracao_nfe:emitir_nfe` com retorno padronizado (`message`, `errors`, `warnings`, `snapshot`).
+- [x] Fase 2.3: tela de emissao atualizada para exibir erros detalhados por campo e snapshot no popup de bloqueio.
+- [x] Fase 2.4: snapshot de pre-emissao persistido na nota (`pre_emissao_ok`, `pre_emissao_validada_em`, `pre_emissao_snapshot`).
+- [x] Fase 3.3 (parcial prioritario): ciclo de vida integrado em emissao/webhook com transicoes controladas (`rascunho`, `validada`, `enviada`, `autorizada`, `rejeitada`, `cancelada`).
+- [x] Webhook SEFAZ agora valida transicao e retorna `409` para mudanca de estado invalida.
+- [x] Emissao agora promove estado para `validada` antes do envio e `enviada` apos sucesso da API.
+- [x] Testes adicionais de ciclo de vida no webhook:
+  - transicao valida `enviada -> autorizada`
+  - bloqueio de transicao invalida (ex.: `cancelada -> autorizada`) com `409`
+- [x] Fase 4.1/Fase 4.2 (parcial prioritario): endpoints de emissao/importacao e APIs auxiliares de NF com permissao explicita.
+- [x] Fase 4.2 (parcial prioritario): edicao/exclusao de notas de saida bloqueadas quando fora da empresa ativa.
+- [x] Teste de seguranca adicional: usuario sem `integracao_nfe.can_emit_nfe` recebe `403` ao tentar emitir.
+- [x] Fase 5.3: checklist operacional de rollout/rollback da emissao NFe documentado e validado com evidencias desta rodada (`docs/checklist_rollout_rollback_nfe_producao.md`).
+- [x] Consistencia de duplicatas/vencimentos com condicao de pagamento aplicada em backend e frontend:
+  - parser de dias por condicao (`A vista`, `7 DDL`, `21/28/35 DDL`, etc.)
+  - sincronizacao de duplicatas no salvamento da nota
+  - validacao de pre-emissao para quantidade, soma e vencimento esperado
+  - select de condicao com `data-dias` para distribuicao correta no formulario
+- [x] Testes atualizados e verdes:
+  - `manage.py test nota_fiscal --keepdb`
+  - `manage.py test integracao_nfe --keepdb`
+  - `manage.py test fiscal_regras nota_fiscal integracao_nfe --keepdb`
 
 

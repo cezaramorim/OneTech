@@ -268,3 +268,18 @@ SECURE_HSTS_PRELOAD = config(
 
 if config('SECURE_PROXY_SSL_HEADER_ENABLED', cast=bool, default=False):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+# =======================
+# Motor Fiscal (ICMS por NCM)
+# =======================
+FISCAL_REGRAS_ENGINE_ENABLED = config(
+    'FISCAL_REGRAS_ENGINE_ENABLED',
+    cast=bool,
+    default=True,
+)
+FISCAL_REGRAS_CACHE_TTL = config(
+    'FISCAL_REGRAS_CACHE_TTL',
+    cast=int,
+    default=60,
+)
