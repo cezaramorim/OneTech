@@ -1,7 +1,7 @@
 ﻿# Plano Futuro - Integracao SIEM
 
 - Data de criacao: 2026-03-14
-- Status: Planejado
+- Status: Iniciado (base interna pronta; integracao externa pendente)
 - Escopo: Integracao externa dos eventos da Central de Seguranca com SIEM
 
 ## Objetivo

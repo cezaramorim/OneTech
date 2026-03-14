@@ -1,7 +1,7 @@
 ﻿# Plano Futuro - Remediacao de Vulnerabilidades Python
 
 - Data de criacao: 2026-03-14
-- Status: Planejado para execucao
+- Status: Iniciado (lote de hardening aplicado em 2026-03-14)
 - Escopo: Atualizacao segura de dependencias com vulnerabilidades reportadas pelo pip-audit
 
 ## Objetivo
@@ -89,3 +89,25 @@ Reduzir risco de seguranca no ambiente Python do projeto, corrigindo vulnerabili
 ## Inicio recomendado
 - Primeiro ciclo: Lote 1 (django)
 - Ao concluir e validar, seguir para Lote 2 (cryptography)
+
+## Execucao realizada em 2026-03-14
+- Atualizacao de pinos em `requirements.txt`:
+  - `Django==5.1.15`
+  - `cryptography==46.0.5`
+  - `Flask==3.1.3`
+  - `cffi==2.0.0`
+  - `requests==2.32.4`
+  - `sqlparse==0.5.4`
+  - `urllib3==2.6.3`
+  - `Werkzeug==3.1.6`
+- Validacoes executadas:
+  - `python manage.py check` -> OK
+  - `python manage.py test fiscal_regras nota_fiscal integracao_nfe --keepdb` -> OK
+- Evidencias:
+  - `docs/futuro/snapshots/requirements_before_lote_remediacao_2026-03-14.txt`
+  - `docs/futuro/snapshots/pip_audit_after_lote_remediacao_2026-03-14.json`
+
+## Estado atual apos lote
+- `pip-audit` ainda reporta vulnerabilidades remanescentes (18 achados em 10 pacotes no snapshot).
+- Parte dos achados esta fora do conjunto diretamente pinado no `requirements.txt` principal (dependencias transitivas e ferramentas do ambiente local).
+- Proximo passo: executar lote 2/3 com saneamento do ambiente Python e auditoria final deduplicada por CVE/pacote.
