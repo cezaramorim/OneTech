@@ -270,6 +270,7 @@ class ContratoDominioNotaFiscalTests(TestCase):
         self.assertEqual(produto.detalhes_fiscais.ncm.codigo, '23099010')
         self.assertEqual(produto.detalhes_fiscais.origem_mercadoria, '0')
         self.assertEqual(produto.detalhes_fiscais.cfop, '1102')
+        self.assertEqual(produto.detalhes_fiscais.aliquota_icms_interna, Decimal('18.00'))
         self.assertEqual(produto.detalhes_fiscais.unidade_comercial, 'UN')
         self.assertEqual(produto.detalhes_fiscais.icms, Decimal('18.00'))
         self.assertEqual(produto.detalhes_fiscais.ipi, Decimal('5.00'))

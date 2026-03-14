@@ -507,7 +507,13 @@ def _to_decimal_safe(value, default='0'):
     try:
         if value in (None, ''):
             return Decimal(default)
-        return Decimal(str(value))
+        text = str(value).strip()
+        if ',' in text:
+            if '.' in text:
+                text = text.replace('.', '').replace(',', '.')
+            else:
+                text = text.replace(',', '.')
+        return Decimal(text)
     except Exception:
         return Decimal(default)
 
@@ -522,6 +528,39 @@ def _extrair_blocos_imposto(item_data):
     cofins_root = imposto_data.get('COFINS', {}) or {}
     cofins_data = next(iter(cofins_root.values()), {}) if isinstance(cofins_root, dict) and cofins_root else {}
     return icms_data, ipi_data, pis_data, cofins_data
+
+
+def _percentual_do_bloco(bloco, chave_percentual, chave_valor=None, chave_base=None):
+    if chave_percentual in bloco:
+        return _to_decimal_safe(bloco.get(chave_percentual), default='0')
+    if chave_valor and chave_base and (chave_valor in bloco) and (chave_base in bloco):
+        valor = _to_decimal_safe(bloco.get(chave_valor), default='0')
+        base = _to_decimal_safe(bloco.get(chave_base), default='0')
+        if base > 0:
+            return (valor / base) * Decimal('100')
+    return None
+
+
+def _upsert_cst_por_codigo(codigo):
+    codigo = str(codigo or '').strip()
+    if not codigo:
+        return None
+    cst_obj, _ = CST.objects.get_or_create(
+        codigo=codigo,
+        defaults={'descricao': f'CST {codigo} (importado via XML)'}
+    )
+    return cst_obj
+
+
+def _upsert_csosn_por_codigo(codigo):
+    codigo = str(codigo or '').strip()
+    if not codigo:
+        return None
+    csosn_obj, _ = CSOSN.objects.get_or_create(
+        codigo=codigo,
+        defaults={'descricao': f'CSOSN {codigo} (importado via XML)'}
+    )
+    return csosn_obj
 
 def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor):
     """Atualiza ou cria um registro na tabela mestre de Produtos."""
@@ -577,6 +616,31 @@ def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor
             detalhes_fiscais.origem_mercadoria = origem_xml
             changed_fields.append('origem_mercadoria')
 
+    p_icms = _percentual_do_bloco(icms_data, 'pICMS', 'vICMS', 'vBC')
+    if p_icms is not None and detalhes_fiscais.aliquota_icms_interna != p_icms:
+        detalhes_fiscais.aliquota_icms_interna = p_icms
+        changed_fields.append('aliquota_icms_interna')
+
+    if 'pRedBC' in icms_data:
+        p_redbc = _to_decimal_safe(icms_data.get('pRedBC'), default='0')
+        if detalhes_fiscais.reducao_base_icms != p_redbc:
+            detalhes_fiscais.reducao_base_icms = p_redbc
+            changed_fields.append('reducao_base_icms')
+
+    cst_icms_codigo = str(icms_data.get('CST') or '').strip()
+    if cst_icms_codigo:
+        cst_icms_obj = _upsert_cst_por_codigo(cst_icms_codigo)
+        if cst_icms_obj and detalhes_fiscais.cst_icms_cst_id != cst_icms_obj.id:
+            detalhes_fiscais.cst_icms_cst = cst_icms_obj
+            changed_fields.append('cst_icms_cst')
+
+    csosn_icms_codigo = str(icms_data.get('CSOSN') or '').strip()
+    if csosn_icms_codigo:
+        csosn_icms_obj = _upsert_csosn_por_codigo(csosn_icms_codigo)
+        if csosn_icms_obj and detalhes_fiscais.cst_icms_csosn_id != csosn_icms_obj.id:
+            detalhes_fiscais.cst_icms_csosn = csosn_icms_obj
+            changed_fields.append('cst_icms_csosn')
+
     cfop_xml = str(prod_primeiro_item.get('CFOP') or '').strip()
     if cfop_xml and (detalhes_fiscais.cfop or '') != cfop_xml:
         detalhes_fiscais.cfop = cfop_xml
@@ -597,25 +661,50 @@ def _update_or_create_produto_mestre(codigo_produto, dados_agregados, fornecedor
         detalhes_fiscais.valor_unitario_comercial = valor_unit_xml
         changed_fields.append('valor_unitario_comercial')
 
-    v_icms = _to_decimal_safe(icms_data.get('vICMS'), default='0')
-    if v_icms > 0 and detalhes_fiscais.icms != v_icms:
-        detalhes_fiscais.icms = v_icms
-        changed_fields.append('icms')
+    if 'vICMS' in icms_data:
+        v_icms = _to_decimal_safe(icms_data.get('vICMS'), default='0')
+        if detalhes_fiscais.icms != v_icms:
+            detalhes_fiscais.icms = v_icms
+            changed_fields.append('icms')
 
-    v_ipi = _to_decimal_safe(ipi_data.get('vIPI'), default='0')
-    if v_ipi > 0 and detalhes_fiscais.ipi != v_ipi:
-        detalhes_fiscais.ipi = v_ipi
-        changed_fields.append('ipi')
+    p_ipi = _percentual_do_bloco(ipi_data, 'pIPI', 'vIPI', 'vBC')
+    if p_ipi is not None:
+        if detalhes_fiscais.ipi != p_ipi:
+            detalhes_fiscais.ipi = p_ipi
+            changed_fields.append('ipi')
 
-    v_pis = _to_decimal_safe(pis_data.get('vPIS'), default='0')
-    if v_pis > 0 and detalhes_fiscais.pis != v_pis:
-        detalhes_fiscais.pis = v_pis
-        changed_fields.append('pis')
+    cst_ipi_codigo = str(ipi_data.get('CST') or '').strip()
+    if cst_ipi_codigo:
+        cst_ipi_obj = _upsert_cst_por_codigo(cst_ipi_codigo)
+        if cst_ipi_obj and detalhes_fiscais.cst_ipi_id != cst_ipi_obj.id:
+            detalhes_fiscais.cst_ipi = cst_ipi_obj
+            changed_fields.append('cst_ipi')
 
-    v_cofins = _to_decimal_safe(cofins_data.get('vCOFINS'), default='0')
-    if v_cofins > 0 and detalhes_fiscais.cofins != v_cofins:
-        detalhes_fiscais.cofins = v_cofins
-        changed_fields.append('cofins')
+    p_pis = _percentual_do_bloco(pis_data, 'pPIS', 'vPIS', 'vBC')
+    if p_pis is not None:
+        if detalhes_fiscais.pis != p_pis:
+            detalhes_fiscais.pis = p_pis
+            changed_fields.append('pis')
+
+    cst_pis_codigo = str(pis_data.get('CST') or '').strip()
+    if cst_pis_codigo:
+        cst_pis_obj = _upsert_cst_por_codigo(cst_pis_codigo)
+        if cst_pis_obj and detalhes_fiscais.cst_pis_id != cst_pis_obj.id:
+            detalhes_fiscais.cst_pis = cst_pis_obj
+            changed_fields.append('cst_pis')
+
+    p_cofins = _percentual_do_bloco(cofins_data, 'pCOFINS', 'vCOFINS', 'vBC')
+    if p_cofins is not None:
+        if detalhes_fiscais.cofins != p_cofins:
+            detalhes_fiscais.cofins = p_cofins
+            changed_fields.append('cofins')
+
+    cst_cofins_codigo = str(cofins_data.get('CST') or '').strip()
+    if cst_cofins_codigo:
+        cst_cofins_obj = _upsert_cst_por_codigo(cst_cofins_codigo)
+        if cst_cofins_obj and detalhes_fiscais.cst_cofins_id != cst_cofins_obj.id:
+            detalhes_fiscais.cst_cofins = cst_cofins_obj
+            changed_fields.append('cst_cofins')
 
     if changed_fields:
         detalhes_fiscais.save(update_fields=changed_fields)
