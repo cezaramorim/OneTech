@@ -1,7 +1,7 @@
 ﻿# Plano Futuro - Remediacao de Vulnerabilidades Python
 
 - Data de criacao: 2026-03-14
-- Status: Iniciado (lote de hardening aplicado em 2026-03-14)
+- Status: Concluido
 - Escopo: Atualizacao segura de dependencias com vulnerabilidades reportadas pelo pip-audit
 
 ## Objetivo
@@ -107,7 +107,13 @@ Reduzir risco de seguranca no ambiente Python do projeto, corrigindo vulnerabili
   - `docs/futuro/snapshots/requirements_before_lote_remediacao_2026-03-14.txt`
   - `docs/futuro/snapshots/pip_audit_after_lote_remediacao_2026-03-14.json`
 
-## Estado atual apos lote
-- `pip-audit` ainda reporta vulnerabilidades remanescentes (18 achados em 10 pacotes no snapshot).
-- Parte dos achados esta fora do conjunto diretamente pinado no `requirements.txt` principal (dependencias transitivas e ferramentas do ambiente local).
-- Proximo passo: executar lote 2/3 com saneamento do ambiente Python e auditoria final deduplicada por CVE/pacote.
+## Fechamento do plano (2026-03-14)
+- Ambiente virtual recriado do zero (`venv` novo).
+- Dependencias reinstaladas a partir de `requirements.txt` atualizado.
+- Validacoes finais:
+  - `python manage.py check` -> OK
+  - `python manage.py test fiscal_regras nota_fiscal integracao_nfe --keepdb` -> OK
+  - `python -m pip_audit -f json` -> **No known vulnerabilities found**
+- Evidencias finais:
+  - `docs/futuro/snapshots/pip_audit_after_venv_recriado_2026-03-14.json`
+  - `docs/futuro/snapshots/requirements_after_venv_recriado_2026-03-14.txt`
